@@ -12,20 +12,6 @@ import {
 } from '../../common/types'
 import { PgClient } from '../db'
 import sql from 'sql-template-strings'
-import * as Arr from 'fp-ts/Array'
-import * as Option from 'fp-ts/Option'
-
-const createOrGetStripeCustomer = (stripe: Stripe, email: string) =>
-  stripe.customers
-    .list({ email })
-    .then(({ data }) => data)
-    .then(Arr.lookup(0))
-    .then(
-      Option.fold(
-        () => stripe.customers.create({ email }),
-        customer => Promise.resolve(customer)
-      )
-    )
 
 const formatPayerProfile = (profile: DbPayerProfile): PayerProfile => ({
   id: userId(profile.id),
