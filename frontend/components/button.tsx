@@ -57,6 +57,7 @@ export const BackLink = styled(Link)`
   width: 80%;
   height: 40px;
   margin: 10px 0;
+  padding: 0 10px;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
   display: flex;

@@ -9,7 +9,6 @@ const ConatentWrapper = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 70%;
 `
 
 const List = styled.div`
@@ -56,7 +55,7 @@ const eventItem = (event: EventWithPaymentStatus) => {
   const { dispatch, items } = useContext(PaymentPool)
   const poolHasItem = items.some(item => item.eventId === event.id)
 
-  const ctaButton = () => {
+  const ctaButton = (disabled: boolean) => {
     const dispatchPayload = {
       type: poolHasItem
         ? 'REMOVE_ITEM'
@@ -75,11 +74,13 @@ const eventItem = (event: EventWithPaymentStatus) => {
     }
 
     return poolHasItem ? (
-      <RedButton onClick={() => dispatch(dispatchPayload)}>
+      <RedButton onClick={() => dispatch(dispatchPayload)} disabled={disabled}>
         Remove from pool
       </RedButton>
     ) : (
-      <Button onClick={() => dispatch(dispatchPayload)}>Add to pool</Button>
+      <Button onClick={() => dispatch(dispatchPayload)} disabled={disabled}>
+        Add to pool
+      </Button>
     )
   }
 
@@ -95,7 +96,7 @@ const eventItem = (event: EventWithPaymentStatus) => {
       </EventInfo>
       <PriceAndCTA>
         <h2>{event.price.value / 100}€</h2>
-        {ctaButton()}
+        {ctaButton(isPaid)}
       </PriceAndCTA>
     </Item>
   )

@@ -12,7 +12,6 @@ const PaymentTabWrapper = styled.div`
   display: flex;
   align-items: center;
   flex-direction: column;
-  width: 50%;
   margin: 10px;
 `
 
@@ -20,7 +19,9 @@ const PaymentPoolContainer = styled.div`
   background: #ffffff;
   box-shadow: 1px 1px 10px rgba(0, 0, 0, 0.25);
   border-radius: 5px;
-  width: 100%;
+  width: 500px;
+  margin: 2em;
+  padding: 1em;
 `
 const PaymentPoolItemContainer = styled.div`
   font-family: 'Roboto Mono', monospace;
@@ -28,7 +29,6 @@ const PaymentPoolItemContainer = styled.div`
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin: 10px;
 `
 
 const paymentPoolItem = (item: PaymentPoolItem) => (
@@ -61,6 +61,12 @@ const PayButtonWrapper = styled.div`
   justify-content: space-between;
 `
 
+const CardInfo = styled.p`
+  margin-left: 200px;
+  font-family: 'Roboto Mono', monospace;
+  width: 100%;
+`
+
 type PayButtonProps = {
   session: Session
 }
@@ -89,24 +95,22 @@ const PayButton = ({ session }: PayButtonProps) => {
   return (
     <PayButtonWrapper>
       <Button onClick={handleClick}>Pay now</Button>
-      <p>
+      <CardInfo>
         {session.paymentMethod.brand} **** {session.paymentMethod.last4}
-      </p>
+      </CardInfo>
     </PayButtonWrapper>
   )
 }
 
 export const PaymentTab = ({ session }: { session: Session }) => {
-  const { items } = useContext(PaymentPool)
+  const { items, totalSum } = useContext(PaymentPool)
 
   return (
     <PaymentTabWrapper>
       <PaymentPoolContainer>
         <h3>Payment Pool</h3>
         {items.map(item => paymentPoolItem(item))}
-        <TotalAmount
-          sum={items.reduce((acc, item) => acc + item.items[0].amount, 0)}
-        />
+        <TotalAmount sum={totalSum} />
         <PayButton session={session} />
       </PaymentPoolContainer>
       <Link href="/update-payment-method">Update payment method</Link>

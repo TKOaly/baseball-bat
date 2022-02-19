@@ -8,7 +8,7 @@ export const SmallContainer = styled.div`
   background: #ffffff;
   box-shadow: 1px 1px 10px rgba(0, 0, 0, 0.25);
   border-radius: 10px;
-  width: 30%;
+  width: 400px;
   min-height: 20%;
 `
 
@@ -20,7 +20,6 @@ export const LargeContainer = styled.div`
   background: #ffffff;
   box-shadow: 1px 1px 10px rgba(0, 0, 0, 0.25);
   border-radius: 10px;
-  width: 70%;
-  min-height: 20%;
-  max-height: 60%;
+  width: 1200px;
+  height: 800px;
 `
