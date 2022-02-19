@@ -28,13 +28,33 @@ const app = express()
   .use(bodyParser.json())
   .use(cookieParser())
   .use(
-    router(
-      healthCheck,
-      events(eventsService),
-      auth(userService, pg, stripeClient, config.jwtSecret),
-      session(eventsService, pg, stripeClient, config.jwtSecret)
+    '/api/session',
+    session(
+      pg,
+      stripeClient,
+      config.jwtSecret,
+      config.userApiUrl,
+      config.userApiServiceId
     ).handler()
   )
+  .use(
+    '/api/events',
+    events(eventsService, pg, stripeClient, config.jwtSecret).handler()
+  )
+  .use(
+    router(
+      healthCheck,
+      auth(userService, pg, stripeClient, config.jwtSecret)
+    ).handler()
+  )
+
+if (process.env.NODE_ENV !== 'production') {
+  app.use(
+    '/:type(index|onboading|update-payment-method|landing)',
+    express.static('web-dist/index.html')
+  )
+  app.use(express.static('web-dist'))
+}
 
 app.listen(PORT, () => console.log(`backend istening on port ${PORT} 🚀`))
 

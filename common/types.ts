@@ -75,7 +75,7 @@ export type EventWithPaymentStatus = Event & {
   payment: {
     status: PaymentStatus
     createdAt: Date
-  }
+  } | null
 }
 
 export type ApiEvent = {
@@ -145,4 +145,33 @@ export type Session = {
   payerProfile: PayerProfile
   paymentMethod: Pick<PaymentMethod, 'id' | 'brand' | 'last4'>
   user: TokenPayload
+}
+
+export type DbPayment = {
+  id: string
+  payer_id: string
+  payment_status: PaymentStatus
+  stripe_payment_intent_id: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type Payment = Omit<FromDbType<DbPayment>, 'payer_id'> & {
+  payerId: UserId
+}
+
+export type DbLineItem = {
+  id: string
+  payment_id: string
+  event_id: number
+  event_item_id: number
+  amount: number
+  currency: string
+  item_name: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type LineItem = Omit<FromDbType<DbLineItem>, 'amount'> & {
+  amount: EuroValue
 }

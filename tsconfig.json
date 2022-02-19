@@ -16,8 +16,8 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "jsx": "react",
-    "outDir": "build"
+    "outDir": "build",
+    "jsxImportSource": "react"
   },
   "exclude": ["node_modules"],
   "include": ["backend", "common/types.ts"]

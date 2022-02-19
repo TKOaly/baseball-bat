@@ -31,11 +31,11 @@ CREATE TABLE payment_methods (
     ON UPDATE CASCADE
 );
 
-CREATE TABLE event_payments (
+CREATE TABLE payments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  event_id int NOT NULL,
   payer_id uuid NOT NULL,
   payment_status text NOT NULL,
+  stripe_payment_intent_id text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id),
@@ -53,6 +53,25 @@ CREATE TABLE event_payments (
     'canceled',
     'succeeded'
   ))
+);
+
+CREATE TABLE line_items (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  payment_id uuid NOT NULL,
+  event_id int NOT NULL,
+  event_item_id int NOT NULL DEFAULT 0,
+  amount int NOT NULL,
+  currency text NOT NULL DEFAULT 'eur',
+  item_name text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (id),
+  CONSTRAINT
+    fk_line_items_payments
+    FOREIGN KEY (payment_id)
+    REFERENCES payments (id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 -- Down Migration
