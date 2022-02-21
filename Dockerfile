@@ -10,6 +10,6 @@ COPY ./common /app/common
 
 RUN npm install -g yarn
 RUN yarn
-RUN yarn build
+RUN yarn build:server
 
 CMD ["build/backend/lambda.handler"]
