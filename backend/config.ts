@@ -11,6 +11,8 @@ export type Config = {
   eventServiceToken: string | null
   jwtSecret: string
   stripeSecretKey: string
+  appUrl: string
+  stripeWebhookEndpointSecret: string
 }
 
 export const getConfig = (): Config => {
@@ -22,6 +24,8 @@ export const getConfig = (): Config => {
     EVENT_SERVICE_TOKEN,
     JWT_SECRET,
     STRIPE_SECRET_KEY,
+    APP_URL,
+    STRIPE_WEBHOOK_ENDPOINT_SECRET,
   } = process.env
 
   assert(POSTGRES_CONNECTION_STRING, 'POSTGRES_CONNECTION_STRING must be set.')
@@ -32,6 +36,11 @@ export const getConfig = (): Config => {
   )
   assert(JWT_SECRET, 'JWT_SECRET must be set.')
   assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
+  assert(APP_URL, 'APP_URL must be set.')
+  assert(
+    STRIPE_WEBHOOK_ENDPOINT_SECRET,
+    'STRIPE_WEBHOOK_ENDPOINT_SECRET must be set.'
+  )
 
   return {
     dbUrl: POSTGRES_CONNECTION_STRING,
@@ -41,5 +50,7 @@ export const getConfig = (): Config => {
     eventServiceToken: EVENT_SERVICE_TOKEN ?? null,
     jwtSecret: JWT_SECRET,
     stripeSecretKey: STRIPE_SECRET_KEY,
+    appUrl: APP_URL,
+    stripeWebhookEndpointSecret: STRIPE_WEBHOOK_ENDPOINT_SECRET,
   }
 }

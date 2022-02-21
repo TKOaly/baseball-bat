@@ -147,3 +147,5 @@ dist
 web-dist
 
 .env.frontend
+
+build

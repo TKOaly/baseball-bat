@@ -1,6 +1,5 @@
 import express from 'express'
 import { router } from 'typera-express'
-import bodyParser from 'body-parser'
 import healthCheck from './api/health-check'
 import { createEventsService } from './services/events'
 import { getConfig } from './config'
@@ -11,9 +10,30 @@ import { createUserService } from './services/users'
 import Stripe from 'stripe'
 import { createPgClient } from './db'
 import session from './api/session'
+import cors from 'cors'
+import helmet, { HelmetOptions } from 'helmet'
+import stripeEvents from './api/stripe-events'
 
 const PORT = process.env.PORT ?? '5000'
 const config = getConfig()
+
+const helmetConfig: HelmetOptions = {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'", '*.stripe.com'],
+      scriptSrc:
+        process.env.NODE_ENV !== 'production'
+          ? ["'self'", '*.stripe.com', "'unsafe-eval'"]
+          : ["'self'", '*.stripe.com'],
+      connectSrc:
+        process.env.NODE_ENV !== 'production'
+          ? ["'self'", 'ws://localhost:1234']
+          : ["'self'"],
+      frameAncestors: ['*.stripe.com'],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}
 
 const stripeClient = new Stripe(config.stripeSecretKey, {
   apiVersion: '2020-08-27',
@@ -25,7 +45,19 @@ const eventsService = createEventsService(config)
 const userService = createUserService(config)
 
 const app = express()
-  .use(bodyParser.json())
+  .use(helmet(helmetConfig))
+  .use(
+    cors({
+      methods: ['GET', 'POST', 'OPTIONS'],
+      origin: [config.appUrl],
+    })
+  )
+  .use(
+    '/api/stripe-events',
+    express.raw({ type: 'application/json' }),
+    stripeEvents(pg, stripeClient, config.stripeWebhookEndpointSecret).handler()
+  )
+  .use(express.json())
   .use(cookieParser())
   .use(
     '/api/session',
@@ -50,7 +82,7 @@ const app = express()
 
 if (process.env.NODE_ENV !== 'production') {
   app.use(
-    '/:type(index|onboading|update-payment-method|landing)',
+    '/:type(index|onboarding|update-payment-method|landing)',
     express.static('web-dist/index.html')
   )
   app.use(express.static('web-dist'))

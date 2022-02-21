@@ -87,7 +87,7 @@ const eventItem = (event: EventWithPaymentStatus) => {
   const isPaid = event.payment?.status === 'succeeded'
 
   return (
-    <Item paid={isPaid}>
+    <Item paid={isPaid} key={event.id}>
       <EventInfo>
         <h3>{event.name}</h3>
         <p>{new Date(event.starts).toUTCString()}</p>

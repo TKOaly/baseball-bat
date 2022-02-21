@@ -32,14 +32,14 @@ const PaymentPoolItemContainer = styled.div`
 `
 
 const paymentPoolItem = (item: PaymentPoolItem) => (
-  <PaymentPoolItemContainer>
-    {item.items.map(e => (
-      <p>
+  <PaymentPoolItemContainer key={`${item.eventId}-pp`}>
+    {item.items.map((e, i) => (
+      <p key={`${item.eventId}-${i}-pp`}>
         {item.eventName} {e.itemName}
       </p>
     ))}
-    {item.items.map(e => (
-      <p>{e.amount / 100}€</p>
+    {item.items.map((e, i) => (
+      <p key={`${item.eventId}-${i}-pp-sum`}>{e.amount / 100}€</p>
     ))}
   </PaymentPoolItemContainer>
 )
@@ -107,8 +107,8 @@ export const PaymentTab = ({ session }: { session: Session }) => {
 
   return (
     <PaymentTabWrapper>
+      <h3>Payment Pool</h3>
       <PaymentPoolContainer>
-        <h3>Payment Pool</h3>
         {items.map(item => paymentPoolItem(item))}
         <TotalAmount sum={totalSum} />
         <PayButton session={session} />

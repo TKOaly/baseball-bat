@@ -288,3 +288,15 @@ export const payUsersEvents = async (
     )
   )
 }
+
+export const updatePaymentStatus = (
+  pg: PgClient,
+  paymentIntentId: string,
+  status: PaymentStatus
+) =>
+  pg.any(
+    sql`UPDATE payments
+        SET payment_status = ${status},
+            updated_at = NOW()
+        WHERE stripe_payment_intent_id = ${paymentIntentId}`
+  )

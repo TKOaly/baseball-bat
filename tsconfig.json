@@ -17,7 +17,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "outDir": "build",
-    "jsxImportSource": "react"
+    "jsxImportSource": "react",
+    "skipLibCheck": true
   },
   "exclude": ["node_modules"],
   "include": ["backend", "common/types.ts"]
