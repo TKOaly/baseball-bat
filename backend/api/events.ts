@@ -1,7 +1,7 @@
 import { Parser, route, router } from 'typera-express'
 import { ok } from 'typera-express/response'
 import { EventsService } from '../services/events'
-import { tkoAlyUserId, userId } from '../../common/types'
+import { nonEmptyArray, tkoAlyUserId, userId } from '../../common/types'
 import { createAuthMiddleware } from '../auth-middleware'
 import { PgClient } from '../db'
 import { getEventsWithPaymentStatus, payUsersEvents } from '../services/payer'
@@ -28,7 +28,7 @@ const getEvents = (
 }
 
 const PayEventsBody = t.type({
-  events: t.array(t.number),
+  events: nonEmptyArray(t.number),
 })
 
 const payEvents = (

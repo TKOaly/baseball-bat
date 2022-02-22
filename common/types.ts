@@ -49,6 +49,30 @@ export const numberFromString = new t.Type<number, string, unknown>(
   String
 )
 
+export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
+  new t.Type<[T, ...T[]], T[], unknown>(
+    'nonEmptyArray',
+    (mt): mt is [T, ...T[]] => Array.isArray(mt) && mt.length > 0,
+    (input, context) =>
+      pipe(
+        t.array(rootType).validate(input, context),
+        Either.chain(value =>
+          value.length === 0
+            ? Either.left([
+                {
+                  key: '',
+                  type: 'array.minLength',
+                  message: 'Array is empty',
+                  context,
+                  value,
+                },
+              ])
+            : Either.right(value as [T, ...T[]])
+        )
+      ),
+    arr => arr
+  )
+
 export type PaymentStatus =
   | 'requires_payment_method'
   | 'requires_confirmation'

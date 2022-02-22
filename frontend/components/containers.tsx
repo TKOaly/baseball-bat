@@ -22,4 +22,10 @@ export const LargeContainer = styled.div`
   border-radius: 10px;
   width: 1200px;
   height: 800px;
+
+  @media (max-width: 1200px) {
+    width: 100%;
+    flex-direction: column;
+    height: 100%;
+  }
 `

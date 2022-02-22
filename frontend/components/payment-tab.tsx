@@ -5,6 +5,7 @@ import { Session } from '../../common/types'
 import { payEvents } from '../api'
 import { PaymentPool, PaymentPoolItem } from '../state/payment-pool'
 import { Button } from './button'
+import { Checkmark } from './checkmark'
 import { Loading } from './loading'
 
 const PaymentTabWrapper = styled.div`
@@ -22,6 +23,11 @@ const PaymentPoolContainer = styled.div`
   width: 500px;
   margin: 2em;
   padding: 1em;
+
+  @media (max-width: 1200px) {
+    margin: 10px;
+    width: 100%;
+  }
 `
 const PaymentPoolItemContainer = styled.div`
   font-family: 'Roboto Mono', monospace;

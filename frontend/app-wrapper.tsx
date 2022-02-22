@@ -16,7 +16,7 @@ const Wrapper = styled.div`
   justify-content: center;
   background-color: #ffcc33;
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
 `
 
 const router = (session: Session | null) => (
