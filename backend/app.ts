@@ -66,7 +66,8 @@ const app = express()
       stripeClient,
       config.jwtSecret,
       config.userApiUrl,
-      config.userApiServiceId
+      config.userApiServiceId,
+      config.appUrl
     ).handler()
   )
   .use(
@@ -76,7 +77,7 @@ const app = express()
   .use(
     router(
       healthCheck,
-      auth(userService, pg, stripeClient, config.jwtSecret)
+      auth(userService, pg, stripeClient, config.jwtSecret, config.appUrl)
     ).handler()
   )
 

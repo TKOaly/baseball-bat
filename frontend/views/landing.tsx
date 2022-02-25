@@ -7,6 +7,8 @@ export const Landing = () => (
     <p>
       Debt platform is a centralized place for paying for TKO-äly events by card
     </p>
-    <ButtonA href="/api/session/login">Login</ButtonA>
+    <ButtonA href={`${process.env.BACKEND_URL}/api/session/login`}>
+      Login
+    </ButtonA>
   </SmallContainer>
 )

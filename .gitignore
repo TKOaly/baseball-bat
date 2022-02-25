@@ -149,3 +149,6 @@ web-dist
 .env.frontend
 
 build
+
+cdk.context.json
+cdk.out

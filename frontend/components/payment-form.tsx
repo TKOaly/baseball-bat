@@ -24,7 +24,7 @@ const handleSubmit =
       redirect: 'always',
       elements,
       confirmParams: {
-        return_url: `${process.env.APP_URL}/api/session/confirm-card-setup`,
+        return_url: `${process.env.BACKEND_URL}/api/session/confirm-card-setup`,
       },
     })
 

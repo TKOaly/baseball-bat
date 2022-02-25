@@ -49,15 +49,17 @@ export const numberFromString = new t.Type<number, string, unknown>(
   String
 )
 
+const isNonEmpty = <T>(a: T[]): a is [T, ...T[]] => a.length > 0
+
 export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
   new t.Type<[T, ...T[]], T[], unknown>(
     'nonEmptyArray',
-    (mt): mt is [T, ...T[]] => Array.isArray(mt) && mt.length > 0,
+    (u): u is [T, ...T[]] => Array.isArray(u) && u.length > 0,
     (input, context) =>
       pipe(
         t.array(rootType).validate(input, context),
         Either.chain(value =>
-          value.length === 0
+          !isNonEmpty(value)
             ? Either.left([
                 {
                   key: '',
@@ -67,7 +69,7 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
                   value,
                 },
               ])
-            : Either.right(value as [T, ...T[]])
+            : Either.right(value)
         )
       ),
     arr => arr

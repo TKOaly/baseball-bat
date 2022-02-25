@@ -28,7 +28,7 @@ const request = async <T>(
   auth = true,
   data?: any
 ) =>
-  fetch(url, {
+  fetch(`${process.env.BACKEND_URL}${url}`, {
     method,
     headers: Object.assign(
       {

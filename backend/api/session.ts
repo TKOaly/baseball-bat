@@ -42,7 +42,7 @@ const getSetupIntent = (pg: PgClient, stripe: Stripe, jwtSecret: string) =>
       return ok(secret)
     })
 
-const confirmCardSetup = (pg: PgClient, stripe: Stripe, jwtSecret: string) =>
+const confirmCardSetup = (pg: PgClient, stripe: Stripe, appUrl: string) =>
   route.get('/confirm-card-setup').handler(async ({ req }) => {
     const setupIntentId = req.query.setup_intent
     if (!setupIntentId) {
@@ -50,7 +50,7 @@ const confirmCardSetup = (pg: PgClient, stripe: Stripe, jwtSecret: string) =>
     }
     await setPaymentMethod(pg, stripe, req.query.setup_intent!.toString())
 
-    return redirect(302, '/')
+    return redirect(302, `${appUrl}/`)
   })
 
 export default (
@@ -58,11 +58,12 @@ export default (
   stripe: Stripe,
   jwtSecret: string,
   usersApiUrl: string,
-  usersApiService: string
+  usersApiService: string,
+  appUrl: string
 ) =>
   router(
     getSession(pg, jwtSecret),
     login(usersApiUrl, usersApiService),
     getSetupIntent(pg, stripe, jwtSecret),
-    confirmCardSetup(pg, stripe, jwtSecret)
+    confirmCardSetup(pg, stripe, appUrl)
   )

@@ -10,7 +10,8 @@ export default (
   userService: UserService,
   pg: PgClient,
   stripe: Stripe,
-  jwtSecret: string
+  jwtSecret: string,
+  appUrl: string
 ) =>
   route.get('/auth-completed').handler(async ({ req }) => {
     const upstreamUser = await userService.getUpstreamUser(req.cookies.token)
@@ -30,5 +31,5 @@ export default (
       jwtSecret
     )
 
-    return redirect(302, `/?token=${token}`)
+    return redirect(302, `${appUrl}/?token=${token}`)
   })

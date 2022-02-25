@@ -12,4 +12,4 @@ RUN npm install -g yarn
 RUN yarn
 RUN yarn build:server
 
-CMD ["build/backend/lambda.handler"]
+CMD ["/app/build/backend/lambda.handler"]

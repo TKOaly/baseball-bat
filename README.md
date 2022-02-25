@@ -1,4 +1,4 @@
-# BBAT - TKO-älys event payment platform
+# Baseball bat - TKO-älys event payment platform
 
 User API autentication combined with data of registered events and stripes payment API = hopefully profit
 

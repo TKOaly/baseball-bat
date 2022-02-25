@@ -4,7 +4,8 @@
     "start-server:dev": "ts-node backend/app.ts",
     "start-frontend:watch": "parcel watch ./public/index.html --dist-dir ./web-dist",
     "start:dev": "concurrently \"yarn start-server:dev\" \"yarn start-frontend:watch\"",
-    "build:server": "tsc"
+    "build:server": "tsc",
+    "build:frontend": "parcel build ./public/index.html --dist-dir ./web-dist"
   },
   "dependencies": {
     "@parcel/transformer-react-refresh-wrap": "^2.3.1",
@@ -39,6 +40,11 @@
     "@types/react": "^17.0.39",
     "@types/react-dom": "^17.0.11",
     "@types/styled-components": "^5.1.23",
+    "aws-cdk": "^2.14.0",
+    "@aws-cdk/core": "1.146.0",
+    "@aws-cdk/aws-lambda": "1.146.0",
+    "@aws-cdk/aws-ec2": "1.146.0",
+    "@aws-cdk/aws-apigateway": "1.146.0",
     "concurrently": "^7.0.0",
     "dotenv": "^16.0.0",
     "node-pg-migrate": "^6.2.1",
@@ -49,7 +55,7 @@
   "@parcel/transformer-js": {
     "inlineEnvironment": [
       "STRIPE_PUB_KEY",
-      "APP_URL"
+      "BACKEND_URL"
     ]
   }
 }
