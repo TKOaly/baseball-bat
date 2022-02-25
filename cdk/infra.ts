@@ -14,7 +14,7 @@ const createStack = (app: cdk.App) => {
   })
 
   const tkoAlyVpc = ec2.Vpc.fromLookup(stack, 'TkoAlyVpc', {
-    vpcId: 'vpc-0cda364e6a07b03c3',
+    vpcId: process.env.TEKIS_VPC_ID,
   })
 
   const postgresSg = ec2.SecurityGroup.fromLookupByName(
