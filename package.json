@@ -45,6 +45,7 @@
     "@aws-cdk/aws-lambda": "1.146.0",
     "@aws-cdk/aws-ec2": "1.146.0",
     "@aws-cdk/aws-apigateway": "1.146.0",
+    "@aws-cdk/aws-certificatemanager": "1.146.0",
     "concurrently": "^7.0.0",
     "dotenv": "^16.0.0",
     "node-pg-migrate": "^6.2.1",

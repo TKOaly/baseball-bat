@@ -54,7 +54,7 @@ export const createEventsService = (config: Config): EventsService => {
 
   const client = !useMock
     ? axios.create({
-        baseURL: config.userApiUrl,
+        baseURL: config.eventServiceUrl!,
         headers: {
           'X-Token': config.eventServiceToken!,
         },
