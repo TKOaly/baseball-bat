@@ -1,33 +1,24 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { Config } from '../config'
 import {
+  ApiCustomField,
   ApiEvent,
+  ApiRegistration,
+  CustomField,
   euro,
   EuroValue,
   Event,
   numberFromString,
+  Registration,
+  tkoalyIdentity,
+  TkoalyIdentity,
   TkoAlyUserId,
 } from '../../common/types'
 import { readFileSync } from 'fs'
 import { parseISO } from 'date-fns'
 import * as Either from 'fp-ts/lib/Either'
 import { pipe } from 'fp-ts/lib/function'
-
-export type EventsService = {
-  getEvents: ({ id }: TkoAlyUserId) => Promise<Event[]>
-}
-
-const createMockClient = (): AxiosInstance => {
-  const file = JSON.parse(
-    readFileSync('./mock/event-api-mock.json').toString('utf8')
-  )
-
-  return {
-    // @ts-ignore
-    get: <T>(path: string, _: any): Promise<Partial<AxiosResponse>> =>
-      Promise.resolve({ data: file }),
-  }
-}
+import { Inject, Service } from 'typedi'
 
 const getEuro = (value: string): EuroValue | null =>
   pipe(
@@ -49,23 +40,95 @@ const parseApiEvent = (apiEvent: ApiEvent): Event => ({
   price: getEuro(apiEvent.price),
 })
 
-export const createEventsService = (config: Config): EventsService => {
-  const useMock = !config.userApiUrl || !config.eventServiceToken
+const formatRegistration = (registration: ApiRegistration) => ({
+  id: registration.id,
+  name: registration.name,
+  phone: registration.phone,
+  email: registration.email,
+  answers: registration.answers,
+  userId: tkoalyIdentity(registration.user_id),
+})
 
-  const client = !useMock
-    ? axios.create({
-        baseURL: config.eventServiceUrl!,
-        headers: {
-          'X-Token': config.eventServiceToken!,
-        },
-      })
-    : createMockClient()
+@Service()
+export class EventsService {
+  @Inject(() => Config)
+  config: Config
 
-  return {
-    getEvents: ({ id }) =>
-      client
-        .get<ApiEvent[]>(`/api/users/${id}/events`)
-        .then(({ data }) => data.map(parseApiEvent))
-        .then(events => events.filter(event => !event.deleted)),
+  private _client: ReturnType<typeof axios.create> | null = null
+
+  get client() {
+    if (this._client !== null) {
+      return this._client;
+    }
+
+    this._client = axios.create({
+      baseURL: this.config.eventServiceUrl!,
+      headers: {
+        'X-Token': this.config.eventServiceToken!,
+      },
+    })
+
+    return this._client
+  }
+
+  static createMock() {
+    const file = JSON.parse(
+      readFileSync('./mock/event-api-mock.json').toString('utf8')
+    )
+
+    const client = {
+      // @ts-ignore
+      get: <T>(path: string, _: any): Promise<Partial<AxiosResponse>> =>
+        Promise.resolve({ data: file }),
+    }
+
+    const service = new EventsService()
+    service._client = client as any;
+    return service;
+  }
+
+  async getAllEvents({ starting }: { starting: Date }): Promise<Event[]> {
+    try {
+      const res = await this.client.get<ApiEvent[]>(`/api/events`, { params: { fromDate: starting } })
+
+      console.log(res)
+
+      return res.data
+        .map(parseApiEvent)
+        .filter(event => !event.deleted)
+    } catch (err) {
+      console.error(err)
+      throw new Error(`Failed to fetch events`)
+    }
+  }
+
+  async getEvents(id: TkoalyIdentity): Promise<Event[]> {
+    try {
+      const res = await this.client.get<ApiEvent[]>(`/api/users/${id.value}/events`)
+
+      return res.data
+        .map(parseApiEvent)
+        .filter(event => !event.deleted)
+    } catch {
+      throw new Error(`Failed to fetch events for user ${id.value}`)
+    }
+  }
+
+  async getEventRegistrations(id: number): Promise<Registration[]> {
+    try {
+      const res = await this.client.get<ApiRegistration[]>(`/api/events/${id}/registrations`);
+      return res.data.map(formatRegistration);
+    } catch (err) {
+      throw new Error(`Failed to fetch registrations for event ${id}`);
+    }
+  }
+
+  async getEventCustomFields(id: number): Promise<CustomField[]> {
+    try {
+      const res = await this.client.get<ApiCustomField[]>(`/api/events/${id}/fields`);
+      return res.data;
+    } catch (err) {
+      throw new Error(`Failed to fetch custom fields for event ${id}`)
+    }
   }
 }

@@ -1,69 +1,83 @@
 import { route, router } from 'typera-express'
-import { PgClient } from '../db'
-import { createAuthMiddleware } from '../auth-middleware'
-import {
-  setPaymentMethod,
-  getPayerProfile,
-  getPaymentMethod,
-  getSetupIntentForUser,
-} from '../services/payer'
-import { userId } from '../../common/types'
+import { AuthService } from '../auth-middleware'
+import { PayerService, } from '../services/payer'
+import { internalIdentity } from '../../common/types'
 import { badRequest, ok, redirect } from 'typera-express/response'
-import Stripe from 'stripe'
+import { Inject, Service } from 'typedi'
+import { Config } from '../config'
 
-const getSession = (pg: PgClient, jwtSecret: string) =>
-  route
-    .use(createAuthMiddleware(jwtSecret))
-    .get('/')
-    .handler(async ({ user }) => {
-      const payerProfile = await getPayerProfile(pg, userId(user.id))
-      const paymentMethod = await getPaymentMethod(pg, userId(user.id))
+@Service()
+export class SessionApi {
+  @Inject(() => AuthService)
+  authService: AuthService
 
-      return ok({
-        payerProfile,
-        paymentMethod,
-        user,
+  @Inject(() => PayerService)
+  payerService: PayerService
+
+  @Inject(() => Config)
+  config: Config
+
+  getSession() {
+    return route
+      .use(this.authService.createAuthMiddleware({ unauthenticated: true }))
+      .get('/')
+      .handler(async ({ session }) => {
+        if (session.authLevel === 'unauthenticated') {
+          return ok({
+            authLevel: 'unauthenticated',
+          })
+        }
+
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId))
+        const paymentMethod = await this.payerService.getPaymentMethod(internalIdentity(session.payerId))
+
+        return ok({
+          authLevel: session.authLevel,
+          accessLevel: session.accessLevel,
+          payerProfile,
+          paymentMethod,
+        })
       })
-    })
+  }
 
-const login = (usersApiUrl: string, usersApiService: string) =>
-  route
-    .get('/login')
-    .handler(() =>
-      redirect(302, `${usersApiUrl}?serviceIdentifier=${usersApiService}`)
+  login() {
+    return route
+      .get('/login')
+      .handler(() =>
+        redirect(302, `${this.config.userApiUrl}?serviceIdentifier=${this.config.userApiServiceId}`)
+      )
+  }
+
+  getSetupIntent() {
+    return route
+      .get('/setup-intent')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async ({ session }) => {
+        const secret = await this.payerService.getSetupIntentForUser(internalIdentity(session.payerId))
+        return ok(secret)
+      })
+  }
+
+  confirmCardSetup() {
+    return route
+      .get('/confirm-card-setup')
+      .handler(async ({ req }) => {
+        const setupIntentId = req.query.setup_intent
+        if (!setupIntentId) {
+          return badRequest('Missing setup_intent')
+        }
+        await this.payerService.setPaymentMethod(req.query.setup_intent!.toString())
+
+        return redirect(302, `${this.config.appUrl}/`)
+      })
+  }
+
+  router() {
+    return router(
+      this.getSession(),
+      this.login(),
+      this.getSetupIntent(),
+      this.confirmCardSetup()
     )
-
-const getSetupIntent = (pg: PgClient, stripe: Stripe, jwtSecret: string) =>
-  route
-    .get('/setup-intent')
-    .use(createAuthMiddleware(jwtSecret))
-    .handler(async ({ user }) => {
-      const secret = await getSetupIntentForUser(pg, stripe, userId(user.id))
-      return ok(secret)
-    })
-
-const confirmCardSetup = (pg: PgClient, stripe: Stripe, appUrl: string) =>
-  route.get('/confirm-card-setup').handler(async ({ req }) => {
-    const setupIntentId = req.query.setup_intent
-    if (!setupIntentId) {
-      return badRequest('Missing setup_intent')
-    }
-    await setPaymentMethod(pg, stripe, req.query.setup_intent!.toString())
-
-    return redirect(302, `${appUrl}/`)
-  })
-
-export default (
-  pg: PgClient,
-  stripe: Stripe,
-  jwtSecret: string,
-  usersApiUrl: string,
-  usersApiService: string,
-  appUrl: string
-) =>
-  router(
-    getSession(pg, jwtSecret),
-    login(usersApiUrl, usersApiService),
-    getSetupIntent(pg, stripe, jwtSecret),
-    confirmCardSetup(pg, stripe, appUrl)
-  )
+  }
+}

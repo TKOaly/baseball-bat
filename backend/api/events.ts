@@ -1,65 +1,107 @@
-import { Parser, route, router } from 'typera-express'
+import { Parser, Router, route, router } from 'typera-express'
 import { ok } from 'typera-express/response'
 import { EventsService } from '../services/events'
-import { nonEmptyArray, tkoAlyUserId, userId } from '../../common/types'
-import { createAuthMiddleware } from '../auth-middleware'
-import { PgClient } from '../db'
-import { getEventsWithPaymentStatus, payUsersEvents } from '../services/payer'
-import Stripe from 'stripe'
+import { nonEmptyArray, tkoalyIdentity, internalIdentity } from '../../common/types'
+import { AuthService } from '../auth-middleware'
+import { PayerService } from '../services/payer'
 import * as t from 'io-ts'
+import { Service, Inject } from 'typedi'
+import * as dfn from 'date-fns'
 
-const getEvents = (
-  eventService: EventsService,
-  pg: PgClient,
-  jwtSecret: string
-) => {
-  return route
-    .get('/')
-    .use(createAuthMiddleware(jwtSecret))
-    .handler(async ({ user }) => {
-      const events = await eventService.getEvents(tkoAlyUserId(user.upstreamId))
-      const withStatus = await getEventsWithPaymentStatus(
-        pg,
-        userId(user.id),
-        events
-      )
-      return ok(withStatus)
-    })
+@Service()
+export class EventsApi {
+  @Inject(() => EventsService)
+  eventsService: EventsService
+
+  @Inject(() => PayerService)
+  payerService: PayerService
+
+  @Inject(() => AuthService)
+  authService: AuthService
+
+  getEvents() {
+    return route
+      .get('/')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async ({ session }) => {
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId))
+
+        if (!payerProfile || !payerProfile.tkoalyUserId) {
+          return ok([])
+        }
+
+        const events = await this.eventsService.getEvents(payerProfile.tkoalyUserId)
+
+        const withStatus = await this.payerService.getEventsWithPaymentStatus(
+          payerProfile.id,
+          events
+        )
+
+        return ok(withStatus)
+      })
+  }
+
+  payEvents() {
+    return route
+      .post('/pay')
+      .use(this.authService.createAuthMiddleware())
+      .use(Parser.body(PayEventsBody))
+      .handler(async ({ body, session }) => {
+        await this.payerService.payUsersEvents(
+          body.events,
+          internalIdentity(session.payerId)
+        )
+
+        return ok({ ok: true })
+      })
+  }
+
+  getEventRegistrations() {
+    return route
+      .get('/:id(int)/registrations')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const registrations = await this.eventsService.getEventRegistrations(ctx.routeParams.id);
+        return ok(registrations);
+      })
+  }
+
+  getEventCustomFields() {
+    return route
+      .get('/:id(int)/fields')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const fields = await this.eventsService.getEventCustomFields(ctx.routeParams.id);
+        return ok(fields);
+      })
+  }
+
+  getAllEvents() {
+    return route
+      .get('/all')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const events = await this.eventsService.getAllEvents({
+          starting: typeof ctx.req.query.starting === 'string'
+            ? new Date(ctx.req.query.starting)
+            : dfn.subMonths(new Date(), 1),
+        });
+
+        return ok(events);
+      })
+  }
+
+  router(): Router {
+    return router(
+      this.getEvents(),
+      this.payEvents(),
+      this.getEventRegistrations(),
+      this.getEventCustomFields(),
+      this.getAllEvents()
+    )
+  }
 }
 
 const PayEventsBody = t.type({
   events: nonEmptyArray(t.number),
 })
-
-const payEvents = (
-  eventService: EventsService,
-  pg: PgClient,
-  stripe: Stripe,
-  jwtSecret: string
-) =>
-  route
-    .post('/pay')
-    .use(createAuthMiddleware(jwtSecret))
-    .use(Parser.body(PayEventsBody))
-    .handler(async ({ body, user }) => {
-      await payUsersEvents(
-        pg,
-        stripe,
-        eventService,
-        body.events,
-        userId(user.id)
-      )
-
-      return ok({ ok: true })
-    })
-
-export default (
-  eventService: EventsService,
-  pg: PgClient,
-  stripe: Stripe,
-  jwtSecret: string
-) =>
-  router(
-    getEvents(eventService, pg, jwtSecret),
-    payEvents(eventService, pg, stripe, jwtSecret)
-  )

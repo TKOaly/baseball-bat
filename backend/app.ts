@@ -1,21 +1,30 @@
 import express from 'express'
 import { router } from 'typera-express'
 import healthCheck from './api/health-check'
-import { createEventsService } from './services/events'
-import { getConfig } from './config'
-import events from './api/events'
-import auth from './api/auth'
+import { Config } from './config'
+import { EventsApi } from './api/events'
+import { AuthApi } from './api/auth'
+import { DebtApi } from './api/debt'
+import { DebtCentersApi } from './api/centers'
+import { PaymentsApi } from './api/payments'
 import cookieParser from 'cookie-parser'
-import { createUserService } from './services/users'
+import { DebtService } from './services/debt'
 import Stripe from 'stripe'
-import { createPgClient } from './db'
-import session from './api/session'
+import { PgClient } from './db'
+import { SessionApi } from './api/session'
 import cors from 'cors'
 import helmet, { HelmetOptions } from 'helmet'
-import stripeEvents from './api/stripe-events'
+import { StripeEventsApi } from './api/stripe-events'
+import { Container } from 'typedi'
+import 'reflect-metadata'
+import { EventsService } from './services/events'
+import { PayersApi } from './api/payers'
+import { EmailApi } from './api/email'
+import * as redis from 'redis'
+import { createEmailDispatcherTransport, createSMTPTransport, EmailService, IEmailTransport } from './services/email'
 
 const PORT = process.env.PORT ?? '5000'
-const config = getConfig()
+const config = Config.get()
 
 const helmetConfig: HelmetOptions = {
   contentSecurityPolicy: {
@@ -39,10 +48,31 @@ const stripeClient = new Stripe(config.stripeSecretKey, {
   apiVersion: '2020-08-27',
 })
 
-const pg = createPgClient(config.dbUrl)
+const pg = PgClient.create(config.dbUrl)
 
-const eventsService = createEventsService(config)
-const userService = createUserService(config)
+const redisClient = redis.createClient({
+  url: config.redisUrl,
+})
+
+redisClient.connect()
+
+let emailTransport: IEmailTransport
+
+if (config.emailDispatcher) {
+  emailTransport = createEmailDispatcherTransport(config.emailDispatcher)
+} else {
+  emailTransport = createSMTPTransport(config.smtp!)
+}
+
+Container.set(Config, config)
+Container.set('stripe', stripeClient)
+Container.set(PgClient, pg)
+Container.set('redis', redisClient)
+Container.set(EmailService, new EmailService(emailTransport, pg))
+
+if (process.env.NODE_ENV === 'development') {
+  //Container.set(EventsService, EventsService.createMock())
+}
 
 const app = express()
   .use(helmet(helmetConfig))
@@ -55,35 +85,64 @@ const app = express()
   .use(
     '/api/stripe-events',
     express.raw({ type: 'application/json' }),
-    stripeEvents(pg, stripeClient, config.stripeWebhookEndpointSecret).handler()
+    Container.get(StripeEventsApi).router().handler()
   )
   .use(express.json())
   .use(cookieParser())
   .use(
     '/api/session',
-    session(
-      pg,
-      stripeClient,
-      config.jwtSecret,
-      config.userApiUrl,
-      config.userApiServiceId,
-      config.appUrl
-    ).handler()
+    Container.get(SessionApi).router().handler(),
   )
   .use(
     '/api/events',
-    events(eventsService, pg, stripeClient, config.jwtSecret).handler()
+    Container.get(EventsApi).router().handler()
   )
+  .use(
+    '/api/debtCenters',
+    Container.get(DebtCentersApi).router().handler()
+  )
+  .use(
+    '/api/debt',
+    Container.get(DebtApi).router().handler(),
+  )
+  .use(
+    '/api/payers',
+    Container.get(PayersApi).router().handler(),
+  )
+  .use(
+    '/api/payments',
+    Container.get(PaymentsApi).router().handler(),
+  )
+  .use(
+    '/api/emails',
+    Container.get(EmailApi).router().handler(),
+  )
+  .use(Container.get(AuthApi).router().handler())
   .use(
     router(
       healthCheck,
-      auth(userService, pg, stripeClient, config.jwtSecret, config.appUrl)
     ).handler()
   )
 
 if (process.env.NODE_ENV !== 'production') {
   app.use(
-    '/:type(index|onboarding|update-payment-method|landing)',
+    '/:type(index|onboarding|update-payment-method|auth|admin|settings)',
+    express.static('web-dist/index.html')
+  )
+  app.use(
+    '/payment/:id/details',
+    express.static('web-dist/index.html')
+  )
+  app.use(
+    '/auth/email',
+    express.static('web-dist/index.html')
+  )
+  app.use(
+    '/auth/email/confirm/:id',
+    express.static('web-dist/index.html')
+  )
+  app.use(
+    '/admin/:rest*',
     express.static('web-dist/index.html')
   )
   app.use(express.static('web-dist'))

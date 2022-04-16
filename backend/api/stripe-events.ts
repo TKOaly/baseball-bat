@@ -1,34 +1,54 @@
 import Stripe from 'stripe'
+import { Inject, Service } from 'typedi'
 import { route, router } from 'typera-express'
 import { badRequest, ok } from 'typera-express/response'
+import { Config } from '../config'
 import { PgClient } from '../db'
-import { updatePaymentStatus } from '../services/payer'
+import { PayerService } from '../services/payer'
 
-const receiveEvent = (pg: PgClient, stripe: Stripe, endpointSecret: string) =>
-  route.post('/').handler(async ({ req }) => {
-    const signature = req.header('stripe-signature')
+@Service()
+export class StripeEventsApi {
+  @Inject(() => PayerService)
+  payerService: PayerService
 
-    if (!signature) {
-      return badRequest('No signature header present')
-    }
+  @Inject('stripe')
+  stripe: Stripe
 
-    const event = await stripe.webhooks.constructEventAsync(
-      req.body,
-      signature,
-      endpointSecret
+  @Inject(() => Config)
+  config: Config
+
+  receiveEvent() {
+    return route
+      .post('/')
+      .handler(async ({ req }) => {
+        const signature = req.header('stripe-signature')
+
+        if (!signature) {
+          return badRequest('No signature header present')
+        }
+
+        const event = await this.stripe.webhooks.constructEventAsync(
+          req.body,
+          signature,
+          this.config.stripeWebhookEndpointSecret,
+        )
+
+        switch (event.type) {
+          case 'paymnet_intent.succeeded':
+          case 'payment_intent.canceled':
+          case 'payment_intent.payment_failed':
+          case 'payment_intent.requires_action':
+            const { id, status } = event.data.object as Stripe.PaymentIntent
+            await this.payerService.updatePaymentStatus(id, status)
+        }
+
+        return ok({ ok: true })
+      })
+  }
+
+  router() {
+    return router(
+      this.receiveEvent(),
     )
-
-    switch (event.type) {
-      case 'paymnet_intent.succeeded':
-      case 'payment_intent.canceled':
-      case 'payment_intent.payment_failed':
-      case 'payment_intent.requires_action':
-        const { id, status } = event.data.object as Stripe.PaymentIntent
-        await updatePaymentStatus(pg, id, status)
-    }
-
-    return ok({ ok: true })
-  })
-
-export default (pg: PgClient, stripe: Stripe, endpointSecret: string) =>
-  router(receiveEvent(pg, stripe, endpointSecret))
+  }
+}

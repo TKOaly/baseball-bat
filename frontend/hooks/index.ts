@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'wouter'
-import { EventWithPaymentStatus, Session } from '../../common/types'
-import { getEvents, getSession, getSetupIntent, RequestError } from '../api'
+import { useLocation, useRoute } from 'wouter'
+import { DebtCenter, EventWithPaymentStatus, Session } from '../../common/types'
+import { getDebtCenters, getEvents, getSession, getSetupIntent, RequestError } from '../api'
 
 const handleRequestError =
   (setLocation: (loc: string) => void) => (error: RequestError) => {
+    const [isAuthRoute] = useRoute('/auth/:rest*')
+
     switch (error.status) {
       case 401:
         localStorage.removeItem('bbat_token')
-        setLocation('/landing')
+
+        if (!isAuthRoute) {
+          setLocation('/auth')
+        }
+
         break
       default:
         console.error('Request failed', error)
@@ -26,6 +32,20 @@ export const useEvents = () => {
   return events
 }
 
+export const useDebtCenters = () => {
+  const [debtCenters, setDebtCenters] = useState<DebtCenter[] | null>(null)
+  const setLocation = useLocation()[1]
+
+  useEffect(() => {
+    getDebtCenters().then(setDebtCenters).catch(handleRequestError(setLocation))
+  }, [])
+
+  return debtCenters
+};
+
+export const createDebtCenter = ({ name, url, description }) => {
+};
+
 export const loadTokenAndSession = (): {
   session: Session | null
   loading: boolean
@@ -33,15 +53,17 @@ export const loadTokenAndSession = (): {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [routerLocation, setLocation] = useLocation()
+  const [isAuthRoute] = useRoute('/auth/:rest*')
+
+  console.log('Auth?', isAuthRoute)
 
   useEffect(() => {
     if (!localStorage.getItem('bbat_token')) {
       const token = location.search.split('token=')[1]?.split('&')[0] ?? null
       if (token === null) {
         setLoading(false)
-        if (routerLocation !== '/landing') {
-          console.log(routerLocation)
-          setLocation('/landing')
+        if (!isAuthRoute) {
+          setLocation('/auth')
         }
       }
 

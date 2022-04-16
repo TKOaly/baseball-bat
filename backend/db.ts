@@ -1,12 +1,17 @@
 import * as pg from 'pg'
 import sql, { SQLStatement } from 'sql-template-strings'
+import { Service } from 'typedi'
+
+type TxOptions = {
+  serialized: boolean,
+}
 
 type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
   ? FirstItem extends string
-    ? Rest extends string[]
-      ? `${FirstItem}${Capitalize<Join<Rest>>}`
-      : FirstItem
-    : never
+  ? Rest extends string[]
+  ? `${FirstItem}${Capitalize<Join<Rest>>}`
+  : FirstItem
+  : never
   : Items extends string
   ? Items
   : ''
@@ -14,12 +19,12 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
 type Split<
   Str,
   Delim extends string
-> = Str extends `${infer Head}${Delim}${infer Rest}`
+  > = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
   ? Str extends ''
-    ? never
-    : [Str]
+  ? never
+  : [Str]
   : never
 
 export type FromDbType<T extends object> = {
@@ -30,42 +35,68 @@ type TxClient = {
   do: <A>(query: SQLStatement) => Promise<A[]>
 }
 
-export type PgClient = {
-  one: <T>(query: SQLStatement) => Promise<T | null>
-  any: <T>(query: SQLStatement) => Promise<T[]>
-  many: <T>(query: SQLStatement) => Promise<T[]>
-  tx: <T>(fn: (client: TxClient) => Promise<T>) => Promise<T>
-}
+@Service()
+export class PgClient {
+  conn: pg.Pool;
 
-const txClient = (client: pg.Pool): TxClient => {
-  client.query('BEGIN')
-  return {
-    do: (query: SQLStatement) => client.query(query).then(res => res.rows),
+  constructor(conn: pg.Pool) {
+    this.conn = conn;
+  }
+
+  static create(url: string): PgClient {
+    const pool = new pg.Pool({ max: 5, min: 0, connectionString: url })
+    return new PgClient(pool);
+  }
+
+  async one<T>(query: SQLStatement): Promise<T | null> {
+    const result = await this.conn.query(query);
+
+    return result.rowCount > 0
+      ? result.rows[0]
+      : null;
+  }
+
+  async any<T>(query: SQLStatement): Promise<T[]> {
+    const result = await this.conn.query(query);
+
+    return result.rows;
+  }
+
+  async many<T>(query: SQLStatement): Promise<T[]> {
+    const result = await this.conn.query(query);
+
+    return result.rowCount > 0
+      ? result.rows
+      : Promise.reject('No rows returned')
+  }
+
+  async tx<T>(fn: (client: TxClient) => Promise<T>): Promise<T> {
+    const conn = await this.conn.connect()
+
+    try {
+      await conn.query('BEGIN')
+
+      try {
+        const result = await fn(txClient(conn));
+        await conn.query('COMMIT')
+        return result
+      } catch (err) {
+        await conn.query('ROLLBACK');
+        console.log('TX ROLLBACK')
+        console.log(err)
+        throw err
+      }
+    } finally {
+      conn.release()
+    }
   }
 }
 
-export const createPgClient = (url: string): PgClient => {
-  const client = new pg.Pool({ max: 5, min: 0, connectionString: url })
-
+const txClient = (client: pg.PoolClient): TxClient => {
   return {
-    one: statement =>
-      client
-        .query(statement)
-        .then(result => (result.rowCount > 0 ? result.rows[0] : null)),
-    many: statement =>
-      client
-        .query(statement)
-        .then(result =>
-          result.rowCount > 0 ? result.rows : Promise.reject('No rows returned')
-        ),
-    any: statement => client.query(statement).then(result => result.rows),
-    tx: fn =>
-      fn(txClient(client))
-        .then(res => {
-          client.query('COMMIT')
-          return res as any
-        })
-        .catch(() => client.query('ROLLBACK')),
+    do: async (query: SQLStatement) => {
+      return client.query(query).then(res => res.rows)
+    },
   }
 }
 

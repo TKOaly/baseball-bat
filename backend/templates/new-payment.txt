@@ -1,0 +1,14 @@
+You have new pending invoices from TKO-äly
+
+This is an automated message regarding a new invoice assigned to you from
+TKO-äly. Below are the details of the invoice.
+
+Title:             <%= title %>
+Invoice number:    <%= number %>
+Invoice date:      <%= date %>
+Due date:          <%= due_date %>
+Total amount:      <%= amount %>
+Reference number:  <%= reference_number %>
+Receiver name:     TKO-äly ry
+Receiver acccount: FI89 7997 7995 1312 86
+Receiver BIC:      HOLVFIHH

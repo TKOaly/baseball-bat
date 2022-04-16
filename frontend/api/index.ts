@@ -1,4 +1,4 @@
-import { Session, EventWithPaymentStatus } from '../common/types'
+import { Session, DebtCenter, EventWithPaymentStatus } from '../../common/types'
 
 type RequestMethods =
   | 'GET'
@@ -52,3 +52,6 @@ export const getEvents = () =>
 
 export const payEvents = (events: number[]) =>
   request<{ ok: boolean }>('POST', '/api/events/pay', true, { events })
+
+export const getDebtCenters = () =>
+  request<DebtCenter[]>('GET', '/api/debtCenters')

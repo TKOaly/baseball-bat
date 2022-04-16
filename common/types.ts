@@ -1,37 +1,32 @@
 import * as t from 'io-ts'
 import * as Either from 'fp-ts/lib/Either'
-import { pipe } from 'fp-ts/lib/function'
+import { flow, pipe } from 'fp-ts/lib/function'
 import { FromDbType } from '../backend/db'
-import { string } from 'fp-ts'
+import { EuroValue, euro } from './currency'
+import { isMatch } from 'date-fns'
+import { split } from 'fp-ts/lib/string'
+import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
+import { foldW } from 'fp-ts/lib/Either'
+export { EuroValue, euro }
 
 export type TkoAlyUserId = {
   type: 'upstream'
   id: number
 }
 
-export const tkoAlyUserId = (id: number): TkoAlyUserId => ({
-  type: 'upstream',
-  id,
+export const tkoalyIdentity = (id: number): TkoalyIdentity => ({
+  type: 'tkoaly',
+  value: id,
 })
 
-export type UserId = {
-  type: 'local'
-  id: string
-}
-
-export const userId = (id: string): UserId => ({
-  type: 'local',
-  id,
+export const emailIdentity = (id: string): EmailIdentity => ({
+  type: 'email',
+  value: id,
 })
 
-export type EuroValue = {
-  currency: 'eur'
-  value: number
-}
-
-export const euro = (value: number): EuroValue => ({
-  currency: 'eur',
-  value: value * 100,
+export const internalIdentity = (id: string): InternalIdentity => ({
+  type: 'internal',
+  value: id,
 })
 
 export const numberFromString = new t.Type<number, string, unknown>(
@@ -61,14 +56,14 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
         Either.chain(value =>
           !isNonEmpty(value)
             ? Either.left([
-                {
-                  key: '',
-                  type: 'array.minLength',
-                  message: 'Array is empty',
-                  context,
-                  value,
-                },
-              ])
+              {
+                key: '',
+                type: 'array.minLength',
+                message: 'Array is empty',
+                context,
+                value,
+              },
+            ])
             : Either.right(value)
         )
       ),
@@ -117,26 +112,61 @@ export type ApiEvent = {
   price: string
 }
 
+export type TkoalyIdentity = {
+  type: 'tkoaly',
+  value: number,
+}
+
+export type EmailIdentity = {
+  type: 'email',
+  value: string,
+}
+
+export type InternalIdentity = {
+  type: 'internal',
+  value: string,
+}
+
+export function isTkoalyIdentity(id: PayerIdentity): id is TkoalyIdentity {
+  return id.type === 'tkoaly';
+}
+
+export function isInternalIdentity(id: PayerIdentity): id is InternalIdentity {
+  return id.type === 'internal';
+}
+
+export function isEmailIdentity(id: PayerIdentity): id is EmailIdentity {
+  return id.type === 'email';
+}
+
+export type ExternalIdentity = TkoalyIdentity | EmailIdentity
+export type PayerIdentity = ExternalIdentity | InternalIdentity
+
+export type UpstreamUserRole = 'kayttaja' | 'virkailija' | 'tenttiarkistovirkailija' | 'jasenvirkailija' | 'yllapitaja'
+
 export type UpstreamUser = {
   id: number
   screenName: string
   email: string
+  username: string
+  role: UpstreamUserRole
 }
 
 export type DbPayerProfile = {
   id: string
-  upstream_id: number
+  tkoaly_user_id?: number
   email: string
   stripe_customer_id: string
   created_at: Date
   updated_at: Date
+  name: string
 }
 export type PayerProfile = Omit<
   FromDbType<DbPayerProfile>,
-  'id' | 'upstreamId'
+  'id' | 'tkoalyUserId'
 > & {
-  id: UserId
-  upstreamId: TkoAlyUserId
+  id: InternalIdentity
+  tkoalyUserId?: TkoalyIdentity
 }
 
 export type DbPaymentMethod = {
@@ -154,7 +184,7 @@ export type PaymentMethod = Omit<
   FromDbType<DbPaymentMethod>,
   'payerId' | 'stripePmId'
 > & {
-  payerId: UserId
+  payerId: InternalIdentity
   stripePaymentMethodId: string
 }
 
@@ -180,11 +210,13 @@ export type DbPayment = {
   stripe_payment_intent_id: string
   created_at: Date
   updated_at: Date
+  payment_number: number
+  data: unknown
 }
 
-export type Payment = Omit<FromDbType<DbPayment>, 'payer_id'> & {
-  payerId: UserId
-}
+/*export type Payment = Omit<FromDbType<DbPayment>, 'payer_id'> & {
+  payerId: InternalIdentity
+}*/
 
 export type DbLineItem = {
   id: string
@@ -201,3 +233,156 @@ export type DbLineItem = {
 export type LineItem = Omit<FromDbType<DbLineItem>, 'amount'> & {
   amount: EuroValue
 }
+
+export type DbDebtCenter = {
+  id: string
+  name: string
+  description: string
+  url: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type DebtCenter = FromDbType<DbDebtCenter>
+
+export type NewDebtCenter = Omit<DebtCenter, 'id' | 'createdAt' | 'updatedAt'>
+
+export type DbDebtComponent = {
+  id: string
+  name: string
+  value?: string
+  amount: number
+  description: string
+  debt_center_id: string
+  created_at: Date
+  updated_at: Date
+}
+
+export type DebtComponent = Omit<FromDbType<DbDebtComponent>, 'amount'> & { amount: EuroValue }
+
+export type NewDebtComponent = Omit<DebtComponent, 'id' | 'createdAt' | 'updatedAt' | 'amount'> & { amount: EuroValue }
+
+export type DbDebtComponentMapping = {
+  component_id: string
+  debt_id: string
+}
+
+export type DbDebt = {
+  id: string
+  name: string
+  due_date: string
+  draft: boolean
+  center_id?: string
+  payer_id: string
+  debt_center_id: string
+  description: string
+  created_at: Date
+  updated_at: Date
+  status: string
+}
+
+export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
+
+export type Debt = Omit<FromDbType<DbDebt>, 'payerId'> & { payerId: InternalIdentity, status: DebtStatus };
+
+export type DebtWithPayer = Debt & { payer: PayerProfile };
+
+export type DebtComponentDetails = { debtComponents: DebtComponent[] }
+
+export interface DateBrand {
+  readonly Date: unique symbol
+}
+
+export const dateString = t.brand(
+  t.string,
+  (n): n is t.Branded<string, DateBrand> => isMatch(n, 'd.M.yyyy'),
+  'Date',
+)
+
+export type DateString = t.TypeOf<typeof dateString>
+
+interface DbDateBrand {
+  readonly DbDate: unique symbol
+}
+
+export const dbDateString = t.brand(
+  t.string,
+  (n): n is t.Branded<string, DbDateBrand> => isMatch(n, 'yyyy-MM-dd'),
+  'DbDate',
+)
+
+export type DbDateString = t.TypeOf<typeof dbDateString>
+
+export type NewDebt = {
+  centerId?: string
+  description: string
+  components: string[]
+  name: string
+  payer: PayerIdentity
+  dueDate: DbDateString,
+}
+
+export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
+  split('.'),
+  reverse,
+  reduce(null as (string | null), (a, p) => a === null ? p : a + '-' + p),
+  dbDateString.decode,
+  foldW(() => null, (a) => a)
+)
+
+export type ApiRegistration = {
+  id: number
+  user_id: number
+  name: string
+  email: string
+  phone: string
+  answers: { question_id: number, question: string, answer: string }[]
+}
+
+export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & { userId: TkoalyIdentity }
+
+export type ApiCustomField = {
+  id: number
+  name: string
+  type: 'text' | 'textarea' | 'radio' | 'checkbox'
+  options: string[]
+}
+
+export type CustomField = ApiCustomField
+
+export type DbPayerEmail = {
+  payer_id: string
+  email: string
+  priority: 'primary' | 'disabled' | 'default'
+  source: 'tkoaly' | 'other'
+  created_at: Date
+  updated_at: Date
+}
+
+export type PayerEmail = Omit<FromDbType<DbPayerEmail>, 'payerId'> & { payerId: InternalIdentity }
+
+export type Payment = {
+  id: string,
+  payment_number: number,
+  type: 'invoice',
+  data: object | null,
+  message: string,
+  created_at: Date,
+  balance: number,
+  status: 'paid' | 'canceled' | 'mispaid' | 'unpaid',
+  updated_at: Date
+}
+
+export type DbEmail = {
+  id: string
+  recipient: string
+  subject: string
+  template: string
+  html: string | null
+  text: string
+  draft: boolean
+  created_at: Date
+  sent_at: Date | null
+}
+
+export type Email = FromDbType<DbEmail>
