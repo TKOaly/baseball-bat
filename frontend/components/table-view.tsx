@@ -1,8 +1,11 @@
 import { identity, pipe } from 'fp-ts/lib/function';
 import { useMemo, useState } from 'react'
-import { Circle, MoreVertical, Square, TrendingDown, TrendingUp } from 'react-feather'
+import { Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather'
+import { difference, concat, uniq } from 'remeda';
 import { Dropdown } from './dropdown'
 import { FilledDisc } from './filled-disc';
+
+const union = <T extends unknown>(a: T[], b: T[]): T[] => uniq(concat(a, b))
 
 const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string }, row: R): V => {
   if (typeof column.getValue === 'string') {
@@ -47,47 +50,139 @@ const getColumnValue = <R extends Row>(column: Column<R>, row: R) => {
   return column.getValue(row)
 }
 
+type FilterState = {
+  allowlist: Array<any>,
+  blocklist: Array<any>,
+}
+
+const FilterDropdownItem = ({ column, rows, options, onChange }) => {
+  return (
+    <Dropdown
+      label=''
+      scroll
+      renderTrigger={(props) => (
+        <div className={`flex ${(options.allowlist.length + options.blocklist.length > 0) && 'text-blue-500'} items-center`} {...props}>
+          <span className="flex-grow">{column.name}</span>
+          <span className="text-gray-400 relative">
+            {(options.allowlist.length + options.blocklist.length > 0) ? 'Active' : 'Any'}
+          </span>
+        </div>
+      )}
+      options={
+        uniq(rows.map((r) => getColumnValue(column, r)))
+          .map((value) => {
+            let icon = null
+
+            if (options.allowlist.includes(value)) {
+              icon = <PlusSquare className="text-green-500 h-4" />;
+            } else if (options.blocklist.includes(value)) {
+              icon = <MinusSquare className="text-red-500 h-4" />;
+            }
+
+            return {
+              value,
+              text: (
+                <div className="flex items-center">
+                  <span className="flex-grow">{value}</span>
+                  {icon}
+                </div>
+              ),
+            };
+          })
+      }
+      onSelect={(value) => {
+        if (options.allowlist.includes(value)) {
+          onChange({
+            blocklist: union(options.blocklist, [value]),
+            allowlist: difference(options.allowlist, [value]),
+          })
+        } else if (options.blocklist.includes(value)) {
+          onChange({
+            ...options,
+            blocklist: difference(options.blocklist, [value]),
+          })
+        } else {
+          onChange({
+            ...options,
+            allowlist: union(options.allowlist, [value]),
+          })
+        }
+      }}
+    />
+  )
+}
+
 export const TableView = <R extends Row>({ rows, columns, selectable, actions, onRowClick }: TableViewProps<R>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([])
   const [sorting, setSorting] = useState(null)
+  const [filters, setFilters] = useState<Record<string, FilterState>>({})
 
   const sortedRows = useMemo(() => {
-    if (!sorting) {
-      return rows;
-    }
+    let tmpRows = [...rows]
 
-    const [sortCol, sortDir] = sorting
+    if (sorting) {
+      const [sortCol, sortDir] = sorting
 
-    const column = columns.find(c => c.name === sortCol)
+      const column = columns.find(c => c.name === sortCol)
 
-    if (!column) {
-      setSorting(null)
-      return rows
-    }
-
-    const comparator = (a: R, b: R) => {
-      let va = getColumnValue(column, a)
-      let vb = getColumnValue(column, b)
-
-      if (sortDir === 'desc') {
-        [va, vb] = [vb, va]
+      if (!column) {
+        setSorting(null)
+        return rows
       }
 
-      console.log(va, vb)
+      const comparator = (a: R, b: R) => {
+        let va = getColumnValue(column, a)
+        let vb = getColumnValue(column, b)
 
-      if (va == vb) {
-        return 0
+        if (sortDir === 'desc') {
+          [va, vb] = [vb, va]
+        }
+
+        if (va == vb) {
+          return 0
+        }
+
+        if (va < vb) {
+          return 1
+        }
+
+        return -1
       }
 
-      if (va < vb) {
-        return 1
-      }
-
-      return -1
+      tmpRows = tmpRows.sort(comparator)
     }
 
-    return [...rows].sort(comparator)
-  }, [rows, sorting, columns])
+    const filter = (row: R) => {
+      let modeStrict = false
+
+      const matches = Object.entries(filters)
+        .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
+        .map(([colName, options]) => {
+          const column = columns.find(c => c.name === colName);
+          const value = getColumnValue(column, row);
+
+          if (options.allowlist.length > 0) {
+            modeStrict = true
+          }
+
+          if (options.allowlist.includes(value)) {
+            return true;
+          }
+
+          if (options.blocklist.includes(value)) {
+            return false;
+          }
+        })
+
+      if (modeStrict) {
+        return matches.every(v => v === true)
+      } else {
+        return matches.every(v => v !== false)
+      }
+    }
+
+    return tmpRows.filter(filter)
+  }, [rows, sorting, columns, filters])
 
   const toggleSelection = (row: Row['key']) => {
     const newSet = [...selectedRows]
@@ -160,12 +255,12 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           label="Filter"
           options={[
             ...columns.map((col) => ({
-              text: (
-                <div className={`flex ${sorting?.[0] === col.name && 'text-blue-500'} items-center`}>
-                  <span className="flex-grow">{col.name}</span>
-                  <span className="text-gray-400">Any</span>
-                </div>
-              ),
+              text: <FilterDropdownItem
+                column={col}
+                rows={rows}
+                options={filters[col.name] ?? { allowlist: [], blocklist: [] }}
+                onChange={(options) => setFilters((prev) => ({ ...prev, [col.name]: options }))}
+              />,
               value: col.name,
             })),
             { divider: true },
@@ -177,12 +272,12 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           label="Actions"
           onSelect={() => { }}
           options={[
-            { text: 'Select all', onSelect: () => setSelectedRows(rows.map(r => r.key)) },
+            { text: 'Select all', onSelect: () => setSelectedRows(sortedRows.map(r => r.key)) },
             { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
-            { text: 'Invert selection', onSelect: () => setSelectedRows(rows.filter(r => !selectedRows.includes(r.key)).map(r => r.key)) },
+            { text: 'Invert selection', onSelect: () => setSelectedRows(sortedRows.filter(r => !selectedRows.includes(r.key)).map(r => r.key)) },
             ...(
               availableActions.length > 0
-                ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => rows.find(r => r.key === key))) }))]
+                ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => sortedRows.find(r => r.key === key)).filter(identity)) }))]
                 : []
             )
           ]}
