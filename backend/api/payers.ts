@@ -72,7 +72,9 @@ export class PayersApi {
           return unauthorized('Not authorized')
         }
 
-        const debts = await this.debtService.getDebtsByPayer(internalIdentity(id));
+        const includeDrafts = ctx.session.accessLevel === 'admin' && ctx.req.query.includeDrafts === 'true'
+
+        const debts = await this.debtService.getDebtsByPayer(internalIdentity(id), includeDrafts);
 
         return ok(debts);
       })

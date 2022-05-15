@@ -36,7 +36,7 @@ type Props = {
 
 export const Main = (props: Props) => {
   const [, setLocation] = useLocation()
-  const { data: payments } = useGetPayerDebtsQuery('me')
+  const { data: payments } = useGetPayerDebtsQuery({ id: 'me' })
   const { data: profile } = useGetPayerQuery('me')
 
   const unpaidPayments = (payments ?? []).filter(p => p.status === 'unpaid');

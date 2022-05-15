@@ -7,7 +7,7 @@ import { ExternalLink } from 'react-feather'
 export const PayerDetails = ({ params }) => {
   const { data: payer } = useGetPayerQuery(params.id)
   const { data: emails } = useGetPayerEmailsQuery(params.id)
-  const { data: debts } = useGetPayerDebtsQuery(params.id)
+  const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true })
   const [, setLocation] = useLocation()
 
   if (!payer || !emails)

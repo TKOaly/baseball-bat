@@ -19,8 +19,13 @@ const payersApi = rtkApi.injectEndpoints({
       query: () => '/payers/session',
     }),
 
-    getPayerDebts: builder.query<(Debt & DebtComponentDetails)[], string>({
-      query: (id) => `/payers/${id}/debts`,
+    getPayerDebts: builder.query<(Debt & DebtComponentDetails)[], { id: string, includeDrafts?: boolean }>({
+      query: ({ id, includeDrafts }) => ({
+        url: `/payers/${id}/debts`,
+        params: {
+          includeDrafts: includeDrafts ? 'true' : 'false',
+        }
+      }),
     })
   })
 })
