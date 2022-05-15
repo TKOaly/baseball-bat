@@ -3,6 +3,7 @@ import { useField } from 'formik'
 import _ from 'loash'
 import { equals } from 'remeda'
 import { ChevronDown } from 'react-feather'
+import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
 
 export type DropdownFieldProps<V> = {
   name: string
@@ -29,6 +30,7 @@ export const DropdownField = memo(<V extends unknown>({
 }: DropdownFieldProps<V>) => {
   const [, meta] = useField(name);
   const inputRef = useRef<HTMLInputElement>()
+  const ref = useRef()
   const [search, setSearch] = useState('')
   const [focused, setFocused] = useState(null)
 
@@ -58,6 +60,8 @@ export const DropdownField = memo(<V extends unknown>({
   const [open, setOpen] = useState(false)
   const selectedOption = options.find(opt => equals(opt.value, value))
 
+  useOutsideEventListener(ref, 'click', open, () => setOpen(false))
+
   let selectedLabel = '';
 
   if (selectedOption) {
@@ -81,6 +85,7 @@ export const DropdownField = memo(<V extends unknown>({
   return (
     <div
       className="relative"
+      ref={ref}
       onKeyDown={(evt) => {
         if (evt.key === 'ArrowDown') {
           if (focused === null) {

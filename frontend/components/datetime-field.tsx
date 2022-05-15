@@ -1,15 +1,18 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { Calendar } from 'react-feather'
 import { format } from 'date-fns'
+import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
 
 import 'react-day-picker/dist/style.css';
 
 export const DateField = ({ value, onChange, ...props }) => {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const ref = useRef()
+  useOutsideEventListener(ref, 'click', calendarOpen, () => setCalendarOpen(false))
 
   return (
-    <div className="flex flex-col items-center relative">
+    <div className="flex flex-col items-center relative" ref={ref}>
       <div className="relative w-full">
         <input
           type="text"
