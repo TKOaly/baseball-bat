@@ -272,7 +272,6 @@ export type DbDebt = {
   name: string
   due_date: string
   draft: boolean
-  center_id?: string
   payer_id: string
   debt_center_id: string
   description: string

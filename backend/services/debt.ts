@@ -37,6 +37,7 @@ const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => (
 
 type CreateDebtOptions = {
   noDefaultPayment?: boolean
+  defaultPaymentReferenceNumber?: string
 }
 
 @Service()

@@ -23,6 +23,12 @@ export class DebtCentersService {
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter))
   }
 
+  getDebtCenterByName(name: string) {
+    return this.pg
+      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE name = ${name}`)
+      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters))
+  }
+
   getDebtCenter(id: string) {
     return this.pg
       .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE id = ${id}`)

@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import { InputGroup } from '../../components/input-group'
 import { TextField } from '../../components/text-field'
 import { TextareaField } from '../../components/textarea-field'
-import { TabularFieldList } from "../../components/tabular-field-list";
+import { TabularFieldListFormik } from "../../components/tabular-field-list";
 import { EuroField } from "../../components/euro-field";
 import { DropdownField } from "../../components/dropdown-field";
 import { useCreateDebtComponentMutation } from "../../api/debt";
@@ -104,7 +104,7 @@ export const CreateDebtCenter = () => {
               label="Components"
               name="components"
               fullWidth
-              component={TabularFieldList}
+              component={TabularFieldListFormik}
               columns={[
                 {
                   key: 'name',

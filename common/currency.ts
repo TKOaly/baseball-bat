@@ -1,7 +1,11 @@
-export type EuroValue = {
-  currency: 'eur'
-  value: number
-}
+import * as t from 'io-ts'
+
+export const euroValue = t.type({
+  currency: t.literal('eur'),
+  value: t.number,
+})
+
+export type EuroValue = t.TypeOf<typeof euroValue>
 
 export const euro = (value: number): EuroValue => ({
   currency: 'eur',

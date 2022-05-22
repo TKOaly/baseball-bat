@@ -2,22 +2,25 @@ import { Router, route, router, Route, Response, Middleware } from 'typera-expre
 import { AuthService } from '../auth-middleware'
 import { DebtService } from '../services/debt'
 import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response'
+import { validate } from 'uuid'
 import { Inject, Service } from 'typedi'
 import { Config } from '../config'
 import { DebtCentersService } from '../services/debt_centers'
 import { Type, TypeOf } from 'io-ts'
 import * as t from 'io-ts'
-import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, euro } from '../../common/types'
+import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, emailIdentity, euro, internalIdentity, PayerProfile, tkoalyIdentity } from '../../common/types'
 import { PayerService } from '../services/payer'
 import { validateBody } from '../validate-middleware'
 import { PaymentService } from '../services/payements'
 import { EmailService } from '../services/email'
-import { isMatch } from 'date-fns'
+import { format, addDays, isMatch } from 'date-fns'
 import { split } from 'fp-ts/lib/string'
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
 import { pipe } from 'fp-ts/lib/pipeable'
 import { flow } from 'fp-ts/lib/function'
 import { foldW } from 'fp-ts/lib/Either'
+import { euroValue } from '../../common/currency'
+import { UsersService } from '../services/users'
 
 
 const debtCenter = t.type({
@@ -66,6 +69,9 @@ export class DebtApi {
 
   @Inject(() => PayerService)
   payerService: PayerService
+
+  @Inject(() => UsersService)
+  usersService: UsersService
 
   @Inject(() => PaymentService)
   paymentService: PaymentService
@@ -260,6 +266,303 @@ export class DebtApi {
       })
   }
 
+  private massCreateDebts() {
+    const resolvePayer = async (
+      { email, name, tkoalyUserId }: { email?: string, name?: string, tkoalyUserId?: number },
+      token: string,
+      dryRun: boolean,
+    ): Promise<PayerProfile | null> => {
+      if (tkoalyUserId) {
+        const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(tkoalyUserId));
+
+        if (payer) {
+          return payer;
+        }
+      }
+
+      if (email) {
+        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email))
+
+        if (payer) {
+          return payer;
+        }
+
+        const user = await this.usersService.getUpstreamUserByEmail(email, token)
+
+        if (user) {
+          if (dryRun) {
+            return {
+              id: internalIdentity(''),
+              email: user.email,
+              name: user.screenName,
+              tkoalyUserId: tkoalyIdentity(user.id),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              stripeCustomerId: '',
+            }
+          } else {
+            return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token)
+          }
+        }
+
+        if (name) {
+          if (dryRun) {
+            return {
+              id: internalIdentity(''),
+              email,
+              name,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              stripeCustomerId: '',
+            }
+          } else {
+            let payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email))
+            payer = await this.payerService.updatePayerName(payer.id, name)
+            return payer
+          }
+        }
+      }
+
+      return null;
+    }
+
+    const resolveDebtCenter = async (debtCenter: string, dryRun: boolean) => {
+      if (validate(debtCenter)) {
+        const byId = await this.debtCentersService.getDebtCenter(debtCenter);
+        return byId;
+      }
+
+      const byName = await this.debtCentersService.getDebtCenterByName(debtCenter)
+
+      if (byName) {
+        return byName
+      }
+
+      if (dryRun) {
+        return {
+          id: '',
+          name: debtCenter,
+          description: '',
+          url: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      } else {
+        return await this.debtCentersService.createDebtCenter({
+          name: debtCenter,
+          description: '',
+          url: '',
+        })
+      }
+    }
+
+    return route
+      .post('/mass-create')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.type({
+        defaults: t.partial({
+          tkoalyUserId: t.number,
+          debtCenter: t.string,
+          title: t.string,
+          description: t.string,
+          email: t.string,
+          amount: euroValue,
+          dueDate: dateString,
+          components: t.array(t.string),
+        }),
+        debts: t.array(t.partial({
+          tkoalyUserId: t.number,
+          debtCenter: t.string,
+          title: t.string,
+          description: t.string,
+          email: t.string,
+          amount: euroValue,
+          dueDate: dateString,
+          components: t.array(t.string),
+        })),
+        components: t.array(t.type({
+          name: t.string,
+          amount: euroValue,
+        })),
+        dryRun: t.boolean,
+      })))
+      .handler(async (ctx) => {
+        const { debts, defaults, dryRun, components } = ctx.body
+
+        try {
+          const results = await Promise.all(debts.map(async (debt, index) => {
+            const details = { ...defaults, ...debt }
+
+            const payer = await resolvePayer(details, ctx.req.cookies.token, dryRun)
+
+            if (!payer && !details.email) {
+              return Promise.reject({ debtIndex: index, error: 'NO_PAYER_OR_EXPLICIT_EMAIL' })
+            }
+
+            let email = details.email
+            let emailSource = 'explicit'
+
+            if (!email && payer) {
+              const primary = await this.payerService.getPayerPrimaryEmail(payer.id)
+
+              if (!primary) {
+                return Promise.reject({ debtIndex: index, error: 'PAYER_HAS_NO_EMAIL' })
+              }
+
+              email = primary.email
+              emailSource = 'profile'
+            }
+
+            if (!details.title) {
+              return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'title' })
+            }
+
+            if (!details.description) {
+              details.description = ''
+            }
+
+            if (!details.debtCenter) {
+              return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'debtCenter' })
+            }
+
+            const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun)
+
+            if (!debtCenter) {
+              return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' })
+            }
+
+            if (!details.dueDate) {
+              return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'dueDate' })
+            }
+
+            let dueDate = convertToDbDate(details.dueDate)
+
+            if (!dueDate) {
+              return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' })
+            }
+
+            let createdDebt: Debt | null = null
+            let debtComponents: Array<DebtComponent> = []
+
+            if (!dryRun) {
+              if (!payer) {
+                return Promise.reject({
+                  debtIndex: index,
+                  error: 'NO_PAYER',
+                })
+              }
+
+              debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
+                const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any)
+                const match = existing.find(ec => ec.name === c)
+
+                if (match) {
+                  return match
+                }
+
+                const componentDetails = components.find(({ name }) => name === c)
+
+                if (componentDetails) {
+                  return await this.debtService.createDebtComponent({
+                    name: c,
+                    amount: componentDetails.amount,
+                    debtCenterId: debtCenter.id,
+                    description: c,
+                  })
+                }
+
+                return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' })
+              }))
+
+              if (details.amount) {
+                debtComponents.push(await this.debtService.createDebtComponent({
+                  name: 'Base Price',
+                  amount: details.amount,
+                  debtCenterId: debtCenter.id,
+                  description: 'Base Price',
+                }))
+              }
+
+              createdDebt = await this.debtService.createDebt({
+                centerId: debtCenter.id,
+                description: details.description,
+                name: details.title,
+                payer: payer.id,
+                dueDate,
+                components: debtComponents.map(c => c.id),
+              })
+            } else {
+              createdDebt = {
+                id: '',
+                payerId: payer?.id ?? internalIdentity(''),
+                name: details.title,
+                description: details.description,
+                draft: true,
+                debtCenterId: debtCenter.id,
+                status: 'unpaid',
+                dueDate,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              }
+
+              if (details.components && details.components.length > 0) {
+                debtComponents = await Promise.all(details.components.map(async (c) => {
+                  const componentDetails = components.find(({ name }) => name === c)
+
+                  if (componentDetails) {
+                    return {
+                      id: '',
+                      name: c,
+                      amount: componentDetails.amount,
+                      description: '',
+                      debtCenterId: debtCenter.id,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                    } as DebtComponent
+                  }
+
+                  const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id)
+                  const match = existing.find(ec => ec.name === c)
+
+                  if (match) {
+                    return match
+                  }
+
+                  return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' })
+                }))
+              }
+
+              if (details.amount) {
+                debtComponents.push({
+                  id: '8d12e7ef-51db-465e-a5fa-b01cf01db5a8',
+                  name: 'Base Price',
+                  amount: details.amount,
+                  description: 'Base Price',
+                  debtCenterId: debtCenter.id,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                })
+              }
+            }
+
+            return {
+              payer,
+              email,
+              emailSource,
+              debt: createdDebt,
+              components: debtComponents,
+              debtCenter,
+            }
+          }))
+
+          return ok(results)
+        } catch (e) {
+          console.error(e)
+          return internalServerError(e)
+        }
+      })
+  }
+
   public router(): Router {
     return router(
       this.createDebtComponent(),
@@ -267,7 +570,8 @@ export class DebtApi {
       this.getDebt(),
       this.getDebts(),
       this.publishDebts(),
-      this.getPaymentsContainingDebt()
+      this.getPaymentsContainingDebt(),
+      this.massCreateDebts()
     )
   }
 }

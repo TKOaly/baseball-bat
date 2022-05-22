@@ -51,6 +51,11 @@ export class UsersService {
     return data.payload
   }
 
+  async getUpstreamUserByEmail(email: string, token: string) {
+    const users = await this.getUsers(token)
+    return users.find(user => user.email === email);
+  }
+
   getUsers(token: string) {
     return this.client
       .get<{ payload: UpstreamUser[] }>('/api/users', {

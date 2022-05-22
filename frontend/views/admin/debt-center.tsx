@@ -14,6 +14,7 @@ import { FilledDisc } from '../../components/filled-disc';
 import { setSeconds } from 'date-fns';
 import { Dropdown } from '../../components/dropdown';
 import { formatEuro } from '../../../common/currency';
+import { Button, SecondaryButton } from '../../components/button'
 
 const StyledButton = tw.button`
   bg-gradient-to-br
@@ -26,12 +27,8 @@ const StyledButton = tw.button`
   text-sm
 `;
 
-const Button = ({ children, ...rest }) => (
-  <StyledButton {...rest}>{children}</StyledButton>
-);
-
 export const DebtCenterDetails = ({ id }) => {
-  const [] = useLocation()
+  const [, setLocation] = useLocation()
   const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id)
   const { data: components } = useGetDebtComponentsByCenterQuery(id)
   const { data: debts } = useGetDebtsByCenterQuery(id)
@@ -68,6 +65,10 @@ export const DebtCenterDetails = ({ id }) => {
         <div className="my-4 col-span-full">
           <div className="text-gray-500 text-xs font-bold uppercase">Description</div>
           <div className="rounded-md bg-gray-50 h-10 mt-2 py-2 px-3 min-h-[40px]">{debtCenter.description}</div>
+        </div>
+        <div className="col-span-full flex gap-3">
+          <Button onClick={() => setLocation(`/admin/debt-centers/${debtCenter.id}/create-debt`)}>Create Debt</Button>
+          <SecondaryButton onClick={() => setLocation(`/admin/debt-centers/${debtCenter.id}/create-debts-csv`)}>Import from CSV</SecondaryButton>
         </div>
         <div className="col-span-full border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
           Debt components

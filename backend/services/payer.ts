@@ -120,6 +120,42 @@ export class PayerService {
     return emails
   }
 
+  async updatePayerName(id: InternalIdentity, name: string) {
+    const updated = await this.pg.one<DbPayerProfile>(sql`
+      UPDATE payer_profiles
+      SET name = ${name}
+      WHERE id = ${id.value}
+      RETURNING *
+    `)
+
+    if (!updated) {
+      throw 'Could not update payer name'
+    }
+
+    return formatPayerProfile(updated)
+  }
+
+  async addPayerEmail(id: InternalIdentity, email: string, primary?: boolean) {
+    const currentPrimary = await this.getPayerPrimaryEmail(id)
+    let priority = 'normal'
+
+    if (!currentPrimary && primary !== false) {
+      priority = 'primary'
+    }
+
+    const row = await this.pg
+      .one<DbPayerEmail>(sql`
+        INSERT INTO payer_emails (payer_id, email, priority) VALUES (${id.value}, ${email}, ${priority})
+        RETURNING *
+      `)
+
+    if (!row) {
+      throw 'Could not create payer email.'
+    }
+
+    return formatPayerEmail(row);
+  }
+
   async getPayerProfileByTkoalyIdentity(id: TkoalyIdentity) {
     const dbProfile = await this.pg.one<DbPayerProfile>(
       sql`SELECT * FROM payer_profiles WHERE tkoaly_user_id = ${id.value}`

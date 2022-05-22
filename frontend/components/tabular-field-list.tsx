@@ -1,9 +1,10 @@
-import { FieldArray, useFormikContext } from 'formik'
+import { Field } from 'formik';
 import { ComponentProps, ComponentType, JSXElementConstructor } from 'react';
 import { X as Cross, Plus } from 'react-feather'
 
-type ColumnDef<C extends JSXElementConstructor<any>> = {
+type ColumnDef<T, C extends JSXElementConstructor<any>> = {
   key: string,
+  getValue?: (row: T) => any,
   component: C,
   header: string,
   props?: ComponentProps<C>,
@@ -11,31 +12,47 @@ type ColumnDef<C extends JSXElementConstructor<any>> = {
 
 type Props<T extends Object> = {
   value: T[],
-  name: string,
-  columns: ColumnDef<any>[],
+  columns: ColumnDef<T, any>[],
   createNew: () => T,
   readOnly?: boolean,
+  onChange: (value: T[]) => void,
+  errors?: Record<string, unknown>,
 }
+
+type Tools<T> = {
+  push: (value: T) => void,
+  remove: (index: number) => void,
+  replace: (index: number, value: T) => void,
+}
+
+export const TabularFieldListFormik = <T extends Object>(props: Omit<Props<T>, 'onChange'> & { name: string, onChange: (evt: { target: { value: T[], name: string } }) => void }) => (
+  <Field name={props.name}>
+    {({ field: { onChange, ...field } }) => (
+      <TabularFieldList
+        {...props}
+        {...field}
+        onChange={(value: T[]) => props.onChange({ target: { name: field.name, value } })}
+      />
+    )}
+  </Field>
+)
 
 export const TabularFieldList = <T extends Object>({
   columns,
-  name,
   value,
   createNew,
   readOnly,
+  onChange,
+  errors,
 }: Props<T>) => {
-  const formikContext = useFormikContext()
-
-  const errors = formikContext?.errors ?? {};
-
-  const render = (tools) => [
+  const render = (tools: Tools<T>) => [
     ...value.flatMap((row, rowIndex) => {
-      const fields = columns.map(({ component: Component, key, props }, i) => (
-        <div className={`relative focus-within:z-20 ${(!!errors[`${name}.${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }}>
+      const fields = columns.map(({ component: Component, getValue, key, props }, i) => (
+        <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }}>
           <Component
             name={`${name}.${rowIndex}.${key}`}
-            value={row[key]}
-            error={!!errors[`${name}.${rowIndex}.${key}`]}
+            value={getValue ? getValue(row) : row[key]}
+            error={!!errors?.[`${name}.${rowIndex}.${key}`]}
             onChange={(evt) => {
               tools.replace(rowIndex, {
                 ...row,
@@ -61,7 +78,7 @@ export const TabularFieldList = <T extends Object>({
 
       fields.push(
         ...columns.map(({ key }) => {
-          const error = errors[`${name}.${rowIndex}.${key}`]
+          const error = errors?.[`${name}.${rowIndex}.${key}`]
 
           return (
             <div className="text-sm text-red-500 px-1">
@@ -81,6 +98,24 @@ export const TabularFieldList = <T extends Object>({
     </div>
   ]
 
+  let tools: Tools<T> = {
+    push: (newItem) => onChange([...value, newItem]),
+    remove: (index) => {
+      const copy = [...value]
+      copy.splice(index, 1)
+      onChange(copy)
+    },
+    replace: (index, newValue) => {
+      const copy = [...value]
+      copy.splice(index, 1, newValue)
+      onChange(copy)
+    },
+  };
+
+  if (readOnly) {
+    tools = { push: () => { }, remove: () => { }, replace: () => { } }
+  }
+
   return (
     <div
       className="flex mt-1 col-span-full grid items-center"
@@ -94,11 +129,7 @@ export const TabularFieldList = <T extends Object>({
         ))
       }
       {!readOnly && <div />}
-      {
-        readOnly
-          ? render({ push: () => { }, remove: () => { } })
-          : <FieldArray name={name} render={render} />
-      }
+      {render(tools)}
     </div>
   );
 };

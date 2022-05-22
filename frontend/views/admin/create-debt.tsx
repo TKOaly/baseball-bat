@@ -9,7 +9,7 @@ import { EuroField } from '../../components/euro-field'
 import { euro, PayerIdentity } from '../../../common/types'
 import { InputGroup } from '../../components/input-group'
 import * as R from 'remeda'
-import { TabularFieldList } from '../../components/tabular-field-list'
+import { TabularFieldListFormik } from '../../components/tabular-field-list'
 import { TextareaField } from '../../components/textarea-field'
 import { TextField } from '../../components/text-field'
 import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from '../../api/debt-centers'
@@ -43,8 +43,7 @@ type DebtFormValues = {
   payer: PayerIdentity | null
 }
 
-export const CreateDebt = () => {
-  const { center } = useQuery()
+export const CreateDebt = ({ debtCenterId }) => {
   const { data: users } = useGetUpstreamUsersQuery(null)
   const { data: debtCenters, isLoading } = useGetDebtCentersQuery(null)
   const [createDebt] = useCreateDebtMutation()
@@ -112,7 +111,7 @@ export const CreateDebt = () => {
         initialValues={{
           name: '',
           description: '',
-          center: center,
+          center: debtCenterId,
           payer: null,
           components: [
             { component: 'asd', amount: 420.69 },
@@ -163,7 +162,7 @@ export const CreateDebt = () => {
               label="Components"
               name="components"
               fullWidth
-              component={TabularFieldList}
+              component={TabularFieldListFormik}
               createNew={() => ({
                 component: '',
                 amount: 123.12,

@@ -49,7 +49,8 @@ function formatPaymentNumber(parts: [number, number]): string {
 type NewInvoice = {
   series: number
   message: string
-  debts: string[],
+  debts: string[]
+  referenceNumber?: string
 }
 
 type NewPaymentEvent = {
@@ -214,7 +215,7 @@ export class PaymentService {
   async createInvoice(invoice: NewInvoice) {
     const [year, number] = await this.createPaymentNumber();
 
-    const reference_number = createReferenceNumber(invoice.series ?? 0, year, number)
+    const reference_number = invoice.referenceNumber ?? createReferenceNumber(invoice.series ?? 0, year, number)
 
     return this.createPayment({
       type: 'invoice',
@@ -252,10 +253,6 @@ export class PaymentService {
         JOIN debt_component c ON c.id = m.debt_component_id
         WHERE m.debt_id = ANY (${payment.debts})
       `))!
-
-      const test = await tx.do(sql`SELECT * FROM payments WHERE id = ${createdPayment.id}`)
-
-      console.log('PID:', createdPayment.id, test)
 
       await tx.do(sql`
         INSERT INTO payment_events (payment_id, type, amount)

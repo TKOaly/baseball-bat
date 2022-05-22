@@ -19,6 +19,10 @@ const payersApi = rtkApi.injectEndpoints({
       query: () => '/payers/session',
     }),
 
+    getPayerByTkoalyId: builder.query<PayerProfile, number>({
+      query: (id) => `/payers/by-tkoaly-id/${id}`,
+    }),
+
     getPayerDebts: builder.query<(Debt & DebtComponentDetails)[], { id: string, includeDrafts?: boolean }>({
       query: ({ id, includeDrafts }) => ({
         url: `/payers/${id}/debts`,
@@ -37,3 +41,5 @@ export const {
   useGetPayerDebtsQuery,
   useGetPayerByEmailQuery,
 } = payersApi
+
+export default payersApi

@@ -60,7 +60,16 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Email' as const, id: 'LIST' },
         ...ids.map(id => ({ type: 'Debt' as const, id }))
       ]
-    })
+    }),
+
+    massCreateDebts: builder.mutation<any, any>({
+      query: (payload) => ({
+        method: 'POST',
+        url: '/debt/mass-create',
+        body: payload,
+      }),
+      invalidatesTags: [{ type: 'Debt', id: 'LIST' }],
+    }),
   })
 });
 
@@ -72,7 +81,8 @@ export const {
   useGetDebtsByCenterQuery,
   useGetDebtQuery,
   useGetDebtsQuery,
-  usePublishDebtsMutation
+  usePublishDebtsMutation,
+  useMassCreateDebtsMutation
 } = debtApi
 
 export default debtApi

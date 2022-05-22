@@ -6,7 +6,7 @@ export const EuroField = ({ name, value, onChange, ...props }) => (
     value={value}
     onValueChange={(value) => {
       onChange({
-        target: { name, value: Math.abs(value.floatValue) },
+        target: { name, value: value.floatValue },
       })
     }}
     suffix=" €"

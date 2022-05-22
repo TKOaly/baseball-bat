@@ -6,9 +6,16 @@ const upstreamUsersApi = rtkApi.injectEndpoints({
     getUpstreamUsers: builder.query<UpstreamUser[], never>({
       query: () => '/users',
     }),
+
+    getUpstreamUser: builder.query<UpstreamUser, number>({
+      query: (id) => `/users/${id}`,
+    }),
   })
 });
 
 export const {
-  useGetUpstreamUsersQuery
+  useGetUpstreamUsersQuery,
+  useGetUpstreamUserQuery
 } = upstreamUsersApi
+
+export default upstreamUsersApi

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Formik } from 'formik'
 import { DropdownField } from '../components/dropdown-field'
-import { TabularFieldList } from '../components/tabular-field-list'
+import { TabularFieldListFormik } from '../components/tabular-field-list'
 import { TextField } from '../components/text-field'
 import { InputGroup } from '../components/input-group'
 
@@ -43,7 +43,7 @@ export const Settings = () => {
               label="Sähköpostiosoitteet"
               fullWidth
               name="emails"
-              component={TabularFieldList}
+              component={TabularFieldListFormik}
               createNew={() => ({ email: '', priority: 'secondary' })}
               columns={[
                 {

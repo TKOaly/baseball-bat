@@ -5,6 +5,7 @@ import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
 import { CreateDebt } from './create-debt'
 import { DebtCenterDetails } from './debt-center'
 import { DebtCentersListing } from './debt-centers-listing'
+import { MassCreateDebts } from './mass-create-debts'
 import { DebtDetails } from './debt-details'
 import { DebtListing } from './debt-listing'
 import { PayerDetails } from './payer-details'
@@ -72,6 +73,12 @@ const Admin = () => {
               {(params) => (params &&
                 <DebtCenterDetails id={(params as any).id} />
               )}
+            </Route>
+            <Route path="/admin/debt-centers/:id/create-debt">
+              {({ id }: { id: string }) => <CreateDebt debtCenterId={id} />}
+            </Route>
+            <Route path="/admin/debt-centers/:id/create-debts-csv">
+              {(params) => <MassCreateDebts params={params} defaults={{ debtCenter: params.id }} />}
             </Route>
             <Route path="/admin/debts/create" component={CreateDebt} />
             <Route path="/admin/debts/:id" component={DebtDetails} />

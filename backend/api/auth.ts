@@ -76,10 +76,26 @@ export class AuthApi {
   private getUsers() {
     return route
       .get('/api/users')
+      .use(this.authService.createAuthMiddleware())
       .handler(async ({ req }) => {
         const users = await this.usersService.getUsers(req.cookies.token);
 
         return ok(users);
+      })
+  }
+
+  private getUser() {
+    return route
+      .get('/api/users/:id(int)')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const user = await this.usersService.getUpstreamUserById(ctx.routeParams.id, ctx.req.cookies.token);
+
+        if (!user) {
+          return notFound()
+        }
+
+        return ok(user)
       })
   }
 
@@ -259,7 +275,8 @@ export class AuthApi {
       this.confirmAuthWithLink(),
       this.renderTemplate(),
       this.initSession(),
-      this.authenticateSession()
+      this.authenticateSession(),
+      this.getUser()
     )
   }
 }

@@ -1,7 +1,7 @@
 import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
 import { notFound, ok, unauthorized } from "typera-express/response";
-import { emailIdentity, internalIdentity } from "../../common/types";
+import { emailIdentity, internalIdentity, tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
 import { DebtService } from "../services/debt";
 import { PayerService } from "../services/payer";
@@ -48,6 +48,21 @@ export class PayersApi {
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
         const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(ctx.routeParams.email))
+
+        if (!payer) {
+          return notFound()
+        }
+
+        return ok(payer)
+      })
+  }
+
+  private getPayerByTkoalyId() {
+    return route
+      .get('/by-tkoaly-id/:id(int)')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(ctx.routeParams.id))
 
         if (!payer) {
           return notFound()
@@ -111,7 +126,8 @@ export class PayersApi {
       this.getPayer(),
       this.getPayerEmails(),
       this.getSessionPayer(),
-      this.getPayerDebts()
+      this.getPayerDebts(),
+      this.getPayerByTkoalyId()
     )
   }
 }
