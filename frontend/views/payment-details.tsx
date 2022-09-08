@@ -1,6 +1,7 @@
 import { differenceInDays, format, isPast } from 'date-fns'
 import React from 'react'
 import { AlertCircle, AlertTriangle, CheckCircle, Loader } from 'react-feather'
+import { useTranslation } from 'react-i18next'
 import { formatEuro, euro, sumEuroValues } from '../../common/currency'
 
 import { useGetDebtQuery } from '../api/debt'
@@ -19,6 +20,7 @@ const formatDateRelative = (date: Date | string) => {
 }
 
 export const PaymentDetails = ({ params }) => {
+  const { t } = useTranslation([], { keyPrefix: 'paymentDetails' })
   const { data: debt, isLoading } = useGetDebtQuery(params.id)
   const { data: payments, isLoading: paymentsAreLoading } = useGetPaymentsByDebtQuery(params.id)
 
@@ -42,10 +44,10 @@ export const PaymentDetails = ({ params }) => {
         <div className="flex-grow">
           <h3 className="text-xl text-gray-500 font-bold">Debt: {debt.name}</h3>
           <div>
-            <span>Amount:</span> {formatEuro(total)}
+            <span>{t('amountLabel')}:</span> {formatEuro(total)}
           </div>
           <div>
-            <span>Due date:</span> {format(new Date(debt.dueDate), 'yyyy.MM.dd')}
+            <span>{t('dueDateLabel')}:</span> {format(new Date(debt.dueDate), 'yyyy.MM.dd')}
           </div>
           <p>{debt.description}</p>
         </div>
@@ -53,25 +55,25 @@ export const PaymentDetails = ({ params }) => {
           {isUnpaid && (
             <span className="rounded-full bg-blue-500 text-white flex items-center line-height-10 pl-1 pr-2.5 py-1">
               <Loader className="h-5 w-5 ml-0.5 mr-1" />
-              Unpaid
+              {t('unpaidBadge')}
             </span>
           )}
           {isMispaid && (
             <span className="rounded-full bg-yellow-300 text-black flex items-center line-height-10 pl-2 pr-2.5 py-1">
               <AlertTriangle className="h-5 w-5 ml-0.5 mr-1.5" />
-              Mispaid
+              {t('mispaidBadge')}
             </span>
           )}
           {isPaid && (
             <span className="rounded-full bg-green-500 text-white flex items-center line-height-10 pl-1 pr-2.5 py-1">
               <CheckCircle className="h-5 w-5 ml-0.5 mr-1.5" />
-              Paid
+              {t('paidBadge')}
             </span>
           )}
           {isLate && (
             <span className="rounded-full bg-red-500 text-white flex items-center line-height-10 pl-1 pr-2.5 py-1">
               <AlertCircle className="h-5 w-5 ml-0.5 mr-1" />
-              Late
+              {t('lateBadge')}
             </span>
           )}
         </div>
@@ -79,43 +81,43 @@ export const PaymentDetails = ({ params }) => {
 
       {defaultPayment && (
         <>
-          <h4 className="text-gray-500 mt-5 mb-2 font-bold">Invoice Details</h4>
+          <h4 className="text-gray-500 mt-5 mb-2 font-bold">{t('invoiceDetailsHeader')}</h4>
           <div className="rounded shadow border p-3 bg-gray-50">
             <table>
               <tr>
-                <th className="text-right pr-3">Title</th>
+                <th className="text-right pr-3">{t('invoiceTitleHeader')}</th>
                 <td>{debt.name}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Number</th>
+                <th className="text-right pr-3">{t('invoiceNumberHeader')}</th>
                 <td>{defaultPayment.payment_number}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Date</th>
+                <th className="text-right pr-3">{t('invoiceCreatedAtHeader')}</th>
                 <td>{formatDate(defaultPayment.created_at)}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Due Date</th>
+                <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
                 <td>{debt.dueDate && formatDate(new Date(debt.dueDate))} ({debt.dueDate && formatDateRelative(debt.dueDate)})</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Amount</th>
+                <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
                 <td>{formatEuro(total)}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3 h-4">Reference Number</th>
+                <th className="text-right pr-3 h-4">{t('invoiceReferenceNumberHeader')}</th>
                 <td>{defaultPayment.data?.reference_number}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Beneficary</th>
+                <th className="text-right pr-3">{t('invoiceBeneficaryNameHeader')}</th>
                 <td>TKO-äly ry</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">Beneficary Bank Account</th>
+                <th className="text-right pr-3">{t('invoiceBeneficaryAccountHeader')}</th>
                 <td>FI89 7997 7995 1312 86</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">BIC</th>
+                <th className="text-right pr-3">{t('invoiceBICHeader')}</th>
                 <td>HOLVFIHH</td>
               </tr>
             </table>

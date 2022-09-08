@@ -1,5 +1,6 @@
 import React, { forwardRef, Suspense, useEffect, useState } from 'react'
 import styled from 'styled-components'
+import { useTranslation } from 'react-i18next'
 import { Provider, useDispatch } from 'react-redux'
 import { store, useAppDispatch, useAppSelector } from './store'
 import { EmailAuth } from './views/email-auth'
@@ -30,6 +31,7 @@ const WrapperDiv = styled.div`
 
 const Navigation = () => {
   const [, setLocation] = useLocation()
+  const { t, i18n } = useTranslation()
   const session = useAppSelector((state) => state.session)
 
   return (
@@ -38,22 +40,43 @@ const Navigation = () => {
         className="bg-gray-200 cursor-pointer rounded-lg py-2 px-3 flex-grow md:flex-grow-0 text-center md:text-left"
         onClick={() => setLocation(`/`)}
       >
-        Velat
+        {t('navigation.debts')}
       </li>
       <li
         className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
         onClick={() => setLocation('/settings')}
       >
-        Asetukset
+        {t('navigation.settings')}
       </li>
       {
         session.accessLevel === 'admin' && (
           <>
             <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
-            <li className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0" onClick={() => setLocation(`/admin/debt-centers`)}>Hallinta</li>
+            <li className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0" onClick={() => setLocation(`/admin/debt-centers`)}>{t('navigation.administration')}</li>
           </>
         )
       }
+      <>
+        <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
+        <li
+          className={`
+            hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0
+            ${i18n.language === 'fi' && 'bg-gray-200'}
+          `}
+          onClick={() => i18n.changeLanguage('fi')}
+        >
+          Suomeksi
+        </li>
+        <li
+          className={`
+            hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0
+            ${i18n.language === 'en' && 'bg-gray-200'}
+          `}
+          onClick={() => i18n.changeLanguage('en')}
+        >
+          In English
+        </li>
+      </>
     </ul>
   )
 }
@@ -92,6 +115,7 @@ const PublicLayout = ({ children, sidebars }) => (
 const LazyAdmin = React.lazy(() => import('./views/admin'))
 
 const Routes = () => {
+  const { i18n } = useTranslation()
   const [isAdminRoute] = useRoute('/admin/:rest*')
   const [isAuthRoute] = useRoute('/auth/:rest*')
   const [location, setLocation] = useLocation()
@@ -111,6 +135,12 @@ const Routes = () => {
   if (!token && !isAuthRoute) {
     //setLocation('/auth');
   }
+
+  useEffect(() => {
+    if (session?.preferences?.uiLanguage) {
+      i18n.changeLanguage(session.preferences.uiLanguage);
+    }
+  }, [session?.preferences?.uiLanguage])
 
   useEffect(() => {
     if (!token && session.bootstrapping === 'completed' && !session.token) {

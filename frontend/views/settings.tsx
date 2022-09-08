@@ -5,16 +5,18 @@ import { DropdownField } from '../components/dropdown-field'
 import { TabularFieldListFormik } from '../components/tabular-field-list'
 import { TextField } from '../components/text-field'
 import { InputGroup } from '../components/input-group'
+import { useTranslation } from 'react-i18next'
 import { useGetPayerEmailsQuery, useUpdatePayerEmailsMutation, useUpdatePayerPreferencesMutation } from '../api/payers'
 
 export const Settings = ({ session }: { session: Session }) => {
+  const { t } = useTranslation([], { keyPrefix: 'settings' })
   const [updatePreferences] = useUpdatePayerPreferencesMutation()
   const [updatePayerEmails] = useUpdatePayerEmailsMutation()
   const { data, isLoading } = useGetPayerEmailsQuery(session.payerId, { skip: !session.payerId })
 
   return (
     <div>
-      <h3 className="text-xl text-gray-500 font-bold">Käyttäjäasetukset</h3>
+      <h3 className="text-xl text-gray-500 font-bold">{t('userSettingsHeader')}</h3>
       <Formik
         enableReinitialize
         initialValues={{
@@ -41,7 +43,7 @@ export const Settings = ({ session }: { session: Session }) => {
             <InputGroup
               component={DropdownField}
               name="uiLanguage"
-              label="Käyttöliittymän kieli"
+              label={t('uiLanguageLabel')}
               options={[
                 { value: 'en', text: 'English' },
                 { value: 'fi', text: 'Suomi' },
@@ -50,41 +52,41 @@ export const Settings = ({ session }: { session: Session }) => {
             <InputGroup
               component={DropdownField}
               name="emailLanguage"
-              label="Sähköpostien kieli"
+              label={t('emailLanguageLabel')}
               options={[
-                { value: 'en', text: 'English' },
-                { value: 'fi', text: 'Suomi' },
+                { value: 'en', text: t('english') },
+                { value: 'fi', text: t('finnish') },
               ]}
             />
             <InputGroup
-              label="Sähköpostiosoitteet"
+              label={t('emailsLabel')}
               fullWidth
               name="emails"
               component={TabularFieldListFormik}
               createNew={() => ({ email: '', priority: 'secondary' })}
               columns={[
                 {
-                  header: 'Osoite',
+                  header: t('emailHeader'),
                   component: TextField,
                   key: 'email',
                 },
                 {
-                  header: 'Prioriteetti',
+                  header: t('emailPriorityHeader'),
                   component: DropdownField,
                   key: 'priority',
                   props: {
                     options: [
-                      { value: 'primary', text: 'Ensisijainen' },
-                      { value: 'default', text: 'Toissijainen' },
-                      { value: 'disabled', text: 'Ei käytössä' },
+                      { value: 'primary', text: t('emailPriority.primary') },
+                      { value: 'default', text: t('emailPriority.default') },
+                      { value: 'disabled', text: t('emailPriority.disabled') },
                     ],
                   },
                 },
               ]}
             />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Peruuta</button>
-              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Tallenna</button>
+              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">{t('cancel')}</button>
+              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>{t('save')}</button>
             </div>
           </div>
         )}

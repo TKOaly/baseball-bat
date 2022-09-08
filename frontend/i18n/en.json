@@ -1,0 +1,48 @@
+{
+  "translation": {
+    "welcomeHeader": "Hi, {{name}}! 👋",
+    "welcomeSummary": "You have <1>{{ number }}</1> unpaid debts, which are in total worth <3>{{ total }}</3>.",
+    "debtListInfoline": "Created {{ created }}, due {{ dueDate }}",
+    "unpaidDebts": "Unpaid debts",
+    "noUnpaidDebts": "No unpaid debts",
+    "paidDebts": "Paid debts",
+    "noPaidDebts": "No paid debts",
+    "settings": {
+      "userSettingsHeader": "Account settings",
+      "uiLanguageLabel": "Interface language",
+      "emailLanguageLabel": "Email language",
+      "english": "English",
+      "finnish": "Finnish",
+      "emailsLabel": "Email addresses",
+      "emailHeader": "Address",
+      "emailPriorityHeader": "Priority",
+      "emailPriority": {
+        "primary": "Primary",
+        "default": "Secondary",
+        "disabled": "Disabled"
+      },
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "paymentDetails": {
+      "amountLabel": "Amount",
+      "dueDateLabel": "Due date",
+      "invoiceDetailsHeader": "Invoice details",
+      "unpaidBadge": "Unpaid",
+      "invoiceTitleHeader": "Title",
+      "invoiceNumberHeader": "Invoice number",
+      "invoiceCreatedAtHeader": "Invoice date",
+      "invoiceDueDateHeader": "Due date",
+      "invoiceAmountHeader": "Amount",
+      "invoiceReferenceNumberHeader": "Reference number",
+      "invoiceBeneficaryNameHeader": "Recipient name",
+      "invoiceBeneficaryAccountHeader": "Recipient bank account",
+      "invoiceBICHeader": "BIC"
+    },
+    "navigation": {
+      "debts": "Debts",
+      "settings": "Settings",
+      "administration": "Administration"
+    }
+  }
+}

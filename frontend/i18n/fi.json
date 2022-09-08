@@ -1,0 +1,48 @@
+{
+  "translation": {
+    "welcomeHeader": "Hei, {{name}}! 👋",
+    "welcomeSummary": "Sinulla on yhteensä <1>{{ number }}</1> maksamatonta maksua, joiden kokonaissumma on <3>{{ total }}</3>.",
+    "debtListInfoline": "Luotu {{ created }}, erääntyy {{ dueDate }}",
+    "unpaidDebts": "Maksamattomat velat",
+    "noUnpaidDebts": "Ei maksamattomia velkoja",
+    "paidDebts": "Maksetut velat",
+    "noPaidDebts": "Ei maksettuja velkoja",
+    "settings": {
+      "userSettingsHeader": "Käyttäjäasetukset",
+      "uiLanguageLabel": "Käyttöliittymän kieli",
+      "emailLanguageLabel": "Sähköpostien kieli",
+      "english": "Englanti",
+      "finnish": "Suomi",
+      "emailsLabel": "Sähköpostiosoitteet",
+      "emailHeader": "Sähköpostiosoite",
+      "emailPriorityHeader": "Prioriteetti",
+      "emailPriority": {
+        "primary": "Ensisijainen",
+        "default": "Toissijainen",
+        "disabled": "Poissa käytöstä"
+      },
+      "cancel": "Peruuta",
+      "save": "Tallenna"
+    },
+    "paymentDetails": {
+      "amountLabel": "Summa",
+      "dueDateLabel": "Eräpäivä",
+      "invoiceDetailsHeader": "Laskun tiedot",
+      "unpaidBadge": "Maksamatta",
+      "invoiceTitleHeader": "Otsikko",
+      "invoiceNumberHeader": "Laskun numero",
+      "invoiceCreatedAtHeader": "Laskun päivämäärä",
+      "invoiceDueDateHeader": "Eräpäivä",
+      "invoiceAmountHeader": "Summa",
+      "invoiceReferenceNumberHeader": "Viitenumero",
+      "invoiceBeneficaryNameHeader": "Maksun saaja",
+      "invoiceBeneficaryAccountHeader": "Vastaanottajan tilinumero",
+      "invoiceBICHeader": "BIC"
+    },
+    "navigation": {
+      "debts": "Velat",
+      "settings": "Asetukset",
+      "administration": "Hallinta"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { useReducer, useState } from 'react'
 import { CheckCircle, Circle, Info } from 'react-feather'
 import { useLocation } from 'wouter'
+import { Trans, useTranslation } from 'react-i18next'
 import { euro, EuroValue, Session } from '../../common/types'
 import { LargeContainer } from '../components/containers'
 import { Stepper } from '../components/stepper'
@@ -121,6 +122,7 @@ const WelcomeDialog = ({ open }) => {
 
 export const Main = (props: Props) => {
   const [, setLocation] = useLocation()
+  const { t } = useTranslation()
   const { data: payments } = useGetPayerDebtsQuery({ id: 'me' })
   const { data: profile } = useGetPayerQuery('me')
 
@@ -133,15 +135,19 @@ export const Main = (props: Props) => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">Hei, {profile?.name}! 👋</h3>
+      <h3 className="text-xl text-gray-500 font-bold">
+        {t('welcomeHeader', { name: profile?.name })}
+      </h3>
       <p className="mt-3">
-        Sinulla on yhteensä <span className="font-bold">{unpaidPayments.length}</span> maksamatonta maksua, joiden kokonaissumma on <span className="font-bold">{formatEuro(totalEuros)}</span>.
+        <Trans i18nKey="welcomeSummary">
+          You have <span className="font-bold">{{ number: unpaidPayments.length }}</span> unpaid debts, which have a combined value of <span className="font-bold">{{ total: formatEuro(totalEuros) }}</span>.
+        </Trans>
       </p>
 
-      { /* <WelcomeDialog open={true} /> */ }
+      { /* <WelcomeDialog open={true} /> */}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
-        Maksamattomat maksut
+        {t('unpaidDebts')}
       </h3>
 
       {unpaidPayments.map((p) => (
@@ -150,7 +156,9 @@ export const Main = (props: Props) => {
             <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
             <div>
               <h4 className="mb-0">{p?.name}</h4>
-              <div className="text-gray-400 mr-2 text-sm -mt-1">Luotu {format(new Date(p.createdAt), 'dd.MM.yyyy')}, erääntyy {format(new Date(p?.dueDate), 'dd.MM.yyyy')}</div>
+              <div className="text-gray-400 mr-2 text-sm -mt-1">
+                {t('debtListInfoline', { created: format(new Date(p.createdAt), 'dd.MM.yyyy'), dueDate: format(new Date(p?.dueDate), 'dd.MM.yyyy') })}
+              </div>
             </div>
             <div className="flex-grow" />
             {
@@ -166,12 +174,12 @@ export const Main = (props: Props) => {
       {unpaidPayments.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
-          Ei maksamattomia maksuja
+          {t('noUnpaidDebts')}
         </div>
       )}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
-        Maksetut maksut
+        {t('paidDebts')}
       </h3>
 
       {paidPayments.map((p) => (
@@ -188,7 +196,7 @@ export const Main = (props: Props) => {
       {paidPayments.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-50 border shadow border-gray-300 rounded-md mt-3">
           <Info />
-          Ei maksettuja maksuja
+          {t('noPaidDebts')}
         </div>
       )}
     </>
