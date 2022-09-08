@@ -69,8 +69,8 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
         </div>
       )}
       options={
-        uniq(rows.map((r) => getColumnValue(column, r)))
-          .map((value) => {
+        uniq(rows.map((r) => [r, getColumnValue(column, r)]))
+          .map(([row, value]) => {
             let icon = null
 
             if (options.allowlist.includes(value)) {
@@ -79,11 +79,17 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
               icon = <MinusSquare className="text-red-500 h-4" />;
             }
 
+            let displayValue = String(value)
+
+            if (column.render) {
+              displayValue = column.render(value, row)
+            }
+
             return {
               value,
               text: (
                 <div className="flex items-center">
-                  <span className="flex-grow">{value}</span>
+                  <span className="flex-grow">{displayValue}</span>
                   {icon}
                 </div>
               ),
