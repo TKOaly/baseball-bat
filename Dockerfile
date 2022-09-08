@@ -1,15 +1,17 @@
-FROM amazon/aws-lambda-nodejs:latest
+FROM amazon/aws-lambda-nodejs:latest AS common
 
 WORKDIR /app
 
-COPY ./backend /app/backend
-COPY ./package.json /app/package.json
-COPY ./tsconfig.json /app/tsconfig.json
-COPY ./yarn.lock /app/yarn.lock
-COPY ./common /app/common
+COPY . .
 
 RUN npm install -g yarn
 RUN yarn
-RUN yarn build:server
 
+FROM common AS production
+
+RUN yarn build:server
 CMD ["/app/build/backend/lambda.handler"]
+
+FROM common AS development
+
+ENTRYPOINT ["yarn", "start:dev"]

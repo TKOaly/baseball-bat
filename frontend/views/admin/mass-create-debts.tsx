@@ -54,11 +54,11 @@ const parseDate = (v) => v
 const parseEuros = (v) => {
   const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2)
 
-  if (centsPart.length > 2) {
+  if (centsPart && centsPart.length > 2) {
     throw 'Only up to 2 decimal places allowed in the amount column.'
   }
 
-  return cents(parseInt(euros) * 100 + parseInt(centsPart))
+  return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0))
 }
 
 const parseReferenceNumber = (v) => v

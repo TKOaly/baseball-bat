@@ -25,7 +25,7 @@ export class UsersService {
     return this._client
   }
 
-  async getUpstreamUserById(id: number, token: string) {
+  async getUpstreamUserById(id: number | 'me', token: string) {
     try {
       const { data } = await this.client
         .get<{ payload: UpstreamUser }>(`/api/users/${id}`, {

@@ -78,6 +78,16 @@ CREATE TABLE payment_events (
     REFERENCES payments (id)
 );
 
+CREATE TABLE debt_center (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  url TEXT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (id)
+);
+
 CREATE TABLE debt (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   payer_id uuid NOT NULL,
@@ -85,6 +95,7 @@ CREATE TABLE debt (
   name TEXT NOT NULL,
   draft BOOLEAN DEFAULT true,
   debt_center_id uuid NOT NULL,
+  due_date DATE,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT fk_payer_id
@@ -143,21 +154,12 @@ CREATE TABLE line_items (
     ON UPDATE CASCADE
 );
 
-CREATE TABLE debt_center (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  url TEXT,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (id)
-);
-
 CREATE TABLE debt_component (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
   variant uuid,
   debt_center_id uuid NOT NULL,
+  amount INTEGER NOT NULL,
   CONSTRAINT fk_debt_center_id
     FOREIGN KEY (debt_center_id)
     REFERENCES debt_center (id),

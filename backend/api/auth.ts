@@ -86,10 +86,22 @@ export class AuthApi {
 
   private getUser() {
     return route
-      .get('/api/users/:id(int)')
+      .get('/api/users/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const user = await this.usersService.getUpstreamUserById(ctx.routeParams.id, ctx.req.cookies.token);
+        let userId: number | 'me'
+
+        if (ctx.routeParams.id === 'me') {
+          userId = 'me'
+        } else {
+          try {
+            userId = parseInt(ctx.routeParams.id)
+          } catch {
+            return notFound()
+          }
+        }
+
+        const user = await this.usersService.getUpstreamUserById(userId, ctx.req.cookies.token);
 
         if (!user) {
           return notFound()

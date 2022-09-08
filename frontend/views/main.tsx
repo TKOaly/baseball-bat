@@ -1,9 +1,12 @@
-import { useReducer } from 'react'
+import { useReducer, useState } from 'react'
 import { CheckCircle, Circle, Info } from 'react-feather'
 import { useLocation } from 'wouter'
 import { euro, EuroValue, Session } from '../../common/types'
 import { LargeContainer } from '../components/containers'
+import { Stepper } from '../components/stepper'
+import { TextField } from '../components/text-field'
 import { EventList } from '../components/event-list'
+import { Dialog } from '../components/dialog'
 import { Loading } from '../components/loading'
 import { PaymentTab } from '../components/payment-tab'
 import { useEvents } from '../hooks'
@@ -11,6 +14,8 @@ import { PaymentPool, paymentPoolReducer } from '../state/payment-pool'
 import { useGetPayerDebtsQuery, useGetPayerQuery } from '../api/payers'
 import { formatEuro, sumEuroValues } from '../../common/currency'
 import { format, isPast } from 'date-fns'
+import { Button, SecondaryButton } from '../components/button'
+import { useGetUpstreamUserQuery } from '../api/upstream-users'
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -34,6 +39,86 @@ type Props = {
   session: Session
 }
 
+const WelcomeDialog = ({ open }) => {
+  const [stage, setStage] = useState(0)
+  const [membership, setMembership] = useState(null)
+  const [name, setName] = useState('')
+  const { data: user, isError: isUserError, isLoading: isUserLoading } = useGetUpstreamUserQuery('me')
+  const { data: profile, isError: isPayerError, isLoading: isPayerLoading } = useGetPayerQuery('me')
+
+  return (
+    <Dialog open={open} noClose>
+      <div className="w-[25em] mx-auto my-5">
+        <Stepper
+          stages={['Welcome', 'Membership', 'Authentication', 'Name']}
+          currentStage={stage}
+          loading={false}
+        />
+      </div>
+
+      <div className="text-center">
+        {stage === 0 && (
+          <>
+            <p>
+              It seems that this is your first time using this service. <br />
+              Let's get started by confirming a few basic things...
+            </p>
+
+            <Button onClick={() => setStage(1)}>Continue</Button>
+          </>
+        )}
+
+        {stage === 1 && !isUserError && !isUserLoading && !isPayerLoading && !isPayerError && !profile?.tkoalyUserId && (
+          <>
+            <b className="block text-center my-4">Are you {profile?.name}?</b>
+
+            <div className="flex flex-col gap-3 items-center">
+              <Button onClick={() => { setMembership(true); setStage(3); }}>Yes, I am</Button>
+              <SecondaryButton onClick={() => { }}>Log out</SecondaryButton>
+            </div>
+          </>
+        )}
+
+        {stage === 1 && !isUserLoading && isUserError && !isPayerLoading && !isPayerError && !profile?.tkoalyUserId && (
+          <>
+            <b className="block text-center my-4">Are you a member of TKO-äly ry?</b>
+
+            <div className="flex flex-col gap-3 items-center">
+              <Button onClick={() => { setMembership(true); setStage(2); }}>Yes, I am a member.</Button>
+              <SecondaryButton onClick={() => { setMembership(false); setStage(3); }}>No, I am not a member.</SecondaryButton>
+            </div>
+          </>
+        )}
+
+        {stage === 2 && (
+          <>
+            <p>
+              Please login with you TKO-äly member account.
+            </p>
+
+            <Button
+              className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow w-60 mt-4"
+              onClick={() => window.location.replace(`${process.env.BACKEND_URL}/api/session/login`)}
+            >
+              Login
+            </Button>
+          </>
+        )}
+
+        {stage === 3 && (
+          <>
+            <b className="block text-center my-4">What is your name?</b>
+
+            <TextField className="w-60" />
+
+            <Button onClick={() => { }}>Complete</Button>
+          </>
+        )}
+      </div>
+    </Dialog>
+  )
+}
+
 export const Main = (props: Props) => {
   const [, setLocation] = useLocation()
   const { data: payments } = useGetPayerDebtsQuery({ id: 'me' })
@@ -52,6 +137,8 @@ export const Main = (props: Props) => {
       <p className="mt-3">
         Sinulla on yhteensä <span className="font-bold">{unpaidPayments.length}</span> maksamatonta maksua, joiden kokonaissumma on <span className="font-bold">{formatEuro(totalEuros)}</span>.
       </p>
+
+      { /* <WelcomeDialog open={true} /> */ }
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
         Maksamattomat maksut

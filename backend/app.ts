@@ -101,6 +101,7 @@ const app = express()
     '/api/debtCenters',
     Container.get(DebtCentersApi).router().handler()
   )
+
   .use(
     '/api/debt',
     Container.get(DebtApi).router().handler(),

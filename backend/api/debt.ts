@@ -390,7 +390,7 @@ export class DebtApi {
         const { debts, defaults, dryRun, components } = ctx.body
 
         try {
-          const results = await Promise.all(debts.map(async (debt, index) => {
+          const handleDebt = async (debt: typeof debts[0], index: number) => {
             const details = { ...defaults, ...debt }
 
             const payer = await resolvePayer(details, ctx.req.cookies.token, dryRun)
@@ -553,7 +553,13 @@ export class DebtApi {
               components: debtComponents,
               debtCenter,
             }
-          }))
+          }
+
+          // Run handleDebt sequentically over debts
+          const results = await debts.reduce(
+            (prev, debt, index) => prev.then(async (results) => [...results, await handleDebt(debt, index)]),
+            Promise.resolve([] as Array<Awaited<ReturnType<typeof handleDebt>>>),
+          )
 
           return ok(results)
         } catch (e) {
