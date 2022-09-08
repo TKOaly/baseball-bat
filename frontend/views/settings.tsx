@@ -1,23 +1,40 @@
 import React from 'react'
 import { Formik } from 'formik'
+import { Session } from '../../common/types'
 import { DropdownField } from '../components/dropdown-field'
 import { TabularFieldListFormik } from '../components/tabular-field-list'
 import { TextField } from '../components/text-field'
 import { InputGroup } from '../components/input-group'
+import { useGetPayerEmailsQuery, useUpdatePayerEmailsMutation, useUpdatePayerPreferencesMutation } from '../api/payers'
 
-export const Settings = () => {
+export const Settings = ({ session }: { session: Session }) => {
+  const [updatePreferences] = useUpdatePayerPreferencesMutation()
+  const [updatePayerEmails] = useUpdatePayerEmailsMutation()
+  const { data, isLoading } = useGetPayerEmailsQuery(session.payerId, { skip: !session.payerId })
+
   return (
     <div>
       <h3 className="text-xl text-gray-500 font-bold">Käyttäjäasetukset</h3>
       <Formik
+        enableReinitialize
         initialValues={{
-          uiLanguage: 'en',
-          emailLanguage: 'en',
-          emails: [
-            { priority: 'primary', email: 'asd@asd.com' },
-          ],
+          ...session.preferences,
+          emails: data ?? [],
         }}
-        onSubmit={() => { }}
+        onSubmit={async (values) => {
+          await updatePreferences({
+            payerId: 'me',
+            preferences: {
+              uiLanguage: values.uiLanguage,
+              emailLanguage: values.emailLanguage,
+            },
+          })
+
+          await updatePayerEmails({
+            payerId: 'me',
+            emails: values.emails,
+          })
+        }}
       >
         {({ submitForm, isSubmitting }) => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
@@ -58,7 +75,7 @@ export const Settings = () => {
                   props: {
                     options: [
                       { value: 'primary', text: 'Ensisijainen' },
-                      { value: 'secondary', text: 'Toissijainen' },
+                      { value: 'default', text: 'Toissijainen' },
                       { value: 'disabled', text: 'Ei käytössä' },
                     ],
                   },

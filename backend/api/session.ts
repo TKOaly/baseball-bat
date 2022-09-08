@@ -28,14 +28,18 @@ export class SessionApi {
           })
         }
 
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId))
-        const paymentMethod = await this.payerService.getPaymentMethod(internalIdentity(session.payerId))
+        const id = internalIdentity(session.payerId)
+
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id)
+        const paymentMethod = await this.payerService.getPaymentMethod(id)
+        const preferences = await this.payerService.getPayerPreferences(id)
 
         return ok({
           authLevel: session.authLevel,
           accessLevel: session.accessLevel,
           payerProfile,
           paymentMethod,
+          preferences,
         })
       })
   }

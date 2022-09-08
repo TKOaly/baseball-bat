@@ -1,10 +1,31 @@
 import rtkApi from './rtk-api'
-import { Debt, DebtComponentDetails, PayerEmail, PayerProfile } from '../../common/types'
+import { Debt, DebtComponentDetails, PayerEmail, PayerPreferences, PayerProfile } from '../../common/types'
+
+export type UpdatePayerEmailsQueryPayload = {
+  payerId: string,
+  emails: PayerEmail[],
+}
 
 const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getPayer: builder.query<PayerProfile, string>({
       query: (id) => `/payers/${id}`,
+    }),
+
+    updatePayerPreferences: builder.mutation<PayerPreferences, { payerId: string, preferences: Partial<PayerPreferences> }>({
+      query: ({ payerId, preferences }) => ({
+        url: `/payers/${payerId}/preferences`,
+        method: 'PATCH',
+        body: preferences,
+      })
+    }),
+
+    updatePayerEmails: builder.mutation<PayerEmail[], UpdatePayerEmailsQueryPayload>({
+      query: ({ payerId, emails }) => ({
+        url: `/payers/${payerId}/emails`,
+        method: 'PATCH',
+        body: emails,
+      })
     }),
 
     getPayerByEmail: builder.query<PayerProfile, string>({
@@ -40,6 +61,8 @@ export const {
   useGetSessionPayerQuery,
   useGetPayerDebtsQuery,
   useGetPayerByEmailQuery,
+  useUpdatePayerPreferencesMutation,
+  useUpdatePayerEmailsMutation,
 } = payersApi
 
 export default payersApi

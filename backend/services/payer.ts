@@ -21,6 +21,8 @@ import {
   emailIdentity,
   DbPayerEmail,
   PayerEmail,
+  PayerPreferences,
+  PayerEmailPriority,
 } from '../../common/types'
 import { appendAll, PgClient } from '../db'
 import sql from 'sql-template-strings'
@@ -28,6 +30,13 @@ import { EventsService } from './events'
 import * as R from 'remeda'
 import { Inject, Service } from 'typedi'
 import { UsersService } from './users'
+
+export type AddPayerEmailOptions = {
+  email: string,
+  priority?: PayerEmailPriority,
+  source?: PayerEmail['source'],
+  payerId: InternalIdentity,
+}
 
 function assertNever(_value: never) {
   throw new Error('Should-be unreachable code reached')
@@ -96,6 +105,45 @@ export class PayerService {
     return assertNever(id)
   }
 
+  private async createDefaultPayerPreferences(_id: InternalIdentity): Promise<PayerPreferences> {
+    return {
+      uiLanguage: 'en',
+      emailLanguage: 'en',
+    }
+  }
+
+  async getPayerPreferences(id: InternalIdentity) {
+    const row = await this.pg.one<{ preferences: PayerPreferences }>(sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`);
+
+    if (!row?.preferences) {
+      return await this.createDefaultPayerPreferences(id);
+    }
+
+    return row?.preferences;
+  }
+
+  async updatePayerPreferences(id: InternalIdentity, newValues: Partial<PayerPreferences>) {
+    return await this.pg.tx(async (tx) => {
+      const rows = await tx.do<{ preferences: PayerPreferences }>(sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`);
+
+      let preferences = rows.length > 0 ? rows[0].preferences : null
+
+      if (preferences === null) {
+        preferences = await this.createDefaultPayerPreferences(id);
+      }
+
+      Object.assign(preferences, newValues);
+
+      const results = await tx.do<{ preferences: PayerPreferences }>(sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`)
+
+      if (results.length === 0) {
+        throw new Error("could not update payer preferences");
+      }
+
+      return results[0].preferences;
+    })
+  }
+
   async getPayerPrimaryEmail(id: InternalIdentity) {
     const email = await this.pg
       .one<DbPayerEmail>(sql`
@@ -120,6 +168,20 @@ export class PayerService {
     return emails
   }
 
+  async updatePayerEmailPriority(iid: InternalIdentity, email: string, priority: PayerEmailPriority) {
+    const primary = await this.pg.one<{ email: string }>(sql`SELECT email FROM payer_emails WHERE payer_id = ${iid.value} AND priority = 'primary'`)
+
+    if (primary && priority === 'primary' && email !== primary.email) {
+      throw new Error('payer profile already has a primary email address')
+    }
+
+    await this.pg.any(sql`
+      UPDATE payer_emails
+      SET priority = ${priority}
+      WHERE email = ${email} AND payer_id = ${iid.value}
+    `)
+  }
+
   async updatePayerName(id: InternalIdentity, name: string) {
     const updated = await this.pg.one<DbPayerProfile>(sql`
       UPDATE payer_profiles
@@ -135,17 +197,23 @@ export class PayerService {
     return formatPayerProfile(updated)
   }
 
-  async addPayerEmail(id: InternalIdentity, email: string, primary?: boolean) {
-    const currentPrimary = await this.getPayerPrimaryEmail(id)
-    let priority = 'normal'
+  async addPayerEmail(params: AddPayerEmailOptions) {
+    const currentPrimary = await this.getPayerPrimaryEmail(params.payerId)
 
-    if (!currentPrimary && primary !== false) {
-      priority = 'primary'
+    let priority = params.priority
+
+    if (!currentPrimary) {
+      if (priority && priority !== 'primary') {
+        throw new Error('payer profile already has a primary email address');
+      }
+
+      priority = 'primary';
     }
 
     const row = await this.pg
       .one<DbPayerEmail>(sql`
-        INSERT INTO payer_emails (payer_id, email, priority) VALUES (${id.value}, ${email}, ${priority})
+        INSERT INTO payer_emails (payer_id, email, priority, source)
+        VALUES (${params.payerId.value}, ${params.email}, ${priority}, ${params.source ?? 'other'})
         RETURNING *
       `)
 

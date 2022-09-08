@@ -156,7 +156,9 @@ const Routes = () => {
           <Route path="/">
             <Main session={session as any} />
           </Route>
-          <Route path="/settings" component={Settings} />
+          <Route path="/settings">
+            <Settings session={session as any} />
+          </Route>
           <Route path="/payment/:id/details" component={PaymentDetails} />
           <Route path="/update-payment-method">
             <UpdatePaymentMethod session={session as any} />

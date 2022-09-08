@@ -23,7 +23,7 @@ CREATE TABLE payer_emails (
   PRIMARY KEY (email),
   CONSTRAINT fk_payer_id FOREIGN KEY (payer_id) REFERENCES payer_profiles (id),
   CONSTRAINT priority_check CHECK (priority IN ('primary', 'default', 'disabled')),
-  CONSTRAINT source_check CHECK (source IN ('tkoaly', 'other'))
+  CONSTRAINT source_check CHECK (source IN ('tkoaly', 'other', 'user'))
 );
 
 CREATE TABLE payment_methods (

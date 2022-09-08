@@ -169,6 +169,13 @@ export type PayerProfile = Omit<
   tkoalyUserId?: TkoalyIdentity
 }
 
+export const payerPreferences = t.type({
+  uiLanguage: t.union([t.literal('fi'), t.literal('en')]),
+  emailLanguage: t.union([t.literal('fi'), t.literal('en')]),
+})
+
+export type PayerPreferences = t.TypeOf<typeof payerPreferences>
+
 export type DbPaymentMethod = {
   id: string
   payer_id: string
@@ -198,9 +205,10 @@ export const TokenPayload = t.type({
 export type TokenPayload = t.TypeOf<typeof TokenPayload>
 
 export type Session = {
-  payerProfile: PayerProfile
+  payerId: null | string
   paymentMethod: Pick<PaymentMethod, 'id' | 'brand' | 'last4'>
   user: TokenPayload
+  preferences: PayerPreferences
 }
 
 export type DbPayment = {
@@ -349,11 +357,13 @@ export type ApiCustomField = {
 
 export type CustomField = ApiCustomField
 
+export type PayerEmailPriority = 'primary' | 'disabled' | 'default'
+
 export type DbPayerEmail = {
   payer_id: string
   email: string
-  priority: 'primary' | 'disabled' | 'default'
-  source: 'tkoaly' | 'other'
+  priority: PayerEmailPriority
+  source: 'tkoaly' | 'other' | 'user'
   created_at: Date
   updated_at: Date
 }

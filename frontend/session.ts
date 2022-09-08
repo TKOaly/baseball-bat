@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit"
+import { PayerPreferences } from "../common/types"
 
 export const createSession = createAsyncThunk(
   'session/createSession',
@@ -32,7 +33,7 @@ export const authenticateSession = createAsyncThunk(
 
 export const bootstrapSession = createAsyncThunk(
   'session/bootstrap',
-  async (): Promise<{ token: string, authLevel: string, accessLevel: 'admin' | 'normal' }> => {
+  async (): Promise<{ token: string, payerId: string, authLevel: string, accessLevel: 'admin' | 'normal', preferences: PayerPreferences }> => {
     const token = window.localStorage.getItem('session-token')
 
     if (!token) {
@@ -53,6 +54,8 @@ export const bootstrapSession = createAsyncThunk(
         token,
         authLevel: body.authLevel,
         accessLevel: body.accessLevel,
+        preferences: body.preferences,
+        payerId: body.payerProfile.id.value,
       }
     } else {
       return Promise.reject()
@@ -63,8 +66,10 @@ export const bootstrapSession = createAsyncThunk(
 type SessionState = {
   token: string | null
   authenticated: boolean
+  payerId: null | string
   bootstrapping: 'pending' | 'active' | 'completed'
   accessLevel: 'normal' | 'admin'
+  preferences: null | PayerPreferences
 }
 
 const sessionSlice = createSlice({
@@ -72,7 +77,9 @@ const sessionSlice = createSlice({
   initialState: {
     token: null,
     authenticated: false,
-    bootstrapping: 'pending'
+    payerId: null,
+    bootstrapping: 'pending',
+    preferences: null
   } as SessionState,
   reducers: {
     resetSession: (state) => {
@@ -85,9 +92,8 @@ const sessionSlice = createSlice({
       state.token = action.payload
     })
 
-    builder.addCase(authenticateSession.fulfilled, (state, action) => {
+    builder.addCase(authenticateSession.fulfilled, (state) => {
       state.authenticated = true
-      state.accessLevel = action.accessLevel
     })
 
     builder.addCase(bootstrapSession.pending, (state) => {
@@ -95,11 +101,13 @@ const sessionSlice = createSlice({
     })
 
     builder.addCase(bootstrapSession.fulfilled, (state, action) => {
-      const { token, authLevel, accessLevel } = action.payload
+      const { token, authLevel, payerId, accessLevel, preferences } = action.payload
       state.bootstrapping = 'completed'
       state.authenticated = authLevel !== 'unauthenticated'
       state.token = token
       state.accessLevel = accessLevel
+      state.preferences = preferences
+      state.payerId = payerId
     })
 
     builder.addCase(bootstrapSession.rejected, (state, _action) => {
