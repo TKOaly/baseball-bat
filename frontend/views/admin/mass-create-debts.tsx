@@ -118,6 +118,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
     'email': 'email',
     'payment number': 'paymentNumber',
     'name': 'name',
+    'payer name': 'name',
     'title': 'title',
     'description': 'description',
     'amount': ['amount', parseEuros],

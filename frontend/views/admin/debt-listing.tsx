@@ -1,5 +1,5 @@
 import { ListView } from '../../components/list-view'
-import { Button } from '../../components/button'
+import { Button, SecondaryButton } from '../../components/button'
 import { useGetDebtsQuery } from '../../api/debt'
 import { useLocation } from 'wouter'
 
@@ -16,7 +16,10 @@ export const DebtListing = () => {
       </p>
       <ListView
         actions={
-          <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
+          <>
+            <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
+            <SecondaryButton onClick={() => setLocation(`/admin/debts/create-debts-csv`)}>Mass Creation</SecondaryButton>
+          </>
         }
         items={(debts ?? []).map((debt) => ({
           key: debt.id,

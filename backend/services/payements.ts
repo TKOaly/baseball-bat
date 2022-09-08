@@ -46,11 +46,12 @@ function formatPaymentNumber(parts: [number, number]): string {
   return parts.map(n => n.toString().padStart(4, '0')).join('-')
 }
 
-type NewInvoice = {
+export type NewInvoice = {
   series: number
   message: string
   debts: string[]
   referenceNumber?: string
+  paymentNumber?: string
 }
 
 type NewPaymentEvent = {
@@ -217,12 +218,14 @@ export class PaymentService {
 
     const reference_number = invoice.referenceNumber ?? createReferenceNumber(invoice.series ?? 0, year, number)
 
+    const paymentNumber = invoice.paymentNumber ?? formatPaymentNumber([year, number])
+
     return this.createPayment({
       type: 'invoice',
       data: { reference_number },
       message: invoice.message,
       debts: invoice.debts,
-      paymentNumber: formatPaymentNumber([year, number]),
+      paymentNumber,
     })
   }
 

@@ -69,6 +69,9 @@ const Admin = () => {
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
             <Route path="/admin/debt-centers/create" component={CreateDebtCenter} />
             <Route path="/admin/debt-centers/create-from-event" component={CreateDebtCenterFromEvent} />
+            <Route path="/admin/debts/create-debts-csv">
+              {(params) => <MassCreateDebts params={params} defaults={{}} />}
+            </Route>
             <Route path="/admin/debt-centers/:id">
               {(params) => (params &&
                 <DebtCenterDetails id={(params as any).id} />

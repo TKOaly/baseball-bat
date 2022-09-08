@@ -4,7 +4,7 @@ import sql from 'sql-template-strings'
 import { Inject, Service } from 'typedi'
 import { formatPayerProfile, PayerService } from './payer'
 import { formatDebtCenter } from './debt_centers'
-import { PaymentService } from './payements'
+import { NewInvoice, PaymentService } from './payements'
 import { cents } from '../../common/currency'
 
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[] }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
@@ -35,9 +35,10 @@ const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => (
   createdAt: debtComponent.created_at,
 })
 
-type CreateDebtOptions = {
+export type CreateDebtOptions = {
   noDefaultPayment?: boolean
   defaultPaymentReferenceNumber?: string
+  paymentNumber?: string
 }
 
 @Service()
@@ -147,11 +148,24 @@ export class DebtService {
       })
     );
 
-    await this.paymentService.createInvoice({
-      series: 1,
-      message: debt.description,
-      debts: [created.id],
-    })
+    if (!options?.noDefaultPayment) {
+      let invoiceOptions: Partial<NewInvoice> = {}
+
+      if (options?.paymentNumber) {
+        invoiceOptions.paymentNumber = options.paymentNumber
+      }
+
+      if (options?.defaultPaymentReferenceNumber) {
+        invoiceOptions.referenceNumber = options.defaultPaymentReferenceNumber
+      }
+
+      await this.paymentService.createInvoice({
+        series: 1,
+        message: debt.description,
+        debts: [created.id],
+        ...invoiceOptions,
+      })
+    }
 
     return formatDebt(created);
   }

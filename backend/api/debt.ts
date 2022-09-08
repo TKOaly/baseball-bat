@@ -1,6 +1,6 @@
 import { Router, route, router, Route, Response, Middleware } from 'typera-express'
 import { AuthService } from '../auth-middleware'
-import { DebtService } from '../services/debt'
+import { CreateDebtOptions, DebtService } from '../services/debt'
 import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response'
 import { validate } from 'uuid'
 import { Inject, Service } from 'typedi'
@@ -369,6 +369,8 @@ export class DebtApi {
           amount: euroValue,
           dueDate: dateString,
           components: t.array(t.string),
+          //paymentNumber: t.string,
+          //referenceNumber: t.string,
         }),
         debts: t.array(t.partial({
           tkoalyUserId: t.number,
@@ -379,6 +381,8 @@ export class DebtApi {
           amount: euroValue,
           dueDate: dateString,
           components: t.array(t.string),
+          paymentNumber: t.string,
+          referenceNumber: t.string,
         })),
         components: t.array(t.type({
           name: t.string,
@@ -452,9 +456,10 @@ export class DebtApi {
                 })
               }
 
+              const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any)
+
               debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
-                const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any)
-                const match = existing.find(ec => ec.name === c)
+                const match = existingDebtComponents.find(ec => ec.name === c)
 
                 if (match) {
                   return match
@@ -475,12 +480,31 @@ export class DebtApi {
               }))
 
               if (details.amount) {
-                debtComponents.push(await this.debtService.createDebtComponent({
-                  name: 'Base Price',
-                  amount: details.amount,
-                  debtCenterId: debtCenter.id,
-                  description: 'Base Price',
-                }))
+                const existingBasePrice = existingDebtComponents.find((dc) => {
+                  console.log(dc, details)
+                  return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
+                })
+
+                if (existingBasePrice) {
+                  debtComponents.push(existingBasePrice)
+                } else {
+                  debtComponents.push(await this.debtService.createDebtComponent({
+                    name: 'Base Price',
+                    amount: details.amount,
+                    debtCenterId: debtCenter.id,
+                    description: 'Base Price',
+                  }))
+                }
+              }
+
+              let options: CreateDebtOptions = {}
+
+              if (details.paymentNumber) {
+                options.paymentNumber = details.paymentNumber
+              }
+
+              if (details.referenceNumber) {
+                options.defaultPaymentReferenceNumber = details.referenceNumber
               }
 
               createdDebt = await this.debtService.createDebt({
@@ -490,7 +514,7 @@ export class DebtApi {
                 payer: payer.id,
                 dueDate,
                 components: debtComponents.map(c => c.id),
-              })
+              }, options)
             } else {
               createdDebt = {
                 id: '',
