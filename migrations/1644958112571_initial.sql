@@ -55,6 +55,7 @@ CREATE TABLE payments (
   payment_number TEXT NOT NULL UNIQUE,
   type TEXT NOT NULL,
   data JSONB NOT NULL, 
+  title TEXT NOT NULL,
   message TEXT,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id),

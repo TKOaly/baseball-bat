@@ -163,6 +163,7 @@ export class DebtService {
         series: 1,
         message: debt.description,
         debts: [created.id],
+        title: debt.name,
         ...invoiceOptions,
       })
     }

@@ -47,6 +47,7 @@ function formatPaymentNumber(parts: [number, number]): string {
 }
 
 export type NewInvoice = {
+  title: string
   series: number
   message: string
   debts: string[]
@@ -73,6 +74,7 @@ type Invoice = {
 type DbPayment = {
   id: string
   type: 'invoice'
+  title: string
   data: Record<string, unknown>,
   message: string
   created_at: Date
@@ -81,6 +83,7 @@ type DbPayment = {
 
 type NewPayment<T extends PaymentType> = {
   type: T['type'],
+  title: string,
   message: string,
   data: {},
   debts: Array<string>,
@@ -226,6 +229,7 @@ export class PaymentService {
       message: invoice.message,
       debts: invoice.debts,
       paymentNumber,
+      title: invoice.title,
     })
   }
 
@@ -234,8 +238,8 @@ export class PaymentService {
 
     return this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
-        INSERT INTO payments (type, data, message, payment_number)
-        VALUES ('invoice', ${payment.data}, ${payment.message}, ${paymentNumber})
+        INSERT INTO payments (type, data, message, title, payment_number)
+        VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber})
         RETURNING *
       `)
 

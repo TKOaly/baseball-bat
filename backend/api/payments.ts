@@ -77,6 +77,7 @@ export class PaymentsApi {
         const payment = await this.paymentService.createInvoice({
           series: 9,
           debts: debts.map(d => d.id),
+          title: 'Comined invoice',
           message: 'Invoice for the following debts:' + (debts.map(d => `\n - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`)),
         });
 
