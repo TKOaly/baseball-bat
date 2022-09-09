@@ -3,6 +3,14 @@ You have new pending invoices from TKO-äly
 This is an automated message regarding a new invoice assigned to you from
 TKO-äly. Below are the details of the invoice.
 
+Invoice message
+===============
+
+<%= message %>
+
+Payment details
+===============
+
 Title:             <%= title %>
 Invoice number:    <%= number %>
 Invoice date:      <%= date %>

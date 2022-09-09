@@ -1,8 +1,9 @@
 import { Service, Inject } from 'typedi'
 import sql from 'sql-template-strings'
-import { EuroValue, InternalIdentity } from '../../common/types'
+import { Debt, EuroValue, InternalIdentity, Payment } from '../../common/types'
 import { PgClient } from '../db'
 import { omit } from 'remeda'
+import { DebtService } from './debt'
 
 function finnishReferenceChecksum(num: bigint): bigint {
   const factors = [7n, 3n, 1n]
@@ -95,6 +96,9 @@ type NewPayment<T extends PaymentType> = {
 export class PaymentService {
   @Inject(() => PgClient)
   pg: PgClient
+
+  @Inject(() => DebtService)
+  debtService: DebtService
 
   async getPayments() {
     return this.pg
@@ -219,21 +223,32 @@ export class PaymentService {
     })
   }
 
-  async createInvoice(invoice: NewInvoice) {
+  async createInvoice(invoice: NewInvoice): Promise<Payment & { data: { due_date: string, reference_number: string } }> {
     const [year, number] = await this.createPaymentNumber();
 
     const reference_number = invoice.referenceNumber ?? createReferenceNumber(invoice.series ?? 0, year, number)
 
     const paymentNumber = invoice.paymentNumber ?? formatPaymentNumber([year, number])
 
+    const results = await Promise.all(invoice.debts.map(id => this.debtService.getDebt(id)))
+
+    if (results.some(d => d === null)) {
+      throw new Error('Debt does not exist')
+    }
+
+    const debts = results as Array<Debt>
+
+    const due_dates = debts.map(debt => new Date(debt.dueDate)).sort()
+    const due_date = due_dates[0]
+
     return this.createPayment({
       type: 'invoice',
-      data: { reference_number },
+      data: { reference_number, due_date },
       message: invoice.message,
       debts: invoice.debts,
       paymentNumber,
       title: invoice.title,
-    })
+    }) as any
   }
 
   async createPayment<T extends PaymentType>(payment: NewPayment<T>) {

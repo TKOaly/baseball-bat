@@ -20,7 +20,7 @@ const paymentsApi = rtkApi.injectEndpoints({
       query: (id) => `/debt/${id}/payments`
     }),
 
-    createInvoice: builder.mutation<Payment, { debts: string[] }>({
+    createInvoice: builder.mutation<Payment, { debts: string[], sendEmail: boolean }>({
       query: (payload) => ({
         url: '/payments/create-invoice',
         method: 'POST',

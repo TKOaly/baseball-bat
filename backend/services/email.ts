@@ -250,6 +250,7 @@ export class EmailService {
       .one<DbEmail>(sql`
         INSERT INTO emails (recipient, subject, template, html, text)
         VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
+        RETURNING *
      `)
 
     return result && formatEmail(result)

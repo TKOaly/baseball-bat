@@ -185,6 +185,7 @@ export class DebtApi {
                 amount: total,
                 reference_number: payment.data?.reference_number ?? '<ERROR>',
                 link: `${this.config.appUrl}/payment/${debt.id}`,
+                message: debt.description,
               },
               subject: 'Uusi lasku // New invoice',
             });

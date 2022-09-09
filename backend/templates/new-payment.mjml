@@ -16,6 +16,8 @@
         <mj-text>
           This is an automated message regarding a new invoice assigned to you from TKO-äly. Below are the details of the invoice.
         </mj-text>
+
+        <mj-text><div style="white-space: pre"><%= message %></div></mj-text>
           
         <mj-table>
           <tr>

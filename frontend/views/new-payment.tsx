@@ -32,6 +32,7 @@ export const NewPayment = () => {
   const handleCreateInvoice = async () => {
     const result = await createInvoice({
       debts: selectedDebts,
+      sendEmail: true,
     });
 
     if ('data' in result) {

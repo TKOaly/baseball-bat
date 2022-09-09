@@ -1,8 +1,8 @@
 import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
-import { badRequest, ok, unauthorized } from "typera-express/response";
+import { badRequest, internalServerError, ok, unauthorized } from "typera-express/response";
 import * as t from 'io-ts'
-import { tkoalyIdentity } from "../../common/types";
+import { internalIdentity, tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
 import { DebtService } from "../services/debt";
 import { PaymentService } from "../services/payements";
@@ -10,9 +10,15 @@ import { PayerService } from "../services/payer";
 import { UsersService } from "../services/users";
 import { validateBody } from "../validate-middleware";
 import { euro, formatEuro, sumEuroValues } from "../../common/currency";
+import { EmailService } from "../services/email";
+import { Config } from "../config";
+import { parseISO } from "date-fns";
 
 @Service()
 export class PaymentsApi {
+  @Inject(() => Config)
+  config: Config
+
   @Inject(() => PaymentService)
   paymentService: PaymentService
 
@@ -27,6 +33,9 @@ export class PaymentsApi {
 
   @Inject(() => DebtService)
   debtService: DebtService
+
+  @Inject(() => EmailService)
+  emailService: EmailService
 
   private getPayments() {
     return route
@@ -58,6 +67,7 @@ export class PaymentsApi {
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
       .use(validateBody(t.type({
         debts: t.array(t.string),
+        sendEmail: t.boolean,
       })))
       .handler(async (ctx) => {
         const debts = await Promise.all(ctx.body.debts.map(async (id) => {
@@ -71,15 +81,55 @@ export class PaymentsApi {
             return Promise.reject(unauthorized());
           }
 
+
           return debt;
         }))
+
+        const totals = await Promise.all(debts.map(d => this.debtService.getDebtTotal(d.id)));
+        const total = totals.reduce(sumEuroValues, euro(0))
+
+        if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
+          return badRequest('All debts do not have the same payer')
+        }
+
+        const email = await this.payerService.getPayerPrimaryEmail(debts[0].payerId)
+
+        if (!email) {
+          throw new Error(`Payer ${debts[0].payerId} does not have a primary email`)
+        }
 
         const payment = await this.paymentService.createInvoice({
           series: 9,
           debts: debts.map(d => d.id),
-          title: 'Comined invoice',
-          message: 'Invoice for the following debts:' + (debts.map(d => `\n - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`)),
+          title: 'Combined invoice',
+          message: 'Invoice for the following debts:\n' + (debts.map(d => ` - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`).join('\n')),
         });
+
+        console.log(payment.data)
+
+        if (ctx.body.sendEmail) {
+          const createdEmail = await this.emailService.createEmail({
+            template: 'new-payment',
+            recipient: email.email,
+            subject: 'Uusi lasku // New invoice',
+            payload: {
+              title: payment.title,
+              number: payment.payment_number,
+              date: payment.created_at,
+              due_date: parseISO(payment.data.due_date),
+              reference_number: payment.data.reference_number,
+              link: `${this.config.appUrl}/payment/${payment.id}`,
+              amount: total,
+              message: payment.message,
+            },
+          })
+
+          if (createdEmail === null) {
+            throw new Error('unable to create an email for the invoice')
+          }
+
+          await this.emailService.sendEmail(createdEmail.id)
+        }
 
         return ok(payment);
       })
