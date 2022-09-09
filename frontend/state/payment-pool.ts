@@ -1,59 +1,31 @@
-import { createContext } from 'react'
-
-export type PaymentPoolItem = {
-  eventId: number
-  eventName: string
-  items: {
-    eventItemId: number
-    itemName: string
-    amount: number
-  }[]
-}
+import { createSlice } from "@reduxjs/toolkit";
 
 type PaymentPoolState = {
-  items: PaymentPoolItem[]
-  totalSum: number
-  dispatch: React.Dispatch<PaymentPoolAction>
+  selectedPayments: Array<string>,
 }
 
-export const PaymentPool = createContext<PaymentPoolState>({
-  items: [],
-  totalSum: 0,
-  dispatch: () => {},
+const initialState: PaymentPoolState = {
+  selectedPayments: [],
+}
+
+const paymentPoolSlice = createSlice({
+  name: 'paymentPool',
+  initialState,
+  reducers: {
+    togglePaymentSelection: (state, action) => {
+      const index = state.selectedPayments.indexOf(action.payload);
+
+      if (index >= 0) {
+        state.selectedPayments.splice(index, 1);
+      } else {
+        state.selectedPayments.push(action.payload);
+      }
+    },
+
+    setSelectedPayments: (state, action) => {
+      state.selectedPayments = action.payload;
+    },
+  },
 })
 
-type PaymentPoolAction =
-  | {
-      type: 'ADD_ITEM'
-      payload: PaymentPoolItem
-    }
-  | {
-      type: 'REMOVE_ITEM'
-      payload: PaymentPoolItem
-    }
-
-export const paymentPoolReducer = (
-  state: Pick<PaymentPoolState, 'items' | 'totalSum'>,
-  action: PaymentPoolAction
-) => {
-  switch (action.type) {
-    case 'ADD_ITEM':
-      return {
-        items: [...state.items, action.payload],
-        totalSum:
-          state.totalSum +
-          action.payload.items.reduce((acc, item) => acc + item.amount, 0),
-      }
-    case 'REMOVE_ITEM':
-      return {
-        items: state.items.filter(
-          item => item.eventId !== action.payload.eventId
-        ),
-        totalSum:
-          state.totalSum -
-          action.payload.items.reduce((acc, item) => acc + item.amount, 0),
-      }
-    default:
-      return state
-  }
-}
+export default paymentPoolSlice

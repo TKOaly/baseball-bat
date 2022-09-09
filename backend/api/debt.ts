@@ -527,6 +527,7 @@ export class DebtApi {
                 dueDate,
                 createdAt: new Date(),
                 updatedAt: new Date(),
+                debtComponents,
               }
 
               if (details.components && details.components.length > 0) {

@@ -1,33 +1,22 @@
-import React, { forwardRef, Suspense, useEffect, useState } from 'react'
-import styled from 'styled-components'
+import React, { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Provider, useDispatch } from 'react-redux'
+import { Provider } from 'react-redux'
+import { NewPayment } from './views/new-payment'
 import { store, useAppDispatch, useAppSelector } from './store'
+import { PaymentSelectionSidebar } from './components/payment-selection-sidebar'
 import { EmailAuth } from './views/email-auth'
 import { PaymentDetails } from './views/payment-details'
 import { ConfirmEmailAuth } from './views/confirm-email-auth'
 import { Settings } from './views/settings'
-import { Route, Switch, useLocation, useRoute } from 'wouter'
-import { Session } from '../common/types'
+import { Route, useLocation, useRoute } from 'wouter'
 import { Loading } from './components/loading'
-import { useCreateSessionMutation } from './api/auth'
-import { loadTokenAndSession } from './hooks'
 import { Landing } from './views/landing'
 import { Main } from './views/main'
 import { Onboarding } from './views/onboarding'
 import { UpdatePaymentMethod } from './views/update-payment-method'
-
 import './style.css'
-import 'flowbite'
-import { CheckCircle, Circle, Disc } from 'react-feather'
-import sessionSlice, { authenticateSession, bootstrapSession, createSession } from './session'
+import { authenticateSession, bootstrapSession, createSession } from './session'
 import { Button } from './components/button'
-
-const WrapperDiv = styled.div`
-  width: 100vw;
-  min-height: 100vh;
-  position: relative;
-`
 
 const Navigation = () => {
   const [, setLocation] = useLocation()
@@ -94,14 +83,8 @@ const PublicLayout = ({ children, sidebars }) => (
             {children}
           </div>
         </div>
-        <div className="hidden md:block">
-          {false && (
-            <div className="rounded-lg bg-white mx-3 border border-gray-100 shadow-lg p-5 self-start mt-5">
-              Valittu 2 maksua.<br />
-              Yhteensä 33,00 euroa.<br /><br />
-              Siirry maksamaan
-            </div>
-          )}
+        <div className="md:block">
+          <PaymentSelectionSidebar />
         </div>
       </div>
       <div className="fixed bottom-0 md:hidden flex items-center bg-white border-t shadow py-2 px-3 w-full">
@@ -189,6 +172,7 @@ const Routes = () => {
           <Route path="/settings">
             <Settings session={session as any} />
           </Route>
+          <Route path="/payment/new" component={NewPayment} />
           <Route path="/payment/:id/details" component={PaymentDetails} />
           <Route path="/update-payment-method">
             <UpdatePaymentMethod session={session as any} />

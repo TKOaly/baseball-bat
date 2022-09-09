@@ -43,6 +43,21 @@
       "debts": "Velat",
       "settings": "Asetukset",
       "administration": "Hallinta"
-    }
+    },
+    "selectedDebtCount_zero": "Ei valittuja velkoja.",
+    "selectedDebtCount_one": "{{ count }} velka valittu.",
+    "selectedDebtCount_other": "{{ count }} velkaa valittu.",
+    "selectedDebtTotal": "Yhteensä {{ total }}.",
+    "createCombinedInvoice": "Luo lasku",
+    "payAllButton": "Maksa kaikki",
+    "newPaymentHeader": "Uusi maksu",
+    "selectedDebtsSummary": "Maksuerittely",
+    "selectPaymentMethod": "Maksutapa",
+    "invoice": "Lasku",
+    "invoiceDescription": "Maksa käyttäen tilisiirtoa ja viitenumeroa.",
+    "stripe": "Stripe",
+    "stripeDisclaimer": "Tulossa ehkä joku päivä",
+    "stripeDescription": "Maksa verkossa käyttäen Stripe-maksunvälittäjää.",
+    "total": "Yhteensä"
   }
 }

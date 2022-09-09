@@ -1,12 +1,15 @@
 import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
-import { ok } from "typera-express/response";
+import { badRequest, ok, unauthorized } from "typera-express/response";
+import * as t from 'io-ts'
 import { tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
 import { DebtService } from "../services/debt";
 import { PaymentService } from "../services/payements";
 import { PayerService } from "../services/payer";
 import { UsersService } from "../services/users";
+import { validateBody } from "../validate-middleware";
+import { euro, formatEuro, sumEuroValues } from "../../common/currency";
 
 @Service()
 export class PaymentsApi {
@@ -49,6 +52,38 @@ export class PaymentsApi {
       })
   }
 
+  private createInvoice() {
+    return route
+      .post('/create-invoice')
+      .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
+      .use(validateBody(t.type({
+        debts: t.array(t.string),
+      })))
+      .handler(async (ctx) => {
+        const debts = await Promise.all(ctx.body.debts.map(async (id) => {
+          const debt = await this.debtService.getDebt(id);
+
+          if (!debt) {
+            return Promise.reject(badRequest());
+          }
+
+          if (ctx.session.accessLevel !== 'admin' && debt.payerId.value !== ctx.session.payerId) {
+            return Promise.reject(unauthorized());
+          }
+
+          return debt;
+        }))
+
+        const payment = await this.paymentService.createInvoice({
+          series: 9,
+          debts: debts.map(d => d.id),
+          message: 'Invoice for the following debts:' + (debts.map(d => `\n - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`)),
+        });
+
+        return ok(payment);
+      })
+  }
+
   private getOwnPayments() {
     return route
       .get('/my')
@@ -70,6 +105,7 @@ export class PaymentsApi {
     return router(
       this.getPayments(),
       this.getOwnPayments(),
+      this.createInvoice(),
       this.getPayment()
     )
   }

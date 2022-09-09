@@ -1,6 +1,10 @@
 import rtkApi from './rtk-api'
 import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer } from '../../common/types'
 
+export type DebtResponse = Debt & {
+  debtComponents: Array<DebtComponent>,
+}
+
 const debtApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     createDebtComponent: builder.mutation<DebtComponent, NewDebtComponent>({
@@ -36,7 +40,7 @@ const debtApi = rtkApi.injectEndpoints({
       ]
     }),
 
-    getDebt: builder.query<Debt, string>({
+    getDebt: builder.query<DebtResponse, string>({
       query: (id) => `/debt/${id}`,
       providesTags: (result) => [{ type: 'Debt', id: result.id }],
     }),

@@ -1,5 +1,5 @@
 import { useReducer, useState } from 'react'
-import { CheckCircle, Circle, Info } from 'react-feather'
+import { CheckCircle, ChevronRight, Circle, Info } from 'react-feather'
 import { useLocation } from 'wouter'
 import { Trans, useTranslation } from 'react-i18next'
 import { euro, EuroValue, Session } from '../../common/types'
@@ -11,12 +11,13 @@ import { Dialog } from '../components/dialog'
 import { Loading } from '../components/loading'
 import { PaymentTab } from '../components/payment-tab'
 import { useEvents } from '../hooks'
-import { PaymentPool, paymentPoolReducer } from '../state/payment-pool'
+import paymentPoolSlice from '../state/payment-pool'
 import { useGetPayerDebtsQuery, useGetPayerQuery } from '../api/payers'
 import { formatEuro, sumEuroValues } from '../../common/currency'
 import { format, isPast } from 'date-fns'
 import { Button, SecondaryButton } from '../components/button'
 import { useGetUpstreamUserQuery } from '../api/upstream-users'
+import { useAppDispatch, useAppSelector } from '../store'
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -125,6 +126,17 @@ export const Main = (props: Props) => {
   const { t } = useTranslation()
   const { data: payments } = useGetPayerDebtsQuery({ id: 'me' })
   const { data: profile } = useGetPayerQuery('me')
+  const dispatch = useAppDispatch()
+  const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments)
+
+  const toggleDebtSelection = (debt) => {
+    dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id))
+  }
+
+  const handlePayAll = async () => {
+    dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidPayments.map(p => p.id)))
+    setLocation('/payment/new')
+  }
 
   const unpaidPayments = (payments ?? []).filter(p => p.status === 'unpaid');
   const paidPayments = (payments ?? []).filter(p => p.status === 'paid');
@@ -144,6 +156,8 @@ export const Main = (props: Props) => {
         </Trans>
       </p>
 
+      <Button onClick={handlePayAll} className="mt-3">{t('payAllButton')}</Button>
+
       { /* <WelcomeDialog open={true} /> */}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
@@ -151,9 +165,13 @@ export const Main = (props: Props) => {
       </h3>
 
       {unpaidPayments.map((p) => (
-        <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => setLocation(`/payment/${p.id}/details`)}>
+        <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => toggleDebtSelection(p)}>
           <div className="flex items-center">
-            <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
+            {
+              selectedDebts.indexOf(p.id) >= 0
+                ? <FilledDisc className="text-blue-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
+                : <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
+            }
             <div>
               <h4 className="mb-0">{p?.name}</h4>
               <div className="text-gray-400 mr-2 text-sm -mt-1">
@@ -167,6 +185,7 @@ export const Main = (props: Props) => {
               )
             }
             <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues))}</span>
+            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/payment/${p.id}/details`)} />
           </div>
         </div>
       ))}

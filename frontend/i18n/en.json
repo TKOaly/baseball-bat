@@ -43,6 +43,21 @@
       "debts": "Debts",
       "settings": "Settings",
       "administration": "Administration"
-    }
+    },
+    "selectedDebtCount_zero": "No debts selected.",
+    "selectedDebtCount_one": "{{ count }} debt selected.",
+    "selectedDebtCount_other": "{{ count }} debts selected.",
+    "selectedDebtTotal": "Total amount {{ total }}.",
+    "createCombinedInvoice": "Create Invoice",
+    "payAllButton": "Pay All",
+    "newPaymentHeader": "New Payment",
+    "selectedDebtsSummary": "Payment breakdown",
+    "selectPaymentMethod": "Payment method",
+    "invoice": "Invoice",
+    "invoiceDescription": "Pay using a bank transfer and an unique reference number.",
+    "stripe": "Stripe",
+    "stripeDisclaimer": "Coming maybe one day",
+    "stripeDescription": "Pay online using Stripe.",
+    "total": "Total"
   }
 }

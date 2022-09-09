@@ -135,6 +135,10 @@ if (process.env.NODE_ENV !== 'production') {
     express.static('web-dist/index.html')
   )
   app.use(
+    '/payment/new',
+    express.static('web-dist/index.html')
+  )
+  app.use(
     '/auth/email',
     express.static('web-dist/index.html')
   )
