@@ -376,6 +376,8 @@ export type Payment = {
   type: 'invoice',
   data: object | null,
   message: string,
+  payer_id: string,
+  title: string,
   created_at: Date,
   balance: number,
   status: 'paid' | 'canceled' | 'mispaid' | 'unpaid',

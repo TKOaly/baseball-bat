@@ -58,6 +58,14 @@
     "stripe": "Stripe",
     "stripeDisclaimer": "Coming maybe one day",
     "stripeDescription": "Pay online using Stripe.",
-    "total": "Total"
+    "total": "Total",
+    "paymentSummary": "Payment breakdown",
+    "paymentDetailsHeader": "Payment details",
+    "paymentEventTimeline": "Payment history",
+    "paymentCreated": "Payment created",
+    "createdAt": "Created at",
+    "toBePaid": "To be paid",
+    "paymentMethod": "Payment method",
+    "paymentMessage": "Message"
   }
 }

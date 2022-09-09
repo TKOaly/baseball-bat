@@ -131,7 +131,7 @@ if (process.env.NODE_ENV !== 'production') {
     express.static('web-dist/index.html')
   )
   app.use(
-    '/payment/:id/details',
+    '/payment/:id',
     express.static('web-dist/index.html')
   )
   app.use(

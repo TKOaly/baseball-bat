@@ -58,6 +58,14 @@
     "stripe": "Stripe",
     "stripeDisclaimer": "Tulossa ehkä joku päivä",
     "stripeDescription": "Maksa verkossa käyttäen Stripe-maksunvälittäjää.",
-    "total": "Yhteensä"
+    "total": "Yhteensä",
+    "paymentSummary": "Maksun erittely",
+    "paymentDetailsHeader": "Maksutiedot",
+    "paymentEventTimeline": "Tapahtumahistoria",
+    "paymentCreated": "Tapahtuma luotu",
+    "createdAt": "Luotu",
+    "toBePaid": "Maksettavana",
+    "paymentMethod": "Maksutapa",
+    "paymentMessage": "Maksun viesti"
   }
 }

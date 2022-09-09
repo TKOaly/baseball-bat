@@ -53,6 +53,14 @@ const debtApi = rtkApi.injectEndpoints({
       ]
     }),
 
+    getDebtsByPayment: builder.query<DebtWithPayer[], string>({
+      query: (id) => `/debt/by-payment/${id}`,
+      providesTags: (result) => [
+        { type: 'Debt' as const, id: 'LIST' },
+        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+      ]
+    }),
+
     publishDebts: builder.mutation<void, string[]>({
       query: (ids) => ({
         method: 'POST',
@@ -86,7 +94,8 @@ export const {
   useGetDebtQuery,
   useGetDebtsQuery,
   usePublishDebtsMutation,
-  useMassCreateDebtsMutation
+  useMassCreateDebtsMutation,
+  useGetDebtsByPaymentQuery
 } = debtApi
 
 export default debtApi

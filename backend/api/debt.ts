@@ -124,6 +124,26 @@ export class DebtApi {
       })
   }
 
+  private getDebtsByPayment() {
+    return route
+      .get('/by-payment/:id')
+      .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
+      .handler(async (ctx) => {
+        const payment = await this.paymentService.getPayment(ctx.routeParams.id);
+
+        if (!payment) {
+          return notFound()
+        }
+
+        if (ctx.session.accessLevel != 'admin' && payment.payer_id !== ctx.session.payerId) {
+          return unauthorized()
+        }
+
+        const debts = await this.debtService.getDebtsByPayment(payment.id);
+        return ok(debts);
+      })
+  }
+
   private publishDebts() {
     return route
       .post('/publish')
@@ -164,7 +184,7 @@ export class DebtApi {
                 due_date: debt.dueDate,
                 amount: total,
                 reference_number: payment.data?.reference_number ?? '<ERROR>',
-                link: `${this.config.appUrl}/payment/${debt.id}/details`,
+                link: `${this.config.appUrl}/payment/${debt.id}`,
               },
               subject: 'Uusi lasku // New invoice',
             });
@@ -598,6 +618,7 @@ export class DebtApi {
     return router(
       this.createDebtComponent(),
       this.createDebt(),
+      this.getDebtsByPayment(),
       this.getDebt(),
       this.getDebts(),
       this.publishDebts(),

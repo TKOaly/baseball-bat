@@ -5,10 +5,11 @@ import { NewPayment } from './views/new-payment'
 import { store, useAppDispatch, useAppSelector } from './store'
 import { PaymentSelectionSidebar } from './components/payment-selection-sidebar'
 import { EmailAuth } from './views/email-auth'
+import { DebtDetails } from './views/debt-details'
 import { PaymentDetails } from './views/payment-details'
 import { ConfirmEmailAuth } from './views/confirm-email-auth'
 import { Settings } from './views/settings'
-import { Route, useLocation, useRoute } from 'wouter'
+import { Route, Switch, useLocation, useRoute } from 'wouter'
 import { Loading } from './components/loading'
 import { Landing } from './views/landing'
 import { Main } from './views/main'
@@ -72,7 +73,7 @@ const Navigation = () => {
 
 const PublicLayout = ({ children, sidebars }) => (
   <Provider store={store}>
-    <div className="bg-[#fbfbfb] w-screen h-screen justify-center md:pt-10 gap-5">
+    <div className="bg-[#fbfbfb] w-screen pb-10 min-h-screen justify-center md:pt-10 gap-5">
       <div className="grid justify-center gap-5 grid-cols-1 md:grid-cols-main">
         <h1 className="text-center md:mb-5 hidden md:block text-3xl font-bold text-gray-600 md:col-span-3">TKO-äly ry - Maksupalvelu</h1>
         <div className="flex md:justify-end">
@@ -158,27 +159,30 @@ const Routes = () => {
 
   return (
     <PublicLayout sidebars={session.authenticated}>
-      <Route path="/auth" component={Landing} />
-      <Route path="/auth/email" component={EmailAuth} />
-      <Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
-      {session.authenticated && (
-        <>
-          <Route path="/onboarding">
-            <Onboarding session={session as any} />
-          </Route>
-          <Route path="/">
-            <Main session={session as any} />
-          </Route>
-          <Route path="/settings">
-            <Settings session={session as any} />
-          </Route>
-          <Route path="/payment/new" component={NewPayment} />
-          <Route path="/payment/:id/details" component={PaymentDetails} />
-          <Route path="/update-payment-method">
-            <UpdatePaymentMethod session={session as any} />
-          </Route>
-        </>
-      )}
+      <Switch>
+        <Route path="/auth" component={Landing} />
+        <Route path="/auth/email" component={EmailAuth} />
+        <Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
+        {session.authenticated && (
+          <>
+            <Route path="/onboarding">
+              <Onboarding session={session as any} />
+            </Route>
+            <Route path="/">
+              <Main session={session as any} />
+            </Route>
+            <Route path="/settings">
+              <Settings session={session as any} />
+            </Route>
+            <Route path="/debt/:id" component={DebtDetails} />
+            <Route path="/payment/new" component={NewPayment} />
+            <Route path="/payment/:id" component={PaymentDetails} />
+            <Route path="/update-payment-method">
+              <UpdatePaymentMethod session={session as any} />
+            </Route>
+          </>
+        )}
+      </Switch>
     </PublicLayout>
   );
 }

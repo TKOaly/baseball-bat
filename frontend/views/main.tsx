@@ -13,11 +13,12 @@ import { PaymentTab } from '../components/payment-tab'
 import { useEvents } from '../hooks'
 import paymentPoolSlice from '../state/payment-pool'
 import { useGetPayerDebtsQuery, useGetPayerQuery } from '../api/payers'
-import { formatEuro, sumEuroValues } from '../../common/currency'
+import { cents, formatEuro, sumEuroValues } from '../../common/currency'
 import { format, isPast } from 'date-fns'
 import { Button, SecondaryButton } from '../components/button'
 import { useGetUpstreamUserQuery } from '../api/upstream-users'
 import { useAppDispatch, useAppSelector } from '../store'
+import { useGetOwnPaymentsQuery } from '../api/payments'
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -124,7 +125,8 @@ const WelcomeDialog = ({ open }) => {
 export const Main = (props: Props) => {
   const [, setLocation] = useLocation()
   const { t } = useTranslation()
-  const { data: payments } = useGetPayerDebtsQuery({ id: 'me' })
+  const { data: debts } = useGetPayerDebtsQuery({ id: 'me' })
+  const { data: payments } = useGetOwnPaymentsQuery()
   const { data: profile } = useGetPayerQuery('me')
   const dispatch = useAppDispatch()
   const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments)
@@ -134,14 +136,14 @@ export const Main = (props: Props) => {
   }
 
   const handlePayAll = async () => {
-    dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidPayments.map(p => p.id)))
+    dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidDepts.map(p => p.id)))
     setLocation('/payment/new')
   }
 
-  const unpaidPayments = (payments ?? []).filter(p => p.status === 'unpaid');
-  const paidPayments = (payments ?? []).filter(p => p.status === 'paid');
+  const unpaidDepts = (debts ?? []).filter(p => p.status === 'unpaid');
+  const paidDepts = (debts ?? []).filter(p => p.status === 'paid');
 
-  const totalEuros = unpaidPayments
+  const totalEuros = unpaidDepts
     .flatMap(debt => debt.debtComponents.map(dc => dc.amount))
     .reduce(sumEuroValues, euro(0));
 
@@ -152,7 +154,7 @@ export const Main = (props: Props) => {
       </h3>
       <p className="mt-3">
         <Trans i18nKey="welcomeSummary">
-          You have <span className="font-bold">{{ number: unpaidPayments.length }}</span> unpaid debts, which have a combined value of <span className="font-bold">{{ total: formatEuro(totalEuros) }}</span>.
+          You have <span className="font-bold">{{ number: unpaidDepts.length }}</span> unpaid debts, which have a combined value of <span className="font-bold">{{ total: formatEuro(totalEuros) }}</span>.
         </Trans>
       </p>
 
@@ -164,7 +166,7 @@ export const Main = (props: Props) => {
         {t('unpaidDebts')}
       </h3>
 
-      {unpaidPayments.map((p) => (
+      {unpaidDepts.map((p) => (
         <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => toggleDebtSelection(p)}>
           <div className="flex items-center">
             {
@@ -185,12 +187,33 @@ export const Main = (props: Props) => {
               )
             }
             <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues))}</span>
-            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/payment/${p.id}/details`)} />
+            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/debt/${p.id}`)} />
           </div>
         </div>
       ))}
 
-      {unpaidPayments.length === 0 && (
+      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+        {t('openPayments')}
+      </h3>
+
+      {(payments ?? []).map((p) => (
+        <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer">
+          <div className="flex items-center">
+            <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
+            <div>
+              <h4 className="mb-0">{p.title} <span className="text-gray-500">({p.payment_number})</span></h4>
+              <div className="text-gray-400 mr-2 text-sm -mt-1">
+                {t('paymentListInfoline', { created: format(new Date(p.created_at), 'dd.MM.yyyy') })}
+              </div>
+            </div>
+            <div className="flex-grow" />
+            <span className="font-bold text-gray-600">{formatEuro(cents(p.balance))}</span>
+            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/payment/${p.id}`)} />
+          </div>
+        </div>
+      ))}
+
+      {unpaidDepts.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
           {t('noUnpaidDebts')}
@@ -201,7 +224,7 @@ export const Main = (props: Props) => {
         {t('paidDebts')}
       </h3>
 
-      {paidPayments.map((p) => (
+      {paidDepts.map((p) => (
         <div className="rounded-md border border-blue-400 mt-5 p-4 shadow-sm">
           <div className="flex items-center">
             <CheckCircle className="text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
@@ -212,7 +235,7 @@ export const Main = (props: Props) => {
         </div>
       ))}
 
-      {paidPayments.length === 0 && (
+      {paidDepts.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-50 border shadow border-gray-300 rounded-md mt-3">
           <Info />
           {t('noPaidDebts')}

@@ -75,6 +75,7 @@ type DbPayment = {
   id: string
   type: 'invoice'
   title: string
+  payer_id: string
   data: Record<string, unknown>,
   message: string
   created_at: Date
@@ -103,6 +104,7 @@ export class PaymentService {
           s.balance,
           s.status,
           s.payer,
+          (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id
@@ -117,6 +119,7 @@ export class PaymentService {
           s.balance,
           s.status,
           s.payer,
+          (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id

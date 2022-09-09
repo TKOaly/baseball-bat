@@ -35,7 +35,7 @@ export const NewPayment = () => {
     });
 
     if ('data' in result) {
-      setLocation(`/payment/${result.data.id}/details`)
+      setLocation(`/payment/${result.data.id}`)
     }
   }
 

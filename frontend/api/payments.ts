@@ -9,6 +9,7 @@ const paymentsApi = rtkApi.injectEndpoints({
 
     getPayment: builder.query<Payment, string>({
       query: (id) => `/payments/${id}`,
+      transformResponse: (response) => response.payment,
     }),
 
     getOwnPayments: builder.query<Payment[], never>({
