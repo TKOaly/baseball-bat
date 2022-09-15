@@ -16,13 +16,19 @@ import { Main } from './views/main'
 import { Onboarding } from './views/onboarding'
 import { UpdatePaymentMethod } from './views/update-payment-method'
 import './style.css'
-import { authenticateSession, bootstrapSession, createSession } from './session'
+import { authenticateSession, bootstrapSession, createSession, destroySession } from './session'
 import { Button } from './components/button'
 
 const Navigation = () => {
   const [, setLocation] = useLocation()
   const { t, i18n } = useTranslation()
   const session = useAppSelector((state) => state.session)
+  const dispatch = useAppDispatch()
+
+  const handleLogOut = () => {
+    dispatch(destroySession())
+      .then(() => setLocation('/'))
+  }
 
   return (
     <ul className="flex md:flex-col gap-2 px-3 items-stretch pt-5 w-full jusify-items-stretch">
@@ -37,6 +43,12 @@ const Navigation = () => {
         onClick={() => setLocation('/settings')}
       >
         {t('navigation.settings')}
+      </li>
+      <li
+        className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
+        onClick={() => handleLogOut()}
+      >
+        {t('navigation.logOut')}
       </li>
       {
         session.accessLevel === 'admin' && (
@@ -98,27 +110,44 @@ const PublicLayout = ({ children, sidebars }) => (
 
 const LazyAdmin = React.lazy(() => import('./views/admin'))
 
+const useManageSession = () => {
+  const authToken = new URLSearchParams(window.location.search).get('token')
+  const [location, setLocation] = useLocation()
+  const { bootstrapping, token, authenticated, creatingSession } = useAppSelector((state) => state.session)
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    if (bootstrapping === 'pending') {
+      dispatch(bootstrapSession())
+    } else if (bootstrapping === 'completed') {
+      if (!authenticated) {
+        if (authToken) {
+          const redirect = window.localStorage.getItem('redirect') ?? '/'
+
+          dispatch(authenticateSession(authToken))
+            .then(() => {
+              setLocation(redirect);
+            });
+        }
+      }
+
+      if (!token && !creatingSession) {
+        dispatch(createSession())
+          .then(() => {
+            window.localStorage.setItem('redirect', location);
+            setLocation('/auth');
+          });
+      }
+    }
+  }, [bootstrapping, token, authToken, creatingSession])
+};
+
 const Routes = () => {
   const { i18n } = useTranslation()
   const [isAdminRoute] = useRoute('/admin/:rest*')
-  const [isAuthRoute] = useRoute('/auth/:rest*')
-  const [location, setLocation] = useLocation()
-  const dispatch = useAppDispatch()
-  const authToken = new URLSearchParams(window.location.search).get('token')
-  const [authenticating, setAuthenticating] = useState(false)
   const session = useAppSelector((state) => state.session)
 
-  useEffect(() => {
-    if (session.bootstrapping === 'pending') {
-      dispatch(bootstrapSession())
-    }
-  }, [session.bootstrapping])
-
-  const token = useAppSelector((state) => state.session.token)
-
-  if (!token && !isAuthRoute) {
-    //setLocation('/auth');
-  }
+  useManageSession();
 
   useEffect(() => {
     if (session?.preferences?.uiLanguage) {
@@ -126,35 +155,14 @@ const Routes = () => {
     }
   }, [session?.preferences?.uiLanguage])
 
-  useEffect(() => {
-    if (!token && session.bootstrapping === 'completed' && !session.token) {
-      dispatch(createSession())
-    }
-  }, [token, session])
-
   if (session.bootstrapping !== 'completed') {
     return (
       <Loading />
     )
   }
 
-  if (session.bootstrapping === 'completed' && !session.authenticated && authToken) {
-    dispatch(authenticateSession(authToken))
-      .then(() => {
-        const redirect = window.localStorage.getItem('redirect') ?? '/'
-        setLocation(redirect);
-      })
-
-    return <Loading />
-  }
-
   if (isAdminRoute && session.authenticated) {
     return <LazyAdmin />
-  }
-
-  if (!session?.authenticated && !isAuthRoute) {
-    window.localStorage.setItem('redirect', location);
-    setLocation('/auth');
   }
 
   return (

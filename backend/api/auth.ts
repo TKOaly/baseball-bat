@@ -184,6 +184,19 @@ export class AuthApi {
   private auhtenticateRemoteSession() {
   }
 
+  private destroySession() {
+    return route
+      .post('/api/auth/destroy-session')
+      .use(this.authService.createAuthMiddleware({
+        unauthenticated: true,
+      }))
+      .handler(async (ctx) => {
+        await this.authService.destroySession(ctx.session.token);
+
+        return ok();
+      })
+  }
+
   private sendAuthCode() {
     return route
       .post('/api/auth/request-code')
@@ -288,7 +301,8 @@ export class AuthApi {
       this.renderTemplate(),
       this.initSession(),
       this.authenticateSession(),
-      this.getUser()
+      this.getUser(),
+      this.destroySession()
     )
   }
 }

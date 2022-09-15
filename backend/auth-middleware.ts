@@ -95,23 +95,23 @@ export class AuthService {
   @Inject('redis')
   redis: RedisClientType
 
-  private async getSession<R extends RequestBase>({ req }: R): Promise<Session | null> {
+  private async getSession<R extends RequestBase>({ req }: R): Promise<[Session | null, string | null]> {
     const header = req.header('Authorization')
 
     if (!header) {
-      return null;
+      return [null, null];
     }
 
     const [authType, token] = header.split(' ');
 
     if (authType.toLowerCase() !== 'bearer') {
-      return null;
+      return [null, null];
     }
 
     const dataSerialized = await this.redis.get(`session:${token}`)
 
     if (dataSerialized === null) {
-      return null;
+      return [null, token];
     }
 
     let data
@@ -119,18 +119,22 @@ export class AuthService {
     try {
       data = JSON.parse(dataSerialized)
     } catch {
-      return null;
+      return [null, token];
     }
 
-    return { ...data, token };
+    return [{ ...data, token }, token];
   }
 
   createAuthMiddleware<O extends AuthMiddlewareOptions>(options?: O): AuthMiddleware<O> {
     return (async (ctx: RequestBase) => {
-      const session = await this.getSession(ctx);
+      let [session, token] = await this.getSession(ctx);
 
       if (session === null) {
-        return Middleware.stop(Response.unauthorized('No session'))
+        if (!options?.unauthenticated) {
+          return Middleware.stop(Response.unauthorized('No session'))
+        } else {
+          return Middleware.next({ session: { authLevel: 'unauthenticated', token } });
+        }
       }
 
       if (session.authLevel === 'unauthenticated') {
@@ -236,6 +240,10 @@ export class AuthService {
     const token = uuid();
     await this.redis.set(`session:${token}`, JSON.stringify({ authLevel: 'unauthenticated' }));
     return token
+  }
+
+  async destroySession(token: string) {
+    await this.redis.del(`session:${token}`)
   }
 
   async authenticate(token: string, payerId: string, method: string, accessLevel: AccessLevel) {

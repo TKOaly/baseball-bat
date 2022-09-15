@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit"
-import { PayerPreferences } from "../common/types"
+import { PayerPreferences, Session } from "../common/types"
 
 export const createSession = createAsyncThunk(
   'session/createSession',
@@ -11,9 +11,31 @@ export const createSession = createAsyncThunk(
   },
 )
 
+export const destroySession = createAsyncThunk(
+  'session/destroySession',
+  async (_payload: never, thunkApi): Promise<void> => {
+    const state = thunkApi.getState() as any
+    const sessionToken = state.session.token
+
+    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/destroy-session`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sessionToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (res.ok) {
+      return Promise.resolve();
+    } else {
+      return Promise.reject();
+    }
+  },
+)
+
 export const authenticateSession = createAsyncThunk(
   'session/authenticateSession',
-  async (authToken: string, thunkApi): Promise<void> => {
+  async (authToken: string, thunkApi): Promise<{ accessLevel: 'admin' | 'normal' }> => {
     const state = thunkApi.getState() as any
     const sessionToken = state.session.token
 
@@ -28,6 +50,16 @@ export const authenticateSession = createAsyncThunk(
         remote: false,
       }),
     })
+
+    if (res.ok) {
+      const data = await res.json();
+
+      return {
+        accessLevel: data.accessLevel as any,
+      };
+    } else {
+      return Promise.reject();
+    }
   }
 )
 
@@ -55,7 +87,7 @@ export const bootstrapSession = createAsyncThunk(
         authLevel: body.authLevel,
         accessLevel: body.accessLevel,
         preferences: body.preferences,
-        payerId: body.payerProfile.id.value,
+        payerId: body.payerProfile?.id?.value,
       }
     } else {
       return Promise.reject()
@@ -70,6 +102,7 @@ type SessionState = {
   bootstrapping: 'pending' | 'active' | 'completed'
   accessLevel: 'normal' | 'admin'
   preferences: null | PayerPreferences
+  creatingSession: boolean
 }
 
 const sessionSlice = createSlice({
@@ -79,7 +112,8 @@ const sessionSlice = createSlice({
     authenticated: false,
     payerId: null,
     bootstrapping: 'pending',
-    preferences: null
+    preferences: null,
+    creatingSession: false,
   } as SessionState,
   reducers: {
     resetSession: (state) => {
@@ -88,12 +122,28 @@ const sessionSlice = createSlice({
     },
   },
   extraReducers: builder => {
-    builder.addCase(createSession.fulfilled, (state, action) => {
-      state.token = action.payload
+    builder.addCase(destroySession.pending, (state) => {
+      state.token = null;
+      state.authenticated = false;
+    });
+
+    builder.addCase(createSession.pending, (state, _action) => {
+      state.token = null;
+      state.creatingSession = true;
     })
 
-    builder.addCase(authenticateSession.fulfilled, (state) => {
+    builder.addCase(createSession.fulfilled, (state, action) => {
+      state.token = action.payload
+      state.creatingSession = false
+    })
+
+    builder.addCase(createSession.rejected, (state, _action) => {
+      state.creatingSession = false
+    })
+
+    builder.addCase(authenticateSession.fulfilled, (state, action) => {
       state.authenticated = true
+      state.accessLevel = action.payload.accessLevel
     })
 
     builder.addCase(bootstrapSession.pending, (state) => {
@@ -113,6 +163,8 @@ const sessionSlice = createSlice({
     builder.addCase(bootstrapSession.rejected, (state, _action) => {
       state.bootstrapping = 'completed'
       state.authenticated = false
+      state.token = null
+      window.localStorage.removeItem('session-token')
     })
   }
 })
