@@ -107,7 +107,7 @@ export const DebtDetails = ({ params }) => {
         <div className="col-span-full">
           <div className="text-gray-500 text-xs font-bold uppercase mb-3 mt-4">Content</div>
           <TabularFieldList
-            value={debt.debtComponents.map(c => ({ ...c, amount: c.amount.value }))}
+            value={debt.debtComponents.map(c => ({ ...c, amount: c.amount.value / 100 }))}
             readOnly
             columns={[
               {
@@ -123,7 +123,6 @@ export const DebtDetails = ({ params }) => {
                 props: { readOnly: true },
               },
             ]}
-            name=""
             createNew={function() {
               throw new Error('Function not implemented.');
             }}
