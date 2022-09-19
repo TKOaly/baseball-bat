@@ -142,7 +142,12 @@ export class PaymentService {
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id
-        WHERE s.payer->>'id' = ${id.value}
+        WHERE s.payer->>'id' = ${id.value} AND (
+          SELECT every(NOT d.draft)
+          FROM payment_debt_mappings pdm
+          JOIN debt d ON d.id = pdm.debt_id
+          WHERE pdm.payment_id = p.id
+        )
       `)
   }
 
