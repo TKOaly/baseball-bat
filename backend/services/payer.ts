@@ -392,6 +392,14 @@ export class PayerService {
     return payerProfile
   }
 
+  async setProfileTkoalyIdentity(id: PayerIdentity, account: TkoalyIdentity) {
+    await this.pg.any(sql`
+      UPDATE payer_profiles
+      SET tkoaly_user_id = ${account.value}
+      WHERE id = ${id.value}
+    `)
+  }
+
   async getPaymentMethod(id: PayerIdentity) {
     const payerProfile = await this.getPayerProfileByIdentity(id)
 
@@ -614,9 +622,9 @@ export class PayerService {
 
       await tx.do(sql`
         INSERT INTO payer_emails (payer_id, email, priority, source)
-        SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'secondary' ELSE priority END AS priority, source
+        SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
         FROM payer_emails
-        WHERE id = ${secondary.value}
+        WHERE payer_id = ${secondary.value}
       `)
     })
   }

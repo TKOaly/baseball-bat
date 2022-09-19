@@ -30,7 +30,7 @@ export class PayersApi {
           id = ctx.session.payerId;
         }
 
-        if (ctx.session.accessLevel === 'normal' && ctx.routeParams.id === 'me') {
+        if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
           return unauthorized('Not authorized')
         }
 
@@ -108,7 +108,7 @@ export class PayersApi {
           id = ctx.session.payerId;
         }
 
-        if (ctx.session.accessLevel === 'normal' && ctx.routeParams.id === 'me') {
+        if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
           return unauthorized('Not authorized')
         }
 
@@ -138,8 +138,14 @@ export class PayersApi {
   private getPayerEmails() {
     return route
       .get('/:id/emails')
-      .use(this.authService.createAuthMiddleware())
+      .use(this.authService.createAuthMiddleware({
+        accessLevel: 'normal',
+      }))
       .handler(async (ctx) => {
+        if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== ctx.routeParams.id) {
+          return unauthorized()
+        }
+
         const emails = await this.payerService.getPayerEmails(internalIdentity(ctx.routeParams.id))
         return ok(emails)
       })

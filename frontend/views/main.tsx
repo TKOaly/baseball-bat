@@ -49,7 +49,8 @@ const WelcomeDialog = () => {
   const { data: user, isError: isUserError, isLoading: isUserLoading } = useGetUpstreamUserQuery('me')
   const { data: profile, isError: isPayerError, isLoading: isPayerLoading } = useGetPayerQuery('me')
   const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value, { skip: !profile })
-  const hasConfirmedMembership = useAppSelector((state) => state.session.preferences.hasConfirmedMembership)
+  const hasConfirmedMembership = useAppSelector((state) => state.session.preferences?.hasConfirmedMembership)
+  const token = useAppSelector((state) => state.session.token)
   const [updatePreferences] = useUpdatePayerPreferencesMutation()
 
   const open = !hasConfirmedMembership;
@@ -66,7 +67,7 @@ const WelcomeDialog = () => {
       return;
     }
 
-    window.location.replace(`${process.env.BACKEND_URL}/api/session/login?target=welcome`)
+    window.location.replace(`${process.env.BACKEND_URL}/api/session/login?target=welcome&token=${encodeURIComponent(token)}`)
   }
 
   return (

@@ -50,10 +50,17 @@ export class PaymentsApi {
   private getPayment() {
     return route
       .get('/:id')
-      .use(this.authService.createAuthMiddleware())
+      .use(this.authService.createAuthMiddleware({
+        accessLevel: 'normal',
+      }))
       .handler(async (ctx) => {
         const payment = await this.paymentService.getPayment(ctx.routeParams.id);
         const debts = await this.debtService.getDebtsByPayment(ctx.routeParams.id);
+
+        if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== payment?.payer_id) {
+          return unauthorized()
+        }
+
         return ok({
           payment,
           debts,
@@ -138,16 +145,11 @@ export class PaymentsApi {
   private getOwnPayments() {
     return route
       .get('/my')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ({ req }) => {
-        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token)
-        const payerProfile = await this.payerService.getPayerProfileByIdentity(tkoalyIdentity(upstreamUser.id))
-
-        if (!payerProfile) {
-          throw new Error('Failed to get payer profile')
-        }
-
-        const payments = await this.paymentService.getPayerPayments(payerProfile.id)
+      .use(this.authService.createAuthMiddleware({
+        accessLevel: 'normal',
+      }))
+      .handler(async ({ session }) => {
+        const payments = await this.paymentService.getPayerPayments(internalIdentity(session.payerId))
         return ok(payments)
       })
   }

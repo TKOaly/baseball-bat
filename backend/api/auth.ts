@@ -91,12 +91,24 @@ export class AuthApi {
   private getUser() {
     return route
       .get('/api/users/:id')
-      .use(this.authService.createAuthMiddleware())
+      .use(this.authService.createAuthMiddleware({
+        accessLevel: 'normal'
+      }))
       .handler(async (ctx) => {
         let userId: TkoalyIdentity | 'me'
 
+        if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
+          return unauthorized()
+        }
+
         if (ctx.routeParams.id === 'me') {
-          userId = 'me'
+          const profile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.session.payerId))
+
+          if (profile && profile.tkoalyUserId) {
+            userId = profile?.tkoalyUserId
+          } else {
+            return notFound()
+          }
         } else {
           try {
             userId = tkoalyIdentity(parseInt(ctx.routeParams.id))
@@ -121,6 +133,31 @@ export class AuthApi {
       .handler(async () => {
         const token = await this.authService.createSession();
         return ok({ token })
+      })
+  }
+
+  private mergeSession() {
+    return route
+      .get('/api/auth/merge')
+      .use(this.authService.createAuthMiddleware({
+        accessLevel: 'normal',
+        allowQueryToken: true,
+      }))
+      .handler(async ({ req, session }) => {
+        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token)
+        const associatedProfile = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(upstreamUser.id))
+
+        if (associatedProfile) {
+          await this.payerService.mergeProfiles(associatedProfile.id, internalIdentity(session.payerId))
+        } else {
+          await this.payerService.setProfileTkoalyIdentity(internalIdentity(session.payerId), tkoalyIdentity(upstreamUser.id))
+        }
+
+        await this.payerService.updatePayerPreferences(internalIdentity(session.payerId), {
+          hasConfirmedMembership: true,
+        })
+
+        return redirect(302, `${this.config.appUrl}`)
       })
   }
 
@@ -301,7 +338,8 @@ export class AuthApi {
       this.initSession(),
       this.authenticateSession(),
       this.getUser(),
-      this.destroySession()
+      this.destroySession(),
+      this.mergeSession()
     )
   }
 }

@@ -77,6 +77,7 @@ const verify = (redis: RedisClientType) => (token: string): TaskEither.TaskEithe
 type AuthMiddlewareOptions = {
   unauthenticated?: boolean
   accessLevel?: AccessLevel
+  allowQueryToken?: boolean
 }
 
 const filterSession: (<O extends AuthMiddlewareOptions>(options?: O) => (session: Session) => Either.Either<string, AuthMiddlewareSession<O>>) = <O extends AuthMiddlewareOptions>(options?: O) => flow(
@@ -103,17 +104,39 @@ export class AuthService {
   @Inject(() => PayerService)
   payerService: PayerService
 
-  private async getSession<R extends RequestBase>({ req }: R): Promise<[Session | null, string | null]> {
-    const header = req.header('Authorization')
+  private async getSession<R extends RequestBase>({ req }: R, allowQueryToken: boolean): Promise<[Session | null, string | null]> {
+    const getTokenFromHeader = () => {
+      const header = req.header('Authorization')
 
-    if (!header) {
-      return [null, null];
+      if (!header) {
+        return null;
+      }
+
+      const [authType, token] = header.split(' ');
+
+      if (authType.toLowerCase() !== 'bearer') {
+        return null;
+      }
+
+      return token;
     }
 
-    const [authType, token] = header.split(' ');
+    const getTokenFromQuery = () => {
+      if (typeof req.query.token === 'string') {
+        return req.query.token;
+      } else {
+        return null;
+      }
+    }
 
-    if (authType.toLowerCase() !== 'bearer') {
-      return [null, null];
+    let token = getTokenFromHeader()
+
+    if (!token && allowQueryToken) {
+      token = getTokenFromQuery()
+    }
+
+    if (!token) {
+      return [null, null]
     }
 
     const dataSerialized = await this.redis.get(`session:${token}`)
@@ -135,7 +158,7 @@ export class AuthService {
 
   createAuthMiddleware<O extends AuthMiddlewareOptions>(options?: O): AuthMiddleware<O> {
     return (async (ctx: RequestBase) => {
-      let [session, token] = await this.getSession(ctx);
+      let [session, token] = await this.getSession(ctx, options?.allowQueryToken === true);
 
       if (session === null) {
         if (!options?.unauthenticated) {
