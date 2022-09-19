@@ -2,8 +2,11 @@
   "translation": {
     "welcomeHeader": "Hei, {{name}}! 👋",
     "welcomeSummary": "Sinulla on yhteensä <1>{{ number }}</1> maksamatonta maksua, joiden kokonaissumma on <3>{{ total }}</3>.",
+    "welcomeSummaryNoDebts": "Olet maksanut kaikki velkasi! Mahtavaa! 🎉",
     "debtListInfoline": "Luotu {{ created }}, erääntyy {{ dueDate }}",
     "unpaidDebts": "Maksamattomat velat",
+    "openPayments": "Avoimet maksut",
+    "noOpenPayments": "Ei avoimia maksuja",
     "noUnpaidDebts": "Ei maksamattomia velkoja",
     "paidDebts": "Maksetut velat",
     "noPaidDebts": "Ei maksettuja velkoja",

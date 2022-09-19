@@ -2,8 +2,11 @@
   "translation": {
     "welcomeHeader": "Hi, {{name}}! 👋",
     "welcomeSummary": "You have <1>{{ number }}</1> unpaid debts, which are in total worth <3>{{ total }}</3>.",
+    "welcomeSummaryNoDebts": "You have no unpaid debts to TKO-äly ry! Hooray! 🎉",
     "debtListInfoline": "Created {{ created }}, due {{ dueDate }}",
     "unpaidDebts": "Unpaid debts",
+    "openPayments": "Open payments",
+    "noOpenPayments": "No open payments",
     "noUnpaidDebts": "No unpaid debts",
     "paidDebts": "Paid debts",
     "noPaidDebts": "No paid debts",

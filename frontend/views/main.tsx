@@ -187,12 +187,19 @@ export const Main = (props: Props) => {
         {t('welcomeHeader', { name: profile?.name })}
       </h3>
       <p className="mt-3">
-        <Trans i18nKey="welcomeSummary">
-          You have <span className="font-bold">{{ number: unpaidDepts.length }}</span> unpaid debts, which have a combined value of <span className="font-bold">{{ total: formatEuro(totalEuros) }}</span>.
-        </Trans>
+        {unpaidDepts.length > 0 && (
+          <Trans i18nKey="welcomeSummary">
+            You have <span className="font-bold">{{ number: unpaidDepts.length }}</span> unpaid debts, which have a combined value of <span className="font-bold">{{ total: formatEuro(totalEuros) }}</span>.
+          </Trans>
+        )}
+        {unpaidDepts.length === 0 && (
+          t('welcomeSummaryNoDebts')
+        )}
       </p>
 
-      <Button onClick={handlePayAll} className="mt-3">{t('payAllButton')}</Button>
+      {unpaidDepts.length > 0 && (
+        <Button onClick={handlePayAll} className="mt-3">{t('payAllButton')}</Button>
+      )}
 
       <WelcomeDialog />
 
@@ -226,6 +233,13 @@ export const Main = (props: Props) => {
         </div>
       ))}
 
+      {unpaidDepts.length === 0 && (
+        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
+          <Info />
+          {t('noUnpaidDebts')}
+        </div>
+      )}
+
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
         {t('openPayments')}
       </h3>
@@ -247,10 +261,10 @@ export const Main = (props: Props) => {
         </div>
       ))}
 
-      {unpaidDepts.length === 0 && (
+      {(payments ?? []).length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
-          {t('noUnpaidDebts')}
+          {t('noOpenPayments')}
         </div>
       )}
 
