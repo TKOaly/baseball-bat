@@ -551,6 +551,7 @@ export class DebtApi {
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 debtComponents,
+                credited: false,
               }
 
               if (details.components && details.components.length > 0) {
@@ -628,6 +629,17 @@ export class DebtApi {
       })
   }
 
+  private creditDebt() {
+    return route
+      .post('/:id/credit')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        await this.debtService.creditDebt(ctx.routeParams.id);
+
+        return ok()
+      })
+  }
+
   public router(): Router {
     return router(
       this.createDebtComponent(),
@@ -638,7 +650,8 @@ export class DebtApi {
       this.publishDebts(),
       this.getPaymentsContainingDebt(),
       this.massCreateDebts(),
-      this.deleteDebt()
+      this.deleteDebt(),
+      this.creditDebt()
     )
   }
 }

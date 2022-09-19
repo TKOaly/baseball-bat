@@ -114,7 +114,7 @@ export class PayersApi {
 
         const includeDrafts = ctx.session.accessLevel === 'admin' && ctx.req.query.includeDrafts === 'true'
 
-        const debts = await this.debtService.getDebtsByPayer(internalIdentity(id), includeDrafts);
+        const debts = await this.debtService.getDebtsByPayer(internalIdentity(id), { includeDrafts, includeCredited: true });
 
         return ok(debts);
       })

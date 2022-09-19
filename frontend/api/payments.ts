@@ -26,6 +26,13 @@ const paymentsApi = rtkApi.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
+    }),
+
+    creditPayment: builder.mutation<void, string>({
+      query: (id) => ({
+        method: 'POST',
+        url: `/payments/${id}/credit`,
+      }),
     })
   })
 });
@@ -36,4 +43,5 @@ export const {
   useGetPaymentQuery,
   useGetPaymentsByDebtQuery,
   useCreateInvoiceMutation,
+  useCreditPaymentMutation,
 } = paymentsApi

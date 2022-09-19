@@ -154,12 +154,23 @@ export class PaymentsApi {
       })
   }
 
+  private creditPayment() {
+    return route
+      .post('/:id/credit')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        await this.paymentService.creditPayment(ctx.routeParams.id)
+        return ok()
+      })
+  }
+
   router() {
     return router(
       this.getPayments(),
       this.getOwnPayments(),
       this.createInvoice(),
-      this.getPayment()
+      this.getPayment(),
+      this.creditPayment()
     )
   }
 }

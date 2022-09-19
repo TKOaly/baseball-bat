@@ -33,12 +33,23 @@ export const DebtList = (props: Props) => {
         },
         {
           name: 'Status',
-          getValue: (row) => row.draft ? 'Draft' : 'Unpaid',
+          getValue: (row) => {
+            if (row.credited) {
+              return 'Credited';
+            }
+
+            if (row.draft) {
+              return 'Draft'
+            }
+
+            return 'Unpaid'
+          },
           render: (value) => {
             return {
-              'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Draft</span>,
+              'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white">Draft</span>,
               'Unpaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Unpaid</span>,
               'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white">Paid</span>,
+              'Credited': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Credited</span>,
             }[value]
           },
         },

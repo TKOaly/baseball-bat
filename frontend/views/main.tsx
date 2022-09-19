@@ -82,7 +82,7 @@ const WelcomeDialog = () => {
 
       <h1 className="text-center mb-4 text-2xl text-gray-800">Welcome!</h1>
 
-      <div className="text-center w-80 mx-auto text-center">
+      <div className="w-80 mx-auto text-center">
         {stage === 0 && (
           <>
             <p className="mb-2">
@@ -174,8 +174,8 @@ export const Main = (props: Props) => {
     setLocation('/payment/new')
   }
 
-  const unpaidDepts = (debts ?? []).filter(p => p.status === 'unpaid');
-  const paidDepts = (debts ?? []).filter(p => p.status === 'paid');
+  const unpaidDepts = (debts ?? []).filter(p => p.status === 'unpaid' && !p.credited);
+  const paidDepts = (debts ?? []).filter(p => p.status === 'paid' || p.credited);
 
   const totalEuros = unpaidDepts
     .flatMap(debt => debt.debtComponents.map(dc => dc.amount))
@@ -244,7 +244,7 @@ export const Main = (props: Props) => {
         {t('openPayments')}
       </h3>
 
-      {(payments ?? []).map((p) => (
+      {(payments ?? []).filter(p => !p.credited).map((p) => (
         <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer">
           <div className="flex items-center">
             <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
@@ -261,7 +261,7 @@ export const Main = (props: Props) => {
         </div>
       ))}
 
-      {(payments ?? []).length === 0 && (
+      {(payments ?? []).filter(p => !p.credited).length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
           {t('noOpenPayments')}

@@ -92,7 +92,18 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Debt', id: 'LIST' },
         { type: 'Debt', id },
       ],
-    })
+    }),
+
+    creditDebt: builder.mutation<void, string>({
+      query: (id) => ({
+        method: 'POST',
+        url: `/debt/${id}/credit`,
+      }),
+      invalidatesTags: (_, __, id) => [
+        { type: 'Debt', id: 'LIST' },
+        { type: 'Debt', id },
+      ],
+    }),
   })
 });
 
@@ -107,7 +118,8 @@ export const {
   usePublishDebtsMutation,
   useMassCreateDebtsMutation,
   useGetDebtsByPaymentQuery,
-  useDeleteDebtMutation
+  useDeleteDebtMutation,
+  useCreditDebtMutation,
 } = debtApi
 
 export default debtApi

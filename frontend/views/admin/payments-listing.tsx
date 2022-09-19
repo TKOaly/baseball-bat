@@ -9,13 +9,20 @@ export const PaymentsListing = () => {
   return (
     <>
       <h1 className="text-2xl mt-10 mb-5">Payments</h1>
+
       <TableView
         selectable
         rows={(payments ?? []).map(p => ({ ...p, key: p.id })) ?? []}
         onRowClick={(row) => setLocation(`/admin/payments/${row.id}`)}
         columns={[
           {
-            getValue: (row) => row.status,
+            getValue: (row) => {
+              if (row.credited) {
+                return 'Credited'
+              }
+
+              return row.status;
+            },
             name: 'Status',
           },
           {

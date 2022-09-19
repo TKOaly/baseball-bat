@@ -18,6 +18,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
   dueDate: debt.due_date,
   debtCenterId: debt.debt_center_id,
   debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
+  credited: debt.credited,
   debtComponents: debt.debt_components
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
     : [],
@@ -68,7 +69,7 @@ export class DebtService {
         WHERE debt.id = ${id}
         GROUP BY debt.id, payer_profiles.*, debt_center.*
       `)
-      .then(dbDebt => (console.log(dbDebt), dbDebt && formatDebt(dbDebt)))
+      .then(dbDebt => dbDebt && formatDebt(dbDebt))
   }
 
   async getDebtsByCenter(id: string): Promise<Debt[]> {
@@ -208,7 +209,7 @@ export class DebtService {
 
   }
 
-  async getDebtsByPayer(id: InternalIdentity, includeDrafts = false) {
+  async getDebtsByPayer(id: InternalIdentity, { includeDrafts = false, includeCredited = false } = {}) {
     const result = await this.pg.any<DbDebt>(sql`
       SELECT
         debt.*,
@@ -220,7 +221,7 @@ export class DebtService {
       JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR NOT debt.draft)
+      WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR NOT debt.draft) AND (${includeDrafts} OR NOT debt.credited)
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);
 
@@ -256,6 +257,23 @@ export class DebtService {
     await this.pg.tx(async (tx) => {
       await tx.do(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`)
       await tx.do(sql`DELETE FROM debt WHERE id = ${id}`)
+    })
+  }
+
+  async creditDebt(id: string) {
+    const debt = await this.getDebt(id)
+
+    if (!debt) {
+      throw new Error('Debt not found')
+    }
+
+    if (debt.draft) {
+      throw new Error('Cannot credit unpublished debts')
+    }
+
+    await this.pg.tx(async (tx) => {
+      await tx.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `)
+      await tx.do(sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`)
     })
   }
 }

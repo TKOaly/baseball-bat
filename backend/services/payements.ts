@@ -81,6 +81,7 @@ type DbPayment = {
   message: string
   created_at: Date
   payment_number: number
+  credited: boolean
 }
 
 type NewPayment<T extends PaymentType> = {
@@ -291,5 +292,19 @@ export class PaymentService {
 
       return createdPayment
     })
+  }
+
+  async creditPayment(id: string) {
+    const payment = await this.getPayment(id)
+
+    if (!payment) {
+      throw new Error('Payment not found')
+    }
+
+    await this.pg.any(sql`
+      UPDATE payments
+      SET credited = true
+      WHERE id = ${id}
+    `)
   }
 }

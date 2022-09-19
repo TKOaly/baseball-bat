@@ -224,11 +224,8 @@ export type DbPayment = {
   updated_at: Date
   payment_number: number
   data: unknown
+  credited: boolean
 }
-
-/*export type Payment = Omit<FromDbType<DbPayment>, 'payer_id'> & {
-  payerId: InternalIdentity
-}*/
 
 export type DbLineItem = {
   id: string
@@ -290,6 +287,7 @@ export type DbDebt = {
   created_at: Date
   updated_at: Date
   status: string
+  credited: boolean
 }
 
 export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
@@ -384,6 +382,7 @@ export type Payment = {
   title: string,
   created_at: Date,
   balance: number,
+  credited: boolean
   status: 'paid' | 'canceled' | 'mispaid' | 'unpaid',
   updated_at: Date
 }

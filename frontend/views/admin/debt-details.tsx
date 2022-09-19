@@ -1,9 +1,9 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useDeleteDebtMutation, useGetDebtQuery } from '../../api/debt'
+import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, usePublishDebtsMutation } from '../../api/debt'
 import { ExternalLink } from 'react-feather';
 import { TabularFieldList } from '../../components/tabular-field-list';
 import { TextField } from '../../components/text-field';
-import { SecondaryButton } from '../../components/button'
+import { Button, SecondaryButton } from '../../components/button'
 import { EuroField } from '../../components/euro-field';
 import { useLocation } from 'wouter';
 import { euro, formatEuro, sumEuroValues } from '../../../common/currency';
@@ -12,7 +12,9 @@ import { format } from 'date-fns';
 export const DebtDetails = ({ params }) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id)
   const [deleteDebt] = useDeleteDebtMutation()
+  const [creditDebt] = useCreditDebtMutation()
   const [, setLocation] = useLocation()
+  const [publishDebts] = usePublishDebtsMutation()
 
   if (isLoading) {
     return <div>Loading...</div>
@@ -20,6 +22,33 @@ export const DebtDetails = ({ params }) => {
 
   const handleDelete = () => {
     deleteDebt(params.id)
+  }
+
+  const handleCredit = () => {
+    creditDebt(params.id)
+  }
+
+  const handlePublish = () => {
+    publishDebts([params.id])
+  }
+
+  let statusBadge = {
+    text: 'Unpaid',
+    color: 'bg-gray-300',
+  }
+
+  if (debt.draft) {
+    statusBadge = {
+      text: 'Draft',
+      color: 'bg-gray-300',
+    }
+  }
+
+  if (debt.credited) {
+    statusBadge = {
+      text: 'Credited',
+      color: 'bg-blue-500 text-white',
+    }
   }
 
   return (
@@ -35,11 +64,15 @@ export const DebtDetails = ({ params }) => {
           ]}
         />
       </h1>
-      {
-        debt?.draft
-          ? <SecondaryButton onClick={handleDelete}>Delete</SecondaryButton>
-          : <SecondaryButton>Credit</SecondaryButton>
-      }
+      <div className="flex gap-2">
+        {debt?.draft === true && (
+          <Button onClick={handlePublish}>Publish</Button>
+        )}
+        {debt?.draft && <SecondaryButton onClick={handleDelete}>Delete</SecondaryButton>}
+        {debt?.draft === false && debt?.credited === false && (
+          <SecondaryButton onClick={handleCredit}>Credit</SecondaryButton>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-x-8">
         <div className="my-4">
           <div className="text-gray-500 text-xs font-bold uppercase">Name</div>
@@ -60,6 +93,12 @@ export const DebtDetails = ({ params }) => {
         <div className="my-4">
           <div className="text-gray-500 text-xs font-bold uppercase">Due Date</div>
           <div className="mt-1">{format(new Date(debt.dueDate), 'dd.MM.yyyy')}</div>
+        </div>
+        <div className="my-4">
+          <div className="text-gray-500 text-xs font-bold uppercase">Status</div>
+          <div className="mt-1">
+            <div className={`py-1 px-2.5 text-sm inline-block rounded-full ${statusBadge.color}`}>{statusBadge.text}</div>
+          </div>
         </div>
         <div className="my-4 col-span-full">
           <div className="text-gray-500 text-xs font-bold uppercase">Description</div>
