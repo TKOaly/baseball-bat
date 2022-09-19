@@ -1,8 +1,9 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useGetDebtQuery } from '../../api/debt'
+import { useDeleteDebtMutation, useGetDebtQuery } from '../../api/debt'
 import { ExternalLink } from 'react-feather';
 import { TabularFieldList } from '../../components/tabular-field-list';
 import { TextField } from '../../components/text-field';
+import { SecondaryButton } from '../../components/button'
 import { EuroField } from '../../components/euro-field';
 import { useLocation } from 'wouter';
 import { euro, formatEuro, sumEuroValues } from '../../../common/currency';
@@ -10,10 +11,15 @@ import { format } from 'date-fns';
 
 export const DebtDetails = ({ params }) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id)
+  const [deleteDebt] = useDeleteDebtMutation()
   const [, setLocation] = useLocation()
 
   if (isLoading) {
     return <div>Loading...</div>
+  }
+
+  const handleDelete = () => {
+    deleteDebt(params.id)
   }
 
   return (
@@ -29,6 +35,11 @@ export const DebtDetails = ({ params }) => {
           ]}
         />
       </h1>
+      {
+        debt?.draft
+          ? <SecondaryButton onClick={handleDelete}>Delete</SecondaryButton>
+          : <SecondaryButton>Credit</SecondaryButton>
+      }
       <div className="grid grid-cols-2 gap-x-8">
         <div className="my-4">
           <div className="text-gray-500 text-xs font-bold uppercase">Name</div>

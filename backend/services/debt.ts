@@ -241,4 +241,21 @@ export class DebtService {
 
     return cents(result.total)
   }
+
+  async deleteDebt(id: string) {
+    const debt = await this.getDebt(id)
+
+    if (!debt) {
+      throw new Error('Debt not found')
+    }
+
+    if (!debt.draft) {
+      throw new Error('Cannot delete published debts')
+    }
+
+    await this.pg.tx(async (tx) => {
+      await tx.do(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`)
+      await tx.do(sql`DELETE FROM debt WHERE id = ${id}`)
+    })
+  }
 }

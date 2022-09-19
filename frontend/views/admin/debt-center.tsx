@@ -1,13 +1,14 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
 import { useGetDebtCenterQuery } from '../../api/debt-centers'
 import { ListView } from '../../components/list-view';
+import { DebtList } from '../../components/debt-list'
 import { Link, useLocation } from 'wouter';
 import { TableView } from '../../components/table-view'
 import { tw } from '../../tailwind'
 import { TabularFieldList } from '../../components/tabular-field-list';
 import { TextField } from '../../components/text-field';
 import { EuroField } from '../../components/euro-field';
-import { useGetDebtComponentsByCenterQuery, useGetDebtsByCenterQuery, usePublishDebtsMutation } from '../../api/debt';
+import { useDeleteDebtMutation, useGetDebtComponentsByCenterQuery, useGetDebtsByCenterQuery, usePublishDebtsMutation } from '../../api/debt';
 import { Circle, ExternalLink, MoreVertical, Square, TrendingDown, TrendingUp } from 'react-feather';
 import { useState } from 'react';
 import { FilledDisc } from '../../components/filled-disc';
@@ -32,7 +33,6 @@ export const DebtCenterDetails = ({ id }) => {
   const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id)
   const { data: components } = useGetDebtComponentsByCenterQuery(id)
   const { data: debts } = useGetDebtsByCenterQuery(id)
-  const [publishDebts] = usePublishDebtsMutation()
 
   if (isLoading || !debtCenter) {
     return (
@@ -96,57 +96,7 @@ export const DebtCenterDetails = ({ id }) => {
           Assigned debts
         </div>
         <div className="my-4 col-span-full">
-          <TableView
-            onRowClick={() => { }}
-            selectable
-            rows={(debts ?? []).map(d => ({ ...d, key: d.id })) ?? []}
-            columns={[
-              { name: 'Name', getValue: 'name' },
-              {
-                name: 'Payer',
-                getValue: (row) => row.payer.name,
-                render: (_value, row) => (
-                  <Link onClick={(e) => e.stopPropagation()} to={`/admin/payers/${row.payer.id.value}`} className="flex gap-1 items-center">{row.payer.name} <ExternalLink className="text-blue-500 h-4" /></Link>
-                ),
-              },
-              {
-                name: 'Status',
-                getValue: (row) => row.draft ? 'Draft' : 'Unpaid',
-                render: (value) => {
-                  return {
-                    'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Draft</span>,
-                    'Unpaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Unpaid</span>,
-                    'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white">Paid</span>,
-                  }[value]
-                },
-              },
-              {
-                name: 'Labels',
-                getValue: () => null,
-                render: () => (
-                  <>
-                    {Math.random() > 0.5 && <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-2">External</span>}
-                    {Math.random() > 0.5 && <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Manual</span>}
-                  </>
-                ),
-              }
-            ]}
-            actions={[
-              {
-                key: 'delete',
-                text: 'Delete',
-                disabled: (row) => row.payer.name.indexOf('Juho') > -1,
-                onSelect: () => { },
-              },
-              {
-                key: 'publish',
-                text: 'Publish',
-                onSelect: async (rows) => {
-                  await publishDebts(rows.map(r => r.id))
-                },
-              }
-            ]}
-          />
+          <DebtList debts={debts ?? []} />
         </div>
       </div>
     </div>

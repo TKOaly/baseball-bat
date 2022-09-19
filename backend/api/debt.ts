@@ -617,6 +617,17 @@ export class DebtApi {
       })
   }
 
+  private deleteDebt() {
+    return route
+      .delete('/:id')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        await this.debtService.deleteDebt(ctx.routeParams.id);
+
+        return ok()
+      })
+  }
+
   public router(): Router {
     return router(
       this.createDebtComponent(),
@@ -626,7 +637,8 @@ export class DebtApi {
       this.getDebts(),
       this.publishDebts(),
       this.getPaymentsContainingDebt(),
-      this.massCreateDebts()
+      this.massCreateDebts(),
+      this.deleteDebt()
     )
   }
 }
