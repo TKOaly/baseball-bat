@@ -53,7 +53,7 @@ const WelcomeDialog = () => {
   const token = useAppSelector((state) => state.session.token)
   const [updatePreferences] = useUpdatePayerPreferencesMutation()
 
-  const open = !hasConfirmedMembership;
+  const open = !isUserLoading && !(user || hasConfirmedMembership);
 
   const handleMembershipConfirmation = (isMember: boolean) => {
     if (!isMember) {

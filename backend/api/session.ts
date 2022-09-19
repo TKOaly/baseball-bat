@@ -53,13 +53,13 @@ export class SessionApi {
           target: ctx.req.query.target,
         }))
 
-        let redirectUrl = ''
+        let redirectUrl = null
 
         if (ctx.req.query.target === 'welcome' && typeof ctx.req.query.token === 'string') {
           redirectUrl = `${this.config.appUrl}/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`
         }
 
-        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}&loginRedirect=${encodeURIComponent(redirectUrl)}`)
+        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}${redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''}`)
       })
   }
 
