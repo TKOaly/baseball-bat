@@ -16,6 +16,8 @@ import { lookup } from 'dns'
 import { range, reduce, map } from 'fp-ts/lib/NonEmptyArray'
 import { randomElem } from 'fp-ts/lib/Random'
 import { split } from 'fp-ts/lib/string'
+import { UsersService } from './services/users'
+import { PayerService } from './services/payer'
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
   (O['unauthenticated'] extends true ? Session : Session & { authLevel: 'authenticated' }) & (O['accessLevel'] extends 'normal' ? {} : { accessLevel: 'admin' })
@@ -94,6 +96,12 @@ export class AuthService {
 
   @Inject('redis')
   redis: RedisClientType
+
+  @Inject(() => UsersService)
+  usersService: UsersService
+
+  @Inject(() => PayerService)
+  payerService: PayerService
 
   private async getSession<R extends RequestBase>({ req }: R): Promise<[Session | null, string | null]> {
     const header = req.header('Authorization')
@@ -246,10 +254,32 @@ export class AuthService {
     await this.redis.del(`session:${token}`)
   }
 
-  async authenticate(token: string, payerId: string, method: string, accessLevel: AccessLevel) {
+  async authenticate(token: string, payerId: InternalIdentity, method: string, userServiceToken: string, pAccessLevel?: AccessLevel) {
+    let accessLevel = pAccessLevel
+
+    if (accessLevel === undefined) {
+      const profile = await this.payerService.getPayerProfileByIdentity(payerId)
+
+      if (!profile) {
+        throw new Error('Profile does not exist')
+      }
+
+      if (profile.tkoalyUserId) {
+        const user = await this.usersService.getUpstreamUserById(profile.tkoalyUserId, userServiceToken)
+
+        if (user && user.role === 'yllapitaja') {
+          accessLevel = 'admin'
+        } else {
+          accessLevel = 'normal'
+        }
+      } else {
+        accessLevel = 'normal'
+      }
+    }
+
     const session = {
       authLevel: 'authenticated',
-      payerId,
+      payerId: payerId.value,
       authMethod: method,
       accessLevel,
     };

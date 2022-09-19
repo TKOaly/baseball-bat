@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid'
 import Stripe from 'stripe'
 import { Inject, Service } from 'typedi'
 import { Config } from '../config'
-import { emailIdentity, internalIdentity, tkoalyIdentity } from '../../common/types'
+import { emailIdentity, internalIdentity, TkoalyIdentity, tkoalyIdentity } from '../../common/types'
 import { validateBody } from '../validate-middleware'
 import * as t from 'io-ts'
 import { randomElem } from 'fp-ts/lib/Random'
@@ -18,6 +18,7 @@ import { flow, pipe } from 'fp-ts/lib/function'
 import { map, range, reduce } from 'fp-ts/lib/NonEmptyArray'
 import { commandOptions, RedisClientType } from 'redis'
 import { AccessLevel, AuthService } from '../auth-middleware'
+import { MagicLinkService } from '../services/magic-links'
 
 const sendAuthCodeBody = t.type({
   email: t.string
@@ -32,6 +33,9 @@ const validateAuthCodeBody = t.type({
 export class AuthApi {
   @Inject(() => UsersService)
   usersService: UsersService
+
+  @Inject(() => MagicLinkService)
+  magicLinkService: MagicLinkService
 
   @Inject(() => PayerService)
   payerService: PayerService
@@ -89,13 +93,13 @@ export class AuthApi {
       .get('/api/users/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        let userId: number | 'me'
+        let userId: TkoalyIdentity | 'me'
 
         if (ctx.routeParams.id === 'me') {
           userId = 'me'
         } else {
           try {
-            userId = parseInt(ctx.routeParams.id)
+            userId = tkoalyIdentity(parseInt(ctx.routeParams.id))
           } catch {
             return notFound()
           }
@@ -152,16 +156,6 @@ export class AuthApi {
           return unauthorized()
         }
 
-        let accessLevel: AccessLevel = 'normal'
-
-        if (payerProfile.tkoalyUserId) {
-          const user = await this.usersService.getUpstreamUserById(payerProfile.tkoalyUserId.value, req.cookies.token)
-
-          if (user.role === 'yllapitaja') {
-            accessLevel = 'admin'
-          }
-        }
-
         let sessionToken: string | null = session.token
 
         if (body.remote) {
@@ -173,11 +167,11 @@ export class AuthApi {
           return badRequest()
         }
 
-        await this.authService.authenticate(sessionToken, payerId.value, 'email', accessLevel)
+        await this.authService.authenticate(sessionToken, payerId, 'email', req.cookies.token)
 
         console.log(`Authenticated session ${sessionToken} with auth token ${body.id}`)
 
-        return ok({ accessLevel });
+        return ok();
       })
   }
 
@@ -219,7 +213,12 @@ export class AuthApi {
           template: 'auth-code',
           payload: {
             code,
-            link: `${this.config.appUrl}/api/auth/confirm?id=${token}&secret=${secret}`
+            link: await this.magicLinkService.createMagicLink({
+              path: `/api/auth/confirm?id=${token}&secret=${secret}`,
+              email: body.email,
+              authenticate: true,
+              oneTime: true,
+            }),
           },
         })
 

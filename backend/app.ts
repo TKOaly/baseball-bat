@@ -22,6 +22,7 @@ import { PayersApi } from './api/payers'
 import { EmailApi } from './api/email'
 import * as redis from 'redis'
 import { createEmailDispatcherTransport, createSMTPTransport, EmailService, IEmailTransport } from './services/email'
+import { MagicLinksApi } from './api/magic-links'
 
 const PORT = process.env.PORT ?? '5000'
 const config = Config.get()
@@ -36,7 +37,7 @@ const helmetConfig: HelmetOptions = {
           : ["'self'", '*.stripe.com'],
       connectSrc:
         process.env.NODE_ENV !== 'production'
-          ? ["'self'", 'ws://localhost:1234']
+          ? ["'self'", 'ws://bb-bat.tko-aly.localhost:1234', 'ws://localhost:1234']
           : ["'self'"],
       frameAncestors: ['*.stripe.com'],
     },
@@ -131,6 +132,10 @@ if (process.env.NODE_ENV !== 'production') {
     express.static('web-dist/index.html')
   )
   app.use(
+    '/magic/invalid',
+    express.static('web-dist/index.html')
+  )
+  app.use(
     '/payment/:id',
     express.static('web-dist/index.html')
   )
@@ -152,6 +157,8 @@ if (process.env.NODE_ENV !== 'production') {
   )
   app.use(express.static('web-dist'))
 }
+
+app.use('/', Container.get(MagicLinksApi).router().handler())
 
 app.listen(PORT, () => console.log(`backend istening on port ${PORT} 🚀`))
 

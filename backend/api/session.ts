@@ -5,6 +5,7 @@ import { internalIdentity } from '../../common/types'
 import { badRequest, ok, redirect } from 'typera-express/response'
 import { Inject, Service } from 'typedi'
 import { Config } from '../config'
+import base64url from 'base64url'
 
 @Service()
 export class SessionApi {
@@ -47,9 +48,13 @@ export class SessionApi {
   login() {
     return route
       .get('/login')
-      .handler(() =>
-        redirect(302, `${this.config.userApiUrl}?serviceIdentifier=${this.config.userApiServiceId}`)
-      )
+      .handler((ctx) => {
+        const payload = base64url.encode(JSON.stringify({
+          target: ctx.req.query.target,
+        }))
+
+        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}`)
+      })
   }
 
   getSetupIntent() {

@@ -35,7 +35,7 @@ export const destroySession = createAsyncThunk(
 
 export const authenticateSession = createAsyncThunk(
   'session/authenticateSession',
-  async (authToken: string, thunkApi): Promise<{ accessLevel: 'admin' | 'normal' }> => {
+  async (authToken: string, thunkApi): Promise<{ accessLevel: 'normal' | 'admin' }> => {
     const state = thunkApi.getState() as any
     const sessionToken = state.session.token
 
@@ -52,11 +52,15 @@ export const authenticateSession = createAsyncThunk(
     })
 
     if (res.ok) {
-      const data = await res.json();
+      const session_res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-      return {
-        accessLevel: data.accessLevel as any,
-      };
+      return await session_res.json();
     } else {
       return Promise.reject();
     }

@@ -320,6 +320,7 @@ export class DebtApi {
               createdAt: new Date(),
               updatedAt: new Date(),
               stripeCustomerId: '',
+              disabled: false,
             }
           } else {
             return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token)
@@ -335,6 +336,7 @@ export class DebtApi {
               createdAt: new Date(),
               updatedAt: new Date(),
               stripeCustomerId: '',
+              disabled: false,
             }
           } else {
             let payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email))

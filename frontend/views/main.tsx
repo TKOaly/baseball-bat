@@ -12,7 +12,7 @@ import { Loading } from '../components/loading'
 import { PaymentTab } from '../components/payment-tab'
 import { useEvents } from '../hooks'
 import paymentPoolSlice from '../state/payment-pool'
-import { useGetPayerDebtsQuery, useGetPayerQuery } from '../api/payers'
+import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useUpdatePayerPreferencesMutation } from '../api/payers'
 import { cents, formatEuro, sumEuroValues } from '../../common/currency'
 import { format, isPast } from 'date-fns'
 import { Button, SecondaryButton } from '../components/button'
@@ -42,42 +42,75 @@ type Props = {
   session: Session
 }
 
-const WelcomeDialog = ({ open }) => {
+const WelcomeDialog = () => {
   const [stage, setStage] = useState(0)
   const [membership, setMembership] = useState(null)
   const [name, setName] = useState('')
   const { data: user, isError: isUserError, isLoading: isUserLoading } = useGetUpstreamUserQuery('me')
   const { data: profile, isError: isPayerError, isLoading: isPayerLoading } = useGetPayerQuery('me')
+  const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value, { skip: !profile })
+  const hasConfirmedMembership = useAppSelector((state) => state.session.preferences.hasConfirmedMembership)
+  const [updatePreferences] = useUpdatePayerPreferencesMutation()
+
+  const open = !hasConfirmedMembership;
+
+  const handleMembershipConfirmation = (isMember: boolean) => {
+    if (!isMember) {
+      updatePreferences({
+        payerId: profile?.id?.value,
+        preferences: {
+          hasConfirmedMembership: true,
+        },
+      })
+
+      return;
+    }
+
+    window.location.replace(`${process.env.BACKEND_URL}/api/session/login?target=welcome`)
+  }
 
   return (
     <Dialog open={open} noClose>
-      <div className="w-[25em] mx-auto my-5">
+      {/*<div className="w-[25em] mx-auto my-5">
         <Stepper
           stages={['Welcome', 'Membership', 'Authentication', 'Name']}
           currentStage={stage}
           loading={false}
         />
-      </div>
+      </div>*/}
 
-      <div className="text-center">
+      <h1 className="text-center mb-4 text-2xl text-gray-800">Welcome!</h1>
+
+      <div className="text-center w-80 mx-auto text-center">
         {stage === 0 && (
           <>
-            <p>
-              It seems that this is your first time using this service. <br />
+            <p className="mb-2">
+              It seems that this is your first time using this service.
               Let's get started by confirming a few basic things...
             </p>
 
-            <Button onClick={() => setStage(1)}>Continue</Button>
+            <p className="mb-5">
+              You profile is not associated with a TKO-äly member account.
+              If you are a member of the organization, you can authenticate with the button below.
+              Otherwise you can skip this stage.
+            </p>
+
+            <div className="flex flex-col gap-2 mb-5">
+              <Button onClick={() => handleMembershipConfirmation(true)}>I am a member of TKO-äly ry</Button>
+              <SecondaryButton onClick={() => handleMembershipConfirmation(false)}>I am not a member</SecondaryButton>
+            </div>
           </>
         )}
 
-        {stage === 1 && !isUserError && !isUserLoading && !isPayerLoading && !isPayerError && !profile?.tkoalyUserId && (
+        {stage === 1 && (
           <>
-            <b className="block text-center my-4">Are you {profile?.name}?</b>
+            <p className="mb-5">
+              Is your name <b>{profile?.name}</b> and is your preferred e-mail address <b>{emails.find(e => e.priority === 'primary')?.email}</b>?
+            </p>
 
-            <div className="flex flex-col gap-3 items-center">
-              <Button onClick={() => { setMembership(true); setStage(3); }}>Yes, I am</Button>
-              <SecondaryButton onClick={() => { }}>Log out</SecondaryButton>
+            <div className="flex flex-col gap-3 mb-5">
+              <Button onClick={() => { setMembership(true); setStage(3); }}>Yes</Button>
+              <SecondaryButton onClick={() => { }}>No</SecondaryButton>
             </div>
           </>
         )}
@@ -160,7 +193,7 @@ export const Main = (props: Props) => {
 
       <Button onClick={handlePayAll} className="mt-3">{t('payAllButton')}</Button>
 
-      { /* <WelcomeDialog open={true} /> */}
+      <WelcomeDialog />
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
         {t('unpaidDebts')}

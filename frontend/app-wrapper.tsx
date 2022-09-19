@@ -6,6 +6,7 @@ import { store, useAppDispatch, useAppSelector } from './store'
 import { PaymentSelectionSidebar } from './components/payment-selection-sidebar'
 import { EmailAuth } from './views/email-auth'
 import { DebtDetails } from './views/debt-details'
+import { InvalidMagicLink } from './views/invalid-magic-link'
 import { PaymentDetails } from './views/payment-details'
 import { ConfirmEmailAuth } from './views/confirm-email-auth'
 import { Settings } from './views/settings'
@@ -116,6 +117,8 @@ const useManageSession = () => {
   const { bootstrapping, token, authenticated, creatingSession } = useAppSelector((state) => state.session)
   const dispatch = useAppDispatch()
 
+  const [allowUnauthenticated] = useRoute('/magic/invalid')
+
   useEffect(() => {
     if (bootstrapping === 'pending') {
       dispatch(bootstrapSession())
@@ -128,6 +131,11 @@ const useManageSession = () => {
             .then(() => {
               setLocation(redirect);
             });
+        } else {
+          console.log(allowUnauthenticated)
+          if (!allowUnauthenticated) {
+            setLocation('/auth');
+          }
         }
       }
 
@@ -139,7 +147,7 @@ const useManageSession = () => {
           });
       }
     }
-  }, [bootstrapping, token, authToken, creatingSession])
+  }, [bootstrapping, token, authToken, creatingSession, allowUnauthenticated])
 };
 
 const Routes = () => {
@@ -171,6 +179,7 @@ const Routes = () => {
         <Route path="/auth" component={Landing} />
         <Route path="/auth/email" component={EmailAuth} />
         <Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
+        <Route path="/magic/invalid" component={InvalidMagicLink} />
         {session.authenticated && (
           <>
             <Route path="/onboarding">

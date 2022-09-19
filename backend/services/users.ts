@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { Config } from '../config'
-import { UpstreamUser } from '../../common/types'
+import { TkoalyIdentity, UpstreamUser } from '../../common/types'
 import { Inject, Service } from 'typedi'
 
 @Service()
@@ -16,16 +16,18 @@ export class UsersService {
     }
 
     this._client = axios.create({
-      baseURL: this.config.userApiUrl,
+      baseURL: this.config.userServiceApiUrl,
       headers: {
-        Service: this.config.userApiServiceId,
+        Service: this.config.serviceId,
       },
     })
 
     return this._client
   }
 
-  async getUpstreamUserById(id: number | 'me', token: string) {
+  async getUpstreamUserById(pId: TkoalyIdentity | 'me', token: string) {
+    const id = typeof pId === 'string' ? pId : pId.value
+
     try {
       const { data } = await this.client
         .get<{ payload: UpstreamUser }>(`/api/users/${id}`, {
@@ -36,6 +38,7 @@ export class UsersService {
 
       return data.payload
     } catch (err) {
+      console.log(err)
       throw new Error(`Failed to fetch upstream user ${id}`)
     }
   }

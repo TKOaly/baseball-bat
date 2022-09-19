@@ -52,6 +52,10 @@ export const formatPayerProfile = (profile: DbPayerProfile): PayerProfile => ({
   stripeCustomerId: profile.stripe_customer_id,
   createdAt: profile.created_at,
   updatedAt: profile.updated_at,
+  disabled: profile.disabled,
+  mergedTo: profile.merged_to === undefined
+    ? undefined
+    : internalIdentity(profile.merged_to),
 })
 
 const formatPaymentMethod = (method: DbPaymentMethod): PaymentMethod => ({
@@ -109,6 +113,7 @@ export class PayerService {
     return {
       uiLanguage: 'en',
       emailLanguage: 'en',
+      hasConfirmedMembership: false,
     }
   }
 
@@ -301,7 +306,7 @@ export class PayerService {
   }
 
   async createPayerProfileFromTkoalyIdentity(id: TkoalyIdentity, token: string) {
-    const upstreamUser = await this.usersService.getUpstreamUserById(id.value, token)
+    const upstreamUser = await this.usersService.getUpstreamUserById(id, token)
     return this.createPayerProfileFromTkoalyUser(upstreamUser)
   }
 
@@ -597,5 +602,22 @@ export class PayerService {
           updated_at = NOW()
       WHERE stripe_payment_intent_id = ${paymentIntentId}
     `)
+  }
+
+  async mergeProfiles(primary: InternalIdentity, secondary: InternalIdentity) {
+    await this.pg.tx(async (tx) => {
+      await tx.do(sql`
+        UPDATE payer_profiles
+        SET disabled = true, merged_to = ${primary.value}
+        WHERE id = ${secondary.value}
+      `)
+
+      await tx.do(sql`
+        INSERT INTO payer_emails (payer_id, email, priority, source)
+        SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'secondary' ELSE priority END AS priority, source
+        FROM payer_emails
+        WHERE id = ${secondary.value}
+      `)
+    })
   }
 }

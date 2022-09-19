@@ -160,18 +160,22 @@ export type DbPayerProfile = {
   created_at: Date
   updated_at: Date
   name: string
+  disabled: boolean
+  merged_to: string
 }
 export type PayerProfile = Omit<
   FromDbType<DbPayerProfile>,
-  'id' | 'tkoalyUserId'
+  'id' | 'tkoalyUserId' | 'mergedTo'
 > & {
   id: InternalIdentity
   tkoalyUserId?: TkoalyIdentity
+  mergedTo?: InternalIdentity
 }
 
 export const payerPreferences = t.type({
   uiLanguage: t.union([t.literal('fi'), t.literal('en')]),
   emailLanguage: t.union([t.literal('fi'), t.literal('en')]),
+  hasConfirmedMembership: t.boolean,
 })
 
 export type PayerPreferences = t.TypeOf<typeof payerPreferences>
