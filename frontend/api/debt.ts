@@ -1,7 +1,7 @@
 import rtkApi from './rtk-api'
 import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer } from '../../common/types'
 
-export type DebtResponse = Debt & {
+export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>,
 }
 

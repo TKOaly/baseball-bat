@@ -230,7 +230,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
   }, [selectedRows, actions])
 
   return (
-    <div className="relative">
+    <div className="relative pt-5">
       <div className="absolute left-full ml-2 w-60 flex flex-col gap-2 p-3">
         <Dropdown
           label="Sort"
@@ -289,11 +289,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           ]}
         />
       </div>
-      <div className="grid bg-white border rounded-md shadow-sm mt-5" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
+      <div className="grid bg-white border rounded-md shadow-sm" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
         {selectable && <div />}
         {columns.map((column) => (
           <div className="relative">
-            <div className={`absolute ${column.align === 'right' ? 'right-3' : 'left-3'} pb-1 text-sm font-bold text-gray-500 bottom-full`}>{column.name}</div>
+            <div className={`absolute ${column.align === 'right' ? 'right-3' : 'left-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
           </div>
         ))}
         {actions && <div />}

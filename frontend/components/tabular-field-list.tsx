@@ -125,7 +125,7 @@ export const TabularFieldList = <T extends Object>({
     >
       {
         columns.map((column) => (
-          <div className="text-xs font-bold text-gray-600">{column.header}</div>
+          <div className="text-xs font-bold text-gray-500 pl-1.5">{column.header}</div>
         ))
       }
       {!readOnly && <div />}

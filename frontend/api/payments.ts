@@ -33,7 +33,7 @@ const paymentsApi = rtkApi.injectEndpoints({
         method: 'POST',
         url: `/payments/${id}/credit`,
       }),
-    })
+    }),
   })
 });
 
