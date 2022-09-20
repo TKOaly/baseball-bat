@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { useGetEmailQuery } from '../../api/email'
 import { useGetPayerByEmailQuery } from '../../api/payers'
 import { Breadcrumbs } from '../../components/breadcrumbs'
+import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, LinkField, Field, BadgeField } from '../../components/resource-page/resource-page'
 
 export const EmailDetails = ({ params }: { params: { id: string } }) => {
   const { data: email } = useGetEmailQuery(params.id)
@@ -37,43 +38,31 @@ export const EmailDetails = ({ params }: { params: { id: string } }) => {
   }
 
   return (
-    <>
-      <h1 className="text-2xl mb-5 mt-10">
-        <Breadcrumbs
-          segments={[
-            { url: '/admin/emails', text: 'Emails' },
-            email?.subject ?? '',
-          ]}
-        />
-      </h1>
-      <div className="grid grid-cols-2 gap-x-8">
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Subject</div>
-          <div className="mt-1">{email.subject}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Recipient</div>
-          <div className="mt-1">{email.recipient}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Payer</div>
-          <div className="mt-1">{payerField}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Template</div>
-          <div className="mt-1">{email.template}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Status</div>
-          <div className="mt-1">{status}</div>
-        </div>
-        <div className="my-4 col-span-full">
-          <div className="text-gray-500 text-xs font-bold uppercase">Preview</div>
+    <Page>
+      <Header>
+        <Title>
+          <Breadcrumbs
+            segments={[
+              { url: '/admin/emails', text: 'Emails' },
+              email?.subject ?? '',
+            ]}
+          />
+        </Title>
+      </Header>
+      <Section title="Details" columns={2}>
+        <TextField label="Subject" value={email.subject} />
+        <TextField label="Recipient" value={email.recipient} />
+        <LinkField label="Payer" text={payer.name} to={`/admin/payers/${payer.id.value}`} />
+        <TextField label="Used Template" value={email.template} />
+        <BadgeField label="Status" color="gray" text={status} />
+      </Section>
+      <Section title="Preview">
+        <SectionContent>
           <div className="mt-1 overflow-hidden rounded-md border shadow">
             <iframe src={`/api/emails/${params.id}/render`} className="h-[30em] w-full"></iframe>
           </div>
-        </div>
-      </div>
-    </>
+        </SectionContent>
+      </Section>
+    </Page>
   )
 }

@@ -7,6 +7,7 @@ import { SecondaryButton } from '../../components/button'
 import { Link, useLocation } from 'wouter'
 import { euro, formatEuro, sumEuroValues } from '../../../common/currency'
 import { useGetDebtsByPaymentQuery } from '../../api/debt'
+import { Page, Header, Title, Actions, ActionButton, Section, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page'
 
 export const PaymentDetails = ({ params }) => {
   const { data: payment, isLoading } = useGetPaymentQuery(params.id)
@@ -18,65 +19,54 @@ export const PaymentDetails = ({ params }) => {
     return <div>Loading...</div>
   }
 
-  let statusBadge = {
+  let statusBadge: { text: string, color: BadgeColor } = {
     text: 'Unpaid',
-    color: 'bg-gray-300',
+    color: 'gray',
   }
 
   if (payment.credited) {
     statusBadge = {
       text: 'Credited',
-      color: 'bg-blue-500',
+      color: 'blue',
     }
   }
 
   return (
-    <div>
-      <h1 className="text-2xl mt-10 mb-5">
-        <Breadcrumbs
-          segments={[
-            {
-              text: 'Payments',
-              url: '/admin/payments'
-            },
-            payment.payment_number ? '' + payment.payment_number : '',
-          ]}
-        />
-      </h1>
-      <div className="flex gap-2">
-        {!payment.credited && (
-          <SecondaryButton onClick={() => creditPayment(params.id)}>Credit</SecondaryButton>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-x-8">
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Name</div>
-          <div className="mt-1">{payment.title}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Number</div>
-          <div className="mt-1">{payment.payment_number}</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Total</div>
-          <div className="mt-1">TODO</div>
-        </div>
-        <div className="my-4">
-          <div className="text-gray-500 text-xs font-bold uppercase">Status</div>
-          <div className="mt-1">
-            <div className={`py-1 px-2.5 text-sm inline-block rounded-full ${statusBadge.color}`}>{statusBadge.text}</div>
-          </div>
-        </div>
-        <div className="my-4 col-span-full">
-          <div className="text-gray-500 text-xs font-bold uppercase">Description</div>
-          <div className="rounded-md bg-gray-50 h-10 mt-2 py-2 px-3 min-h-[40px]">{payment.message}</div>
-        </div>
-        <div className="col-span-full">
-          <div className="text-gray-500 text-xs font-bold uppercase">Debts</div>
+    <Page>
+      <Header>
+        <Title>
+          <Breadcrumbs
+            segments={[
+              {
+                text: 'Payments',
+                url: '/admin/payments'
+              },
+              payment.payment_number ? '' + payment.payment_number : '',
+            ]}
+          />
+        </Title>
+        <Actions>
+          {!payment.credited && (
+            <ActionButton secondary onClick={() => creditPayment(params.id)}>Credit</ActionButton>
+          )}
+        </Actions>
+      </Header>
+      <Section title="Details" columns={2}>
+        <TextField label="Name" value={payment.title} />
+        <TextField label="Number" value={'' + payment.payment_number} />
+        <BadgeField label="Status" {...statusBadge} />
+        <TextField fullWidth label="Description" value={payment.message} />
+      </Section>
+      <Section title="Debts">
+        <SectionDescription>
+
+        </SectionDescription>
+        <SectionContent>
           <DebtList debts={debts ?? []} />
-        </div>
-        <div className="col-span-full mt-14">
-          <div className="text-gray-500 text-xs font-bold uppercase mb-8">Transactions</div>
+        </SectionContent>
+      </Section>
+      <Section title="Transactions">
+        <SectionContent>
           <TableView
             rows={[
               {
@@ -106,8 +96,8 @@ export const PaymentDetails = ({ params }) => {
               },
             ]}
           />
-        </div>
-      </div>
-    </div>
+        </SectionContent>
+      </Section>
+    </Page>
   )
 }
