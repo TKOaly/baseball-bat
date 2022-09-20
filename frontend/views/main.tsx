@@ -244,7 +244,7 @@ export const Main = (props: Props) => {
         {t('openPayments')}
       </h3>
 
-      {(payments ?? []).filter(p => !p.credited).map((p) => (
+      {(payments ?? []).filter(p => !p.credited && p.status !== 'paid').map((p) => (
         <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer">
           <div className="flex items-center">
             <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />

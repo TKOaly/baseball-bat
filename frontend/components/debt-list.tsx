@@ -42,6 +42,10 @@ export const DebtList = (props: Props) => {
               return 'Draft'
             }
 
+            if (row.status === 'paid') {
+              return 'Paid'
+            }
+
             return 'Unpaid'
           },
           render: (value) => {

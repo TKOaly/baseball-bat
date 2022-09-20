@@ -640,6 +640,46 @@ export class DebtApi {
       })
   }
 
+  private markPaidWithCash() {
+    return route
+      .post('/:id/mark-paid-with-cash')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const debt = await this.debtService.getDebt(ctx.routeParams.id);
+
+        if (!debt) {
+          return notFound('Debt not found')
+        }
+
+        if (debt.draft) {
+          return badRequest('Cannot mark draft debts as paid')
+        }
+
+        if (debt.credited) {
+          return badRequest('Cannot mark credited debts as paid')
+        }
+
+        if (debt.status === 'paid') {
+          return badRequest('Debt already paid')
+        }
+
+        const payment = await this.paymentService.createPayment({
+          type: 'cash',
+          title: 'Cash Payment',
+          message: `Cash payment of debt "${debt.name}"`,
+          debts: [debt.id],
+          data: {},
+        })
+
+        await this.paymentService.createPaymentEvent(payment.id, {
+          type: 'payment',
+          amount: await this.debtService.getDebtTotal(debt.id),
+        })
+
+        return ok(payment)
+      })
+  }
+
   public router(): Router {
     return router(
       this.createDebtComponent(),
@@ -651,7 +691,8 @@ export class DebtApi {
       this.getPaymentsContainingDebt(),
       this.massCreateDebts(),
       this.deleteDebt(),
-      this.creditDebt()
+      this.creditDebt(),
+      this.markPaidWithCash()
     )
   }
 }

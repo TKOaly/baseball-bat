@@ -1,5 +1,5 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, usePublishDebtsMutation } from '../../api/debt'
+import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, useMarkPaidWithCashMutation, usePublishDebtsMutation } from '../../api/debt'
 import { useGetPaymentsByDebtQuery } from '../../api/payments'
 import { PaymentList } from '../../components/payment-list'
 import { TabularFieldList } from '../../components/tabular-field-list';
@@ -15,6 +15,7 @@ export const DebtDetails = ({ params }) => {
   const { data: payments } = useGetPaymentsByDebtQuery(params.id)
   const [deleteDebt] = useDeleteDebtMutation()
   const [creditDebt] = useCreditDebtMutation()
+  const [markPaidWithCash] = useMarkPaidWithCashMutation()
   const [, setLocation] = useLocation()
   const [publishDebts] = usePublishDebtsMutation()
 
@@ -34,6 +35,10 @@ export const DebtDetails = ({ params }) => {
     publishDebts([params.id])
   }
 
+  const handleCashPayment = () => {
+    markPaidWithCash(params.id)
+  }
+
   let statusBadge: Pick<React.ComponentProps<typeof BadgeField>, 'text' | 'color'> = {
     text: 'Unpaid',
     color: 'gray',
@@ -50,6 +55,13 @@ export const DebtDetails = ({ params }) => {
     statusBadge = {
       text: 'Credited',
       color: 'blue',
+    }
+  }
+
+  if (debt.status === 'paid') {
+    statusBadge = {
+      text: 'Paid',
+      color: 'green',
     }
   }
 
@@ -74,6 +86,9 @@ export const DebtDetails = ({ params }) => {
           {debt?.draft && <ActionButton secondary onClick={handleDelete}>Delete</ActionButton>}
           {debt?.draft === false && debt?.credited === false && (
             <ActionButton secondary onClick={handleCredit}>Credit</ActionButton>
+          )}
+          {debt?.status !== 'paid' && (
+            <ActionButton secondary onClick={handleCashPayment}>Mark paid with cash</ActionButton>
           )}
         </Actions>
       </Header>

@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api'
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer } from '../../common/types'
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment } from '../../common/types'
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>,
@@ -104,6 +104,18 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Debt', id },
       ],
     }),
+
+    markPaidWithCash: builder.mutation<Payment, string>({
+      query: (id) => ({
+        method: 'POST',
+        url: `/debt/${id}/mark-paid-with-cash`,
+      }),
+      invalidatesTags: (_, __, id) => [
+        { type: 'Debt', id: 'LIST' },
+        { type: 'Debt', id },
+        { type: 'Payment', id: 'LIST' },
+      ],
+    })
   })
 });
 
@@ -120,6 +132,7 @@ export const {
   useGetDebtsByPaymentQuery,
   useDeleteDebtMutation,
   useCreditDebtMutation,
+  useMarkPaidWithCashMutation
 } = debtApi
 
 export default debtApi

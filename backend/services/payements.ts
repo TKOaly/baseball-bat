@@ -58,6 +58,7 @@ export type NewInvoice = {
 
 type NewPaymentEvent = {
   amount: EuroValue,
+  type: 'created' | 'payment'
 }
 
 type IPaymentType<K extends string, D extends object> = {
@@ -65,10 +66,15 @@ type IPaymentType<K extends string, D extends object> = {
   data: D
 }
 
-type PaymentType = Invoice
+type PaymentType = Invoice | CashPayment
 
 type Invoice = {
   type: 'invoice'
+  data: {}
+}
+
+type CashPayment = {
+  type: 'cash'
   data: {}
 }
 
@@ -292,6 +298,13 @@ export class PaymentService {
 
       return createdPayment
     })
+  }
+
+  async createPaymentEvent(id: string, event: NewPaymentEvent) {
+    await this.pg.any(sql`
+      INSERT INTO payment_events (payment_id, type, amount)
+      VALUES (${id}, ${event.type}, ${event.amount.value})
+    `)
   }
 
   async creditPayment(id: string) {

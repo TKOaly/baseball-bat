@@ -104,6 +104,7 @@ export const DateField: React.FC<FieldProps & { value: Date | string }> = ({ val
 const badgeColorClasses = {
   'gray': 'bg-gray-300',
   'blue': 'bg-blue-500',
+  'green': 'bg-green-500',
 }
 
 export type BadgeColor = keyof typeof badgeColorClasses

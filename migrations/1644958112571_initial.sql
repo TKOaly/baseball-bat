@@ -20,7 +20,7 @@ CREATE TABLE payer_emails (
   source TEXT NOT NULL DEFAULT 'other',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (email),
+  PRIMARY KEY (email, payer_id),
   CONSTRAINT fk_payer_id FOREIGN KEY (payer_id) REFERENCES payer_profiles (id),
   CONSTRAINT priority_check CHECK (priority IN ('primary', 'default', 'disabled')),
   CONSTRAINT source_check CHECK (source IN ('tkoaly', 'other', 'user'))

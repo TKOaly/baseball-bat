@@ -23,7 +23,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
     : [],
   payer: debt.payer && (Array.isArray(debt.payer) ? formatPayerProfile(debt.payer[0]) : formatPayerProfile(debt.payer)),
-  status: 'unpaid',
+  status: debt.status,
 })
 
 const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => ({
@@ -60,6 +60,7 @@ export class DebtService {
           debt.*,
           TO_JSON(payer_profiles.*) AS payer,
           TO_JSON(debt_center.*) AS debt_center,
+          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
           ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
         FROM debt
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
@@ -77,6 +78,7 @@ export class DebtService {
       .any<DbDebt>(sql`
         SELECT
           debt.*,
+          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
           ARRAY_AGG(TO_JSON(payer_profiles.*)) AS payer
         FROM debt
         INNER JOIN payer_profiles ON payer_profiles.id = debt.payer_id
@@ -91,6 +93,7 @@ export class DebtService {
       .any<DbDebt>(sql`
         SELECT
           debt.*,
+          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
           TO_JSON(payer_profiles.*) AS payer
         FROM debt
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
@@ -195,6 +198,7 @@ export class DebtService {
           debt.*,
           TO_JSON(payer_profiles.*) AS payer,
           TO_JSON(debt_center.*) AS debt_center,
+          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
           ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
         FROM payment_debt_mappings pdm
         JOIN debt ON debt.id = pdm.debt_id
@@ -215,6 +219,7 @@ export class DebtService {
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
         TO_JSON(debt_center.*) AS debt_center,
+          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
