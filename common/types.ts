@@ -170,6 +170,7 @@ export type PayerProfile = Omit<
   id: InternalIdentity
   tkoalyUserId?: TkoalyIdentity
   mergedTo?: InternalIdentity
+  emails: PayerEmail[]
 }
 
 export const payerPreferences = t.type({

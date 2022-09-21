@@ -31,6 +31,8 @@ import * as R from 'remeda'
 import { Inject, Service } from 'typedi'
 import { UsersService } from './users'
 
+export type DbPayerProfileWithEmails = DbPayerProfile & { emails: DbPayerEmail[] }
+
 export type AddPayerEmailOptions = {
   email: string,
   priority?: PayerEmailPriority,
@@ -42,7 +44,7 @@ function assertNever(_value: never) {
   throw new Error('Should-be unreachable code reached')
 }
 
-export const formatPayerProfile = (profile: DbPayerProfile): PayerProfile => ({
+export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerEmail[] }): PayerProfile => ({
   id: internalIdentity(profile.id),
   tkoalyUserId: profile.tkoaly_user_id === undefined
     ? undefined
@@ -56,6 +58,7 @@ export const formatPayerProfile = (profile: DbPayerProfile): PayerProfile => ({
   mergedTo: profile.merged_to === undefined
     ? undefined
     : internalIdentity(profile.merged_to),
+  emails: profile.emails ? profile.emails.map(formatPayerEmail) : [],
 })
 
 const formatPaymentMethod = (method: DbPaymentMethod): PaymentMethod => ({
@@ -92,6 +95,18 @@ export class PayerService {
 
   @Inject(() => UsersService)
   usersService: UsersService
+
+  async getPayerProfiles() {
+    const dbProfiles = await this.pg
+      .many<DbPayerProfileWithEmails>(sql`
+        SELECT
+          pp.*,
+          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
+        FROM payer_profiles pp
+      `)
+
+    return dbProfiles.map(formatPayerProfile)
+  }
 
   async getPayerProfileByIdentity(id: PayerIdentity) {
     if (isTkoalyIdentity(id)) {
@@ -188,7 +203,7 @@ export class PayerService {
   }
 
   async updatePayerName(id: InternalIdentity, name: string) {
-    const updated = await this.pg.one<DbPayerProfile>(sql`
+    const updated = await this.pg.one<DbPayerProfileWithEmails>(sql`
       UPDATE payer_profiles
       SET name = ${name}
       WHERE id = ${id.value}
@@ -199,7 +214,10 @@ export class PayerService {
       throw 'Could not update payer name'
     }
 
-    return formatPayerProfile(updated)
+    return {
+      ...formatPayerProfile(updated),
+      emails: await this.getPayerEmails(id),
+    }
   }
 
   async addPayerEmail(params: AddPayerEmailOptions) {
@@ -230,9 +248,14 @@ export class PayerService {
   }
 
   async getPayerProfileByTkoalyIdentity(id: TkoalyIdentity) {
-    const dbProfile = await this.pg.one<DbPayerProfile>(
-      sql`SELECT * FROM payer_profiles WHERE tkoaly_user_id = ${id.value}`
-    )
+    const dbProfile = await this.pg
+      .one<DbPayerProfileWithEmails>(sql`
+        SELECT
+          pp.*,
+          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
+        FROM payer_profiles pp
+        WHERE tkoaly_user_id = ${id.value}`
+      )
 
     if (dbProfile) {
       return formatPayerProfile(dbProfile)
@@ -242,9 +265,14 @@ export class PayerService {
   }
 
   async getPayerProfileByInternalIdentity(id: InternalIdentity) {
-    const dbProfile = await this.pg.one<DbPayerProfile>(
-      sql`SELECT * FROM payer_profiles WHERE id = ${id.value}`
-    )
+    const dbProfile = await this.pg
+      .one<DbPayerProfileWithEmails>(sql`
+        SELECT
+          pp.*,
+          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
+        FROM payer_profiles pp
+        WHERE id = ${id.value}
+      `)
 
     if (dbProfile) {
       return formatPayerProfile(dbProfile)
@@ -254,11 +282,12 @@ export class PayerService {
   }
 
   async getPayerProfileByEmailIdentity(id: EmailIdentity) {
-    const dbProfile = await this.pg.one<DbPayerProfile>(sql`
-      SELECT p.*
-      FROM payer_emails e
-      JOIN payer_profiles p ON p.id = e.payer_id
-      WHERE e.email = ${id.value}
+    const dbProfile = await this.pg.one<DbPayerProfileWithEmails>(sql`
+      SELECT
+        pp.*,
+        (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
+      FROM payer_profiles pp
+      WHERE pp.id = (SELECT payer_id FROM payer_emails WHERE email = ${id.value})
     `)
 
     if (dbProfile) {
@@ -318,12 +347,20 @@ export class PayerService {
       throw new Error('Could not create a new payer profile')
     }
 
-    this.pg.any(sql`
+    const email = await this.pg.one<DbPayerEmail>(sql`
       INSERT INTO payer_emails (email, payer_id, priority)
       VALUES (${id.value}, ${payerProfile.id}, 'primary')
+      RETURNING *
     `)
 
-    return formatPayerProfile(payerProfile)
+    if (!email) {
+      throw new Error('Could not create email record for hte payer profile')
+    }
+
+    return formatPayerProfile({
+      ...payerProfile,
+      emails: [email],
+    })
   }
 
   async replacePrimaryEmail(id: InternalIdentity, email: string) {
@@ -341,14 +378,13 @@ export class PayerService {
     })
   }
 
-  async createPayerProfileFromTkoalyUser(user: UpstreamUser) {
+  async createPayerProfileFromTkoalyUser(user: UpstreamUser): Promise<PayerProfile> {
     const existingPayerProfile = await this.getPayerProfileByTkoalyIdentity(tkoalyIdentity(user.id))
 
     if (existingPayerProfile) {
       const emails = await this.getPayerEmails(existingPayerProfile.id)
 
       if (!emails.some(({ email }) => email === user.email)) {
-        console.log('Replacing email!')
         await this.replacePrimaryEmail(existingPayerProfile.id, user.email)
 
         if (existingPayerProfile.stripeCustomerId) {
@@ -364,32 +400,44 @@ export class PayerService {
     const existingEmailProfile = await this.getPayerProfileByEmailIdentity(emailIdentity(user.email))
 
     if (existingEmailProfile) {
-      console.log('Existing ' + user.email)
-      return await this.pg
+      await this.pg
         .one<DbPayerProfile>(sql`
           UPDATE payer_profiles
           SET tkoaly_user_id = ${user.id}
           WHERE id = ${existingEmailProfile.id.value}
        `)
-        .then(dbProfile => dbProfile && formatPayerProfile(dbProfile))
+
+      return {
+        ...existingEmailProfile,
+        tkoalyUserId: tkoalyIdentity(user.id),
+      }
     }
 
-    const payerProfile = await this.pg
-      .one<DbPayerProfile>(
-        sql`INSERT INTO payer_profiles (tkoaly_user_id, name)
-          VALUES (${user.id}, ${user.screenName})
-          RETURNING *`
-      )
-      .then(dbProfile => dbProfile && formatPayerProfile(dbProfile))
-
-    if (payerProfile) {
-      await this.pg.any(sql`
-        INSERT INTO payer_emails (payer_id, email, priority, source)
-        VALUES (${payerProfile.id.value}, ${user.email}, 'primary', 'tkoaly')
+    const dbPayerProfile = await this.pg
+      .one<DbPayerProfile>(sql`
+        INSERT INTO payer_profiles (tkoaly_user_id, name)
+        VALUES (${user.id}, ${user.screenName})
+        RETURNING *
       `)
+
+    if (!dbPayerProfile) {
+      throw new Error('Could not create payer profile')
     }
 
-    return payerProfile
+    const dbPayerEmail = await this.pg.one<DbPayerEmail>(sql`
+      INSERT INTO payer_emails (payer_id, email, priority, source)
+      VALUES (${dbPayerProfile.id}, ${user.email}, 'primary', 'tkoaly')
+      RETURNING *
+    `)
+
+    if (!dbPayerEmail) {
+      throw new Error('Could not create email record for payer profile')
+    }
+
+    return formatPayerProfile({
+      ...dbPayerProfile,
+      emails: [dbPayerEmail],
+    })
   }
 
   async setProfileTkoalyIdentity(id: PayerIdentity, account: TkoalyIdentity) {

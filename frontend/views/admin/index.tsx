@@ -2,6 +2,7 @@ import { Link, Redirect, Route, Switch, useLocation, useRoute } from 'wouter'
 import { tw } from '../../tailwind'
 import { CreateDebtCenter } from './create-debt-center'
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
+import { PayerListing } from './payer-listing'
 import { CreateDebt } from './create-debt'
 import { DebtCenterDetails } from './debt-center'
 import { DebtCentersListing } from './debt-centers-listing'
@@ -86,6 +87,7 @@ const Admin = () => {
             <Route path="/admin/debts/create" component={CreateDebt} />
             <Route path="/admin/debts/:id" component={DebtDetails} />
             <Route path="/admin/debts" component={DebtListing} />
+            <Route path="/admin/payers" component={PayerListing} />
             <Route path="/admin/payers/:id" component={PayerDetails} />
             <Route path="/admin/payments" component={PaymentsListing} />
             <Route path="/admin/payments/:id" component={PaymentDetails} />

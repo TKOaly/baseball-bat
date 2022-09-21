@@ -8,6 +8,13 @@ export type UpdatePayerEmailsQueryPayload = {
 
 const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
+    getPayers: builder.query<PayerProfile[], never>({
+      query: () => '/payers',
+      providesTags: [
+        { type: 'Payer', id: 'LIST' },
+      ],
+    }),
+
     getPayer: builder.query<PayerProfile, string>({
       query: (id) => `/payers/${id}`,
       providesTags: ({ id }) => [
@@ -88,6 +95,7 @@ export const {
   useGetPayerByEmailQuery,
   useUpdatePayerPreferencesMutation,
   useUpdatePayerEmailsMutation,
+  useGetPayersQuery,
 } = payersApi
 
 export default payersApi

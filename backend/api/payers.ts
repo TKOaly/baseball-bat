@@ -44,6 +44,16 @@ export class PayersApi {
       })
   }
 
+  private getPayers() {
+    return route
+      .get('/')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async () => {
+        const payers = await this.payerService.getPayerProfiles()
+        return ok(payers)
+      })
+  }
+
   private getPayerByEmail() {
     return route
       .get('/by-email/:email')
@@ -219,6 +229,7 @@ export class PayersApi {
       this.getPayerByTkoalyId(),
       this.updatePayerPreferences(),
       this.updatePayerEmails(),
+      this.getPayers(),
     )
   }
 }
