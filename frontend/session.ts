@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit"
-import { PayerPreferences, Session } from "../common/types"
+import { PayerPreferences, PayerProfile, Session } from "../common/types"
+import api from './api/rtk-api'
 
 export const createSession = createAsyncThunk(
   'session/createSession',
@@ -35,7 +36,7 @@ export const destroySession = createAsyncThunk(
 
 export const authenticateSession = createAsyncThunk(
   'session/authenticateSession',
-  async (authToken: string, thunkApi): Promise<{ accessLevel: 'normal' | 'admin' }> => {
+  async (authToken: string, thunkApi): Promise<{ accessLevel: 'normal' | 'admin', payerProfile: PayerProfile, preferences: PayerPreferences }> => {
     const state = thunkApi.getState() as any
     const sessionToken = state.session.token
 
@@ -148,6 +149,12 @@ const sessionSlice = createSlice({
     builder.addCase(authenticateSession.fulfilled, (state, action) => {
       state.authenticated = true
       state.accessLevel = action.payload.accessLevel
+      state.payerId = action.payload.payerProfile.id.value
+      state.preferences = action.payload.preferences
+
+      api.util.invalidateTags([
+        { type: 'Session', id: 'CURRENT' },
+      ])
     })
 
     builder.addCase(bootstrapSession.pending, (state) => {

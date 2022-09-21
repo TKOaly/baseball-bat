@@ -7,11 +7,13 @@ import { TextField } from '../components/text-field'
 import { InputGroup } from '../components/input-group'
 import { useTranslation } from 'react-i18next'
 import { useGetPayerEmailsQuery, useUpdatePayerEmailsMutation, useUpdatePayerPreferencesMutation } from '../api/payers'
+import { useAppSelector } from '../store'
 
-export const Settings = ({ session }: { session: Session }) => {
+export const Settings = () => {
   const { t } = useTranslation([], { keyPrefix: 'settings' })
   const [updatePreferences] = useUpdatePayerPreferencesMutation()
   const [updatePayerEmails] = useUpdatePayerEmailsMutation()
+  const session = useAppSelector((state) => state.session)
   const { data, isLoading } = useGetPayerEmailsQuery(session.payerId, { skip: !session.payerId })
 
   return (
