@@ -4,6 +4,7 @@
     "welcomeSummary": "Sinulla on yhteensä <1>{{ number }}</1> maksamatonta maksua, joiden kokonaissumma on <3>{{ total }}</3>.",
     "welcomeSummaryNoDebts": "Olet maksanut kaikki velkasi! Mahtavaa! 🎉",
     "debtListInfoline": "Luotu {{ created }}, erääntyy {{ dueDate }}",
+    "paymentListInfoline": "Luotu {{ created }}",
     "unpaidDebts": "Maksamattomat velat",
     "openPayments": "Avoimet maksut",
     "noOpenPayments": "Ei avoimia maksuja",
@@ -45,7 +46,8 @@
     "navigation": {
       "debts": "Velat",
       "settings": "Asetukset",
-      "administration": "Hallinta"
+      "administration": "Hallinta",
+      "logOut": "Kirjaudu ulos",
     },
     "selectedDebtCount_zero": "Ei valittuja velkoja.",
     "selectedDebtCount_one": "{{ count }} velka valittu.",

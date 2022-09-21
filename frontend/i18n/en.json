@@ -3,7 +3,8 @@
     "welcomeHeader": "Hi, {{name}}! 👋",
     "welcomeSummary": "You have <1>{{ number }}</1> unpaid debts, which are in total worth <3>{{ total }}</3>.",
     "welcomeSummaryNoDebts": "You have no unpaid debts to TKO-äly ry! Hooray! 🎉",
-    "debtListInfoline": "Created {{ created }}, due {{ dueDate }}",
+    "debtListInfoline": "Created at {{ created }}, due {{ dueDate }}",
+    "paymentListInfoline": "Created at {{ created }}",
     "unpaidDebts": "Unpaid debts",
     "openPayments": "Open payments",
     "noOpenPayments": "No open payments",
@@ -45,7 +46,8 @@
     "navigation": {
       "debts": "Debts",
       "settings": "Settings",
-      "administration": "Administration"
+      "administration": "Administration",
+      "logOut": "Log out"
     },
     "selectedDebtCount_zero": "No debts selected.",
     "selectedDebtCount_one": "{{ count }} debt selected.",
