@@ -10,6 +10,9 @@ const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getPayer: builder.query<PayerProfile, string>({
       query: (id) => `/payers/${id}`,
+      providesTags: ({ id }) => [
+        { type: 'Payer', id: id.value },
+      ]
     }),
 
     updatePayerPreferences: builder.mutation<PayerPreferences, { payerId: string, preferences: Partial<PayerPreferences> }>({
@@ -17,7 +20,10 @@ const payersApi = rtkApi.injectEndpoints({
         url: `/payers/${payerId}/preferences`,
         method: 'PATCH',
         body: preferences,
-      })
+      }),
+      invalidatesTags: (_, __, { payerId }) => [
+        { type: 'Payer', id: payerId },
+      ]
     }),
 
     updatePayerEmails: builder.mutation<PayerEmail[], UpdatePayerEmailsQueryPayload>({
@@ -25,23 +31,39 @@ const payersApi = rtkApi.injectEndpoints({
         url: `/payers/${payerId}/emails`,
         method: 'PATCH',
         body: emails,
-      })
+      }),
+      invalidatesTags: (_, __, { payerId }) => [
+        { type: 'Payer', id: payerId },
+      ],
     }),
 
     getPayerByEmail: builder.query<PayerProfile, string>({
       query: (email) => `/payers/by-email/${encodeURIComponent(email)}`,
+      providesTags: ({ id }) => [
+        { type: 'Payer', id: id.value },
+      ],
     }),
 
     getPayerEmails: builder.query<PayerEmail[], string>({
       query: (id) => `/payers/${id}/emails`,
+      providesTags: (payers) => payers.flatMap(({ payerId, email }) => [
+        { type: 'PayerEmail', id: `${payerId.value}-${email}` },
+      ]),
     }),
 
     getSessionPayer: builder.query<PayerProfile, never>({
       query: () => '/payers/session',
+      providesTags: ({ id }) => [
+        { type: 'Payer', id: id.value },
+        { type: 'Session', id: 'CURRENT' },
+      ],
     }),
 
     getPayerByTkoalyId: builder.query<PayerProfile, number>({
       query: (id) => `/payers/by-tkoaly-id/${id}`,
+      providesTags: ({ id }) => [
+        { type: 'Payer', id: id.value },
+      ],
     }),
 
     getPayerDebts: builder.query<(Debt & DebtComponentDetails)[], { id: string, includeDrafts?: boolean }>({
@@ -51,6 +73,9 @@ const payersApi = rtkApi.injectEndpoints({
           includeDrafts: includeDrafts ? 'true' : 'false',
         }
       }),
+      providesTags: (debts) => debts.flatMap(({ id }) => [
+        { type: 'Debt', id },
+      ]),
     })
   })
 })
