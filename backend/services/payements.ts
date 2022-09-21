@@ -88,6 +88,7 @@ type DbPayment = {
   created_at: Date
   payment_number: number
   credited: boolean
+  events: Array<{ id: string, time: string, type: string, data: any, amount: number }>
 }
 
 type NewPayment<T extends PaymentType> = {
@@ -116,6 +117,7 @@ export class PaymentService {
           s.status,
           s.payer,
           (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id
@@ -130,6 +132,7 @@ export class PaymentService {
           s.balance,
           s.status,
           s.payer,
+          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
@@ -146,6 +149,7 @@ export class PaymentService {
           s.balance,
           s.status,
           s.payer,
+          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id
@@ -166,6 +170,7 @@ export class PaymentService {
           s.balance,
           s.status,
           s.payer,
+          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
         JOIN payment_statuses s ON s.id = p.id
@@ -183,6 +188,7 @@ export class PaymentService {
             s.balance,
             s.status,
             s.payer,
+            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
             COALESCE(s.updated_at, p.created_at) AS updated_at,
             (SELECT ARRAY_AGG(debt_id) FROM payment_debt_mappings WHERE payment_id = p.id) AS debt_ids
           FROM payments p

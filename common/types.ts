@@ -286,7 +286,7 @@ export type DbDebt = {
   description: string
   created_at: Date
   updated_at: Date
-  status: string
+  status: DebtStatus
   credited: boolean
 }
 

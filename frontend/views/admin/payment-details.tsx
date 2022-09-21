@@ -1,11 +1,12 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
 import { useCreditPaymentMutation, useGetPaymentQuery } from '../../api/payments'
+import { Timeline } from '../../components/timeline'
 import { ExternalLink } from 'react-feather'
 import { DebtList } from '../../components/debt-list'
 import { TableView } from '../../components/table-view'
 import { SecondaryButton } from '../../components/button'
 import { Link, useLocation } from 'wouter'
-import { euro, formatEuro, sumEuroValues } from '../../../common/currency'
+import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency'
 import { useGetDebtsByPaymentQuery } from '../../api/debt'
 import { Page, Header, Title, Actions, ActionButton, Section, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page'
 
@@ -30,6 +31,22 @@ export const PaymentDetails = ({ params }) => {
       color: 'blue',
     }
   }
+
+  if (payment.status === 'paid') {
+    statusBadge = {
+      text: 'Paid',
+      color: 'green',
+    }
+  }
+
+  const timelineEvents = payment.events
+    .map((e) => ({
+      time: new Date(e.time),
+      title: {
+        'created': 'Payment created',
+        'payment': `Payment of ${formatEuro(cents(e.amount))} received`,
+      }[e.type],
+    }))
 
   return (
     <Page>
@@ -65,37 +82,9 @@ export const PaymentDetails = ({ params }) => {
           <DebtList debts={debts ?? []} />
         </SectionContent>
       </Section>
-      <Section title="Transactions">
+      <Section title="Timeline">
         <SectionContent>
-          <TableView
-            rows={[
-              {
-                date: new Date(),
-                amount: euro(100),
-              }
-            ]}
-            columns={[
-              {
-                name: 'Time',
-                getValue: 'date',
-                render: (value) => new Intl.DateTimeFormat('fi', {}).format(value),
-              },
-              {
-                name: 'Amount',
-                getValue: 'amount',
-                render: formatEuro,
-                align: 'right',
-              },
-              {
-                name: 'Debitor',
-                getValue: () => 'Mitja Karhusaari',
-              },
-              {
-                name: 'Description',
-                getValue: () => 'Payment with message 128304971',
-              },
-            ]}
-          />
+          <Timeline events={timelineEvents} />
         </SectionContent>
       </Section>
     </Page>
