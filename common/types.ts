@@ -2,7 +2,7 @@ import * as t from 'io-ts'
 import * as Either from 'fp-ts/lib/Either'
 import { flow, pipe } from 'fp-ts/lib/function'
 import { FromDbType } from '../backend/db'
-import { EuroValue, euro } from './currency'
+import { EuroValue, euro, euroValue } from './currency'
 import { isMatch } from 'date-fns'
 import { split } from 'fp-ts/lib/string'
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
@@ -406,5 +406,123 @@ export const bankAccount = t.type({
 })
 
 export type BankAccount = t.TypeOf<typeof bankAccount>
+
+export type DbBankTransaction = {
+  id: string
+  account: string
+  amount: number
+  value_time: Date
+  type: 'credit' | 'debit'
+  other_party_account: string | null
+  other_party_name: string
+  reference: string | null
+  message: string | null
+}
+
+export type BankTransaction = Omit<FromDbType<DbBankTransaction>, 'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime'> & {
+  amount: EuroValue
+  date: Date
+  otherParty: {
+    name: string
+    account: string | null
+  }
+}
+
+type Explode<T> = keyof T extends infer K
+  ? K extends unknown
+  ? { [I in keyof T]: I extends K ? T[I] : never }
+  : never
+  : never;
+
+type AtMostOne<T> = Explode<Partial<T>>;
+type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
+type ExactlyOne<T> = AtMostOne<T> & AtLeastOne<T>
+
+const exactlyOne = <T extends t.Props>(props: T) => new t.Type<
+  ExactlyOne<{ [K in keyof T]: t.TypeOf<T[K]> }>,
+  ExactlyOne<{ [K in keyof T]: t.TypeOf<T[K]> }>,
+  unknown
+>(
+  'exactlyOne',
+  (input: unknown): input is ExactlyOne<T> => {
+    if (typeof input !== 'object' || input === null) {
+      return false;
+    }
+
+    const keys = Object.keys(input);
+
+    if (keys.length !== 1) {
+      return false;
+    }
+
+    if (!(keys[0] in props)) {
+      return false;
+    }
+
+    return true;
+  },
+  (input, context) => {
+    if (typeof input !== 'object' || input === null) {
+      return t.failure(input, context);
+    }
+
+    const keys = Object.keys(input);
+
+    if (keys.length !== 1) {
+      return t.failure(input, context);
+    }
+
+    if (!(keys[0] in props)) {
+      return t.failure(input, context);
+    }
+
+    return t.success(input as ExactlyOne<T>);
+  },
+  t.identity,
+)
+
+
+const newBankTransaction = t.intersection([
+  t.type({
+    id: t.string,
+    amount: euroValue,
+    date: t.unknown,
+    type: t.union([t.literal('credit'), t.literal('debit')]),
+    otherParty: t.intersection([
+      t.partial({ account: t.union([t.null, t.string]) }),
+      t.type({ name: t.string }),
+    ]),
+  }),
+  t.partial({
+    message: t.union([t.string, t.null]),
+    reference: t.union([t.string, t.null]),
+  }),
+])
+
+const balance = t.type({
+  date: t.unknown,
+  amount: euroValue,
+})
+
+const newBankStatement = t.type({
+  id: t.string,
+  accountIban: t.string,
+  generatedAt: t.unknown,
+  transactions: t.array(newBankTransaction),
+  openingBalance: balance,
+  closingBalance: balance,
+})
+
+export type BankStatement = t.TypeOf<typeof newBankStatement>
+
+export type DbBankStatement = {
+  id: string
+  account: string
+  generated_at: string
+  opening_balance_date: Date
+  opening_balance: number
+  closing_balance_date: Date
+  closing_balance: number
+}
 
 export type Email = FromDbType<DbEmail>

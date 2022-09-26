@@ -4,7 +4,6 @@ import { CreateDebtCenter } from './create-debt-center'
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
 import { PayerListing } from './payer-listing'
 import { Banking } from './banking'
-import { Tools } from './tools'
 import { ImportXMLStatement } from './import-xml-statement'
 import { CreateDebt } from './create-debt'
 import { DebtCenterDetails } from './debt-center'
@@ -14,9 +13,11 @@ import { DebtDetails } from './debt-details'
 import { DebtListing } from './debt-listing'
 import { PayerDetails } from './payer-details'
 import { PaymentDetails } from './payment-details'
+import { BankStatement } from './bank-statement'
 import { PaymentsListing } from './payments-listing'
 import { EmailsListing } from './emails-listing'
 import { EmailDetails } from './email-details'
+import { BankAccount } from './bank-account'
 import { CreateBankAccount } from './create-bank-account'
 import { CornerDownLeft } from 'react-feather'
 import { useState } from 'react'
@@ -65,7 +66,6 @@ const Admin = () => {
           <MenuItem path="/admin/payers">Payers</MenuItem>
           <MenuItem path="/admin/emails">Emails</MenuItem>
           <MenuItem path="/admin/banking">Banking</MenuItem>
-          <MenuItem path="/admin/tools">Tools</MenuItem>
         </ul>
         <div className="py-2.5 px-4 hover:border-l-8 border-blue-500 hover:pl-2 cursor-pointer hover:bg-gray-50">
           Log out
@@ -110,8 +110,13 @@ const Admin = () => {
             <Route path="/admin/banking" component={Banking} />
             <Route path="/admin/banking/accounts" component={Banking} />
             <Route path="/admin/banking/accounts/create" component={CreateBankAccount} />
-            <Route path="/admin/tools" component={Tools} />
-            <Route path="/admin/tools/import-xml-statement" component={ImportXMLStatement} />
+            <Route path="/admin/banking/accounts/:id">
+              {({ id }) => <BankAccount iban={id} />}
+            </Route>
+            <Route path="/admin/banking/statements/:id">
+              {({ id }: { id: string }) => <BankStatement id={id} />}
+            </Route>
+            <Route path="/admin/banking/import-statement" component={ImportXMLStatement} />
             <Route path="/admin/:rest*">
               <Redirect to="/admin/debt-centers" />
             </Route>
