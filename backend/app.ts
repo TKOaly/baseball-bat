@@ -23,6 +23,7 @@ import { EmailApi } from './api/email'
 import * as redis from 'redis'
 import { createEmailDispatcherTransport, createSMTPTransport, EmailService, IEmailTransport } from './services/email'
 import { MagicLinksApi } from './api/magic-links'
+import { BankingApi } from './api/banking'
 
 const PORT = process.env.PORT ?? '5000'
 const config = Config.get()
@@ -119,6 +120,7 @@ const app = express()
     '/api/emails',
     Container.get(EmailApi).router().handler(),
   )
+  .use('/api/banking', Container.get(BankingApi).router().handler())
   .use(Container.get(AuthApi).router().handler())
   .use(
     router(

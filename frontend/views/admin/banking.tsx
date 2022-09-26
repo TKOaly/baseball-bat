@@ -1,0 +1,30 @@
+import { ListView } from '../../components/list-view'
+import { Button, SecondaryButton } from '../../components/button'
+import { useGetBankAccountsQuery } from '../../api/banking/accounts'
+import { useLocation } from 'wouter';
+
+export const Banking = () => {
+  const { data: accounts } = useGetBankAccountsQuery()
+  const [, setLocation] = useLocation()
+
+  return (
+    <>
+      <h1 className="text-2xl mb-5 mt-10">Banking</h1>
+      <p className="text-gray-800 mb-7 text-md">
+      </p>
+      <ListView
+        actions={
+          <Button onClick={() => setLocation('/admin/banking/accounts/create')}>Add bank account</Button>
+        }
+        items={(accounts ?? []).map((account) => ({
+          key: account.iban,
+          title: account.name,
+          description: account.iban,
+          label: '',
+          badges: [],
+        }))}
+        onSelected={(item) => setLocation(`/admin/banking/accounts/${item.key}`)}
+      />
+    </>
+  );
+};

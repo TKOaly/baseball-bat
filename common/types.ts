@@ -400,4 +400,11 @@ export type DbEmail = {
   sent_at: Date | null
 }
 
+export const bankAccount = t.type({
+  iban: t.string,
+  name: t.string,
+})
+
+export type BankAccount = t.TypeOf<typeof bankAccount>
+
 export type Email = FromDbType<DbEmail>

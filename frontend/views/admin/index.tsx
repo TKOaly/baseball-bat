@@ -1,8 +1,11 @@
-import { Link, Redirect, Route, Switch, useLocation, useRoute } from 'wouter'
+import { Link, Redirect, Route, Switch, useLocation } from 'wouter'
 import { tw } from '../../tailwind'
 import { CreateDebtCenter } from './create-debt-center'
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
 import { PayerListing } from './payer-listing'
+import { Banking } from './banking'
+import { Tools } from './tools'
+import { ImportXMLStatement } from './import-xml-statement'
 import { CreateDebt } from './create-debt'
 import { DebtCenterDetails } from './debt-center'
 import { DebtCentersListing } from './debt-centers-listing'
@@ -14,7 +17,9 @@ import { PaymentDetails } from './payment-details'
 import { PaymentsListing } from './payments-listing'
 import { EmailsListing } from './emails-listing'
 import { EmailDetails } from './email-details'
+import { CreateBankAccount } from './create-bank-account'
 import { CornerDownLeft } from 'react-feather'
+import { useState } from 'react'
 
 const MenuItemLi = tw.li`
   px-4
@@ -47,6 +52,8 @@ const MenuItem = ({ path, children }) => {
 };
 
 const Admin = () => {
+  const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow')
+
   return (
     <div className="flex flex-row h-screen bg-[#fbfbfb]">
       <div className="flex-shrink flex flex-col w-80 bg-white border-r shadow-xl">
@@ -57,15 +64,22 @@ const Admin = () => {
           <MenuItem path="/admin/payments">Payments</MenuItem>
           <MenuItem path="/admin/payers">Payers</MenuItem>
           <MenuItem path="/admin/emails">Emails</MenuItem>
+          <MenuItem path="/admin/banking">Banking</MenuItem>
+          <MenuItem path="/admin/tools">Tools</MenuItem>
         </ul>
-        <Link to='/' style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25em', margin: '1em', fontSize: '0.9em', color: 'gray' }}>Back to public site <CornerDownLeft style={{ height: '1em' }} className="text-blue-600" /></Link>
-        <div className="flex-grow" />
         <div className="py-2.5 px-4 hover:border-l-8 border-blue-500 hover:pl-2 cursor-pointer hover:bg-gray-50">
           Log out
         </div>
+        <Link to='/' style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25em', margin: '1em', fontSize: '0.9em', color: 'gray' }}>Back to public site <CornerDownLeft style={{ height: '1em' }} className="text-blue-600" /></Link>
+        <div className="flex-grow" />
+        <ul className="flex justify-center">
+          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'narrow' && 'border-blue-500'}`} onClick={() => setWidth('narrow')}>Narrow</li>
+          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'wide' && 'border-blue-500'}`} onClick={() => setWidth('wide')}>Wide</li>
+          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'full' && 'border-blue-500'}`} onClick={() => setWidth('full')}>Full</li>
+        </ul>
       </div>
       <div className="flex-grow flex justify-center items-start overflow-y-scroll">
-        <div className="flex-grow max-w-[50em] p-5">
+        <div className={`flex-grow ${{ 'narrow': 'max-w-[50em]', 'wide': 'max-w-[80em]', 'full': '' }[width]} p-5`}>
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
             <Route path="/admin/debt-centers/create" component={CreateDebtCenter} />
@@ -93,6 +107,11 @@ const Admin = () => {
             <Route path="/admin/payments/:id" component={PaymentDetails} />
             <Route path="/admin/emails" component={EmailsListing} />
             <Route path="/admin/emails/:id" component={EmailDetails} />
+            <Route path="/admin/banking" component={Banking} />
+            <Route path="/admin/banking/accounts" component={Banking} />
+            <Route path="/admin/banking/accounts/create" component={CreateBankAccount} />
+            <Route path="/admin/tools" component={Tools} />
+            <Route path="/admin/tools/import-xml-statement" component={ImportXMLStatement} />
             <Route path="/admin/:rest*">
               <Redirect to="/admin/debt-centers" />
             </Route>
