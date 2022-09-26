@@ -9,6 +9,7 @@ import { useGetAccountTransactionsQuery } from '../../api/banking/transactions'
 import { cents, formatEuro } from '../../../common/currency'
 import { format, parseISO } from 'date-fns'
 import { useGetBankAccountStatementsQuery } from '../../api/banking/statements'
+import { ExternalLink } from 'react-feather'
 
 export const BankAccount = ({ iban }: { iban: string }) => {
   const [, setLocation] = useLocation()

@@ -417,6 +417,7 @@ export type DbBankTransaction = {
   other_party_name: string
   reference: string | null
   message: string | null
+  payment?: DbPayment
 }
 
 export type BankTransaction = Omit<FromDbType<DbBankTransaction>, 'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime'> & {
@@ -526,3 +527,8 @@ export type DbBankStatement = {
 }
 
 export type Email = FromDbType<DbEmail>
+
+export type DbPaymentEventTransactionMapping = {
+  bank_transaction_id: string
+  payment_event_id: string
+}

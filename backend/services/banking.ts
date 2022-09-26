@@ -3,6 +3,7 @@ import { BankAccount, BankTransaction, DbBankTransaction, DbBankStatement, BankS
 import { PgClient } from '../db'
 import sql from 'sql-template-strings'
 import { cents } from '../../common/currency'
+import { PaymentService } from './payements'
 
 const formatBankStatement = (stmt: DbBankStatement): Omit<BankStatement, 'transactions'> => ({
   id: stmt.id,
@@ -29,12 +30,16 @@ const formatBankTransaction = (tx: DbBankTransaction): Omit<BankTransaction, 'ac
   },
   message: tx.message,
   reference: tx.reference,
+  payment: tx.payment,
 })
 
 @Service()
 export class BankingService {
   @Inject(() => PgClient)
   pg: PgClient
+
+  @Inject(() => PaymentService)
+  paymentService: PaymentService
 
   async createBankAccount(account: BankAccount) {
     await this.pg.any(sql`
@@ -84,8 +89,11 @@ export class BankingService {
       let transaction
 
       if (existing.length > 0) {
-        transaction = existing[0]
+        transaction = formatBankTransaction(existing[0])
+        console.log('Existing!', transactions)
       } else {
+        console.log(`Ref: ${tx.reference} Msg: ${tx.message}`)
+
         const created = await this.pg.one<DbBankTransaction>(sql`
           INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
           VALUES (
@@ -96,13 +104,17 @@ export class BankingService {
             ${tx.otherParty.name},
             ${tx.otherParty.account},
             ${tx.date},
-            ${tx.message},
-            ${tx.reference}
+            ${tx.reference},
+            ${tx.message}
           )
           RETURNING *
         `);
 
-        transaction = created;
+        if (!created) {
+          throw new Error('Could not create bank transaction')
+        }
+
+        transaction = formatBankTransaction(created);
       }
 
       if (!transaction) {
@@ -117,18 +129,30 @@ export class BankingService {
         )
       `)
 
+      await this.paymentService.createPaymentEventFromTransaction({
+        ...transaction,
+        account: details.accountIban,
+      })
+
       return transaction;
     }));
 
     return {
       statement: formatBankStatement(statement),
-      transactions: transactions.map(formatBankTransaction),
+      transactions: transactions,
     }
   }
 
   async getAccountTransactions(iban: string) {
     const transactions = await this.pg.any<DbBankTransaction>(sql`
-      SELECT * FROM bank_transactions WHERE account = ${iban}
+      SELECT
+        bt.*,
+        TO_JSON(p.*) AS payment
+      FROM bank_transactions bt
+      LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
+      LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
+      LEFT JOIN payments p ON p.id = pe.payment_id
+      WHERE account = ${iban}
     `)
 
     return transactions.map(formatBankTransaction)

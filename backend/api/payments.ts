@@ -9,7 +9,7 @@ import { PaymentService } from "../services/payements";
 import { PayerService } from "../services/payer";
 import { UsersService } from "../services/users";
 import { validateBody } from "../validate-middleware";
-import { euro, formatEuro, sumEuroValues } from "../../common/currency";
+import { euro, euroValue, formatEuro, sumEuroValues } from "../../common/currency";
 import { EmailService } from "../services/email";
 import { Config } from "../config";
 import { parseISO } from "date-fns";

@@ -1,5 +1,12 @@
 import rtkApi from './rtk-api'
-import { Payment } from '../../common/types'
+import { EuroValue, Payment } from '../../common/types'
+
+export type BankTransactionDetails = {
+  accountingId: string
+  time: string
+  amount: EuroValue
+  referenceNumber: string
+}
 
 const paymentsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -34,6 +41,14 @@ const paymentsApi = rtkApi.injectEndpoints({
         url: `/payments/${id}/credit`,
       }),
     }),
+
+    getPaymentsByReferenceNumbers: builder.query<Payment[], string[]>({
+      query: (rfs) => ({
+        method: 'POST',
+        url: `/payments/by-reference-numbers`,
+        body: rfs,
+      }),
+    }),
   })
 });
 
@@ -44,4 +59,5 @@ export const {
   useGetPaymentsByDebtQuery,
   useCreateInvoiceMutation,
   useCreditPaymentMutation,
+  useGetPaymentsByReferenceNumbersQuery,
 } = paymentsApi

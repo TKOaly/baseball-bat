@@ -2,12 +2,16 @@ import { BankTransaction } from '../../common/types'
 import { formatEuro, cents } from '../../common/currency'
 import { parseISO, format } from 'date-fns'
 import { TableView } from './table-view'
+import { ExternalLink } from 'react-feather'
+import { useLocation } from 'wouter'
 
 export type Props = {
   transactions: BankTransaction[]
 }
 
 export const TransactionList = ({ transactions }: Props) => {
+  const [, setLocation] = useLocation()
+
   return (
     <TableView
       rows={transactions.map(tx => ({ ...tx, key: tx.id }))}
@@ -44,6 +48,24 @@ export const TransactionList = ({ transactions }: Props) => {
         {
           name: 'Message',
           getValue: (tx) => tx.message,
+        },
+        {
+          name: 'Payment',
+          getValue: (row) => row.payment?.payment_number,
+          render: (_, row) => {
+            if (!row.payment)
+              return null;
+
+            return (
+              <div
+                className="flex items-center cursor-pointer gap-1"
+                onClick={() => setLocation(`/admin/payments/${row.payment.id}`)}
+              >
+                {row.payment.payment_number}
+                <ExternalLink className="h-4 text-blue-500 relative" />
+              </div>
+            )
+          },
         },
       ]}
     />

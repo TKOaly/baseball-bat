@@ -1,9 +1,18 @@
 import { Service, Inject } from 'typedi'
 import sql from 'sql-template-strings'
-import { Debt, EuroValue, InternalIdentity, Payment } from '../../common/types'
+import { BankTransaction, DbPaymentEventTransactionMapping, Debt, EuroValue, InternalIdentity, Payment } from '../../common/types'
 import { PgClient } from '../db'
 import { omit } from 'remeda'
 import { DebtService } from './debt'
+
+type PaymentWithEvents = Payment & {
+  events: Array<{
+    time: Date
+    data: Record<string, unknown>
+    type: 'created' | 'payment'
+    amount: EuroValue
+  }>,
+}
 
 function finnishReferenceChecksum(num: bigint): bigint {
   const factors = [7n, 3n, 1n]
@@ -56,9 +65,19 @@ export type NewInvoice = {
   paymentNumber?: string
 }
 
+type BankTransactionDetails = {
+  accountingId: string
+  referenceNumber: string
+  amount: EuroValue
+  time: Date
+}
+
 type NewPaymentEvent = {
   amount: EuroValue,
   type: 'created' | 'payment'
+  data?: Record<string, any>
+  time?: Date
+  transaction?: string
 }
 
 type IPaymentType<K extends string, D extends object> = {
@@ -307,10 +326,24 @@ export class PaymentService {
   }
 
   async createPaymentEvent(id: string, event: NewPaymentEvent) {
-    await this.pg.any(sql`
-      INSERT INTO payment_events (payment_id, type, amount)
-      VALUES (${id}, ${event.type}, ${event.amount.value})
+    const created = await this.pg.one<{ id: string }>(sql`
+      INSERT INTO payment_events (payment_id, type, amount, data, time)
+      VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${event.time})
+      RETURNING *
     `)
+
+    if (!created) {
+      throw new Error('Could not create payment event')
+    }
+
+    if (event.transaction) {
+      await this.pg.one(sql`
+        INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
+        VALUES (${created.id}, ${event.transaction})
+      `)
+    }
+
+    return created
   }
 
   async creditPayment(id: string) {
@@ -325,5 +358,79 @@ export class PaymentService {
       SET credited = true
       WHERE id = ${id}
     `)
+  }
+
+  async getPaymentsByReferenceNumbers(rfs: string[]) {
+    const payments = await this.pg.any<PaymentWithEvents>(sql`
+      SELECT
+        p.*,
+        s.balance,
+        s.status,
+        s.payer,
+        (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+        (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+        COALESCE(s.updated_at, p.created_at) AS updated_at
+      FROM payments p
+      JOIN payment_statuses s ON s.id = p.id
+      WHERE p.data->>'reference_number' = ANY (${rfs.map(rf => rf.replace(/^0+/, ''))})
+    `)
+
+    return payments
+  }
+
+  async createPaymentEventFromTransaction(tx: BankTransaction) {
+    const existing_mapping = await this.pg.one<DbPaymentEventTransactionMapping>(sql`
+      SELECT *
+      FROM payment_event_transaction_mapping
+      WHERE bank_transaction_id = ${tx.id}
+    `)
+
+    if (existing_mapping) {
+      console.log('Existing mapping')
+      return null;
+    }
+
+    if (!tx.reference) {
+      console.log('No reference')
+      return null;
+    }
+
+    const [payment] = await this.getPaymentsByReferenceNumbers([tx.reference])
+
+    if (!payment) {
+      console.log('No match')
+      return null;
+    }
+
+    return await this.createPaymentEvent(payment.id, {
+      type: 'payment',
+      amount: tx.amount,
+      time: tx.date,
+      transaction: tx.id,
+    })
+  }
+
+  async createBankTransactionPaymentEvent(details: BankTransactionDetails) {
+    const payments = await this.getPaymentsByReferenceNumbers([details.referenceNumber])
+
+    if (payments.length === 0) {
+      return null;
+    }
+
+    const [payment] = payments
+    const already_exists = payment.events.some((event) => event.data?.accounting_id === details.accountingId)
+
+    if (already_exists) {
+      return null;
+    }
+
+    return await this.createPaymentEvent(payment.id, {
+      type: 'payment',
+      amount: details.amount,
+      time: details.time,
+      data: {
+        accounting_id: details.accountingId,
+      },
+    })
   }
 }
