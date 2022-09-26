@@ -69,7 +69,16 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
         </div>
       )}
       options={
-        uniq(rows.map((r) => [r, getColumnValue(column, r)]))
+        rows
+          .map((r) => [r, getColumnValue(column, r)])
+          .reduce(([list, values]: [any[], Set<string>], [row, value]: [any, string]) => {
+            if (values.has(value)) {
+              return [list, values];
+            } else {
+              values.add(value);
+              return [[...list, [row, value]], values];
+            }
+          }, [[], new Set()])[0]
           .map(([row, value]) => {
             let icon = null
 
