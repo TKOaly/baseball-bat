@@ -315,6 +315,7 @@ export class DebtApi {
             return {
               id: internalIdentity(''),
               email: user.email,
+              emails: [],
               name: user.screenName,
               tkoalyUserId: tkoalyIdentity(user.id),
               createdAt: new Date(),
@@ -335,6 +336,7 @@ export class DebtApi {
               name,
               createdAt: new Date(),
               updatedAt: new Date(),
+              emails: [],
               stripeCustomerId: '',
               disabled: false,
             }
