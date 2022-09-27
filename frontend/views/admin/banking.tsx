@@ -14,7 +14,10 @@ export const Banking = () => {
       </p>
       <ListView
         actions={
-          <Button onClick={() => setLocation('/admin/banking/accounts/create')}>Add bank account</Button>
+          <>
+            <Button onClick={() => setLocation('/admin/banking/accounts/create')}>Add bank account</Button>
+            <SecondaryButton onClick={() => setLocation('/admin/banking/import-statement')}>Import bank statement</SecondaryButton>
+          </>
         }
         items={(accounts ?? []).map((account) => ({
           key: account.iban,
