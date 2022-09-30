@@ -2,6 +2,7 @@ import { Link, Redirect, Route, Switch, useLocation } from 'wouter'
 import { tw } from '../../tailwind'
 import { CreateDebtCenter } from './create-debt-center'
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
+import { DialogTarget } from '../../components/dialog'
 import { PayerListing } from './payer-listing'
 import { Banking } from './banking'
 import { ImportXMLStatement } from './import-xml-statement'
@@ -122,6 +123,9 @@ const Admin = () => {
             </Route>
           </Switch>
         </div>
+      </div>
+      <div onClick={(evt) => evt.stopPropagation()}>
+        <DialogTarget />
       </div>
     </div>
   );
