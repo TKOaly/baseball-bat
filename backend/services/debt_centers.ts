@@ -9,6 +9,9 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   description: debtCenter.description,
   createdAt: debtCenter.created_at,
   updatedAt: debtCenter.updated_at,
+  debtCount: debtCenter.debt_count,
+  paidCount: debtCenter.paid_count,
+  unpaidCount: debtCenter.unpaid_count,
   url: debtCenter.url,
 })
 
@@ -19,7 +22,17 @@ export class DebtCentersService {
 
   getDebtCenters() {
     return this.pg
-      .any<DbDebtCenter>(sql`SELECT * FROM debt_center`)
+      .any<DbDebtCenter>(sql`
+        SELECT
+          dc.*,
+          COUNT(d.id) as debt_count,
+          COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
+        FROM debt_center dc
+        LEFT JOIN debt d ON d.debt_center_id = dc.id
+        LEFT JOIN debt_statuses ds ON ds.id = d.id
+        GROUP BY dc.id
+      `)
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter))
   }
 
