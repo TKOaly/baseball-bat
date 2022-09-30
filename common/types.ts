@@ -245,15 +245,19 @@ export type LineItem = Omit<FromDbType<DbLineItem>, 'amount'> & {
 }
 
 export type DbDebtCenter = {
+  paid_count?: number
+  unpaid_count?: number
+  debt_count?: number
   id: string
   name: string
   description: string
   url: string
   created_at: Date
   updated_at: Date
+  total?: number
 }
 
-export type DebtCenter = FromDbType<DbDebtCenter>
+export type DebtCenter = Omit<FromDbType<DbDebtCenter>, 'total'> & { total?: EuroValue }
 
 export type NewDebtCenter = Omit<DebtCenter, 'id' | 'createdAt' | 'updatedAt'>
 

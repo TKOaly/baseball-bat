@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns'
 import { useGetDebtCentersQuery } from '../../api/debt-centers'
 import { Button, SecondaryButton } from '../../components/button'
 import { TableView } from '../../components/table-view';
+import { cents, formatEuro } from '../../../common/currency';
 
 export const DebtCentersListing = () => {
   const { data, isLoading } = useGetDebtCentersQuery(null)
@@ -46,6 +47,7 @@ export const DebtCentersListing = () => {
           },
           { name: 'Paid', getValue: 'paidCount', align: 'right' },
           { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
+          { name: 'Total value', getValue: (row) => row.total.value, align: 'right', render: (value) => formatEuro(cents(value)) },
         ]}
       />
     </>

@@ -2,6 +2,7 @@ import { NewDebtCenter, DbDebtCenter, DebtCenter } from '../../common/types'
 import { PgClient } from '../db'
 import { Service, Inject } from 'typedi'
 import sql from 'sql-template-strings'
+import { cents } from '../../common/currency'
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
@@ -12,6 +13,7 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   debtCount: debtCenter.debt_count,
   paidCount: debtCenter.paid_count,
   unpaidCount: debtCenter.unpaid_count,
+  total: debtCenter.total === undefined ? undefined : cents(parseInt('' + debtCenter.total)),
   url: debtCenter.url,
 })
 
@@ -27,10 +29,14 @@ export class DebtCentersService {
           dc.*,
           COUNT(d.id) as debt_count,
           COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
-          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
+          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
+          SUM(dco.amount) AS total,
+          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
         FROM debt_center dc
         LEFT JOIN debt d ON d.debt_center_id = dc.id
         LEFT JOIN debt_statuses ds ON ds.id = d.id
+        LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
+        LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
         GROUP BY dc.id
       `)
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter))
