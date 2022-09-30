@@ -301,8 +301,9 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
       <div className="grid bg-white border rounded-md shadow-sm" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
         {selectable && <div />}
         {columns.map((column) => (
-          <div className="relative">
+          <div className="relative h-0">
             <div className={`absolute ${column.align === 'right' ? 'right-3' : 'left-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
+            <div className={`opacity-0 pointer-events-none ${column.align === 'right' ? 'pr-3' : 'pl-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
           </div>
         ))}
         {actions && <div />}
