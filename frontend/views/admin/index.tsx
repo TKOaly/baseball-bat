@@ -79,7 +79,7 @@ const Admin = () => {
         </ul>
       </div>
       <div className="flex-grow flex justify-center items-start overflow-y-scroll">
-        <div className={`flex-grow ${{ 'narrow': 'max-w-[50em]', 'wide': 'max-w-[80em]', 'full': '' }[width]} p-5`}>
+        <div className={`flex-grow ${{ 'narrow': 'max-w-[50em]', 'wide': 'max-w-[80em]', 'full': '' }[width]} py-5 mx-40`}>
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
             <Route path="/admin/debt-centers/create" component={CreateDebtCenter} />
