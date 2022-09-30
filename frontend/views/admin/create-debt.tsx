@@ -13,7 +13,7 @@ import { TabularFieldListFormik } from '../../components/tabular-field-list'
 import { TextareaField } from '../../components/textarea-field'
 import { TextField } from '../../components/text-field'
 import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from '../../api/debt-centers'
-import { useCreateDebtMutation, useGetDebtComponentsQuery, useCreateDebtComponentMutation } from '../../api/debt'
+import { useCreateDebtMutation, useGetDebtComponentsQuery, useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt'
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users'
 import { format, addDays, isMatch } from 'date-fns'
 
@@ -46,6 +46,7 @@ type DebtFormValues = {
 export const CreateDebt = ({ debtCenterId }) => {
   const { data: users } = useGetUpstreamUsersQuery(null)
   const { data: debtCenters, isLoading } = useGetDebtCentersQuery(null)
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId })
   const [createDebt] = useCreateDebtMutation()
   const [createDebtCenter] = useCreateDebtCenterMutation()
   const [createDebtComponent] = useCreateDebtComponentMutation()
@@ -113,9 +114,7 @@ export const CreateDebt = ({ debtCenterId }) => {
           description: '',
           center: debtCenterId,
           payer: null,
-          components: [
-            { component: 'asd', amount: 420.69 },
-          ],
+          components: [],
           due_date: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
           amount: 1234.31,
         } as DebtFormValues}
@@ -173,7 +172,10 @@ export const CreateDebt = ({ debtCenterId }) => {
                   component: DropdownField,
                   key: 'component',
                   props: {
-                    options: [{ value: 'asd', text: 'Asd' }],
+                    options: centerComponents.map((component) => ({
+                      value: component.id,
+                      text: component.name,
+                    })),
                     allowCustom: true,
                     formatCustomOption: ({ name }) => name,
                     createCustomOption: (name) => ({ name }),
@@ -183,8 +185,13 @@ export const CreateDebt = ({ debtCenterId }) => {
                   header: 'Amount',
                   component: EuroField,
                   key: 'amount',
-                  props: {
-                    readOnly: true,
+                  props: (row) => {
+                    const component = centerComponents.find(c => c.id === row.component)
+
+                    return {
+                      readOnly: typeof row.component === 'string',
+                      value: component ? component.amount.value / 100 : undefined,
+                    };
                   },
                 },
               ]}

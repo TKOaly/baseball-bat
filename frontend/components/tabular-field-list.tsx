@@ -7,7 +7,7 @@ type ColumnDef<T, C extends JSXElementConstructor<any>> = {
   getValue?: (row: T) => any,
   component: C,
   header: string,
-  props?: ComponentProps<C>,
+  props?: ComponentProps<C> | ((row: T) => ComponentProps<C>),
 }
 
 type Props<T extends Object> = {
@@ -47,24 +47,32 @@ export const TabularFieldList = <T extends Object>({
 }: Props<T>) => {
   const render = (tools: Tools<T>) => [
     ...value.flatMap((row, rowIndex) => {
-      const fields = columns.map(({ component: Component, getValue, key, props }, i) => (
-        <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }}>
-          <Component
-            name={`${name}.${rowIndex}.${key}`}
-            value={getValue ? getValue(row) : row[key]}
-            error={!!errors?.[`${name}.${rowIndex}.${key}`]}
-            onChange={(evt) => {
-              tools.replace(rowIndex, {
-                ...row,
-                [key]: evt.target.value,
-              });
-            }}
-            flushRight={i < columns.length - 1}
-            flushLeft={i > 0}
-            {...props}
-          />
-        </div>
-      ));
+      const fields = columns.map(({ component: Component, getValue, key, props }, i) => {
+        let evaluatedProps = props;
+
+        if (typeof evaluatedProps === 'function') {
+          evaluatedProps = evaluatedProps(row);
+        }
+
+        return (
+          <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }}>
+            <Component
+              name={`${name}.${rowIndex}.${key}`}
+              value={getValue ? getValue(row) : row[key]}
+              error={!!errors?.[`${name}.${rowIndex}.${key}`]}
+              onChange={(evt) => {
+                tools.replace(rowIndex, {
+                  ...row,
+                  [key]: evt.target.value,
+                });
+              }}
+              flushRight={i < columns.length - 1}
+              flushLeft={i > 0}
+              {...evaluatedProps}
+            />
+          </div>
+        );
+      });
 
       if (!readOnly) {
         fields.push(
