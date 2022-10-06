@@ -162,15 +162,20 @@ export type DbPayerProfile = {
   name: string
   disabled: boolean
   merged_to: string
+  paid_count?: number
+  unpaid_count?: number
+  debt_count?: number
+  total?: number
 }
 export type PayerProfile = Omit<
   FromDbType<DbPayerProfile>,
-  'id' | 'tkoalyUserId' | 'mergedTo'
+  'id' | 'tkoalyUserId' | 'mergedTo' | 'total'
 > & {
   id: InternalIdentity
   tkoalyUserId?: TkoalyIdentity
   mergedTo?: InternalIdentity
   emails: PayerEmail[]
+  total?: EuroValue
 }
 
 export const payerPreferences = t.type({

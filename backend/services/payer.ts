@@ -30,6 +30,7 @@ import { EventsService } from './events'
 import * as R from 'remeda'
 import { Inject, Service } from 'typedi'
 import { UsersService } from './users'
+import { cents } from '../../common/currency'
 
 export type DbPayerProfileWithEmails = DbPayerProfile & { emails: DbPayerEmail[] }
 
@@ -59,6 +60,10 @@ export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerE
     ? undefined
     : internalIdentity(profile.merged_to),
   emails: profile.emails ? profile.emails.map(formatPayerEmail) : [],
+  debtCount: profile.debt_count,
+  paidCount: profile.paid_count,
+  unpaidCount: profile.unpaid_count,
+  total: profile.total === undefined ? undefined : cents(parseInt('' + profile.total)),
 })
 
 const formatPaymentMethod = (method: DbPaymentMethod): PaymentMethod => ({
@@ -101,8 +106,18 @@ export class PayerService {
       .many<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
-          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
+          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails,
+          COUNT(d.id) as debt_count,
+          COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
+          SUM(dco.amount) AS total,
+          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
         FROM payer_profiles pp
+        LEFT JOIN debt d ON d.payer_id = pp.id
+        LEFT JOIN debt_statuses ds ON ds.id = d.id
+        LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
+        LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
+        GROUP BY pp.id
       `)
 
     return dbProfiles.map(formatPayerProfile)
