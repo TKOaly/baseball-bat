@@ -2,6 +2,8 @@ import * as pg from 'pg'
 import sql, { SQLStatement } from 'sql-template-strings'
 import { Service } from 'typedi'
 
+pg.types.setTypeParser(20, (value: string) => parseInt(value, 10))
+
 type TxOptions = {
   serialized: boolean,
 }
@@ -19,7 +21,7 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
 type Split<
   Str,
   Delim extends string
-  > = Str extends `${infer Head}${Delim}${infer Rest}`
+> = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
   ? Str extends ''

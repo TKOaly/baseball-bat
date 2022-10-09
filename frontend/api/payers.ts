@@ -83,7 +83,18 @@ const payersApi = rtkApi.injectEndpoints({
       providesTags: (debts) => debts.flatMap(({ id }) => [
         { type: 'Debt', id },
       ]),
-    })
+    }),
+
+    sendPayerDebtReminder: builder.mutation<{ messageSent: boolean, messageDebtCount: number }, { payerId: string, send: boolean }>({
+      query: (body) => ({
+        url: `/payers/${body.payerId}/send-reminder`,
+        method: 'POST',
+        body: {
+          send: body.send,
+        },
+      }),
+      invalidatesTags: [{ type: 'Email', id: 'LIST' }],
+    }),
   })
 })
 
@@ -96,6 +107,7 @@ export const {
   useUpdatePayerPreferencesMutation,
   useUpdatePayerEmailsMutation,
   useGetPayersQuery,
+  useSendPayerDebtReminderMutation,
 } = payersApi
 
 export default payersApi

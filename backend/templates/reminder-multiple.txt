@@ -1,0 +1,12 @@
+You have unpaid debts that are overdue. Please pay them as soon as possible.
+The overdue debts are listed below, and you can view their details online at <%- link %>.
+
+Overdue debts
+=============
+
+<% for (const debt of debts) { %>
+Debt:     <%- debt.name %>
+Amount:   <%- formatEuro(debt.total) %>
+Due date: <%- formatDate(debt.dueDate) %>
+
+<% } %>

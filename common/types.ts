@@ -302,7 +302,7 @@ export type DbDebt = {
 
 export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
 
-export type Debt = Omit<FromDbType<DbDebt>, 'payerId'> & { payerId: InternalIdentity, status: DebtStatus, debtComponents: Array<DebtComponent> };
+export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total'> & { total?: EuroValue, payerId: InternalIdentity, status: DebtStatus, debtComponents: Array<DebtComponent> };
 
 export type DebtWithPayer = Debt & { payer: PayerProfile };
 

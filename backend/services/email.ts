@@ -18,7 +18,7 @@ import { groupBy } from 'fp-ts/lib/NonEmptyArray'
 import { foldMap } from 'fp-ts/lib/Foldable';
 import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '../../common/types';
-import { formatEuro } from '../../common/currency';
+import { formatEuro, sumEuroValues, euro, cents } from '../../common/currency';
 
 type RawEmail = {
   to: string
@@ -223,7 +223,15 @@ export class EmailService {
       return null
     }
 
-    const populate = (template: string) => ejs.render(template, { ...payload, dateFns, formatEuro })
+    const populate = (template: string) => ejs.render(template, {
+      ...payload,
+      dateFns,
+      formatEuro,
+      sumEuroValues,
+      euro,
+      cents,
+      formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
+    })
 
     if (type === 'html') {
       if (!template.html)

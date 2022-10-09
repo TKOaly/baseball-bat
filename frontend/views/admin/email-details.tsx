@@ -24,19 +24,6 @@ export const EmailDetails = ({ params }: { params: { id: string } }) => {
     status = 'Sent';
   }
 
-  let payerField: ReactElement | string = 'No profile found'
-
-  if (isPayerLoading) {
-    payerField = 'Loading...'
-  } else if (payer) {
-    payerField = (
-      <Link to={`/admin/payers/${payer.id.value}`} className="mt-1 flex items-center cursor-pointer gap-1">
-        {payer.name}
-        <ExternalLink className="h-4 text-blue-500 relative" />
-      </Link>
-    );
-  }
-
   return (
     <Page>
       <Header>
@@ -52,7 +39,7 @@ export const EmailDetails = ({ params }: { params: { id: string } }) => {
       <Section title="Details" columns={2}>
         <TextField label="Subject" value={email.subject} />
         <TextField label="Recipient" value={email.recipient} />
-        <LinkField label="Payer" text={payer.name} to={`/admin/payers/${payer.id.value}`} />
+        <LinkField label="Payer" text={payer?.name} to={`/admin/payers/${payer?.id?.value}`} />
         <TextField label="Used Template" value={email.template} />
         <BadgeField label="Status" color="gray" text={status} />
       </Section>

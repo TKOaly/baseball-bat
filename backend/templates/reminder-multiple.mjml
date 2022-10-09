@@ -1,0 +1,46 @@
+<mjml>
+  <mj-body background-color="#ffcc33">
+      <mj-section padding-top="40px">
+      	<mj-column vertical-align="middle" width="40%">
+          <mj-image width="144px" src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg" align="center"></mj-image>
+        </mj-column>
+        <mj-column vertical-align="middle">
+          <mj-text font-size="30px" color="#000" font-family="serif" align="center">TKO-äly ry</mj-text>
+          <mj-text font-size="20px" color="#000" font-family="serif" align="center">Maksupalvelu</mj-text>
+        </mj-column>
+      </mj-section>
+    <mj-section>
+      <mj-column background-color="#FBFBFB" padding="40px 10px">
+        <mj-text font-size="24px">You have unpaid debts that are overdue</mj-text>
+
+        <mj-text>
+          You have one or more debts that are unpaid and past their due date.
+          The debts are listed below. Please pay them as soon as possible.
+          Thank you!
+        </mj-text>
+          
+        <mj-table>
+          <% for (const debt of debts) { %>
+          <tr>
+            <th colspan=2 style="text-align: left; padding-top: 1em"><%- debt.name %></th>
+          </tr>
+          <tr>
+            <th style="width: 1%; white-space: nowrap; padding: 0 1em; text-align: left; font-weight: normal">Summa</td>
+            <td><%- formatEuro(debt.total) %></td>
+          </tr>
+          <tr>
+            <th style="width: 1%; white-space: nowrap; padding: 0 1em; font-weight: normal; padding-left: 1em">Eräpäivä</td>
+            <td><%- formatDate(debt.dueDate) %></td>
+          </tr>
+        <% } %>
+          <tr>
+          	<th style="padding-top: 1em; text-align: left">Total</th>
+            <td style="padding-top: 1em"><%- formatEuro(debts.map(d => d.total).reduce(sumEuroValues, euro(0))) %></td>
+          </tr>
+        </mj-table>
+        
+        <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

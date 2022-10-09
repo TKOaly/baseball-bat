@@ -7,6 +7,8 @@ import { AuthService } from "../auth-middleware";
 import { DebtService } from "../services/debt";
 import { PayerService } from "../services/payer";
 import { validateBody } from "../validate-middleware";
+import { EmailService } from "../services/email";
+import { Config } from "../config";
 
 @Service()
 export class PayersApi {
@@ -18,6 +20,12 @@ export class PayersApi {
 
   @Inject(() => DebtService)
   debtService: DebtService
+
+  @Inject(() => EmailService)
+  emailService: EmailService
+
+  @Inject(() => Config)
+  config: Config
 
   private getPayer() {
     return route
@@ -218,6 +226,44 @@ export class PayersApi {
       })
   }
 
+  private sendPaymentReminder() {
+    return route
+      .post('/:id/send-reminder')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const id = internalIdentity(ctx.routeParams.id);
+        const debts = await this.debtService.getDebtsByPayer(id);
+        const email = await this.payerService.getPayerPrimaryEmail(id);
+
+        if (!email) {
+          throw new Error('No such user or no primary email for user ' + ctx.routeParams.id);
+        }
+
+        const overdue = debts.filter((debt) => debt.dueDate);
+
+        if (overdue.length === 0) {
+          return ok({
+            messageSent: false,
+            messageDebtCount: 0,
+          })
+        }
+
+        await this.emailService.createEmail({
+          recipient: email.email,
+          subject: 'You have unpaid debts that are overdue',
+          template: 'reminder-multiple',
+          payload: {
+            debts: overdue,
+            link: this.config.appUrl,
+          },
+        });
+
+        return ok({
+          messageSent: true,
+          messageDebtCount: overdue.length,
+        })
+      });
+  }
 
   router() {
     return router(
@@ -230,6 +276,7 @@ export class PayersApi {
       this.updatePayerPreferences(),
       this.updatePayerEmails(),
       this.getPayers(),
+      this.sendPaymentReminder(),
     )
   }
 }

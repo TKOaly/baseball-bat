@@ -1,11 +1,15 @@
 import { TableView } from '../../components/table-view'
-import { useGetPayersQuery } from '../../api/payers'
+import { useGetPayersQuery, useSendPayerDebtReminderMutation } from '../../api/payers'
 import { useLocation } from 'wouter'
 import { cents, formatEuro } from '../../../common/currency'
+import { useDialog } from '../../components/dialog'
+import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog'
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation()
   const { data: payers } = useGetPayersQuery()
+  const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation()
+  const showRemindersSentDialog = useDialog(RemindersSentDialog)
 
   const rows = (payers ?? [])
     .map((payer) => ({ ...payer, key: payer.id.value }))
@@ -18,6 +22,35 @@ export const PayerListing = () => {
         selectable
         rows={rows}
         onRowClick={({ id }) => setLocation(`/admin/payers/${id.value}`)}
+        actions={[
+          {
+            key: 'remind',
+            text: 'Send reminder',
+            onSelect: async (payers) => {
+              const results = await Promise.all(
+                payers.map(({ id }) => sendPayerDebtReminder({
+                  payerId: id.value,
+                  send: false,
+                }))
+              );
+
+              let payerCount = 0;
+              let debtCount = 0;
+
+              for (const res of results) {
+                if ('data' in res) {
+                  payerCount += 1;
+                  debtCount += res.data.messageDebtCount;
+                }
+              }
+
+              showRemindersSentDialog({
+                payerCount,
+                debtCount,
+              });
+            },
+          }
+        ]}
         columns={[
           {
             name: 'Name',

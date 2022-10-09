@@ -20,7 +20,7 @@ export const DialogContext = createContext<DialogContextValue>({
 
 export const useDialog = <P extends DialogProps<V>, V>(component: DialogComponent<P>) => {
   const { openDialog } = useContext(DialogContext)
-  return (props: P) => openDialog(component, props)
+  return (props: Omit<P, 'onClose'>) => openDialog(component, props)
 }
 
 export const DialogContextProvider = ({ children }) => {
@@ -115,14 +115,33 @@ export const Portal = ({ children, containerId }) => {
 export const DialogBase = ({ children, onClose }) => {
   return (
     <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10" onClick={onClose}>
-      <div className="rounded-lg bg-white border shadow-lg p-3 min-w-[35em] min-h-[15em]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex gap-5 items-center mb-3">
-          <span className="font-bold flex-grow">Testi</span>
-        </div>
-        <div>
-          {children}
-        </div>
+      <div className="rounded-lg flex flex-col bg-white border shadow-lg min-w-[35em] min-h-[15em]" onClick={(e) => e.stopPropagation()}>
+        {children}
       </div>
+    </div>
+  )
+}
+
+export const DialogContent = ({ children }) => {
+  return (
+    <div className="flex-grow p-3">
+      {children}
+    </div>
+  )
+}
+
+export const DialogHeader = ({ children }) => {
+  return (
+    <div className="flex gap-5 items-center mb-3 p-3 border-b">
+      <span className="font-bold flex-grow">{children}</span>
+    </div>
+  )
+}
+
+export const DialogFooter = ({ children }) => {
+  return (
+    <div className="flex justify-end border-t p-3 text-sm">
+      {children}
     </div>
   )
 }

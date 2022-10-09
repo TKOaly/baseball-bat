@@ -7,7 +7,7 @@ import { formatDebtCenter } from './debt_centers'
 import { NewInvoice, PaymentService } from './payements'
 import { cents } from '../../common/currency'
 
-const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[] }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
+const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
   id: debt.id,
   payerId: internalIdentity(debt.payer_id),
@@ -19,6 +19,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
   debtCenterId: debt.debt_center_id,
   debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
   credited: debt.credited,
+  total: debt.total === undefined ? undefined : cents(debt.total),
   debtComponents: debt.debt_components
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
     : [],
@@ -61,7 +62,13 @@ export class DebtService {
           TO_JSON(payer_profiles.*) AS payer,
           TO_JSON(debt_center.*) AS debt_center,
           CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
+          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+          (
+            SELECT SUM(dc.amount) AS total
+            FROM debt_component_mapping dcm
+            JOIN debt_component dc ON dc.id = dcm.debt_component_id
+            WHERE dcm.debt_id = debt.id
+          ) AS total
         FROM debt
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
         JOIN debt_center ON debt_center.id = debt.debt_center_id
@@ -219,7 +226,8 @@ export class DebtService {
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
         TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        SUM(debt_component.amount) AS total,
+        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id

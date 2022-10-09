@@ -19,6 +19,7 @@ import { UpdatePaymentMethod } from './views/update-payment-method'
 import './style.css'
 import { authenticateSession, bootstrapSession, createSession, destroySession } from './session'
 import { Button } from './components/button'
+import { DialogContextProvider } from './components/dialog'
 
 const Navigation = () => {
   const [, setLocation] = useLocation()
@@ -206,10 +207,12 @@ const Routes = () => {
 
 export const AppWrapper = () => {
   return (
-    <Provider store={store}>
-      <Suspense fallback={<Loading />}>
-        <Routes />
-      </Suspense>
-    </Provider>
+    <DialogContextProvider>
+      <Provider store={store}>
+        <Suspense fallback={<Loading />}>
+          <Routes />
+        </Suspense>
+      </Provider>
+    </DialogContextProvider>
   )
 }
