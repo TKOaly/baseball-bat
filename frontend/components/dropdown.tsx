@@ -13,6 +13,7 @@ export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, s
       setOpen(!open);
       e.stopPropagation();
     },
+    className: "text-sm text-gray-500 cursor-pointer"
   }, { label, open });
 
   return (

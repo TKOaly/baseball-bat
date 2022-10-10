@@ -45,8 +45,6 @@ const getColumnValue = <R extends Row>(column: Column<R>, row: R) => {
     return row[column.getValue]
   }
 
-  console.log(column.getValue(row))
-
   return column.getValue(row)
 }
 
@@ -346,7 +344,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                   <div className={`${i > 0 && 'border-t'} relative px-3 py-2 flex items-center justify-center`}>
                     <Dropdown
                       onSelect={() => { }}
-                      label={<MoreVertical />}
+                      renderTrigger={(props) => <MoreVertical {...props} />}
                       showArrow={false} className="h-[24px]"
                       options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
                     />
