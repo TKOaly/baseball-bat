@@ -4,6 +4,8 @@ import { parseISO, format } from 'date-fns'
 import { TableView } from './table-view'
 import { ExternalLink } from 'react-feather'
 import { useLocation } from 'wouter'
+import { useDialog } from './dialog'
+import { TransactionRegistrationDialog } from './dialogs/transaction-registration-dialog'
 
 export type Props = {
   transactions: BankTransaction[]
@@ -11,10 +13,22 @@ export type Props = {
 
 export const TransactionList = ({ transactions }: Props) => {
   const [, setLocation] = useLocation()
+  const showTransactionRegistrationDialog = useDialog(TransactionRegistrationDialog)
 
   return (
     <TableView
       rows={transactions.map(tx => ({ ...tx, key: tx.id }))}
+      actions={[
+        {
+          key: 'register',
+          text: 'Register',
+          onSelect: async (transactions) => {
+            await showTransactionRegistrationDialog({
+              transactions,
+            });
+          },
+        }
+      ]}
       columns={[
         {
           name: 'Type',

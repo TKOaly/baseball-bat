@@ -16,10 +16,16 @@ const transactionsApi = rtkApi.injectEndpoints({
 
     getAccountTransactions: builder.query<BankTransaction[], string>({
       query: (iban) => `/banking/accounts/${iban}/transactions`,
+      providesTags: [
+        { type: 'BankTransaction', id: 'LIST' },
+      ],
     }),
 
     getStatementTransactions: builder.query<BankTransaction[], string>({
       query: (id) => `/banking/statements/${id}/transactions`,
+      providesTags: [
+        { type: 'BankTransaction', id: 'LIST' },
+      ],
     }),
   })
 })
@@ -29,3 +35,5 @@ export const {
   useGetAccountTransactionsQuery,
   useGetStatementTransactionsQuery,
 } = transactionsApi
+
+export default transactionsApi

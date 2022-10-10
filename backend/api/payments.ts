@@ -1,6 +1,6 @@
 import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
-import { badRequest, internalServerError, ok, unauthorized } from "typera-express/response";
+import { badRequest, internalServerError, notFound, ok, unauthorized } from "typera-express/response";
 import * as t from 'io-ts'
 import { internalIdentity, tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
@@ -13,6 +13,7 @@ import { euro, euroValue, formatEuro, sumEuroValues } from "../../common/currenc
 import { EmailService } from "../services/email";
 import { Config } from "../config";
 import { parseISO } from "date-fns";
+import { BankingService } from "../services/banking";
 
 @Service()
 export class PaymentsApi {
@@ -21,6 +22,9 @@ export class PaymentsApi {
 
   @Inject(() => PaymentService)
   paymentService: PaymentService
+
+  @Inject(() => BankingService)
+  bankingService: BankingService
 
   @Inject(() => UsersService)
   usersService: UsersService
@@ -68,6 +72,29 @@ export class PaymentsApi {
       })
   }
 
+  private registerTransaction() {
+    return route
+      .post('/:id/register')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.type({
+        transactionId: t.string,
+      })))
+      .handler(async (ctx) => {
+        const { id } = ctx.routeParams
+        const { transactionId } = ctx.body
+
+        const transaction = await this.bankingService.getTransaction(transactionId);
+
+        if (!transaction) {
+          return notFound('No such transaction found')
+        }
+
+        const event = await this.paymentService.createPaymentEventFromTransaction(transaction, id);
+
+        return ok(event);
+      });
+  }
+
   private createInvoice() {
     return route
       .post('/create-invoice')
@@ -111,8 +138,6 @@ export class PaymentsApi {
           title: 'Combined invoice',
           message: 'Invoice for the following debts:\n' + (debts.map(d => ` - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`).join('\n')),
         });
-
-        console.log(payment.data)
 
         if (ctx.body.sendEmail) {
           const createdEmail = await this.emailService.createEmail({
@@ -170,7 +195,8 @@ export class PaymentsApi {
       this.getOwnPayments(),
       this.createInvoice(),
       this.getPayment(),
-      this.creditPayment()
+      this.creditPayment(),
+      this.registerTransaction(),
     )
   }
 }

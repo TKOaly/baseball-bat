@@ -378,7 +378,7 @@ export class PaymentService {
     return payments
   }
 
-  async createPaymentEventFromTransaction(tx: BankTransaction) {
+  async createPaymentEventFromTransaction(tx: BankTransaction, pPayment?: string) {
     const existing_mapping = await this.pg.one<DbPaymentEventTransactionMapping>(sql`
       SELECT *
       FROM payment_event_transaction_mapping
@@ -390,12 +390,16 @@ export class PaymentService {
       return null;
     }
 
-    if (!tx.reference) {
+    let payment
+
+    if (pPayment) {
+      payment = await this.getPayment(pPayment)
+    } else if (tx.reference) {
+      [payment] = await this.getPaymentsByReferenceNumbers([tx.reference])
+    } else {
       console.log('No reference')
       return null;
     }
-
-    const [payment] = await this.getPaymentsByReferenceNumbers([tx.reference])
 
     if (!payment) {
       console.log('No match')

@@ -12,19 +12,29 @@ const paymentsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getPayments: builder.query<Payment[], never>({
       query: () => '/payments',
+      providesTags: [
+        { type: 'Payment', id: 'LIST' },
+      ],
     }),
 
     getPayment: builder.query<Payment, string>({
       query: (id) => `/payments/${id}`,
       transformResponse: (response) => response.payment,
+      providesTags: ({ id }) => [{ type: 'Payment', id }],
     }),
 
     getOwnPayments: builder.query<Payment[], never>({
-      query: () => '/payments/my'
+      query: () => '/payments/my',
+      providesTags: [
+        { type: 'Payment', id: 'LIST' },
+      ],
     }),
 
     getPaymentsByDebt: builder.query<Payment[], string>({
-      query: (id) => `/debt/${id}/payments`
+      query: (id) => `/debt/${id}/payments`,
+      providesTags: [
+        { type: 'Payment', id: 'LIST' },
+      ],
     }),
 
     createInvoice: builder.mutation<Payment, { debts: string[], sendEmail: boolean }>({
@@ -48,6 +58,23 @@ const paymentsApi = rtkApi.injectEndpoints({
         url: `/payments/by-reference-numbers`,
         body: rfs,
       }),
+      providesTags: [
+        { type: 'Payment', id: 'LIST' },
+      ],
+    }),
+
+    registerTransaction: builder.mutation<void, { paymentId: string, transactionId: string }>({
+      query: ({ paymentId, transactionId }) => ({
+        method: 'POST',
+        url: `/payments/${paymentId}/register`,
+        body: { transactionId },
+      }),
+      invalidatesTags: (_, __, { paymentId, transactionId }) => [
+        { type: 'BankTransaction', id: 'LIST' },
+        { type: 'BankTransaction', id: transactionId },
+        { type: 'Payment', id: paymentId },
+        { type: 'Payment', id: 'LIST' },
+      ],
     }),
   })
 });
@@ -60,4 +87,7 @@ export const {
   useCreateInvoiceMutation,
   useCreditPaymentMutation,
   useGetPaymentsByReferenceNumbersQuery,
+  useRegisterTransactionMutation,
 } = paymentsApi
+
+export default paymentsApi

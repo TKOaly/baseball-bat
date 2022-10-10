@@ -19,11 +19,12 @@ const formatBankStatement = (stmt: DbBankStatement): Omit<BankStatement, 'transa
   },
 })
 
-const formatBankTransaction = (tx: DbBankTransaction): Omit<BankTransaction, 'account'> => ({
+const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
   id: tx.id,
   amount: cents(tx.amount),
   date: tx.value_time,
   type: tx.type,
+  account: tx.account,
   otherParty: {
     name: tx.other_party_name,
     account: tx.other_party_account,
@@ -156,6 +157,25 @@ export class BankingService {
     `)
 
     return transactions.map(formatBankTransaction)
+  }
+
+  async getTransaction(id: string) {
+    const transaction = await this.pg.one<DbBankTransaction>(sql`
+      SELECT
+        bt.*,
+        TO_JSON(p.*) AS payment
+      FROM bank_transactions bt
+      LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
+      LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
+      LEFT JOIN payments p ON p.id = pe.payment_id
+      WHERE bt.id = ${id}
+    `)
+
+    if (!transaction) {
+      return null;
+    }
+
+    return formatBankTransaction(transaction)
   }
 
   async getAccountStatements(iban: string) {
