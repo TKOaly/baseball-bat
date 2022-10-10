@@ -172,7 +172,7 @@ export const CreateDebt = ({ debtCenterId }) => {
                   component: DropdownField,
                   key: 'component',
                   props: {
-                    options: centerComponents.map((component) => ({
+                    options: (centerComponents ?? []).map((component) => ({
                       value: component.id,
                       text: component.name,
                     })),
@@ -186,11 +186,11 @@ export const CreateDebt = ({ debtCenterId }) => {
                   component: EuroField,
                   key: 'amount',
                   props: (row) => {
-                    const component = centerComponents.find(c => c.id === row.component)
+                    const component = (centerComponents ?? []).find(c => c.id === row.component)
 
                     return {
                       readOnly: typeof row.component === 'string',
-                      value: component ? component.amount.value / 100 : undefined,
+                      value: component ? component.amount.value / 100 : 0,
                     };
                   },
                 },
