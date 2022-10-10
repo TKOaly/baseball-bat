@@ -5,10 +5,48 @@ import { useSearchQuery } from '../../api/search'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'wouter'
 import { Dropdown } from '../dropdown'
+import { useFetchResourceDetails } from '../../hooks/use-fetch-resource-details'
 
-export const GlobalSearchDialog = ({ onClose }) => {
+export type Props = {
+  onClose: (_: { id: string, type: string } | null) => void,
+  type?: string,
+  openOnSelect?: boolean
+  title?: string
+  prompt?: string
+}
+
+const SearchResultItem = ({ type, id, name, onSelect }) => {
+  const details = useFetchResourceDetails(type, id)
+
+  return (
+    <div
+      className="rounded-md border border-gray-300 focus:border-blue-500 mt-2 p-2 shadow-sm cursor-pointer"
+      tabIndex={0}
+      onKeyDown={(evt) => evt.code === 'Enter' && onSelect()}
+      onClick={() => onSelect()}
+    >
+      <h1 className="flex items-start">
+        <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">{type.replace(/_/g, ' ')}</span>
+        <span>{details?.name ?? name}</span>
+      </h1>
+      <table className="text-sm">
+        {
+          details && details.details.map(([label, value]) => (
+            <tr>
+              <th className="text-left text-gray-700 pr-2">{label}</th>
+              <td>{value}</td>
+            </tr>
+          ))
+        }
+      </table>
+    </div>
+  );
+}
+
+export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOnSelect = false }: Props) => {
   const [term, setTerm] = useState('')
-  const [type, setType] = useState(undefined)
+  const [type, setType] = useState(pType)
+  const isTypeLocked = pType !== undefined
   const { data: results, isLoading } = useSearchQuery({ term, type }, { skip: term === '' })
   const [, setLocation] = useLocation()
   const inputRef = useRef<HTMLInputElement>()
@@ -19,43 +57,49 @@ export const GlobalSearchDialog = ({ onClose }) => {
     }
   }, [inputRef]);
 
-  const handleSelect = (type, id) => {
-    if (type === 'debt') {
-      setLocation(`/admin/debts/${id}`);
-      onClose();
-    } else if (type === 'payer') {
-      setLocation(`/admin/payers/${id}`);
-      onClose();
-    } else if (type === 'payment') {
-      setLocation(`/admin/payments/${id}`);
-      onClose();
-    } else if (type === 'debt_center') {
-      setLocation(`/admin/debt-centers/${id}`);
-      onClose();
+  const handleSelect = (type: string, id: string) => {
+    if (openOnSelect) {
+      if (type === 'debt') {
+        setLocation(`/admin/debts/${id}`);
+      } else if (type === 'payer') {
+        setLocation(`/admin/payers/${id}`);
+      } else if (type === 'payment') {
+        setLocation(`/admin/payments/${id}`);
+      } else if (type === 'debt_center') {
+        setLocation(`/admin/debt-centers/${id}`);
+      }
     }
+
+    onClose({
+      type,
+      id,
+    })
   }
 
   return (
-    <DialogBase onClose={() => onClose()}>
-      <DialogHeader>Search</DialogHeader>
+    <DialogBase onClose={() => onClose(null)}>
+      <DialogHeader>{title ?? 'Search'}</DialogHeader>
       <DialogContent>
+        <p>{prompt}</p>
         <div className="flex gap-3 items-center">
-          <Dropdown
-            options={[
-              { value: 'debt', text: 'Debt' },
-              { value: 'debt_center', text: 'Debt Center' },
-              { value: 'payment', text: 'Payment' },
-              { value: 'payer', text: 'Payer' },
-              { value: 'transaction', text: 'Transaction' },
-            ]}
-            name='type'
-            value={type}
-            createCustomOption={() => ({})}
-            formatCustomOption={() => 'Asd'}
-            label='Type'
-            onSelect={(value) => setType(value)}
-            onChange={() => { }}
-          />
+          {!isTypeLocked && (
+            <Dropdown
+              options={[
+                { value: 'debt', text: 'Debt' },
+                { value: 'debt_center', text: 'Debt Center' },
+                { value: 'payment', text: 'Payment' },
+                { value: 'payer', text: 'Payer' },
+                { value: 'transaction', text: 'Transaction' },
+              ]}
+              name='type'
+              value={type}
+              createCustomOption={() => ({})}
+              formatCustomOption={() => 'Asd'}
+              label='Type'
+              onSelect={(value) => setType(value)}
+              onChange={() => { }}
+            />
+          )}
           <TextField
             placeholder="Search..."
             onChange={(evt) => setTerm(evt.target.value)}
@@ -66,17 +110,12 @@ export const GlobalSearchDialog = ({ onClose }) => {
 
         <div className="overflow-y-scroll max-h-80 px-5 mt-3 w-[40em] overflow-hidden">
           {(results ?? []).map(({ type, name, id }) => (
-            <div
-              className="rounded-md border border-gray-300 focus:border-blue-500 mt-2 p-2 shadow-sm cursor-pointer"
-              tabIndex={0}
-              onKeyDown={(evt) => evt.code === 'Enter' && handleSelect(type, id)}
-              onClick={() => handleSelect(type, id)}
-            >
-              <h1 className="flex items-start">
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">{type.replace(/_/g, ' ')}</span>
-                <span>{name}</span>
-              </h1>
-            </div>
+            <SearchResultItem
+              type={type}
+              id={id}
+              name={name}
+              onSelect={() => handleSelect(type, id)}
+            />
           ))}
         </div>
       </DialogContent>
