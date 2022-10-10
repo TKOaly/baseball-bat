@@ -24,6 +24,7 @@ import * as redis from 'redis'
 import { createEmailDispatcherTransport, createSMTPTransport, EmailService, IEmailTransport } from './services/email'
 import { MagicLinksApi } from './api/magic-links'
 import { BankingApi } from './api/banking'
+import { SearchApi } from './api/search'
 
 const PORT = process.env.PORT ?? '5000'
 const config = Config.get()
@@ -103,7 +104,7 @@ const app = express()
     '/api/debtCenters',
     Container.get(DebtCentersApi).router().handler()
   )
-
+  .use('/api/search', Container.get(SearchApi).router().handler())
   .use(
     '/api/debt',
     Container.get(DebtApi).router().handler(),

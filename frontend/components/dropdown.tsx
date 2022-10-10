@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { ChevronDown } from "react-feather";
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
 
-export const Dropdown = ({ label, scroll = false, renderTrigger = null, showArrow = true, options, onSelect, ...props }) => {
+export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, showArrow = true, options, onSelect, ...props }) => {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef()
 
@@ -26,7 +26,7 @@ export const Dropdown = ({ label, scroll = false, renderTrigger = null, showArro
             e.stopPropagation();
           }}
         >
-          {label}
+          {(options ?? []).find(o => o.value === props.value)?.text ?? label}
           {showArrow && <ChevronDown style={{ width: '1.25em', marginLeft: '0.33em', strokeWidth: '2px' }} />}
         </button>
       )}
@@ -62,6 +62,7 @@ export const Dropdown = ({ label, scroll = false, renderTrigger = null, showArro
                     evt.stopPropagation();
                     onSelect?.(option.value)
                     option.onSelect?.()
+                    setOpen(false)
                   }}
                   className="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                 >
