@@ -132,7 +132,7 @@ export const DialogContent = ({ children }) => {
 
 export const DialogHeader = ({ children }) => {
   return (
-    <div className="flex gap-5 items-center mb-3 p-3 border-b">
+    <div className="flex gap-5 items-center p-3 border-b">
       <span className="font-bold flex-grow">{children}</span>
     </div>
   )
@@ -140,7 +140,7 @@ export const DialogHeader = ({ children }) => {
 
 export const DialogFooter = ({ children }) => {
   return (
-    <div className="flex justify-end border-t p-3 text-sm">
+    <div className="flex justify-end border-t p-3 text-sm gap-2">
       {children}
     </div>
   )
