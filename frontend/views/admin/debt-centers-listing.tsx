@@ -19,10 +19,14 @@ export const DebtCentersListing = () => {
   return (
     <>
       <h1 className="text-2xl mb-5 mt-10">Debt Centers</h1>
-      <p className="text-gray-800 mb-7 text-md">
+      <p className="text-gray-800 mb-5 text-md">
         Debt centers are organizational groupings of debts, usually corresponding to events or other batches of sales.
         Here you can view and create new debt centers. <br />
       </p>
+      <div className="flex gap-3 mb-7">
+        <Button onClick={() => setLocation('/admin/debt-centers/create')}>Create</Button>
+        <SecondaryButton onClick={() => setLocation('/admin/debts/create-debts-csv')}>Mass Import</SecondaryButton>
+      </div>
       <TableView
         rows={rows}
         onRowClick={(item) => setLocation(`/admin/debt-centers/${item.id}`)}
