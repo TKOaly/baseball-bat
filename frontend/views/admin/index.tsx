@@ -73,7 +73,7 @@ const Admin = () => {
   useEffect(() => {
     const handler = (evt) => {
       if (evt.key === '/' && evt.target === document.body) {
-        showSearchDialog(null);
+        showSearchDialog({ openOnSelect: true });
       }
     };
 
@@ -86,7 +86,7 @@ const Admin = () => {
     <div className="flex flex-row h-screen bg-[#fbfbfb]">
       <div className="flex-shrink flex flex-col w-80 bg-white border-r shadow-xl">
         <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
-        <TextField placeholder="Search..." className="mx-3 mb-3" onClick={() => showSearchDialog(null)} />
+        <TextField placeholder="Search..." className="mx-3 mb-3" onClick={() => showSearchDialog({ openOnSelect: true })} />
         <ul className="">
           <MenuItem path="/admin/debt-centers">Collections</MenuItem>
           <MenuItem path="/admin/debts">Debts</MenuItem>
