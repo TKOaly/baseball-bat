@@ -108,7 +108,7 @@ export const DebtDetails = ({ params }) => {
           {debt?.status !== 'paid' && (
             <ActionButton secondary onClick={handleCashPayment}>Mark paid with cash</ActionButton>
           )}
-          {dfns.isPast(dueDate) && (
+          {debt?.draft === false && dfns.isPast(dueDate) && (
             <ActionButton secondary onClick={handleReminder}>Send reminder</ActionButton>
           )}
         </Actions>

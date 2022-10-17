@@ -693,6 +693,10 @@ export class DebtApi {
           return notFound('Debt not found')
         }
 
+        if (debt.draft) {
+          return badRequest('Debt is a draft')
+        }
+
         const email = await this.payerService.getPayerPrimaryEmail(debt.payerId)
 
         if (!email) {
