@@ -1,5 +1,5 @@
 You have unpaid debts that are overdue. Please pay them as soon as possible.
-The overdue debts are listed below, and you can view their details online at <%- link %>.
+The overdue debts are listed below:
 
 Overdue debts
 =============

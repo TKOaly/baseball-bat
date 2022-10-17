@@ -39,7 +39,7 @@
           </tr>
         </mj-table>
         
-        <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button>
+        <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button> -->
       </mj-column>
     </mj-section>
   </mj-body>

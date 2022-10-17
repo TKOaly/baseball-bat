@@ -143,13 +143,13 @@ export class PaymentsApi {
           const createdEmail = await this.emailService.createEmail({
             template: 'new-payment',
             recipient: email.email,
-            subject: 'Uusi lasku // New invoice',
+            subject: '[Lasku / Invoice] ' + payment.title,
             payload: {
               title: payment.title,
               number: payment.payment_number,
               date: payment.created_at,
-              due_date: parseISO(payment.data.due_date),
-              reference_number: payment.data.reference_number,
+              dueDate: parseISO(payment.data.due_date),
+              referenceNumber: payment.data.reference_number,
               link: `${this.config.appUrl}/payment/${payment.id}`,
               amount: total,
               message: payment.message,

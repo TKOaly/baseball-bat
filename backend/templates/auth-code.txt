@@ -1,7 +1,5 @@
 Vahvistuskoodisi on <%= code %>.
 
-Voit syöttää yllä olevan koodin tunnistautumisivulle tai tunnistautua navigoimalla osoitteeseen <%- link %>
-
 --
 
 Your authetication code is <%= code %>.

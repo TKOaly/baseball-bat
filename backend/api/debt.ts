@@ -181,13 +181,13 @@ export class DebtApi {
                 title: debt.name,
                 number: payment.payment_number,
                 date: payment.created_at,
-                due_date: debt.dueDate,
+                dueDate: debt.dueDate,
                 amount: total,
-                reference_number: payment.data?.reference_number ?? '<ERROR>',
+                referenceNumber: payment.data?.reference_number ?? '<ERROR>',
                 link: `${this.config.appUrl}/payment/${debt.id}`,
                 message: debt.description,
               },
-              subject: 'Uusi lasku // New invoice',
+              subject: '[Lasku / Invoice] ' + debt.name,
             });
           }
 

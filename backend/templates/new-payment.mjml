@@ -1,4 +1,19 @@
 <mjml>
+  <mj-head>
+    <mj-style inline="inline">
+      th {
+      	text-align: right;
+      	padding-right: 1em;
+      }
+      
+    	th span {
+      	font-size: 0.8em;
+      	color: gray;
+      	display: block;
+      	margin-top: -0.8em;
+      }
+    </mj-style>
+  </mj-body>
   <mj-body background-color="#ffcc33">
       <mj-section padding-top="40px">
       	<mj-column vertical-align="middle" width="40%">
@@ -16,49 +31,87 @@
         <mj-text>
           This is an automated message regarding a new invoice assigned to you from TKO-äly. Below are the details of the invoice.
         </mj-text>
+        
+        <mj-divider border-color="#ffcc33" />
+        
+        <mj-text font-size="24px">Olet saanut uuden laskun TKO-äly ry:ltä</mj-text>
+        
+        <mj-text>
+        	Tämä on automaattinen viesti koskien uutta sinulle osoitettua velkaa.
+          Ole hyvä ja suorita maksu alla olevien tietojen mukaisesti eräpäivään mennessä.
+        </mj-text>
+        
+        <mj-divider border-color="#ffcc33" />
 
-        <mj-text><div style="white-space: pre"><%= message %></div></mj-text>
+       	<mj-text><div style="white-space: pre; border-left: 5px solid #00000033; padding: 1em"><%= message %></div></mj-text>
           
         <mj-table>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Title</th>
+            <th>
+              Otsikko <br/>
+              <span>Title</span>
+            </th>
             <td><%= title %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Invoice Number</th>
+            <th>
+              Laskun numero <br/>
+              <span>Invoice Number</span>
+            </th>
             <td><%= number %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Invoice Date</th>
+            <th>
+              Laskun päiväys <br/>
+              <span>Invoice Date</span>
+            </th>
             <td><%= dateFns.format(date, 'dd.MM.yyyy') %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Due Date</th>
-            <td><%= dateFns.format(due_date, 'dd.MM.yyyy') %></td>
+            <th>
+              Eräpäivä <br/>
+              <span>Due Date</span>
+            </th>
+            <td><%= dateFns.format(dueDate, 'dd.MM.yyyy') %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Total Amount</th>
+            <th>
+              Summa <br/>
+              <span>Total Amount</span>
+            </th>
             <td><%= formatEuro(amount) %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Reference Number</th>
-            <td><%= reference_number %></td>
+            <th>
+              Viitenumero <br/>
+              <span>Reference Number</span>
+            </th>
+            <td><%= referenceNumber %></td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Receiver Name</th>
+            <th>
+              Vastaanottaja<br/>
+              <span>Receiver Name</span>
+            </th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Receiver Account</th>
+            <th>
+              Tilinumero <br/>
+              <span>Recipient Account</span>
+            </th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
-            <th style="text-align: right; padding-right: 1em">Receiver BIC</th>
+            <th>
+              BIC <br/>
+              <span>BIC</span>
+            </th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>
         
-        <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button>
+        <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button> -->
       </mj-column>
     </mj-section>
   </mj-body>

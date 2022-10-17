@@ -16,10 +16,10 @@
         <mj-text>This message was requested from the payment service web application. If you did not request this code, please ignore this message.</mj-text>
           
          <mj-text>
-           You can authenticate by typing the above code into the page you requested this code from. Alternatively you can click the button below:
+           You can authenticate by typing the above code into the page you requested this code from. <!-- Alternatively you can click the button below: -->
          </mj-text>
         
-        <mj-button padding-top="30px" background-color="red" href="<%- link %>">Log In</mj-button>
+        <!-- <mj-button padding-top="30px" background-color="red" href="<%- link %>">Log In</mj-button> -->
       </mj-column>
     </mj-section>
   </mj-body>
