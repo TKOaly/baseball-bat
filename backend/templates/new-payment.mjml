@@ -13,7 +13,7 @@
       	margin-top: -0.8em;
       }
     </mj-style>
-  </mj-body>
+  </mj-head>
   <mj-body background-color="#ffcc33">
       <mj-section padding-top="40px">
       	<mj-column vertical-align="middle" width="40%">
@@ -111,7 +111,7 @@
           </tr>
         </mj-table>
         
-        <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="<%- link %>">View Online</mj-button> -->
+        <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="#">View Online</mj-button> -->
       </mj-column>
     </mj-section>
   </mj-body>
