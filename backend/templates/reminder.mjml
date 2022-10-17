@@ -1,0 +1,119 @@
+<mjml>
+  <mj-head>
+    <mj-style inline="inline">
+      th {
+      	text-align: right;
+      	padding-right: 1em;
+      }
+      
+    	th span {
+      	font-size: 0.8em;
+      	color: gray;
+      	display: block;
+      	margin-top: -0.8em;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#ffcc33">
+      <mj-section padding-top="40px">
+      	<mj-column vertical-align="middle" width="40%">
+          <mj-image width="144px" src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg" align="center"></mj-image>
+        </mj-column>
+        <mj-column vertical-align="middle">
+          <mj-text font-size="30px" color="#000" font-family="serif" align="center">TKO-äly ry</mj-text>
+          <mj-text font-size="20px" color="#000" font-family="serif" align="center">Maksupalvelu</mj-text>
+        </mj-column>
+      </mj-section>
+    <mj-section>
+      <mj-column background-color="#FBFBFB" padding="40px 10px">
+        <mj-text font-size="24px">Maksumuistutus erääntyneestä velasta</mj-text>
+        
+        <mj-text>
+        	Velkasi '<%- title %>' on erääntynyt <%- formatDate(dueDate) %>. Ole hyvä ja maksa velkasi käyttäen alla olevia maksutietoja mahdollisimman pian. 
+        </mj-text>
+        
+        <mj-divider border-color="#ffcc33" />
+
+        <mj-text font-size="24px">Notice about an overdue debt</mj-text>
+
+        <mj-text>
+          Your debt '<%- title %>' was due on <%- formatDate(dueDate) %>. Please pay the full amount according to the payment details provided blow as soon as possible. Thank you!
+        </mj-text>
+        
+        <mj-divider border-color="#ffcc33" />
+        
+       	<mj-text><div style="white-space: pre; border-left: 5px solid #00000033; padding: 1em"><%= message %></div></mj-text>
+          
+        <mj-table>
+          <tr>
+            <th>
+              Otsikko <br/>
+              <span>Title</span>
+            </th>
+            <td><%= title %></td>
+          </tr>
+          <tr>
+            <th>
+              Laskun numero <br/>
+              <span>Invoice Number</span>
+            </th>
+            <td><%= number %></td>
+          </tr>
+          <tr>
+            <th>
+              Laskun päiväys <br/>
+              <span>Invoice Date</span>
+            </th>
+            <td><%= dateFns.format(date, 'dd.MM.yyyy') %></td>
+          </tr>
+          <tr>
+            <th>
+              Eräpäivä <br/>
+              <span>Due Date</span>
+            </th>
+            <td><%= dateFns.format(dueDate, 'dd.MM.yyyy') %></td>
+          </tr>
+          <tr>
+            <th>
+              Summa <br/>
+              <span>Total Amount</span>
+            </th>
+            <td><%= formatEuro(amount) %></td>
+          </tr>
+          <tr>
+            <th>
+              Viitenumero <br/>
+              <span>Reference Number</span>
+            </th>
+            <td><%= referenceNumber %></td>
+          </tr>
+          <tr>
+            <th>
+              Vastaanottaja<br/>
+              <span>Receiver Name</span>
+            </th>
+            <td>TKO-äly ry</td>
+          </tr>
+          <tr>
+            <th>
+              Tilinumero <br/>
+              <span>Recipient Account</span>
+            </th>
+            <td>FI89 7997 7995 1312 86</td>
+          </tr>
+          <tr>
+            <th>
+              BIC <br/>
+              <span>BIC</span>
+            </th>
+            <td>HOLVFIHH</td>
+          </tr>
+        </mj-table>
+        
+        <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="#">View Online</mj-button> -->
+      </mj-column>
+    </mj-section>
+
+    <mj-s
+  </mj-body>
+</mjml>

@@ -1,0 +1,22 @@
+Velkasi '<%- title %>' erääntyi <%- formatDate(dueDate) %>.
+Ole hyvä ja maksa velkasi mahdollisimman pian käyttäen alla olevia maksutietoja:
+
+----
+
+Your debt '<%- title %>' was due on <%- formatDate(dueDate) %>.
+Please pay it as soon as possible using the payment details below:
+
+Payment Details / Maksutiedot
+=============================
+
+Otsikko / Title:                    <%= title %>
+Laskun numero / invoice number:     <%= number %>
+Laskun päiväys / invoice date:      <%= formatDate(date) %>
+Eräpäivä / due date:                <%= formatDate(dueDate) %>
+Summa / total amount:               <%= formatEuro(amount) %>
+Viitenumero / reference number:     <%= referenceNumber %>
+Vastaanottaja / receiver name:      TKO-äly ry
+Tilinumero / receiver acccount:     FI89 7997 7995 1312 86
+Vastaanottajan BIC / receiver BIC:  HOLVFIHH
+
+

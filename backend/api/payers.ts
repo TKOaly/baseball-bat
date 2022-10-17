@@ -1,19 +1,26 @@
 import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
-import { notFound, ok, unauthorized } from "typera-express/response";
+import { internalServerError, notFound, ok, unauthorized } from "typera-express/response";
 import * as t from 'io-ts'
-import { emailIdentity, internalIdentity, payerPreferences, tkoalyIdentity } from "../../common/types";
+import { Debt, emailIdentity, internalIdentity, payerPreferences, tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
+import * as A from 'fp-ts/lib/Array'
+import * as TE from 'fp-ts/lib/TaskEither'
+import * as E from 'fp-ts/lib/Either'
 import { DebtService } from "../services/debt";
 import { PayerService } from "../services/payer";
 import { validateBody } from "../validate-middleware";
 import { EmailService } from "../services/email";
 import { Config } from "../config";
+import { PaymentService } from "../services/payements";
 
 @Service()
 export class PayersApi {
   @Inject(() => PayerService)
   payerService: PayerService
+
+  @Inject(() => PaymentService)
+  paymentService: PaymentService
 
   @Inject(() => AuthService)
   authService: AuthService
@@ -248,20 +255,47 @@ export class PayersApi {
           })
         }
 
-        await this.emailService.createEmail({
-          recipient: email.email,
-          subject: 'You have unpaid debts that are overdue',
-          template: 'reminder-multiple',
-          payload: {
-            debts: overdue,
-            link: this.config.appUrl,
-          },
-        });
+        const sendReminder = (debt: typeof debts[0]) => async () => {
+          const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(debt.id)
 
-        return ok({
-          messageSent: true,
-          messageDebtCount: overdue.length,
-        })
+          if (!payment) {
+            return E.left({
+              error: 'NO_DEFAULT_INVOICE',
+              message: `No default invoice found for debt ${debt.id}`,
+              payload: {
+                debtId: debt.id,
+              },
+            })
+          }
+
+          const created = await this.emailService.createEmail({
+            recipient: email.email,
+            subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
+            template: 'reminder',
+            payload: {
+              title: debt.name,
+              number: payment.payment_number,
+              date: debt.createdAt,
+              dueDate: debt.dueDate,
+              amount: debt.total,
+              referenceNumber: payment.data.reference_number,
+              message: payment.message ?? debt.description,
+            },
+          })
+
+          return E.right(created)
+        }
+
+        const result = await A.traverse(TE.ApplicativePar)(sendReminder)(debts)()
+
+        if (E.isRight(result)) {
+          return ok({
+            messageSent: true,
+            messageDebtCount: overdue.length,
+          })
+        } else {
+          return internalServerError(result.left)
+        }
       });
   }
 
