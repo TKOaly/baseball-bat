@@ -13,6 +13,7 @@ import { validateBody } from "../validate-middleware";
 import { EmailService } from "../services/email";
 import { Config } from "../config";
 import { PaymentService } from "../services/payements";
+import { isPast, parseISO } from "date-fns";
 
 @Service()
 export class PayersApi {
@@ -246,7 +247,7 @@ export class PayersApi {
           throw new Error('No such user or no primary email for user ' + ctx.routeParams.id);
         }
 
-        const overdue = debts.filter((debt) => debt.dueDate);
+        const overdue = debts.filter((debt) => isPast(parseISO(debt.dueDate)));
 
         if (overdue.length === 0) {
           return ok({

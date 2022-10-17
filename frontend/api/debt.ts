@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api'
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment } from '../../common/types'
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email } from '../../common/types'
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>,
@@ -115,9 +115,18 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Debt', id },
         { type: 'Payment', id: 'LIST' },
       ],
-    })
-  })
-});
+    }),
+
+    sendReminder: builder.mutation<Email, string>({
+      query: (id) => ({
+        method: 'POST',
+        url: `/debt/${id}/send-reminder`,
+      }),
+      invalidatesTags: [
+        { type: 'Email', id: 'LIST' },
+      ],
+    }),
+  }) });
 
 export const {
   useCreateDebtComponentMutation,
@@ -132,7 +141,8 @@ export const {
   useGetDebtsByPaymentQuery,
   useDeleteDebtMutation,
   useCreditDebtMutation,
-  useMarkPaidWithCashMutation
+  useMarkPaidWithCashMutation,
+  useSendReminderMutation,
 } = debtApi
 
 export default debtApi

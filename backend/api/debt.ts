@@ -13,7 +13,7 @@ import { PayerService } from '../services/payer'
 import { validateBody } from '../validate-middleware'
 import { PaymentService } from '../services/payements'
 import { EmailService } from '../services/email'
-import { format, addDays, isMatch } from 'date-fns'
+import { format, addDays, isMatch, parseISO, isPast } from 'date-fns'
 import { split } from 'fp-ts/lib/string'
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
 import { pipe } from 'fp-ts/lib/pipeable'
@@ -682,6 +682,54 @@ export class DebtApi {
       })
   }
 
+  private sendReminder() {
+    return route
+      .post('/:id/send-reminder')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const debt = await this.debtService.getDebt(ctx.routeParams.id);
+
+        if (!debt) {
+          return notFound('Debt not found')
+        }
+
+        const email = await this.payerService.getPayerPrimaryEmail(debt.payerId)
+
+        if (!email) {
+          return internalServerError('No primary email for payer')
+        }
+
+        const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(ctx.routeParams.id)
+
+        if (!payment) {
+          return internalServerError('No default invoice found for debt')
+        }
+
+        const dueDate = new Date(debt.dueDate)
+
+        if (!isPast(dueDate)) {
+          return badRequest('Debt not due yet')
+        }
+
+        const createdEmail = await this.emailService.createEmail({
+          recipient: email.email,
+          subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
+          template: 'reminder',
+          payload: {
+            title: debt.name,
+            number: payment.payment_number,
+            date: debt.createdAt,
+            dueDate: debt.dueDate,
+            amount: debt.total,
+            referenceNumber: payment.data.reference_number,
+            message: payment.message ?? debt.description,
+          },
+        })
+
+        return ok(createdEmail)
+      })
+  }
+
   public router(): Router {
     return router(
       this.createDebtComponent(),
@@ -694,7 +742,8 @@ export class DebtApi {
       this.massCreateDebts(),
       this.deleteDebt(),
       this.creditDebt(),
-      this.markPaidWithCash()
+      this.markPaidWithCash(),
+      this.sendReminder(),
     )
   }
 }
