@@ -5,6 +5,7 @@ import { useLocation } from 'wouter'
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
+import { DebtList } from '../../components/debt-list';
 
 export const DebtListing = () => {
   const { data: debts } = useGetDebtsQuery(null)
@@ -37,23 +38,12 @@ export const DebtListing = () => {
         Here is listed all individual debts in the system.
         A debt corresponds usually to a single event registration, but may not have one-to-one mapping to a payment.
       </p>
-      <ListView
-        actions={
-          <>
-            <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
-            <SecondaryButton onClick={() => setLocation(`/admin/debts/create-debts-csv`)}>Mass Creation</SecondaryButton>
-            <SecondaryButton onClick={handleSendAllReminders}>Send all reminders</SecondaryButton>
-          </>
-        }
-        items={(debts ?? []).map((debt) => ({
-          key: debt.id,
-          title: debt.name,
-          description: '',
-          label: debt.payer.name,
-          badges: [],
-        }))}
-        onSelected={(item) => setLocation(`/admin/debts/${item.key}`)}
-      />
+      <div>
+        <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
+        <SecondaryButton onClick={() => setLocation(`/admin/debts/create-debts-csv`)}>Mass Creation</SecondaryButton>
+        <SecondaryButton onClick={handleSendAllReminders}>Send all reminders</SecondaryButton>
+      </div>
+      <DebtList debts={debts ?? []} />
     </>
   );
 };

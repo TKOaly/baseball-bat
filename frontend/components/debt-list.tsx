@@ -6,7 +6,7 @@ import { ExternalLink } from 'react-feather';
 
 export type Props = {
   debts: (DebtWithPayer | Debt)[]
-  payer: PayerProfile
+  payer?: PayerProfile
 }
 
 export const DebtList = (props: Props) => {
