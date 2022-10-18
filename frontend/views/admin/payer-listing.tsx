@@ -4,12 +4,21 @@ import { useLocation } from 'wouter'
 import { cents, formatEuro } from '../../../common/currency'
 import { useDialog } from '../../components/dialog'
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog'
+import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog'
+import { monoid } from 'fp-ts'
+import * as N from 'fp-ts/lib/number'
+import * as A from 'fp-ts/lib/Array'
+import * as E from 'fp-ts/lib/Either'
+import * as TE from 'fp-ts/lib/TaskEither'
+import * as T from 'fp-ts/lib/Task'
+import { pipe } from 'fp-ts/lib/function'
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation()
   const { data: payers } = useGetPayersQuery()
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation()
   const showRemindersSentDialog = useDialog(RemindersSentDialog)
+  const showSendRemindersDialog = useDialog(SendRemindersDialog)
 
   const rows = (payers ?? [])
     .map((payer) => ({ ...payer, key: payer.id.value }))
@@ -27,27 +36,46 @@ export const PayerListing = () => {
             key: 'remind',
             text: 'Send reminder',
             onSelect: async (payers) => {
-              const results = await Promise.all(
-                payers.map(({ id }) => sendPayerDebtReminder({
+              const options = await showSendRemindersDialog({
+                debtCount: payers.length,
+              })
+
+              if (!options) {
+                return;
+              }
+
+              const sendPayerDebtReminderTask = ({ id }) => async () => {
+                const result = await sendPayerDebtReminder({
                   payerId: id.value,
-                  send: false,
-                }))
-              );
+                  send: options.send,
+                  ignoreCooldown: options.ignoreCooldown,
+                });
 
-              let payerCount = 0;
-              let debtCount = 0;
-
-              for (const res of results) {
-                if ('data' in res) {
-                  payerCount += 1;
-                  debtCount += res.data.messageDebtCount;
+                if ('data' in result) {
+                  return E.right(result.data);
+                } else {
+                  return E.left(result.error);
                 }
               }
 
-              showRemindersSentDialog({
-                payerCount,
-                debtCount,
-              });
+              const ResultMonoid = monoid.struct({
+                messageCount: N.MonoidSum,
+                payerCount: N.MonoidSum,
+                errors: A.getMonoid<string>(),
+              })
+
+              const result = await pipe(
+                payers,
+                A.traverse(TE.ApplicativePar)(sendPayerDebtReminderTask),
+                TE.map(monoid.concatAll(ResultMonoid)),
+              )()
+
+              if (E.isRight(result)) {
+                showRemindersSentDialog({
+                  payerCount: result.right.payerCount,
+                  debtCount: result.right.messageCount,
+                });
+              }
             },
           }
         ]}

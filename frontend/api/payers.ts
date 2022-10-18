@@ -85,7 +85,7 @@ const payersApi = rtkApi.injectEndpoints({
       ]),
     }),
 
-    sendPayerDebtReminder: builder.mutation<{ messageCount: boolean, payerCount: number, errors: string[] }, { payerId: string, send: boolean, ignoreCooldown: boolean }>({
+    sendPayerDebtReminder: builder.mutation<{ messageCount: number, payerCount: number, errors: string[] }, { payerId: string, send: boolean, ignoreCooldown: boolean }>({
       query: (body) => ({
         url: `/payers/${body.payerId}/send-reminder`,
         method: 'POST',
