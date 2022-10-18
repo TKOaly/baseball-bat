@@ -198,6 +198,11 @@ export class DebtService {
 
   async updateDebt(debt: DebtPatch): Promise<E.Either<Error, Debt>> {
     const payer = await this.payerService.getPayerProfileByIdentity(debt.payerId)
+    const existingDebt = await this.getDebt(debt.id);
+
+    if (!existingDebt) {
+      return E.left(new Error('No such debt'));
+    }
 
     if (!payer) {
       return E.left(new Error('No such payer'))
@@ -216,10 +221,39 @@ export class DebtService {
       RETURNING *
     `
 
+    const newComponents = pipe(
+      debt.components,
+      A.filter((id) => existingDebt.debtComponents.findIndex(x => x.id === id) === -1),
+    )
+
+    const removedComponents = pipe(
+      existingDebt.debtComponents,
+      A.filter(({ id }) => debt.components.findIndex(x => x === id) === -1),
+      A.map(c => c.id),
+    )
+
+    const addComponents =
+      A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
+        await this.pg.one(sql`
+          INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
+        `)
+
+        return E.right(null)
+      })
+
+    const removeComponents =
+      A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
+        await this.pg.one(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`)
+
+        return E.right(null)
+      })
+
     return pipe(
       this.pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
       TE.map(formatDebt),
+      TE.chainFirst(() => addComponents(newComponents)),
+      TE.chainFirst(() => removeComponents(removedComponents))
     )()
   }
 

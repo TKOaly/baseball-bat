@@ -282,6 +282,7 @@ export class DebtApi {
         payerId: payerIdentity,
         centerId: t.string,
         dueDate: t.string,
+        components: t.array(t.string),
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
@@ -292,6 +293,7 @@ export class DebtApi {
           centerId: ctx.body.centerId,
           dueDate: parseISO(ctx.body.dueDate),
           payerId: ctx.body.payerId,
+          components: ctx.body.components,
         })
 
         return pipe(

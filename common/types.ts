@@ -360,6 +360,7 @@ export type DebtPatch = {
   payerId: PayerIdentity
   dueDate: Date
   centerId: string
+  components: string[]
 }
 
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(

@@ -1,22 +1,30 @@
 import { Formik } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PayerIdentity } from "../../common/types";
+import { euro, NewDebtComponent, PayerIdentity } from "../../common/types";
 import * as dfns from 'date-fns'
-import { useGetDebtComponentsByCenterQuery, useGetDebtQuery, useUpdateDebtMutation } from "../api/debt";
+import { useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery, useGetDebtQuery, useUpdateDebtMutation } from "../api/debt";
 import { Breadcrumbs } from "../components/breadcrumbs";
 import { InputGroup } from "../components/input-group";
 import { TextField } from "../components/text-field";
 import { DropdownField } from "../components/dropdown-field";
 import { TabularFieldListFormik } from "../components/tabular-field-list";
 import { EuroField } from "../components/euro-field";
-import { useGetDebtCentersQuery } from "../api/debt-centers";
+import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from "../api/debt-centers";
 import { useGetUpstreamUsersQuery } from "../api/upstream-users";
 import { DateField } from "../components/datetime-field";
 import { TextareaField } from "../components/textarea-field";
 import { PublishedDebtEditConfirmation } from "../components/dialogs/published-debt-edit-confirmation";
+import * as O from 'fp-ts/lib/Option'
+import * as E from 'fp-ts/lib/Either'
+import * as TE from 'fp-ts/lib/TaskEither'
+import * as A from 'fp-ts/lib/Array'
 import { useDialog } from "../components/dialog";
 import { useLocation } from "wouter";
 import { useGetPayersQuery } from "../api/payers";
+import { DebtAssociatedResourceCreationConfirmationDialog } from "../components/dialogs/debt-associated-resource-creation-confirmation-dialog";
+import { pipe } from "fp-ts/lib/function";
+import { MutationTrigger } from "@reduxjs/toolkit/dist/query/react/buildHooks";
+import { MutationDefinition } from "@reduxjs/toolkit/dist/query";
 
 type DebtFormValues = {
   name: string,
@@ -35,9 +43,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
   const { data: debtCenters } = useGetDebtCentersQuery()
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debt?.debtCenterId, { skip: !debt })
   const [updateDebt] = useUpdateDebtMutation()
+  const [createDebtCenter] = useCreateDebtCenterMutation()
+  const [createDebtComponent] = useCreateDebtComponentMutation()
   const [, setLocation] = useLocation()
   const [editPublished, setEditPublished] = useState(false)
   const showPublishedDebtEditConfirmationDialog = useDialog(PublishedDebtEditConfirmation)
+  const showResourceCreationDialog = useDialog(DebtAssociatedResourceCreationConfirmationDialog)
 
   useEffect(() => {
     if (debt && !debt.draft && !editPublished) {
@@ -57,8 +68,76 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       return;
     }
 
-    if (typeof values.center !== 'string') {
-      return;
+    let { left: newComponents, right: components } = pipe(
+      values.components,
+      A.map(({ component, amount }) => {
+        if (typeof component !== 'string') {
+          return E.left({
+            name: component.name,
+            amount,
+          });
+        } else {
+          return E.right(component)
+        }
+      }),
+      A.separate,
+    )
+
+    let centerId = typeof values.center === 'string' ? values.center : null
+
+    if (newComponents.length > 0 || typeof values.center !== 'string') {
+      const confirmed = await showResourceCreationDialog({
+        debtCenter: typeof values.center !== 'string' ? values.center.name : null,
+        components: pipe(newComponents, A.map((c) => c.name)),
+      })
+
+      if (!confirmed) {
+        return;
+      }
+
+      if (!centerId) {
+        const result = await createDebtCenter({
+          name: values.center as any as string,
+          description: '',
+          url: '',
+        })
+
+        if ('data' in result) {
+          centerId = result.data.id;
+        } else {
+          return;
+        }
+      }
+
+      const createDebtComponentTask = (param: NewDebtComponent) => async () => {
+        const result = await createDebtComponent(param)
+
+        if ('data' in result) {
+          return E.right(result.data);
+        } else {
+          return E.left(result.error);
+        }
+      }
+
+      if (newComponents.length > 0) {
+        const result = await pipe(
+          newComponents,
+          A.map(({ name, amount }) => ({
+            name,
+            amount: euro(amount),
+            description: '',
+            debtCenterId: debt.debtCenterId,
+          })),
+          A.traverse(TE.ApplicativePar)(createDebtComponentTask),
+          TE.map(A.map((result) => result.id)),
+        )();
+
+        if (E.isRight(result)) {
+          components.push(...result.right);
+        } else {
+          return;
+        }
+      }
     }
 
     const result = await updateDebt({
@@ -67,7 +146,8 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       description: values.description,
       dueDate: dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()),
       payerId: values.payer,
-      centerId: values.center,
+      centerId,
+      components,
     })
 
     if ('data' in result) {
