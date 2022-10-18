@@ -156,7 +156,10 @@ export class EmailService {
   }
 
   loadTemplates() {
-    const templatesDir = path.resolve(__dirname, '../templates')
+    const templatesDir = process.env.NODE_ENV === 'production'
+      ? '/app/backend/templates'
+      : path.resolve(__dirname, '../templates')
+
     const files: Array<string> = fs.readdirSync(templatesDir)
 
     this.templates = pipe(
