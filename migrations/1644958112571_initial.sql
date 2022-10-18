@@ -10,7 +10,13 @@ CREATE TABLE payer_profiles (
   tkoaly_user_id INT,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  preferences JSONB,
   PRIMARY KEY (id)
+);
+
+CREATE TABLE payment_numbers (
+  year INT PRIMARY KEY,
+  number INT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE payer_emails (
