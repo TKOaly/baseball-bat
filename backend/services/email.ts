@@ -69,7 +69,7 @@ type EmailTransportOptions = {
   to: string,
   subject: string,
   text: string,
-  // html: string | null,
+  html: string | null,
 }
 
 export interface IEmailTransport {
@@ -131,7 +131,7 @@ export const createSMTPTransport = (config: SMTPConfig) => {
         to: options.to,
         subject: options.subject,
         text: options.text,
-        // html: options.html ?? undefined,
+        html: options.html ?? undefined,
       })
     }
   }
@@ -215,7 +215,7 @@ export class EmailService {
       from: 'velat@tko-aly.fi',
       subject: options.subject,
       text,
-      // html,
+      html,
     })
   }
 
@@ -279,7 +279,7 @@ export class EmailService {
       from: 'velat@tko-aly.fi',
       subject: email.subject,
       text: email.text,
-      // html: email.html,
+      html: email.html,
     })
 
     await this.pg.any(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`)
