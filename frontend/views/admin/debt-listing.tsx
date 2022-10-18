@@ -1,11 +1,34 @@
 import { ListView } from '../../components/list-view'
 import { Button, SecondaryButton } from '../../components/button'
-import { useGetDebtsQuery } from '../../api/debt'
+import { useGetDebtsQuery, useSendAllRemindersMutation } from '../../api/debt'
 import { useLocation } from 'wouter'
+import { useDialog } from '../../components/dialog';
+import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
+import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
 
 export const DebtListing = () => {
   const { data: debts } = useGetDebtsQuery(null)
+  const [sendAllReminders] = useSendAllRemindersMutation()
+  const showRemindersSentDialog = useDialog(RemindersSentDialog)
+  const showSendRemindersDialog = useDialog(SendRemindersDialog)
   const [, setLocation] = useLocation()
+
+  const handleSendAllReminders = async () => {
+    const options = await showSendRemindersDialog({})
+
+    if (!options) {
+      return;
+    }
+
+    const result = await sendAllReminders(options)
+
+    if ('data' in result) {
+      showRemindersSentDialog({
+        payerCount: result.data.payerCount,
+        debtCount: result.data.messageCount,
+      })
+    }
+  }
 
   return (
     <>
@@ -19,6 +42,7 @@ export const DebtListing = () => {
           <>
             <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
             <SecondaryButton onClick={() => setLocation(`/admin/debts/create-debts-csv`)}>Mass Creation</SecondaryButton>
+            <SecondaryButton onClick={handleSendAllReminders}>Send all reminders</SecondaryButton>
           </>
         }
         items={(debts ?? []).map((debt) => ({

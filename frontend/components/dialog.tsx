@@ -115,7 +115,7 @@ export const Portal = ({ children, containerId }) => {
 export const DialogBase = ({ children, onClose }) => {
   return (
     <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10" onClick={onClose}>
-      <div className="rounded-lg flex flex-col bg-white border shadow-lg min-w-[35em] min-h-[15em]" onClick={(e) => e.stopPropagation()}>
+      <div className="rounded-lg flex flex-col bg-white border shadow-lg w-[30em]" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

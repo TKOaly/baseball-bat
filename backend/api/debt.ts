@@ -8,7 +8,7 @@ import { Config } from '../config'
 import { DebtCentersService } from '../services/debt_centers'
 import { Type, TypeOf } from 'io-ts'
 import * as t from 'io-ts'
-import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, emailIdentity, euro, internalIdentity, PayerProfile, tkoalyIdentity } from '../../common/types'
+import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, PayerProfile, tkoalyIdentity } from '../../common/types'
 import { PayerService } from '../services/payer'
 import { validateBody } from '../validate-middleware'
 import { PaymentService } from '../services/payements'
@@ -16,11 +16,18 @@ import { EmailService } from '../services/email'
 import { format, addDays, isMatch, parseISO, isPast } from 'date-fns'
 import { split } from 'fp-ts/lib/string'
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
-import { pipe } from 'fp-ts/lib/pipeable'
-import { flow } from 'fp-ts/lib/function'
-import { foldW } from 'fp-ts/lib/Either'
+import { flow, pipe } from 'fp-ts/lib/function'
+import * as E from 'fp-ts/lib/Either'
+import * as A from 'fp-ts/lib/Array'
+import * as TE from 'fp-ts/lib/TaskEither'
+import * as T from 'fp-ts/lib/Task'
+import * as S from 'fp-ts/lib/string'
+import { concatAll } from 'fp-ts/lib/Monoid'
+import { Either, foldW } from 'fp-ts/lib/Either'
 import { euroValue } from '../../common/currency'
 import { UsersService } from '../services/users'
+import { uniqBy } from 'remeda'
+import * as EQ from 'fp-ts/lib/Eq'
 
 
 const debtCenter = t.type({
@@ -682,6 +689,29 @@ export class DebtApi {
       })
   }
 
+  private sendAllReminders() {
+    return route
+      .post('/send-reminders')
+      .use(validateBody(t.type({
+        send: t.boolean,
+        ignoreCooldown: t.boolean,
+      })))
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const getEmailPayerId = ([_, debt]: [Email, Debt]) => debt.payerId.value
+        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq)
+
+        return pipe(
+          () => this.debtService.sendAllReminders(!ctx.body.send, ctx.body.ignoreCooldown),
+          T.map(({ left, right }) => ok({
+            messageCount: right.length,
+            payerCount: A.uniq(EmailPayerEq)(right).length,
+            errors: left,
+          })),
+        )()
+      })
+  }
+
   private sendReminder() {
     return route
       .post('/:id/send-reminder')
@@ -693,49 +723,19 @@ export class DebtApi {
           return notFound('Debt not found')
         }
 
-        if (debt.draft) {
-          return badRequest('Debt is a draft')
+        const result = await this.debtService.sendReminder(debt);
+
+        if (E.isRight(result)) {
+          return ok(result.right)
+        } else {
+          return internalServerError(result.left)
         }
-
-        const email = await this.payerService.getPayerPrimaryEmail(debt.payerId)
-
-        if (!email) {
-          return internalServerError('No primary email for payer')
-        }
-
-        const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(ctx.routeParams.id)
-
-        if (!payment) {
-          return internalServerError('No default invoice found for debt')
-        }
-
-        const dueDate = new Date(debt.dueDate)
-
-        if (!isPast(dueDate)) {
-          return badRequest('Debt not due yet')
-        }
-
-        const createdEmail = await this.emailService.createEmail({
-          recipient: email.email,
-          subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
-          template: 'reminder',
-          payload: {
-            title: debt.name,
-            number: payment.payment_number,
-            date: debt.createdAt,
-            dueDate: debt.dueDate,
-            amount: debt.total,
-            referenceNumber: payment.data.reference_number,
-            message: payment.message ?? debt.description,
-          },
-        })
-
-        return ok(createdEmail)
       })
   }
 
   public router(): Router {
     return router(
+      this.sendAllReminders(),
       this.createDebtComponent(),
       this.createDebt(),
       this.getDebtsByPayment(),

@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue } from '../../common/types'
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email } from '../../common/types'
 import { PgClient } from '../db'
 import sql from 'sql-template-strings'
 import { Inject, Service } from 'typedi'
@@ -6,6 +6,15 @@ import { formatPayerProfile, PayerService } from './payer'
 import { formatDebtCenter } from './debt_centers'
 import { NewInvoice, PaymentService } from './payements'
 import { cents } from '../../common/currency'
+
+import * as E from 'fp-ts/lib/Either'
+import * as A from 'fp-ts/lib/Array'
+import * as T from 'fp-ts/lib/Task'
+import * as S from 'fp-ts/lib/string'
+import * as EQ from 'fp-ts/lib/Eq'
+import { flow } from 'fp-ts/lib/function'
+import { isPast } from 'date-fns'
+import { EmailService } from './email'
 
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
@@ -53,6 +62,9 @@ export class DebtService {
 
   @Inject(() => PaymentService)
   paymentService: PaymentService
+
+  @Inject(() => EmailService)
+  emailService: EmailService
 
   async getDebt(id: string): Promise<Debt | null> {
     return this.pg
@@ -288,5 +300,129 @@ export class DebtService {
       await tx.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `)
       await tx.do(sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`)
     })
+  }
+
+  async getOverdueDebts() {
+    const debts = await this.pg.any<DbDebt>(sql`
+      SELECT
+        debt.*,
+        TO_JSON(payer_profiles.*) AS payer,
+        TO_JSON(debt_center.*) AS debt_center,
+        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+        (
+          SELECT SUM(dc.amount) AS total
+          FROM debt_component_mapping dcm
+          JOIN debt_component dc ON dc.id = dcm.debt_component_id
+          WHERE dcm.debt_id = debt.id
+        ) AS total
+      FROM debt
+      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+      JOIN debt_center ON debt_center.id = debt.debt_center_id
+      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+      WHERE debt.due_date < NOW() AND NOT debt.draft
+      GROUP BY debt.id, payer_profiles.*, debt_center.*
+    `)
+
+    return debts.map(formatDebt)
+  }
+
+  async getDebtsPendingReminder() {
+    const debts = await this.pg.any<DbDebt>(sql`
+      SELECT
+        debt.*,
+        TO_JSON(payer_profiles.*) AS payer,
+        TO_JSON(debt_center.*) AS debt_center,
+        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+        (
+          SELECT SUM(dc.amount) AS total
+          FROM debt_component_mapping dcm
+          JOIN debt_component dc ON dc.id = dcm.debt_component_id
+          WHERE dcm.debt_id = debt.id
+        ) AS total
+      FROM debt
+      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+      JOIN debt_center ON debt_center.id = debt.debt_center_id
+      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+      WHERE debt.due_date < NOW() AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month')
+      GROUP BY debt.id, payer_profiles.*, debt_center.*
+    `)
+
+    return debts.map(formatDebt)
+  }
+
+  async setDebtLastReminded(id: string, lastReminded: Date) {
+    await this.pg.any(sql`
+      UPDATE debt SET last_reminded = ${lastReminded} WHERE id = ${id}
+    `)
+  }
+
+  async sendReminder(debt: Debt, draft = true): Promise<E.Either<string, Email>> {
+    if (debt.draft) {
+      return E.left('Debt is a draft')
+    }
+
+    const email = await this.payerService.getPayerPrimaryEmail(debt.payerId)
+
+    if (!email) {
+      return E.left('No primary email for payer')
+    }
+
+    const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(debt.id)
+
+    if (!payment) {
+      return E.left('No default invoice found for debt')
+    }
+
+    const dueDate = new Date(debt.dueDate)
+
+    if (!isPast(dueDate)) {
+      return E.left('Debt not due yet')
+    }
+
+    const createdEmail = await this.emailService.createEmail({
+      recipient: email.email,
+      subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
+      template: 'reminder',
+      payload: {
+        dueDate: debt.dueDate,
+        amount: debt.total,
+        referenceNumber: payment.data.reference_number,
+        message: payment.message ?? debt.description,
+        title: debt.name,
+        number: payment.payment_number,
+        date: debt.createdAt,
+      },
+    })
+
+    if (!createdEmail) {
+      return E.left('Could not create email')
+    }
+
+    if (!draft) {
+      await this.emailService.sendEmail(createdEmail.id);
+      const refreshed = await this.emailService.getEmail(createdEmail.id);
+      return E.right(refreshed!);
+    }
+
+    await this.setDebtLastReminded(debt.id, createdEmail.createdAt);
+
+    return E.right(createdEmail)
+  }
+
+  async sendAllReminders(draft = true, ignoreReminderCooldown = false) {
+    const debts = ignoreReminderCooldown
+      ? await this.getOverdueDebts()
+      : await this.getDebtsPendingReminder();
+
+    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.sendReminder(debt, draft))
+
+    return flow(
+      A.traverse(T.ApplicativePar)(sendReminder),
+      T.map(A.separate),
+    )(debts)()
   }
 }

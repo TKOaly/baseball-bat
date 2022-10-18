@@ -1440,6 +1440,11 @@
   dependencies:
     "@types/express" "*"
 
+"@types/node-cron@^3.0.4":
+  "integrity" "sha512-A2H+uz5ry4hohYjRe5mQSE/8Dx/HGw4WZ728JxhKUZ7z8CMvRuG2tpbzGHRGQCuQzz5aCNB1iXzPZYHd4BPHvw=="
+  "resolved" "https://registry.npmjs.org/@types/node-cron/-/node-cron-3.0.4.tgz"
+  "version" "3.0.4"
+
 "@types/node@*", "@types/node@^17.0.18", "@types/node@>=8.1.0":
   "integrity" "sha512-eKj4f/BsN/qcculZiRSujogjvp5O/k4lOW5m35NopjZM/QwLOR075a8pJW5hD+Rtdm2DaCVPENS6KtSQnUD6BA=="
   "resolved" "https://registry.npmjs.org/@types/node/-/node-17.0.18.tgz"
@@ -3795,6 +3800,13 @@
   "resolved" "https://registry.npmjs.org/node-addon-api/-/node-addon-api-4.3.0.tgz"
   "version" "4.3.0"
 
+"node-cron@^3.0.2":
+  "integrity" "sha512-iP8l0yGlNpE0e6q1o185yOApANRe47UPbLf4YxfbiNHt/RU5eBcGB/e0oudruheSf+LQeDMezqC5BVAb5wwRcQ=="
+  "resolved" "https://registry.npmjs.org/node-cron/-/node-cron-3.0.2.tgz"
+  "version" "3.0.2"
+  dependencies:
+    "uuid" "8.3.2"
+
 "node-fetch@^2.6.0":
   "integrity" "sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ=="
   "resolved" "https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.7.tgz"
@@ -5062,7 +5074,7 @@
   "resolved" "https://registry.npmjs.org/utils-merge/-/utils-merge-1.0.1.tgz"
   "version" "1.0.1"
 
-"uuid@^8.3.2":
+"uuid@^8.3.2", "uuid@8.3.2":
   "integrity" "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg=="
   "resolved" "https://registry.npmjs.org/uuid/-/uuid-8.3.2.tgz"
   "version" "8.3.2"

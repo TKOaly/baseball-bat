@@ -126,7 +126,19 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Email', id: 'LIST' },
       ],
     }),
-  }) });
+
+    sendAllReminders: builder.mutation<{ messageCount: number, payerCount: number }, { ignoreCooldown: boolean, send: boolean }>({
+      query: (body) => ({
+        method: 'POST',
+        url: `/debt/send-reminders`,
+        body,
+      }),
+      invalidatesTags: [
+        { type: 'Email', id: 'LIST' },
+      ],
+    })
+  })
+});
 
 export const {
   useCreateDebtComponentMutation,
@@ -143,6 +155,7 @@ export const {
   useCreditDebtMutation,
   useMarkPaidWithCashMutation,
   useSendReminderMutation,
+  useSendAllRemindersMutation,
 } = debtApi
 
 export default debtApi

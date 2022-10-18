@@ -1,6 +1,7 @@
 import express from 'express'
 import { router } from 'typera-express'
 import healthCheck from './api/health-check'
+import cron from 'node-cron'
 import { Config } from './config'
 import { EventsApi } from './api/events'
 import { AuthApi } from './api/auth'
@@ -162,6 +163,8 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use('/', Container.get(MagicLinksApi).router().handler())
+
+cron.schedule('* * * 12 * * *', () => Container.get(DebtService).sendAllReminders());
 
 app.listen(PORT, () => console.log(`backend istening on port ${PORT} 🚀`))
 
