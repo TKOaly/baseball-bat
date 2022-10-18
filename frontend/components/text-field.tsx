@@ -39,7 +39,7 @@ export const TextField = React.forwardRef<HTMLInputElement, Props>((props, ref) 
   return (
     <div className={`relative ${props.className}`}>
       {props.readOnly
-        ? <div className={classes} style={{ height: '42px' }} {...R.omit(props, ['className'])}>{props.value}</div>
+        ? <div className={classes} style={{ height: '42px', ...props.style }} {...R.omit(props, ['className', 'style'])}>{props.value}</div>
         : <input type="text" className={classes} {...R.omit(props, ['className'])} ref={ref} />}
       {props.iconRight && (
         <div className="absolute h-full right-0 inset-y-0 flex items-center pr-3 pt-1 text-gray-400">{props.iconRight}</div>
