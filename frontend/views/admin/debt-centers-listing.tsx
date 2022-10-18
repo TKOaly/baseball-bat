@@ -25,6 +25,7 @@ export const DebtCentersListing = () => {
       </p>
       <div className="flex gap-3 mb-7">
         <Button onClick={() => setLocation('/admin/debt-centers/create')}>Create</Button>
+        <SecondaryButton onClick={() => setLocation(`/admin/debt-centers/create-from-event`)}>Create from event</SecondaryButton>
         <SecondaryButton onClick={() => setLocation('/admin/debts/create-debts-csv')}>Mass Import</SecondaryButton>
       </div>
       <TableView
