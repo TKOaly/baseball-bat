@@ -193,6 +193,16 @@ export class AuthApi {
           return unauthorized()
         }
 
+        if (!payerProfile.tkoalyUserId) {
+          return unauthorized()
+        }
+
+        const upstreamUser = await this.usersService.getUpstreamUserById(payerProfile.tkoalyUserId, req.cookies.token)
+
+        if (upstreamUser?.role !== 'yllapitaja') {
+          return unauthorized()
+        }
+
         let sessionToken: string | null = session.token
 
         if (body.remote) {
