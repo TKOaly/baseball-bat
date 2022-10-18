@@ -6,7 +6,7 @@ import * as R from 'remeda'
 import { Event } from '../../../common/types'
 import { TextField } from '../../components/text-field'
 import eventsApi, { useGetEventCustomFieldsQuery, useGetEventRegistrationsQuery, useGetEventsQuery } from '../../api/events'
-import { addDays, format, isMatch } from 'date-fns';
+import { addDays, format, isMatch, subYears } from 'date-fns';
 import { FilledDisc } from '../../components/filled-disc'
 import ReactModal from 'react-modal'
 import { ListView } from '../../components/list-view';
@@ -34,7 +34,12 @@ type EventSelectionViewProps = {
 }
 
 const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
-  const { data: events } = useGetEventsQuery({})
+  const starting = useMemo(() => subYears(new Date(), 1), [])
+
+  const { data: events } = useGetEventsQuery({
+    starting,
+  })
+
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState([])
 
