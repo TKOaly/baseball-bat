@@ -25,6 +25,10 @@ CREATE TABLE bank_statements (
   id TEXT PRIMARY KEY,
   generated_at timestamptz NOT NULL,
   imported_at timestamptz NOT NULL,
+  opening_balance_date timestamptz NOT NULL,
+  opening_balance INT NOT NULL,
+  closing_balance_date timestamptz NOT NULL,
+  closing_balance INT NOT NULL,
   account TEXT NOT NULL,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL
