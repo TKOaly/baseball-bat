@@ -8,7 +8,7 @@ export type UpdatePayerEmailsQueryPayload = {
 
 const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getPayers: builder.query<PayerProfile[], never>({
+    getPayers: builder.query<PayerProfile[], void>({
       query: () => '/payers',
       providesTags: [
         { type: 'Payer', id: 'LIST' },
