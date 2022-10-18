@@ -164,7 +164,7 @@ export const CreateDebt = ({ debtCenterId }) => {
               component={TabularFieldListFormik}
               createNew={() => ({
                 component: '',
-                amount: 123.12,
+                amount: 0,
               })}
               columns={[
                 {
@@ -190,7 +190,7 @@ export const CreateDebt = ({ debtCenterId }) => {
 
                     return {
                       readOnly: typeof row.component === 'string',
-                      value: component ? component.amount.value / 100 : 0,
+                      value: component ? component.amount.value / 100 : row.amount,
                     };
                   },
                 },
