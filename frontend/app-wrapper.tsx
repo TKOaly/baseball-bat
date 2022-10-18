@@ -99,7 +99,7 @@ const PublicLayout = ({ children, sidebars }) => (
           </div>
         </div>
         <div className="md:block">
-          <PaymentSelectionSidebar />
+          {sidebars && <PaymentSelectionSidebar />}
         </div>
       </div>
       <div className="fixed bottom-0 md:hidden flex items-center bg-white border-t shadow py-2 px-3 w-full">
