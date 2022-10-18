@@ -10,12 +10,12 @@ import { DebtCentersApi } from './api/centers'
 import { PaymentsApi } from './api/payments'
 import cookieParser from 'cookie-parser'
 import { DebtService } from './services/debt'
-import Stripe from 'stripe'
+// import Stripe from 'stripe'
 import { PgClient } from './db'
 import { SessionApi } from './api/session'
 import cors from 'cors'
 import helmet, { HelmetOptions } from 'helmet'
-import { StripeEventsApi } from './api/stripe-events'
+// import { StripeEventsApi } from './api/stripe-events'
 import { Container } from 'typedi'
 import 'reflect-metadata'
 import { EventsService } from './services/events'
@@ -48,9 +48,9 @@ const helmetConfig: HelmetOptions = {
   crossOriginEmbedderPolicy: false,
 }
 
-const stripeClient = new Stripe(config.stripeSecretKey, {
+/*const stripeClient = new Stripe(config.stripeSecretKey, {
   apiVersion: '2020-08-27',
-})
+})*/
 
 const pg = PgClient.create(config.dbUrl)
 
@@ -69,7 +69,7 @@ if (config.emailDispatcher) {
 }
 
 Container.set(Config, config)
-Container.set('stripe', stripeClient)
+// Container.set('stripe', stripeClient)
 Container.set(PgClient, pg)
 Container.set('redis', redisClient)
 Container.set(EmailService, new EmailService(emailTransport, pg))
@@ -86,11 +86,11 @@ const app = express()
       origin: [config.appUrl],
     })
   )
-  .use(
+  /*.use(
     '/api/stripe-events',
     express.raw({ type: 'application/json' }),
     Container.get(StripeEventsApi).router().handler()
-  )
+  )*/
   .use(express.json())
   .use(cookieParser())
   .use(

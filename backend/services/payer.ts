@@ -1,4 +1,4 @@
-import { Stripe } from 'stripe'
+// import { Stripe } from 'stripe'
 import {
   DbPayerProfile,
   DbPaymentMethod,
@@ -92,8 +92,8 @@ export class PayerService {
   @Inject(() => PgClient)
   pg: PgClient
 
-  @Inject('stripe')
-  stripe: Stripe
+  // @Inject('stripe')
+  // stripe: Stripe
 
   @Inject(() => EventsService)
   eventsService: EventsService
@@ -407,9 +407,9 @@ export class PayerService {
         await this.replacePrimaryEmail(existingPayerProfile.id, user.email)
 
         if (existingPayerProfile.stripeCustomerId) {
-          await this.stripe.customers.update(existingPayerProfile.stripeCustomerId, {
+          /*await this.stripe.customers.update(existingPayerProfile.stripeCustomerId, {
             email: user.email,
-          })
+          })*/
         }
       }
 
@@ -486,7 +486,7 @@ export class PayerService {
     return formatPaymentMethod(paymentMethod)
   }
 
-  async getSetupIntentForUser(id: PayerIdentity) {
+  /*async getSetupIntentForUser(id: PayerIdentity) {
     const payerProfile = await this.getPayerProfileByIdentity(id)
 
     if (!payerProfile) {
@@ -504,9 +504,9 @@ export class PayerService {
     })
 
     return { secret: setupIntent.client_secret }
-  }
+  }*/
 
-  async setPaymentMethod(setupIntentId: string) {
+  /*async setPaymentMethod(setupIntentId: string) {
     const setupIntent = await this.stripe.setupIntents.retrieve(setupIntentId)
 
     if (!setupIntent.payment_method) {
@@ -548,7 +548,7 @@ export class PayerService {
           exp_year = ${paymentMethod.card?.exp_year},
           updated_at = NOW()
     `)
-  }
+  }*/
 
   async getEventsWithPaymentStatus(id: PayerIdentity, registeredEvents: Event[]): Promise<EventWithPaymentStatus[]> {
     const payerProfile = await this.getPayerProfileByIdentity(id)
@@ -588,86 +588,6 @@ export class PayerService {
             : null,
         }
       })
-  }
-
-  async payUsersEvents(
-    eventsToPay: number[],
-    id: PayerIdentity
-  ) {
-    const payerProfile = await this.getPayerProfileByIdentity(id)
-
-    if (!payerProfile) {
-      throw new Error('Payer profile not found')
-    }
-
-    if (!payerProfile.tkoalyUserId) {
-      throw new Error('unimplemented')
-    }
-
-    const paidEvents = await this.pg
-      .any<{ eventId: number }>(
-        sql`SELECT li.event_id as "eventId" FROM line_items li
-          INNER JOIN payments p ON p.id = li.payment_id
-          WHERE p.payer_id = ${payerProfile.id.value}
-          GROUP BY li.event_id`
-      )
-      .then(res => res.map(r => r.eventId))
-
-    const payableEvents = R.difference(eventsToPay, paidEvents)
-    const events = await this.eventsService
-      .getEvents(payerProfile.tkoalyUserId)
-      .then(events => events.filter(e => payableEvents.includes(e.id)))
-
-    const sum = events.reduce((acc, event) => acc + event.price?.value!, 0)
-
-    const paymentMethod = await this.getPaymentMethod(id)
-
-    if (!paymentMethod) {
-      throw new Error('Payment method not found')
-    }
-
-    const paymentIntent = await this.stripe.paymentIntents.create({
-      amount: sum,
-      currency: 'eur',
-      customer: payerProfile.stripeCustomerId,
-      payment_method: paymentMethod.stripePaymentMethodId,
-      off_session: true,
-      confirm: true,
-      metadata: {
-        events: JSON.stringify(
-          events.map(e => ({
-            id: e.id,
-            name: e.name,
-            price: e.price?.value,
-          }))
-        ),
-      },
-    })
-
-    this.pg.any(sql`
-      WITH payment AS (
-        INSERT INTO payments(payer_id, payment_status, stripe_payment_intent_id)
-        VALUES (
-          ${payerProfile.id},
-          ${paymentIntent.status ?? 'processing'},
-          ${paymentIntent.id}
-        )
-        RETURNING id
-      )
-      INSERT INTO line_items(payment_id, event_id, amount, item_name)
-      VALUES`.append(
-      appendAll(
-        events,
-        e => sql`(
-  (SELECT id FROM payment),
-  ${e.id},
-                    ${e.price?.value},
-                    ${`${e.name} - Attendance`}
-                  )`,
-        ','
-      )
-    )
-    )
   }
 
   updatePaymentStatus(paymentIntentId: string, status: PaymentStatus) {

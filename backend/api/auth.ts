@@ -6,7 +6,6 @@ import { PayerService } from '../services/payer'
 import { EmailService } from '../services/email'
 import { PgClient } from '../db'
 import { v4 as uuid } from 'uuid'
-import Stripe from 'stripe'
 import { Inject, Service } from 'typedi'
 import { Config } from '../config'
 import { emailIdentity, internalIdentity, TkoalyIdentity, tkoalyIdentity } from '../../common/types'
@@ -43,8 +42,8 @@ export class AuthApi {
   @Inject(() => PgClient)
   pg: PgClient
 
-  @Inject('stripe')
-  stripe: Stripe
+  // @Inject('stripe')
+  // stripe: Stripe
 
   @Inject('redis')
   redis: RedisClientType

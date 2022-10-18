@@ -12,9 +12,9 @@ interface IConfig {
   eventServiceUrl: string | null
   eventServiceToken: string | null
   jwtSecret: string
-  stripeSecretKey: string
+  // stripeSecretKey: string
   appUrl: string
-  stripeWebhookEndpointSecret: string
+  // stripeWebhookEndpointSecret: string
   redisUrl: string
   emailDispatcher?: {
     url: string
@@ -39,9 +39,9 @@ export class Config implements IConfig {
   eventServiceUrl: string | null = null
   eventServiceToken: string | null = null
   jwtSecret: string = ''
-  stripeSecretKey: string = ''
+  // stripeSecretKey: string = ''
   appUrl: string = ''
-  stripeWebhookEndpointSecret: string = ''
+  // stripeWebhookEndpointSecret: string = ''
   redisUrl: string
   emailDispatcher?: {
     url: string
@@ -68,8 +68,8 @@ export class Config implements IConfig {
       JWT_SECRET,
       POSTGRES_CONNECTION_STRING,
       REDIS_URL,
-      STRIPE_SECRET_KEY,
-      STRIPE_WEBHOOK_ENDPOINT_SECRET,
+      // STRIPE_SECRET_KEY,
+      // STRIPE_WEBHOOK_ENDPOINT_SECRET,
       USER_SERVICE_URL,
       USER_SERVICE_API_URL,
       SERVICE_IDENTIFIER,
@@ -84,12 +84,12 @@ export class Config implements IConfig {
       'SERVICE_IDENTIFIER must be set.'
     )
     assert(JWT_SECRET, 'JWT_SECRET must be set.')
-    assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
+    // assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
     assert(APP_URL, 'APP_URL must be set.')
-    assert(
+    /*assert(
       STRIPE_WEBHOOK_ENDPOINT_SECRET,
       'STRIPE_WEBHOOK_ENDPOINT_SECRET must be set.'
-    )
+    )*/
 
     const emailDispatcher = Config.getEmailDispatcherConfig()
     const smtp = Config.getSMTPConfig()
@@ -102,9 +102,9 @@ export class Config implements IConfig {
       eventServiceUrl: EVENT_SERVICE_URL ?? null,
       eventServiceToken: EVENT_SERVICE_TOKEN ?? null,
       jwtSecret: JWT_SECRET,
-      stripeSecretKey: STRIPE_SECRET_KEY,
+      // stripeSecretKey: STRIPE_SECRET_KEY,
       appUrl: APP_URL,
-      stripeWebhookEndpointSecret: STRIPE_WEBHOOK_ENDPOINT_SECRET,
+      // stripeWebhookEndpointSecret: STRIPE_WEBHOOK_ENDPOINT_SECRET,
       emailDispatcher,
       smtp,
       redisUrl: REDIS_URL!,
