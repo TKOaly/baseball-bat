@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email } from '../../common/types'
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch } from '../../common/types'
 import { PgClient } from '../db'
 import sql from 'sql-template-strings'
 import { Inject, Service } from 'typedi'
@@ -8,11 +8,12 @@ import { NewInvoice, PaymentService } from './payements'
 import { cents } from '../../common/currency'
 
 import * as E from 'fp-ts/lib/Either'
+import * as TE from 'fp-ts/lib/TaskEither'
 import * as A from 'fp-ts/lib/Array'
 import * as T from 'fp-ts/lib/Task'
 import * as S from 'fp-ts/lib/string'
 import * as EQ from 'fp-ts/lib/Eq'
-import { flow } from 'fp-ts/lib/function'
+import { flow, pipe } from 'fp-ts/lib/function'
 import { isPast } from 'date-fns'
 import { EmailService } from './email'
 
@@ -193,6 +194,33 @@ export class DebtService {
     }
 
     return formatDebt(created);
+  }
+
+  async updateDebt(debt: DebtPatch): Promise<E.Either<Error, Debt>> {
+    const payer = await this.payerService.getPayerProfileByIdentity(debt.payerId)
+
+    if (!payer) {
+      return E.left(new Error('No such payer'))
+    }
+
+    const query = sql`
+      UPDATE debt
+      SET
+        name = ${debt.name},
+        description = ${debt.description},
+        debt_center_id = ${debt.centerId},
+        payer_id = ${payer.id.value},
+        due_date = ${debt.dueDate}
+      WHERE
+        id = ${debt.id}
+      RETURNING *
+    `
+
+    return pipe(
+      this.pg.oneTask<DbDebt>(query),
+      TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
+      TE.map(formatDebt),
+    )()
   }
 
   async createDebtComponent(debtComponent: NewDebtComponent): Promise<DebtComponent> {

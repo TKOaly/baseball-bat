@@ -13,7 +13,7 @@ import { PayerService } from '../services/payer'
 import { validateBody } from '../validate-middleware'
 import { PaymentService } from '../services/payements'
 import { EmailService } from '../services/email'
-import { format, addDays, isMatch, parseISO, isPast } from 'date-fns'
+import { parse, format, addDays, isMatch, parseISO, isPast } from 'date-fns'
 import { split } from 'fp-ts/lib/string'
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
 import { flow, pipe } from 'fp-ts/lib/function'
@@ -270,6 +270,37 @@ export class DebtApi {
         });
 
         return ok(debt);
+      })
+  }
+
+  private updateDebt() {
+    return route
+      .put('/:id')
+      .use(validateBody(t.type({
+        name: t.string,
+        description: t.string,
+        payerId: payerIdentity,
+        centerId: t.string,
+        dueDate: t.string,
+      })))
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const updated = await this.debtService.updateDebt({
+          id: ctx.routeParams.id,
+          name: ctx.body.name,
+          description: ctx.body.description,
+          centerId: ctx.body.centerId,
+          dueDate: parseISO(ctx.body.dueDate),
+          payerId: ctx.body.payerId,
+        })
+
+        return pipe(
+          updated,
+          E.foldW(
+            () => badRequest(),
+            (debt) => ok(debt),
+          )
+        )
       })
   }
 
@@ -748,6 +779,7 @@ export class DebtApi {
       this.creditDebt(),
       this.markPaidWithCash(),
       this.sendReminder(),
+      this.updateDebt(),
     )
   }
 }

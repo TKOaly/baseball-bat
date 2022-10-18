@@ -24,6 +24,7 @@ import { CornerDownLeft } from 'react-feather'
 import { useEffect, useState } from 'react'
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog'
 import { TextField } from '../../components/text-field'
+import { EditDebt } from '../edit-debt'
 
 const MenuItemLi = tw.li`
   px-4
@@ -128,6 +129,7 @@ const Admin = () => {
             </Route>
             <Route path="/admin/debts/create" component={CreateDebt} />
             <Route path="/admin/debts/:id" component={DebtDetails} />
+            <Route path="/admin/debts/:id/edit" component={EditDebt} />
             <Route path="/admin/debts" component={DebtListing} />
             <Route path="/admin/payers" component={PayerListing} />
             <Route path="/admin/payers/:id" component={PayerDetails} />

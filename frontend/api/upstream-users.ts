@@ -3,7 +3,7 @@ import { UpstreamUser } from '../../common/types'
 
 const upstreamUsersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getUpstreamUsers: builder.query<UpstreamUser[], never>({
+    getUpstreamUsers: builder.query<UpstreamUser[], void>({
       query: () => '/users',
     }),
 

@@ -3,7 +3,7 @@ import { DebtCenter, NewDebtCenter } from '../../common/types'
 
 const debtCentersApi = rootApi.injectEndpoints({
   endpoints: (builder) => ({
-    getDebtCenters: builder.query<DebtCenter[], null>({
+    getDebtCenters: builder.query<DebtCenter[], void>({
       query: () => '/debtCenters',
     }),
 

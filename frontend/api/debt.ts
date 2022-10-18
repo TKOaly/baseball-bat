@@ -1,5 +1,6 @@
 import rtkApi from './rtk-api'
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email } from '../../common/types'
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch } from '../../common/types'
+import { omit } from 'remeda';
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>,
@@ -136,6 +137,18 @@ const debtApi = rtkApi.injectEndpoints({
       invalidatesTags: [
         { type: 'Email', id: 'LIST' },
       ],
+    }),
+
+    updateDebt: builder.mutation<Debt, DebtPatch>({
+      query: (patch) => ({
+        method: 'PUT',
+        url: `/debt/${patch.id}`,
+        body: omit(patch, ['id']),
+      }),
+      invalidatesTags: (result) => [
+        { type: 'Debt', id: 'LIST' },
+        { type: 'Debt', id: result.id },
+      ],
     })
   })
 });
@@ -156,6 +169,7 @@ export const {
   useMarkPaidWithCashMutation,
   useSendReminderMutation,
   useSendAllRemindersMutation,
+  useUpdateDebtMutation,
 } = debtApi
 
 export default debtApi

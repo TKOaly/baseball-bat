@@ -135,6 +135,7 @@ app.use(
   '/:type(index|onboarding|update-payment-method|auth|admin|settings)',
   express.static('web-dist/index.html')
 )
+
 app.use(
   '/magic/invalid',
   express.static('web-dist/index.html')
@@ -155,10 +156,7 @@ app.use(
   '/auth/email/confirm/:id',
   express.static('web-dist/index.html')
 )
-app.use(
-  '/admin/:rest*',
-  express.static('web-dist/index.html')
-)
+app.use('/admin/*', express.static('web-dist/index.html'))
 app.use(express.static('web-dist'))
 // }
 

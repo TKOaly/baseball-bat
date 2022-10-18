@@ -1,6 +1,10 @@
+import { TaskEither } from 'fp-ts/lib/TaskEither'
 import * as pg from 'pg'
 import sql, { SQLStatement } from 'sql-template-strings'
 import { Service } from 'typedi'
+import * as O from 'fp-ts/lib/Option'
+import * as E from 'fp-ts/lib/Either'
+import * as TE from 'fp-ts/lib/TaskEither'
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10))
 
@@ -21,7 +25,7 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
 type Split<
   Str,
   Delim extends string
-> = Str extends `${infer Head}${Delim}${infer Rest}`
+  > = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
   ? Str extends ''
@@ -56,6 +60,16 @@ export class PgClient {
     return result.rowCount > 0
       ? result.rows[0]
       : null;
+  }
+
+  oneTask<T>(query: SQLStatement): TE.TaskEither<Error, O.Option<T>> {
+    return async () => {
+      const result = await this.conn.query(query);
+
+      return result.rowCount > 0
+        ? E.right(O.some(result.rows[0]))
+        : E.right(O.none);
+    };
   }
 
   async any<T>(query: SQLStatement): Promise<T[]> {

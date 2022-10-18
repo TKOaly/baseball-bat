@@ -112,20 +112,32 @@ export type ApiEvent = {
   price: string
 }
 
-export type TkoalyIdentity = {
-  type: 'tkoaly',
-  value: number,
-}
+export const tkoalyIdentityT = t.type({
+  type: t.literal('tkoaly'),
+  value: t.number,
+})
 
-export type EmailIdentity = {
-  type: 'email',
-  value: string,
-}
+export const emailIdentityT = t.type({
+  type: t.literal('email'),
+  value: t.string,
+})
 
-export type InternalIdentity = {
-  type: 'internal',
-  value: string,
-}
+export const internalIdentityT = t.type({
+  type: t.literal('internal'),
+  value: t.string,
+})
+
+export type TkoalyIdentity = t.TypeOf<typeof tkoalyIdentityT>
+export type EmailIdentity = t.TypeOf<typeof emailIdentityT>
+export type InternalIdentity = t.TypeOf<typeof internalIdentityT>
+
+export const payerIdentity = t.union([
+  emailIdentityT,
+  tkoalyIdentityT,
+  internalIdentityT,
+])
+
+export type PayerIdentity = t.TypeOf<typeof payerIdentity>
 
 export function isTkoalyIdentity(id: PayerIdentity): id is TkoalyIdentity {
   return id.type === 'tkoaly';
@@ -140,7 +152,6 @@ export function isEmailIdentity(id: PayerIdentity): id is EmailIdentity {
 }
 
 export type ExternalIdentity = TkoalyIdentity | EmailIdentity
-export type PayerIdentity = ExternalIdentity | InternalIdentity
 
 export type UpstreamUserRole = 'kayttaja' | 'virkailija' | 'tenttiarkistovirkailija' | 'jasenvirkailija' | 'yllapitaja'
 
@@ -340,6 +351,15 @@ export type NewDebt = {
   name: string
   payer: PayerIdentity
   dueDate: DbDateString,
+}
+
+export type DebtPatch = {
+  id: string
+  name: string
+  description: string
+  payerId: PayerIdentity
+  dueDate: Date
+  centerId: string
 }
 
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(

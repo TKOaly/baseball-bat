@@ -111,6 +111,7 @@ export const DebtDetails = ({ params }) => {
           {debt?.draft === false && dfns.isPast(dueDate) && (
             <ActionButton secondary onClick={handleReminder}>Send reminder</ActionButton>
           )}
+          <ActionButton secondary onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}>Edit</ActionButton>
         </Actions>
       </Header>
       <Section title="Details" columns={2}>

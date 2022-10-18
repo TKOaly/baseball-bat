@@ -37,7 +37,7 @@ const parseApiEvent = (apiEvent: ApiEvent): Event => ({
   cancellationEnds: parseISO(apiEvent.cancellation_ends),
   location: apiEvent.location,
   deleted: apiEvent.deleted === 1,
-  price: getEuro(apiEvent.price),
+  price: apiEvent.price ? getEuro(apiEvent.price) : euro(0),
 })
 
 const formatRegistration = (registration: ApiRegistration) => ({
@@ -119,6 +119,7 @@ export class EventsService {
       const res = await this.client.get<ApiRegistration[]>(`/api/events/${id}/registrations`);
       return res.data.map(formatRegistration);
     } catch (err) {
+      console.log(err)
       throw new Error(`Failed to fetch registrations for event ${id}`);
     }
   }
@@ -128,6 +129,7 @@ export class EventsService {
       const res = await this.client.get<ApiCustomField[]>(`/api/events/${id}/fields`);
       return res.data;
     } catch (err) {
+      console.log(err)
       throw new Error(`Failed to fetch custom fields for event ${id}`)
     }
   }
