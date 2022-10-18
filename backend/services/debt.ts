@@ -19,6 +19,7 @@ import { EmailService } from './email'
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
   id: debt.id,
+  lastReminded: debt.last_reminded,
   payerId: internalIdentity(debt.payer_id),
   createdAt: debt.created_at,
   updatedAt: debt.updated_at,

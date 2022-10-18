@@ -2,18 +2,23 @@ import { Inject, Service } from "typedi";
 import { route, router } from "typera-express";
 import { internalServerError, notFound, ok, unauthorized } from "typera-express/response";
 import * as t from 'io-ts'
-import { Debt, emailIdentity, internalIdentity, payerPreferences, tkoalyIdentity } from "../../common/types";
+import { Debt, Email, emailIdentity, internalIdentity, payerPreferences, tkoalyIdentity } from "../../common/types";
 import { AuthService } from "../auth-middleware";
 import * as A from 'fp-ts/lib/Array'
 import * as TE from 'fp-ts/lib/TaskEither'
 import * as E from 'fp-ts/lib/Either'
+import * as T from 'fp-ts/lib/Task'
+import * as S from 'fp-ts/lib/string'
+import * as EQ from 'fp-ts/lib/Eq'
 import { DebtService } from "../services/debt";
 import { PayerService } from "../services/payer";
 import { validateBody } from "../validate-middleware";
 import { EmailService } from "../services/email";
 import { Config } from "../config";
 import { PaymentService } from "../services/payements";
-import { isPast, parseISO } from "date-fns";
+import { isBefore, isPast, parseISO, subMonths } from "date-fns";
+import { pipe } from "fp-ts/lib/function";
+import { predicate } from "fp-ts";
 
 @Service()
 export class PayersApi {
@@ -237,8 +242,14 @@ export class PayersApi {
   private sendPaymentReminder() {
     return route
       .post('/:id/send-reminder')
+      .use(validateBody(t.type({
+        send: t.boolean,
+        ignoreCooldown: t.boolean,
+      })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
+        const { ignoreCooldown } = ctx.body
+
         const id = internalIdentity(ctx.routeParams.id);
         const debts = await this.debtService.getDebtsByPayer(id);
         const email = await this.payerService.getPayerPrimaryEmail(id);
@@ -247,56 +258,22 @@ export class PayersApi {
           throw new Error('No such user or no primary email for user ' + ctx.routeParams.id);
         }
 
-        const overdue = debts.filter((debt) => isPast(parseISO(debt.dueDate)));
+        const overdue = debts.filter((debt) => isPast(debt.dueDate) && (ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
 
-        if (overdue.length === 0) {
-          return ok({
-            messageSent: false,
-            messageDebtCount: 0,
-          })
-        }
+        const getEmailPayerId = ([_, debt]: [Email, Debt]) => debt.payerId.value
+        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq)
+        const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !ctx.body.send))
 
-        const sendReminder = (debt: typeof debts[0]) => async () => {
-          const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(debt.id)
-
-          if (!payment) {
-            return E.left({
-              error: 'NO_DEFAULT_INVOICE',
-              message: `No default invoice found for debt ${debt.id}`,
-              payload: {
-                debtId: debt.id,
-              },
-            })
-          }
-
-          const created = await this.emailService.createEmail({
-            recipient: email.email,
-            subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
-            template: 'reminder',
-            payload: {
-              title: debt.name,
-              number: payment.payment_number,
-              date: debt.createdAt,
-              dueDate: debt.dueDate,
-              amount: debt.total,
-              referenceNumber: payment.data.reference_number,
-              message: payment.message ?? debt.description,
-            },
-          })
-
-          return E.right(created)
-        }
-
-        const result = await A.traverse(TE.ApplicativePar)(sendReminder)(debts)()
-
-        if (E.isRight(result)) {
-          return ok({
-            messageSent: true,
-            messageDebtCount: overdue.length,
-          })
-        } else {
-          return internalServerError(result.left)
-        }
+        return pipe(
+          overdue,
+          A.traverse(T.ApplicativePar)(sendReminder),
+          T.map(A.separate),
+          T.map(({ left, right }) => ok({
+            messageCount: right.length,
+            payerCount: A.uniq(EmailPayerEq)(right).length,
+            errors: left,
+          }))
+        )()
       });
   }
 

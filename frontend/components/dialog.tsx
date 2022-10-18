@@ -20,7 +20,7 @@ export const DialogContext = createContext<DialogContextValue>({
 
 export const useDialog = <P extends DialogProps<V>, V>(component: DialogComponent<P>) => {
   const { openDialog } = useContext(DialogContext)
-  return (props: Omit<P, 'onClose'>) => openDialog(component, props)
+  return (props: Omit<P, 'onClose'>): Promise<Parameters<P['onClose']>[0]> => openDialog(component, props)
 }
 
 export const DialogContextProvider = ({ children }) => {

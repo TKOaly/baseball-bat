@@ -5,6 +5,7 @@ import { Page, Header, Title, Section, TextField, Field, SectionContent, Actions
 import * as dfns from 'date-fns'
 import { useDialog } from '../../components/dialog'
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog'
+import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog'
 
 export const PayerDetails = ({ params }) => {
   const { data: payer } = useGetPayerQuery(params.id)
@@ -12,6 +13,7 @@ export const PayerDetails = ({ params }) => {
   const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true })
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation()
   const showRemindersSentDialog = useDialog(RemindersSentDialog)
+  const showSendRemindersDialog = useDialog(SendRemindersDialog)
 
   if (!payer || !emails)
     return 'Loading...'
@@ -20,17 +22,22 @@ export const PayerDetails = ({ params }) => {
     .filter(d => dfns.isPast(d.dueDate))
 
   const handleSendReminder = async () => {
+    const options = await showSendRemindersDialog({})
+
+    if (!options) {
+      return;
+    }
+
     const res = await sendPayerDebtReminder({
       payerId: params.id,
-      send: false,
+      send: options.send,
+      ignoreCooldown: options.ignoreCooldown,
     })
 
     if ('data' in res) {
-      console.log('Showing dialog!!')
-
       await showRemindersSentDialog({
-        payerCount: 1,
-        debtCount: res.data.messageDebtCount,
+        payerCount: res.data.payerCount,
+        debtCount: res.data.messageCount,
       });
     }
   }

@@ -289,7 +289,8 @@ export type DbDebtComponentMapping = {
 export type DbDebt = {
   id: string
   name: string
-  due_date: string
+  last_reminded: Date | null
+  due_date: Date
   draft: boolean
   payer_id: string
   debt_center_id: string

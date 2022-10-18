@@ -2,12 +2,17 @@ import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../com
 import { Button, SecondaryButton } from '../../components/button'
 import { useState } from 'react'
 
-export const SendRemindersDialog = ({ onClose, debtCount = null }) => {
+type Props = {
+  onClose: (_: { send: boolean, ignoreCooldown: boolean } | null) => void,
+  debtCount?: number
+}
+
+export const SendRemindersDialog = ({ onClose, debtCount = null }: Props) => {
   const [send, setSend] = useState(false)
   const [ignoreCooldown, setIgnoreCooldown] = useState(false)
 
   return (
-    <DialogBase onClose={() => onClose()}>
+    <DialogBase onClose={() => onClose(null)}>
       <DialogHeader>Send payment notices</DialogHeader>
       <DialogContent>
         <p className="mb-4 text-sm">
