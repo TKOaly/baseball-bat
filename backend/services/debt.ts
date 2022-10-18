@@ -308,7 +308,7 @@ export class DebtService {
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
         TO_JSON(debt_center.*) AS debt_center,
-        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        CASE WHEN EVERY(debt_statuses.is_paid) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
         (
           SELECT SUM(dc.amount) AS total
@@ -319,9 +319,10 @@ export class DebtService {
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
       JOIN debt_center ON debt_center.id = debt.debt_center_id
+      JOIN debt_statuses ON debt_statuses.id = debt.id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.due_date < NOW() AND NOT debt.draft
+      WHERE debt.due_date < NOW() AND NOT debt.draft AND NOT debt_statuses.is_paid
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `)
 
@@ -334,7 +335,7 @@ export class DebtService {
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
         TO_JSON(debt_center.*) AS debt_center,
-        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        CASE WHEN EVERY(debt_statuses.is_paid) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
         (
           SELECT SUM(dc.amount) AS total
@@ -345,9 +346,10 @@ export class DebtService {
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
       JOIN debt_center ON debt_center.id = debt.debt_center_id
+      JOIN debt_statuses ON debt_statuses.id = debt.id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.due_date < NOW() AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month')
+      WHERE debt.due_date < NOW() AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month') AND NOT debt_statuses.is_paid
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `)
 
