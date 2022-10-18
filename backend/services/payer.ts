@@ -107,9 +107,9 @@ export class PayerService {
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails,
-          COUNT(d.id) as debt_count,
-          COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
-          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
+          COUNT(DISTINCT d.id) as debt_count,
+          COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+          COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
           SUM(dco.amount) AS total,
           COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
         FROM payer_profiles pp
