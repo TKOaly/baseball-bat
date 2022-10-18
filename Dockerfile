@@ -10,7 +10,8 @@ RUN yarn
 FROM common AS production
 
 RUN yarn build:server
-CMD ["/app/build/backend/lambda.handler"]
+RUN yarn build:frontend
+ENTRYPOINT ["yarn", "start"]
 
 FROM common AS development
 

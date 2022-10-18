@@ -4,6 +4,7 @@
     "start-server:dev": "ts-node-dev backend/app.ts",
     "start-frontend:watch": "NODE_ENV=development parcel watch ./public/index.html --dist-dir ./web-dist",
     "start:dev": "concurrently \"yarn start-server:dev\" \"yarn start-frontend:watch\"",
+    "start": "node ./build/backend/app.js",
     "build:server": "tsc",
     "build:frontend": "parcel build ./public/index.html --dist-dir ./web-dist",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up"
