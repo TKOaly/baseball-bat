@@ -1,4 +1,4 @@
-import Stripe from 'stripe'
+/*import Stripe from 'stripe'
 import { Inject, Service } from 'typedi'
 import { route, router } from 'typera-express'
 import { badRequest, ok } from 'typera-express/response'
@@ -51,4 +51,4 @@ export class StripeEventsApi {
       this.receiveEvent(),
     )
   }
-}
+}*/

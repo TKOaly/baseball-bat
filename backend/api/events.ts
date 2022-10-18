@@ -41,21 +41,6 @@ export class EventsApi {
       })
   }
 
-  payEvents() {
-    return route
-      .post('/pay')
-      .use(this.authService.createAuthMiddleware())
-      .use(Parser.body(PayEventsBody))
-      .handler(async ({ body, session }) => {
-        await this.payerService.payUsersEvents(
-          body.events,
-          internalIdentity(session.payerId)
-        )
-
-        return ok({ ok: true })
-      })
-  }
-
   getEventRegistrations() {
     return route
       .get('/:id(int)/registrations')
@@ -94,14 +79,9 @@ export class EventsApi {
   router(): Router {
     return router(
       this.getEvents(),
-      this.payEvents(),
       this.getEventRegistrations(),
       this.getEventCustomFields(),
       this.getAllEvents()
     )
   }
 }
-
-const PayEventsBody = t.type({
-  events: nonEmptyArray(t.number),
-})

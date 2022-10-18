@@ -63,7 +63,7 @@ export class SessionApi {
       })
   }
 
-  getSetupIntent() {
+  /*getSetupIntent() {
     return route
       .get('/setup-intent')
       .use(this.authService.createAuthMiddleware())
@@ -71,9 +71,9 @@ export class SessionApi {
         const secret = await this.payerService.getSetupIntentForUser(internalIdentity(session.payerId))
         return ok(secret)
       })
-  }
+  }*/
 
-  confirmCardSetup() {
+  /*confirmCardSetup() {
     return route
       .get('/confirm-card-setup')
       .handler(async ({ req }) => {
@@ -85,14 +85,14 @@ export class SessionApi {
 
         return redirect(302, `${this.config.appUrl}/`)
       })
-  }
+  }*/
 
   router() {
     return router(
       this.getSession(),
       this.login(),
-      this.getSetupIntent(),
-      this.confirmCardSetup()
+      //this.getSetupIntent(),
+      //this.confirmCardSetup()
     )
   }
 }
