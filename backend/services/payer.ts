@@ -327,7 +327,7 @@ export class PayerService {
   }
 
 
-  async createPayerProfileForExternalIdentity(id: ExternalIdentity, token?: string): Promise<PayerProfile | null> {
+  async createPayerProfileForExternalIdentity(id: ExternalIdentity, token?: string, name?: string): Promise<PayerProfile | null> {
     const existingPayerProfile = await this.getPayerProfileByIdentity(id);
 
     if (existingPayerProfile) {
@@ -343,7 +343,11 @@ export class PayerService {
     }
 
     if (isEmailIdentity(id)) {
-      return this.createPayerProfileFromEmailIdentity(id);
+      if (!name) {
+        throw new Error('Name required for payment profile')
+      }
+
+      return this.createPayerProfileFromEmailIdentity(id, { name });
     }
 
     return assertNever(id) as any
@@ -354,9 +358,9 @@ export class PayerService {
     return this.createPayerProfileFromTkoalyUser(upstreamUser)
   }
 
-  async createPayerProfileFromEmailIdentity(id: EmailIdentity) {
+  async createPayerProfileFromEmailIdentity(id: EmailIdentity, details: { name: string }) {
     const payerProfile = await this.pg
-      .one<DbPayerProfile>(sql`INSERT INTO payer_profiles DEFAULT VALUES RETURNING *`)
+      .one<DbPayerProfile>(sql`INSERT INTO payer_profiles (name) VALUES (${details.name}) RETURNING *`)
 
     if (!payerProfile) {
       throw new Error('Could not create a new payer profile')

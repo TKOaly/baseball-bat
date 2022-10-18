@@ -348,8 +348,7 @@ export class DebtApi {
               disabled: false,
             }
           } else {
-            let payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email))
-            payer = await this.payerService.updatePayerName(payer.id, name)
+            let payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name })
             return payer
           }
         }
