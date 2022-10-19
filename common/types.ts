@@ -363,6 +363,13 @@ export type DebtPatch = {
   components: string[]
 }
 
+export type DebtCenterPatch = {
+  id: string
+  name: string
+  description: string
+  url: string
+}
+
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
   split('.'),
   reverse,

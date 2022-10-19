@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react'
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog'
 import { TextField } from '../../components/text-field'
 import { EditDebt } from '../edit-debt'
+import { EditDebtCenter } from './edit-debt-center'
 
 const MenuItemLi = tw.li`
   px-4
@@ -127,6 +128,7 @@ const Admin = () => {
             <Route path="/admin/debt-centers/:id/create-debts-csv">
               {(params) => <MassCreateDebts params={params} defaults={{ debtCenter: params.id }} />}
             </Route>
+            <Route path="/admin/debt-centers/:id/edit" component={EditDebtCenter} />
             <Route path="/admin/debts/create" component={CreateDebt} />
             <Route path="/admin/debts/:id" component={DebtDetails} />
             <Route path="/admin/debts/:id/edit" component={EditDebt} />

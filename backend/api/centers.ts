@@ -8,10 +8,12 @@ import { Config } from '../config'
 import { EventsService } from '../services/events'
 import { euro, emailIdentity, tkoalyIdentity, dateString, convertToDbDate } from '../../common/types'
 import * as t from 'io-ts'
+import * as E from 'fp-ts/lib/Either'
 import { validateBody } from '../validate-middleware'
 import { PayerService } from '../services/payer'
 import { PaymentService } from '../services/payements'
 import { addDays, format } from 'date-fns'
+import { pipe } from 'fp-ts/lib/function'
 
 const createDebtCenterFromEventBody = t.type({
   events: t.array(t.number),
@@ -127,6 +129,27 @@ export class DebtCentersApi {
       })
   }
 
+  updateDebtCenter() {
+    return route
+      .put('/:id')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.type({
+        name: t.string,
+        description: t.string,
+        url: t.string,
+      })))
+      .handler(async (ctx) => {
+        await this.debtCentersService.updateDebtCenter({
+          id: ctx.routeParams.id,
+          ...ctx.body,
+        })
+
+        const updated = await this.debtCentersService.getDebtCenter(ctx.routeParams.id)
+
+        return ok(updated)
+      })
+  }
+
   createDebtCenterFromEvent() {
     return route
       .post('/fromEvent')
@@ -233,6 +256,23 @@ export class DebtCentersApi {
       })
   }
 
+  private deleteDebtComponent() {
+    return route
+      .delete('/:debtCenterId/components/:debtComponentId')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const { debtCenterId, debtComponentId } = ctx.routeParams
+
+        return pipe(
+          await this.debtService.deleteDebtComponent(debtCenterId, debtComponentId),
+          E.matchW(
+            () => notFound(),
+            ({ affectedDebts }) => ok({ affectedDebts }),
+          ),
+        )
+      })
+  }
+
   router() {
     return router(
       this.createDebtCenter(),
@@ -240,7 +280,9 @@ export class DebtCentersApi {
       this.getDebtCenters(),
       this.getDebtCenter(),
       this.getDebtComponentsByCenter(),
-      this.createDebtCenterFromEvent()
+      this.createDebtCenterFromEvent(),
+      this.updateDebtCenter(),
+      this.deleteDebtComponent(),
     )
   }
 }

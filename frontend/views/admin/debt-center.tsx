@@ -1,5 +1,5 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent } from '../../components/resource-page/resource-page'
+import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page'
 import { useGetDebtCenterQuery } from '../../api/debt-centers'
 import { DebtList } from '../../components/debt-list'
 import { useLocation } from 'wouter';
@@ -33,6 +33,9 @@ export const DebtCenterDetails = ({ id }) => {
             ]}
           />
         </Title>
+        <Actions>
+          <ActionButton secondary onClick={() => setLocation(`/admin/debt-centers/${id}/edit`)}>Edit</ActionButton>
+        </Actions>
       </Header>
       <Section title="Details" columns={2}>
         <TextField label="Name" value={debtCenter.name} />

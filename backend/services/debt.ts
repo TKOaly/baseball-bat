@@ -273,6 +273,39 @@ export class DebtService {
       })
   }
 
+  async deleteDebtComponent(debtCenterId: string, debtComponentId: string) {
+    return await this.pg.tx(async (tx) => {
+      const [{ exists }] = await tx.do<{ exists: boolean }>(sql`
+        SELECT
+          EXISTS(
+            SELECT *
+            FROM debt_component
+            WHERE id = ${debtComponentId} AND
+                  debt_center_id = ${debtCenterId}
+          ) AS exists
+      `)
+
+      if (!exists) {
+        return E.left(new Error('No such debt component'))
+      }
+
+      const result = await tx.do<{ debt_id: string }>(sql`
+        DELETE FROM debt_component_mapping
+        WHERE debt_component_id = ${debtComponentId}
+        RETURNING debt_id 
+      `)
+
+      await tx.do(sql`
+        DELETE FROM debt_component
+        WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
+      `)
+
+      return E.right({
+        affectedDebts: result.map(r => r.debt_id),
+      })
+    })
+  }
+
   async getDebtsByPayment(paymentId: string): Promise<Array<Debt>> {
     return this.pg
       .any<DbDebt>(sql`

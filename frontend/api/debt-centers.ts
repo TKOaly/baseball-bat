@@ -1,5 +1,5 @@
 import rootApi from './rtk-api'
-import { DebtCenter, NewDebtCenter } from '../../common/types'
+import { DebtCenter, DebtCenterPatch, NewDebtCenter } from '../../common/types'
 
 const debtCentersApi = rootApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,7 +25,19 @@ const debtCentersApi = rootApi.injectEndpoints({
         method: 'POST',
         body: payload,
       })
-    })
+    }),
+
+    updateDebtCenter: builder.mutation<DebtCenter, DebtCenterPatch>({
+      query: ({ id, ...body }) => ({
+        url: `/debtCenters/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ({ id }) => [
+        { type: 'DebtCenter', id },
+        { type: 'DebtCenter', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -33,7 +45,8 @@ export const {
   useGetDebtCentersQuery,
   useGetDebtCenterQuery,
   useCreateDebtCenterMutation,
-  useCreateDebtCenterFromEventMutation
+  useCreateDebtCenterFromEventMutation,
+  useUpdateDebtCenterMutation,
 } = debtCentersApi
 
 export default debtCentersApi

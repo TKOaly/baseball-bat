@@ -1,8 +1,10 @@
-import { NewDebtCenter, DbDebtCenter, DebtCenter } from '../../common/types'
+import { NewDebtCenter, DbDebtCenter, DebtCenter, DebtCenterPatch } from '../../common/types'
 import { PgClient } from '../db'
 import { Service, Inject } from 'typedi'
 import sql from 'sql-template-strings'
 import { cents } from '../../common/currency'
+import { DebtService } from './debt'
+import * as E from 'fp-ts/lib/Either'
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
@@ -21,6 +23,9 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
 export class DebtCentersService {
   @Inject(() => PgClient)
   pg: PgClient
+
+  @Inject(() => DebtService)
+  debtService: DebtService
 
   getDebtCenters() {
     return this.pg
@@ -66,5 +71,27 @@ export class DebtCentersService {
         RETURNING *
       `)
       .then((dbDebtCenter) => dbDebtCenter && formatDebtCenter(dbDebtCenter))
+  }
+
+  async updateDebtCenter(center: DebtCenterPatch) {
+    const existing = await this.getDebtCenter(center.id)
+
+    if (!existing) {
+      return E.left(new Error('No such debt center'))
+    }
+
+    const query = sql`
+      UPDATE debt_center
+      SET
+        name = ${center.name},
+        description = ${center.description},
+        url = ${center.url}
+      WHERE
+        id = ${center.id}
+    `
+
+    await this.pg.one(query)
+
+    return E.right(null)
   }
 }

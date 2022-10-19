@@ -16,6 +16,13 @@ const debtApi = rtkApi.injectEndpoints({
       }),
     }),
 
+    deleteDebtComponent: builder.mutation<{ affectedDebts: string[] }, { debtCenterId: string, debtComponentId: string }>({
+      query: ({ debtCenterId, debtComponentId }) => ({
+        method: 'DELETE',
+        url: `/debtCenters/${debtCenterId}/components/${debtComponentId}`,
+      }),
+    }),
+
     createDebt: builder.mutation<Debt, NewDebt>({
       query: (debt) => ({
         method: 'POST',
@@ -170,6 +177,7 @@ export const {
   useSendReminderMutation,
   useSendAllRemindersMutation,
   useUpdateDebtMutation,
+  useDeleteDebtComponentMutation,
 } = debtApi
 
 export default debtApi
