@@ -108,7 +108,7 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
           />
         </div>
 
-        <div className="overflow-y-scroll max-h-80 px-5 mt-3 w-[40em] overflow-hidden">
+        <div className="overflow-y-scroll max-h-80 px-5 mt-3 -mb-3 -mx-3 border-t overflow-hidden">
           {(results ?? []).map(({ type, name, id }) => (
             <SearchResultItem
               type={type}
