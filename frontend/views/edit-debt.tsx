@@ -68,45 +68,85 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       return;
     }
 
-    let { left: newComponents, right: components } = pipe(
-      values.components,
-      A.map(({ component, amount }) => {
-        if (typeof component !== 'string') {
-          return E.left({
-            name: component.name,
-            amount,
-          });
-        } else {
-          return E.right(component)
-        }
-      }),
-      A.separate,
-    )
+    let existingComponents = debt.debtComponents.map(dc => dc.id)
+
+    let confirmedRef = { value: false }
+    let newComponentsRef = { value: [] }
+    let existingComponentsRef = { value: existingComponents }
+
+    let separateComponents = () => {
+      let { left, right } = pipe(
+        values.components,
+        A.map(({ component, amount }) => {
+          if (typeof component !== 'string') {
+            return E.left({
+              name: component.name,
+              amount: euro(amount),
+            });
+          } else if (existingComponentsRef.value.indexOf(component) === -1) {
+            const { name, amount } = debt.debtComponents.find(c => c.id === component)
+
+            return E.left({
+              name,
+              amount,
+            })
+          } else {
+            return E.right(component);
+          }
+        }),
+        A.separate,
+      )
+
+      newComponentsRef.value = left;
+
+      return { left, right };
+    }
+
+    separateComponents();
+
+    let confirm = async () => {
+      if (confirmedRef.value) {
+        return true;
+      }
+
+      const confirmed = await showResourceCreationDialog({
+        debtCenter: typeof values.center !== 'string' ? values.center.name : null,
+        components: pipe(newComponentsRef.value, A.map((c) => c.name)),
+      })
+
+      if (confirmed) {
+        confirmedRef.value = true;
+      }
+
+      return confirmed;
+    }
 
     let centerId = typeof values.center === 'string' ? values.center : null
 
-    if (newComponents.length > 0 || typeof values.center !== 'string') {
-      const confirmed = await showResourceCreationDialog({
-        debtCenter: typeof values.center !== 'string' ? values.center.name : null,
-        components: pipe(newComponents, A.map((c) => c.name)),
-      })
-
-      if (!confirmed) {
+    if (centerId === null) {
+      if (!await confirm()) {
         return;
       }
 
-      if (!centerId) {
-        const result = await createDebtCenter({
-          name: values.center as any as string,
-          description: '',
-          url: '',
-        })
+      const result = await createDebtCenter({
+        name: typeof values.center === 'string' ? '' : values.center.name,
+        description: '',
+        url: '',
+      })
 
-        if ('data' in result) {
-          centerId = result.data.id;
-        } else {
-          return;
-        }
+      if ('data' in result) {
+        centerId = result.data.id;
+        existingComponentsRef.value = [];
+      } else {
+        return;
+      }
+    }
+
+    let { left: newComponents, right: components } = separateComponents()
+
+    if (newComponents.length > 0) {
+      if (!await confirm()) {
+        return;
       }
 
       const createDebtComponentTask = (param: NewDebtComponent) => async () => {
@@ -119,24 +159,22 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         }
       }
 
-      if (newComponents.length > 0) {
-        const result = await pipe(
-          newComponents,
-          A.map(({ name, amount }) => ({
-            name,
-            amount: euro(amount),
-            description: '',
-            debtCenterId: debt.debtCenterId,
-          })),
-          A.traverse(TE.ApplicativePar)(createDebtComponentTask),
-          TE.map(A.map((result) => result.id)),
-        )();
+      const result = await pipe(
+        newComponents,
+        A.map(({ name, amount }) => ({
+          name,
+          amount,
+          description: '',
+          debtCenterId: centerId,
+        })),
+        A.traverse(TE.ApplicativePar)(createDebtComponentTask),
+        TE.map(A.map((result) => result.id)),
+      )();
 
-        if (E.isRight(result)) {
-          components.push(...result.right);
-        } else {
-          return;
-        }
+      if (E.isRight(result)) {
+        components.push(...result.right);
+      } else {
+        return;
       }
     }
 
