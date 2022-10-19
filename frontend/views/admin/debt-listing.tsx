@@ -38,7 +38,7 @@ export const DebtListing = () => {
         Here is listed all individual debts in the system.
         A debt corresponds usually to a single event registration, but may not have one-to-one mapping to a payment.
       </p>
-      <div>
+      <div className="flex gap-3 mb-7">
         <Button onClick={() => setLocation(`/admin/debts/create`)}>Create</Button>
         <SecondaryButton onClick={() => setLocation(`/admin/debts/create-debts-csv`)}>Mass Creation</SecondaryButton>
         <SecondaryButton onClick={handleSendAllReminders}>Send all reminders</SecondaryButton>
