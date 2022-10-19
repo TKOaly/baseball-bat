@@ -40,7 +40,7 @@ export const DebtCentersListing = () => {
           },
           {
             name: 'Paid percentage',
-            getValue: (row) => row.paidCount / row.debtCount,
+            getValue: (row) => row.debtCount === 0 ? 0 : row.paidCount / row.debtCount,
             render: (value) => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
