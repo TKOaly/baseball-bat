@@ -6,7 +6,7 @@ In the future the platform will hopefully enable online payments via Stripe and 
 - [Features](#features)
 - [Development Environment](#development-environment)
 - [Architecture](#architecture)
-- [Screenshots](./screenshots)
+- [Screenshots](./docs/screenshots/README.md)
 
 ## Features
 
@@ -18,6 +18,10 @@ In the future the platform will hopefully enable online payments via Stripe and 
  - [ ] Allow members to view their paid and unpaid debts
  - [ ] Allow members to pay all their debts using a single payment
  - [ ] Allow members to pay online using Stripe
+
+## Screenshots
+
+[![](./docs/screenshots/montage.png)<br/>View Screenshots](./docs/screenshots/README.md)
 
 ## Development Environment
 
