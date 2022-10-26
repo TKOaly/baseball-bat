@@ -64,4 +64,6 @@ There are four main things that make this scenario difficult to handle correctly
 
 ### Database
 
+![](./docs/schema.png)
+
 ### Backend
