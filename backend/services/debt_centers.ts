@@ -42,6 +42,7 @@ export class DebtCentersService {
         LEFT JOIN debt_statuses ds ON ds.id = d.id
         LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
         LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
+        WHERE NOT dc.deleted
         GROUP BY dc.id
       `)
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter))
@@ -49,13 +50,13 @@ export class DebtCentersService {
 
   getDebtCenterByName(name: string) {
     return this.pg
-      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE name = ${name}`)
+      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`)
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters))
   }
 
   getDebtCenter(id: string) {
     return this.pg
-      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE id = ${id}`)
+      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`)
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters))
   }
 
@@ -71,6 +72,13 @@ export class DebtCentersService {
         RETURNING *
       `)
       .then((dbDebtCenter) => dbDebtCenter && formatDebtCenter(dbDebtCenter))
+  }
+
+  async deleteDebtCenter(id: string) {
+    return await this.pg
+      .one<{ id: string }>(sql`
+        UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
+      `)
   }
 
   async updateDebtCenter(center: DebtCenterPatch) {

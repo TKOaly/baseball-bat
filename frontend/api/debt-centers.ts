@@ -5,6 +5,10 @@ const debtCentersApi = rootApi.injectEndpoints({
   endpoints: (builder) => ({
     getDebtCenters: builder.query<DebtCenter[], void>({
       query: () => '/debtCenters',
+      providesTags: (centers) => [
+        { type: 'DebtCenter', id: 'LIST' },
+        ...centers.map(({ id }) => ({ type: 'DebtCenter' as const, id })),
+      ],
     }),
 
     getDebtCenter: builder.query<DebtCenter, string>({
@@ -38,6 +42,16 @@ const debtCentersApi = rootApi.injectEndpoints({
         { type: 'DebtCenter', id: 'LIST' },
       ],
     }),
+
+    deleteDebtCenter: builder.mutation<void, string>({
+      query: (id) => ({
+        method: 'DELETE',
+        url: `/debtCenters/${id}`,
+      }),
+      invalidatesTags: (_, __, id) => [
+        { type: 'DebtCenter', id }
+      ],
+    })
   }),
 });
 
@@ -47,6 +61,7 @@ export const {
   useCreateDebtCenterMutation,
   useCreateDebtCenterFromEventMutation,
   useUpdateDebtCenterMutation,
+  useDeleteDebtCenterMutation,
 } = debtCentersApi
 
 export default debtCentersApi

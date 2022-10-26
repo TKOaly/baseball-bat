@@ -1,18 +1,35 @@
 import { Breadcrumbs } from '../../components/breadcrumbs'
 import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page'
-import { useGetDebtCenterQuery } from '../../api/debt-centers'
+import { useDeleteDebtCenterMutation, useGetDebtCenterQuery } from '../../api/debt-centers'
 import { DebtList } from '../../components/debt-list'
 import { useLocation } from 'wouter';
 import { TableView } from '../../components/table-view'
 import { useGetDebtComponentsByCenterQuery, useGetDebtsByCenterQuery } from '../../api/debt';
 import { formatEuro } from '../../../common/currency';
 import { Button, SecondaryButton } from '../../components/button'
+import { useDialog } from '../../components/dialog';
+import { InfoDialog } from '../../components/dialogs/info-dialog';
 
 export const DebtCenterDetails = ({ id }) => {
   const [, setLocation] = useLocation()
   const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id)
   const { data: components } = useGetDebtComponentsByCenterQuery(id)
   const { data: debts } = useGetDebtsByCenterQuery(id)
+  const [deleteDebtCenter] = useDeleteDebtCenterMutation()
+  const showInfoDialog = useDialog(InfoDialog)
+
+  const handleDelete = async () => {
+    const result = await deleteDebtCenter(id);
+
+    if ('data' in result) {
+      await showInfoDialog({
+        title: 'Debt Center Deleted',
+        content: `Debt center ${debtCenter.name} deleted successfully.`,
+      });
+
+      setLocation('/admin/debt-centers');
+    }
+  }
 
   if (isLoading || !debtCenter) {
     return (
@@ -34,6 +51,9 @@ export const DebtCenterDetails = ({ id }) => {
           />
         </Title>
         <Actions>
+          {debts?.length === 0 && (
+            <ActionButton secondary onClick={handleDelete}>Delete</ActionButton>
+          )}
           <ActionButton secondary onClick={() => setLocation(`/admin/debt-centers/${id}/edit`)}>Edit</ActionButton>
         </Actions>
       </Header>

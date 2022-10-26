@@ -129,6 +129,31 @@ export class DebtCentersApi {
       })
   }
 
+  deleteDebtCenter() {
+    return route
+      .delete('/:id')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const debts = await this.debtService.getDebtsByCenter(ctx.routeParams.id);
+
+        if (debts.length > 0) {
+          return badRequest({
+            error: 'contains_debts',
+          })
+        }
+
+        const deleted = await this.debtCentersService.deleteDebtCenter(ctx.routeParams.id);
+
+        if (deleted === null) {
+          return notFound({
+            error: 'not_found',
+          })
+        }
+
+        return ok()
+      })
+  }
+
   updateDebtCenter() {
     return route
       .put('/:id')
@@ -283,6 +308,7 @@ export class DebtCentersApi {
       this.createDebtCenterFromEvent(),
       this.updateDebtCenter(),
       this.deleteDebtComponent(),
+      this.deleteDebtCenter()
     )
   }
 }
