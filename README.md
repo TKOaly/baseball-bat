@@ -3,9 +3,9 @@
 Baseball bat is a web platform with the aim of reducing our organization's treasurer's workload by automating different parts of the event fee billing process.
 In the future the platform will hopefully enable online payments via Stripe and make collaboration between the treasurer, assisting treasurer and the event organizers easier.
 
-- [Features](#Features)
-- [Development Environment](#Development Environment)
-- [Architecture](#Architecture)
+- [Features](#features)
+- [Development Environment](#development-environment)
+- [Architecture](#architecture)
 - [Screenshots](./screenshots)
 
 ## Features
