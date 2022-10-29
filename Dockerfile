@@ -13,8 +13,8 @@ FROM common AS production
 
 RUN yarn build:server
 RUN yarn build:frontend
-CMD ["yarn", "start"]
+CMD ["yarn start"]
 
 FROM common AS development
 
-CMD ["yarn", "start:dev"]
+CMD ["yarn start:dev"]
