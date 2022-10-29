@@ -7,6 +7,8 @@ COPY . .
 RUN npm install -g yarn
 RUN yarn
 
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+
 FROM common AS production
 
 RUN yarn build:server
