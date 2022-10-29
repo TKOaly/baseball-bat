@@ -11,8 +11,8 @@ FROM common AS production
 
 RUN yarn build:server
 RUN yarn build:frontend
-ENTRYPOINT ["yarn", "start"]
+CMD ["yarn", "start"]
 
 FROM common AS development
 
-ENTRYPOINT ["yarn", "start:dev"]
+CMD ["yarn", "start:dev"]
