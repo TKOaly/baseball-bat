@@ -8,7 +8,7 @@ import { Config } from '../config'
 import { DebtCentersService } from '../services/debt_centers'
 import { Type, TypeOf } from 'io-ts'
 import * as t from 'io-ts'
-import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, PayerProfile, tkoalyIdentity } from '../../common/types'
+import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, NewDebt, PayerProfile, tkoalyIdentity } from '../../common/types'
 import { PayerService } from '../services/payer'
 import { validateBody } from '../validate-middleware'
 import { PaymentService } from '../services/payements'
@@ -603,10 +603,6 @@ export class DebtApi {
 
               let options: CreateDebtOptions = {}
 
-              if (details.date) {
-                options.paymentDate = parse(details.date, 'd.M.yyyy', new Date());
-              }
-
               if (details.paymentNumber) {
                 options.paymentNumber = details.paymentNumber
               }
@@ -615,14 +611,20 @@ export class DebtApi {
                 options.defaultPaymentReferenceNumber = details.referenceNumber
               }
 
-              createdDebt = await this.debtService.createDebt({
+              const newDebt: NewDebt = {
                 centerId: debtCenter.id,
                 description: details.description,
                 name: details.title,
                 payer: payer.id,
                 dueDate,
                 components: debtComponents.map(c => c.id),
-              }, options)
+              }
+
+              if (details.date) {
+                newDebt.createdAt = parse(details.date, 'd.M.yyyy', new Date());
+              }
+
+              createdDebt = await this.debtService.createDebt(newDebt, options)
             } else {
               createdDebt = {
                 id: '',

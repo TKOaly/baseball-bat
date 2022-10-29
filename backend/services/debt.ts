@@ -145,13 +145,14 @@ export class DebtService {
 
     const created = await this.pg
       .one<DbDebt>(sql`
-        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date)
+        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at)
         VALUES (
           ${debt.name},
           ${debt.description},
           ${debt.centerId},
           ${payerProfile.id.value},
-          ${debt.dueDate}
+          ${debt.dueDate},
+          COALESCE(${debt.createdAt}, NOW())
         )
         RETURNING *
       `);
@@ -184,6 +185,12 @@ export class DebtService {
 
       if (options?.defaultPaymentReferenceNumber) {
         invoiceOptions.referenceNumber = options.defaultPaymentReferenceNumber
+      }
+
+      if (options?.paymentDate) {
+        invoiceOptions.createdAt = options.paymentDate;
+      } else if (debt.createdAt) {
+        invoiceOptions.createdAt = debt.createdAt;
       }
 
       await this.paymentService.createInvoice({

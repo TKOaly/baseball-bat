@@ -352,6 +352,7 @@ export type NewDebt = {
   name: string
   payer: PayerIdentity
   dueDate: DbDateString,
+  createdAt?: Date
 }
 
 export type DebtPatch = {
