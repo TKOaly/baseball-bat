@@ -148,7 +148,7 @@ const debtApi = rtkApi.injectEndpoints({
 
     updateDebt: builder.mutation<Debt, DebtPatch>({
       query: (patch) => ({
-        method: 'PUT',
+        method: 'PATCH',
         url: `/debt/${patch.id}`,
         body: omit(patch, ['id']),
       }),

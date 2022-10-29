@@ -275,8 +275,8 @@ export class DebtApi {
 
   private updateDebt() {
     return route
-      .put('/:id')
-      .use(validateBody(t.type({
+      .patch('/:id')
+      .use(validateBody(t.partial({
         name: t.string,
         description: t.string,
         payerId: payerIdentity,
@@ -291,9 +291,9 @@ export class DebtApi {
           name: ctx.body.name,
           description: ctx.body.description,
           centerId: ctx.body.centerId,
-          dueDate: parseISO(ctx.body.dueDate),
+          dueDate: ctx.body.dueDate === undefined ? undefined : parseISO(ctx.body.dueDate),
           payerId: ctx.body.payerId,
-          components: ctx.body.components,
+          components: ctx.body.components ?? [],
         })
 
         return pipe(

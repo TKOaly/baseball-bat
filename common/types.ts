@@ -355,11 +355,11 @@ export type NewDebt = {
 
 export type DebtPatch = {
   id: string
-  name: string
-  description: string
-  payerId: PayerIdentity
-  dueDate: Date
-  centerId: string
+  name?: string
+  description?: string
+  payerId?: PayerIdentity
+  dueDate?: Date
+  centerId?: string
   components: string[]
 }
 

@@ -197,63 +197,75 @@ export class DebtService {
   }
 
   async updateDebt(debt: DebtPatch): Promise<E.Either<Error, Debt>> {
-    const payer = await this.payerService.getPayerProfileByIdentity(debt.payerId)
     const existingDebt = await this.getDebt(debt.id);
 
     if (!existingDebt) {
       return E.left(new Error('No such debt'));
     }
 
-    if (!payer) {
-      return E.left(new Error('No such payer'))
+    if (debt.payerId) {
+      const payer = await this.payerService.getPayerProfileByIdentity(debt.payerId)
+
+      if (!payer) {
+        return E.left(new Error('No such payer'))
+      }
     }
 
     const query = sql`
       UPDATE debt
       SET
-        name = ${debt.name},
-        description = ${debt.description},
-        debt_center_id = ${debt.centerId},
-        payer_id = ${payer.id.value},
-        due_date = ${debt.dueDate}
+        name = COALESCE(${debt.name}, name),
+        description = COALESCE(${debt.description}, description),
+        debt_center_id = COALESCE(${debt.centerId}, debt_center_id),
+        payer_id = COALESCE(${debt.payerId?.value}, payer_id),
+        due_date = COALESCE(${debt.dueDate}, due_date)
       WHERE
         id = ${debt.id}
       RETURNING *
     `
 
-    const newComponents = pipe(
-      debt.components,
-      A.filter((id) => existingDebt.debtComponents.findIndex(x => x.id === id) === -1),
-    )
+    let handleComponents: TE.TaskEither<Error, null> = async () => E.right(null);
 
-    const removedComponents = pipe(
-      existingDebt.debtComponents,
-      A.filter(({ id }) => debt.components.findIndex(x => x === id) === -1),
-      A.map(c => c.id),
-    )
+    if (debt.components) {
+      const newComponents = pipe(
+        debt.components,
+        A.filter((id) => existingDebt.debtComponents.findIndex(x => x.id === id) === -1),
+      )
 
-    const addComponents =
-      A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
-        await this.pg.one(sql`
-          INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
-        `)
+      const removedComponents = pipe(
+        existingDebt.debtComponents,
+        A.filter(({ id }) => debt.components.findIndex(x => x === id) === -1),
+        A.map(c => c.id),
+      )
 
-        return E.right(null)
-      })
+      const addComponents =
+        A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(sql`
+            INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
+          `)
 
-    const removeComponents =
-      A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
-        await this.pg.one(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`)
+          return E.right(null)
+        })
 
-        return E.right(null)
-      })
+      const removeComponents =
+        A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`)
+
+          return E.right(null)
+        })
+
+      handleComponents = pipe(
+        addComponents(newComponents),
+        TE.chain(() => removeComponents(removedComponents)),
+        TE.map(() => null),
+      )
+    }
 
     return pipe(
       this.pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
       TE.map(formatDebt),
-      TE.chainFirst(() => addComponents(newComponents)),
-      TE.chainFirst(() => removeComponents(removedComponents))
+      TE.chainFirst(() => handleComponents),
     )()
   }
 
