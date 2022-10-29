@@ -131,7 +131,7 @@ export class DebtService {
   }
 
   async publishDebt(debtId: string): Promise<void> {
-    await this.pg.any(sql`UPDATE debt SET draft = false WHERE id = ${debtId}`)
+    await this.pg.any(sql`UPDATE debt SET published_at = NOW() WHERE id = ${debtId}`)
   }
 
   async createDebt(debt: NewDebt, options?: CreateDebtOptions): Promise<Debt> {
@@ -227,6 +227,8 @@ export class DebtService {
     let handleComponents: TE.TaskEither<Error, null> = async () => E.right(null);
 
     if (debt.components) {
+      const components = debt.components;
+
       const newComponents = pipe(
         debt.components,
         A.filter((id) => existingDebt.debtComponents.findIndex(x => x.id === id) === -1),
@@ -234,7 +236,7 @@ export class DebtService {
 
       const removedComponents = pipe(
         existingDebt.debtComponents,
-        A.filter(({ id }) => debt.components.findIndex(x => x === id) === -1),
+        A.filter(({ id }) => components.findIndex(x => x === id) === -1),
         A.map(c => c.id),
       )
 
@@ -354,7 +356,7 @@ export class DebtService {
       JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR NOT debt.draft) AND (${includeDrafts} OR NOT debt.credited)
+      WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeDrafts} OR NOT debt.credited)
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);
 
@@ -430,7 +432,7 @@ export class DebtService {
       JOIN debt_statuses ON debt_statuses.id = debt.id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.due_date < NOW() AND NOT debt.draft AND NOT debt_statuses.is_paid
+      WHERE debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT debt_statuses.is_paid
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `)
 
