@@ -60,6 +60,7 @@ export type NewInvoice = {
   title: string
   series: number
   message: string
+  createdAt?: Date
   debts: string[]
   referenceNumber?: string
   paymentNumber?: string
@@ -117,6 +118,7 @@ type NewPayment<T extends PaymentType> = {
   data: {},
   debts: Array<string>,
   paymentNumber?: string,
+  createdAt?: Date
 }
 
 @Service()
@@ -285,6 +287,7 @@ export class PaymentService {
       debts: invoice.debts,
       paymentNumber,
       title: invoice.title,
+      createdAt: invoice.createdAt,
     }) as any
   }
 
@@ -293,8 +296,8 @@ export class PaymentService {
 
     return this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
-        INSERT INTO payments (type, data, message, title, payment_number)
-        VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber})
+        INSERT INTO payments (type, data, message, title, payment_number, created_at)
+        VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber}, COALESCE(${payment.createdAt}, NOW()))
         RETURNING *
       `)
 

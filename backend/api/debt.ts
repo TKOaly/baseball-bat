@@ -481,6 +481,7 @@ export class DebtApi {
           title: t.string,
           description: t.string,
           email: t.string,
+          date: dateString,
           amount: euroValue,
           dueDate: dateString,
           components: t.array(t.string),
@@ -602,6 +603,10 @@ export class DebtApi {
 
               let options: CreateDebtOptions = {}
 
+              if (details.date) {
+                options.paymentDate = parse(details.date, 'd.M.yyyy', new Date());
+              }
+
               if (details.paymentNumber) {
                 options.paymentNumber = details.paymentNumber
               }
@@ -625,6 +630,7 @@ export class DebtApi {
                 name: details.title,
                 description: details.description,
                 draft: true,
+                publishedAt: null,
                 debtCenterId: debtCenter.id,
                 status: 'unpaid',
                 lastReminded: null,

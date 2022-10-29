@@ -41,6 +41,7 @@ const selectPayers = createSelector(
 type ParsedRow = {
   tkoalyUserId?: number
   dueDate?: string
+  date?: string
   email?: string
   name?: string
   description?: string
@@ -114,6 +115,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
   const columnMapping = {
     'member id': ['tkoalyUserId', parseInt],
     'due date': ['dueDate', parseDate],
+    'date': ['date', parseDate],
     'debt center': 'debtCenter',
     'email': 'email',
     'payment number': 'paymentNumber',
@@ -180,7 +182,13 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const dispatch = useAppDispatch()
   const [csvData, setCsvData] = useState('')
 
-  const parsedCsv = useMemo(() => parseCsv(csvData), [csvData])
+  const parsedCsv = useMemo(() => {
+    try {
+      return parseCsv(csvData);
+    } catch (e) {
+      return [];
+    }
+  }, [csvData])
 
   const payers = useAppSelector((state) => selectPayers(state, parsedCsv))
 
@@ -283,6 +291,12 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
             <TableCell>Description for the debt</TableCell>
             <TableCell>Optional</TableCell>
             <TableCell>{defaults.description ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+          </tr>
+          <tr>
+            <TableCell className="whitespace-nowrap">Date</TableCell>
+            <TableCell>Original publishing date of the debt</TableCell>
+            <TableCell>Optional</TableCell>
+            <TableCell></TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Due Date</TableCell>

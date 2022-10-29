@@ -27,6 +27,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
   draft: debt.draft,
   description: debt.description,
   dueDate: debt.due_date,
+  publishedAt: debt.published_at,
   debtCenterId: debt.debt_center_id,
   debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
   credited: debt.credited,
@@ -52,6 +53,7 @@ export type CreateDebtOptions = {
   noDefaultPayment?: boolean
   defaultPaymentReferenceNumber?: string
   paymentNumber?: string
+  paymentDate?: Date
 }
 
 @Service()

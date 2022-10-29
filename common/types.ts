@@ -303,6 +303,7 @@ export type DbDebt = {
   last_reminded: Date | null
   due_date: Date
   draft: boolean
+  published_at: Date | null
   payer_id: string
   debt_center_id: string
   description: string
