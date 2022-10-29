@@ -273,6 +273,45 @@ export class DebtApi {
       })
   }
 
+  private updateMultipleDebts() {
+    return route
+      .post('/update-multiple')
+      .use(validateBody(t.type({
+        debts: t.array(t.string),
+        values: t.partial({
+          name: t.string,
+          description: t.string,
+          payerId: payerIdentity,
+          centerId: t.string,
+          dueDate: t.string,
+          components: t.array(t.string),
+        }),
+      })))
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const update = (id: string) => async () => {
+          return await this.debtService.updateDebt({
+            id: id,
+            name: ctx.body.values.name,
+            description: ctx.body.values.description,
+            centerId: ctx.body.values.centerId,
+            dueDate: ctx.body.values.dueDate === undefined ? undefined : parseISO(ctx.body.values.dueDate),
+            payerId: ctx.body.values.payerId,
+            components: ctx.body.values.components ?? [],
+          })
+        }
+
+        return pipe(
+          ctx.body.debts,
+          A.traverse(TE.ApplicativePar)(update),
+          T.map(E.matchW(
+            () => badRequest(),
+            (debts) => ok(debts),
+          )),
+        )()
+      })
+  }
+
   private updateDebt() {
     return route
       .patch('/:id')
@@ -782,6 +821,7 @@ export class DebtApi {
       this.markPaidWithCash(),
       this.sendReminder(),
       this.updateDebt(),
+      this.updateMultipleDebts(),
     )
   }
 }

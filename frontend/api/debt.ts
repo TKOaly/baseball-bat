@@ -156,8 +156,17 @@ const debtApi = rtkApi.injectEndpoints({
         { type: 'Debt', id: 'LIST' },
         { type: 'Debt', id: result.id },
       ],
+    }),
+
+    updateMultipleDebts: builder.mutation<Debt[], { debts: string[], values: Omit<DebtPatch, 'id'> }>({
+      query: (body) => ({
+        method: 'POST',
+        url: `/debt/update-multiple`,
+        body,
+      }),
+      invalidatesTags: (result) => result.map(({ id }) => ({ type: 'Debt' as const, id })),
     })
-  })
+  }),
 });
 
 export const {
@@ -178,6 +187,7 @@ export const {
   useSendAllRemindersMutation,
   useUpdateDebtMutation,
   useDeleteDebtComponentMutation,
+  useUpdateMultipleDebtsMutation,
 } = debtApi
 
 export default debtApi

@@ -360,7 +360,7 @@ export type DebtPatch = {
   payerId?: PayerIdentity
   dueDate?: Date
   centerId?: string
-  components: string[]
+  components?: string[]
 }
 
 export type DebtCenterPatch = {

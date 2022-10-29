@@ -3,6 +3,8 @@ import { Debt, DebtWithPayer, PayerProfile } from '../../common/types'
 import { Link, useLocation } from 'wouter';
 import { useDeleteDebtMutation, usePublishDebtsMutation } from '../api/debt';
 import { ExternalLink } from 'react-feather';
+import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
+import { useDialog } from './dialog';
 
 export type Props = {
   debts: (DebtWithPayer | Debt)[]
@@ -13,6 +15,7 @@ export const DebtList = (props: Props) => {
   const [publishDebts] = usePublishDebtsMutation()
   const [deleteDebt] = useDeleteDebtMutation()
   const [, setLocation] = useLocation()
+  const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog)
 
   const rows: (DebtWithPayer & { key: string })[] = (props.debts ?? [])
     .map((d) => props.payer ? ({ ...d, payer: props.payer, key: d.id }) : ({ ...d, key: d.id })) as any
@@ -82,6 +85,20 @@ export const DebtList = (props: Props) => {
           text: 'Publish',
           onSelect: async (rows) => {
             await publishDebts(rows.map(r => r.id))
+          },
+        },
+        {
+          key: 'edit',
+          text: 'Edit',
+          onSelect: async (debts) => {
+            if (debts.length === 1) {
+              setLocation(`/admin/debts/${debts[0].id}/edit`)
+              return
+            }
+
+            await showMassEditDebtsDialog({
+              debts,
+            })
           },
         }
       ]}
