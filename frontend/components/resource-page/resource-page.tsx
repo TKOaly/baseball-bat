@@ -95,10 +95,10 @@ export const LinkField: React.FC<FieldProps & { to: string, text: string }> = ({
 export const CurrencyField: React.FC<FieldProps & { value: EuroValue }> = ({ value, ...props }) =>
   <Field {...props}>{formatEuro(value)}</Field>
 
-export const DateField: React.FC<FieldProps & { value: Date | string }> = ({ value, ...props }) => {
+export const DateField: React.FC<FieldProps & { value: Date | string, time?: boolean }> = ({ time, value, ...props }) => {
   const date = typeof value === 'string' ? new Date(value) : value;
 
-  return <Field {...props}>{format(date, 'yyyy.MM.dd')}</Field>;
+  return <Field {...props}>{time ? format(date, 'dd.MM.yyyy HH:mm') : format(date, 'dd.MM.yyyy')}</Field>;
 }
 
 const badgeColorClasses = {
