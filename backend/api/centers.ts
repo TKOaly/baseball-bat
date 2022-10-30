@@ -266,14 +266,6 @@ export class DebtCentersApi {
               payer: payer.id,
               dueDate,
             })
-
-            await this.paymentService.createPayment({
-              type: 'invoice',
-              message: body.settings.description,
-              title: body.settings.name,
-              debts: [debt.id],
-              data: {},
-            })
           }))
         )
 
