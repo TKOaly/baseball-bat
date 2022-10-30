@@ -131,7 +131,7 @@ export const createSMTPTransport = (config: SMTPConfig) => {
         to: options.to,
         subject: options.subject,
         text: options.text,
-        html: options.html ?? undefined,
+        // html: options.html ?? undefined,
       })
     }
   }
