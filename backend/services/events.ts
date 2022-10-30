@@ -46,7 +46,7 @@ const formatRegistration = (registration: ApiRegistration) => ({
   phone: registration.phone,
   email: registration.email,
   answers: registration.answers,
-  userId: tkoalyIdentity(registration.user_id),
+  userId: registration.user_id === null ? null : tkoalyIdentity(registration.user_id),
 })
 
 @Service()

@@ -244,7 +244,7 @@ export class DebtCentersApi {
               ? registration.userId
               : emailIdentity(registration.email)
 
-            const payer = await this.payerService.createPayerProfileForExternalIdentity(payerIdentity, ctx.req.cookies.token)
+            const payer = await this.payerService.createPayerProfileForExternalIdentity(payerIdentity, ctx.req.cookies.token, registration.name)
 
             if (!payer) {
               throw new Error('Unable to create payer profile for the debt')

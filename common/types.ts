@@ -382,14 +382,14 @@ export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
 
 export type ApiRegistration = {
   id: number
-  user_id: number
+  user_id: number | null
   name: string
   email: string
   phone: string
   answers: { question_id: number, question: string, answer: string }[]
 }
 
-export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & { userId: TkoalyIdentity }
+export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & { userId: TkoalyIdentity | null }
 
 export type ApiCustomField = {
   id: number
