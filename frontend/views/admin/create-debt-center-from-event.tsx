@@ -354,7 +354,6 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
               name="description"
               fullWidth
               component={TextareaField}
-              onChange={() => { }}
             />
             <div className="col-span-full border-b mb-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
               Answer specific pricing
