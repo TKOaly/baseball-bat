@@ -31,7 +31,7 @@ export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, s
             e.stopPropagation();
           }}
         >
-          {(options ?? []).find(o => o.value === props.value)?.text ?? label}
+          {(options ?? []).find(o => o.value === props.value && props.value !== undefined)?.text ?? label}
           {showArrow && (
             <ChevronDown
               style={{
