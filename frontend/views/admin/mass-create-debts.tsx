@@ -6,7 +6,7 @@ import { EuroField } from '../../components/euro-field'
 import { TextField } from '../../components/text-field'
 import { useGetDebtCenterQuery } from '../../api/debt-centers'
 import { useMassCreateDebtsMutation } from '../../api/debt'
-import { AlertTriangle, ExternalLink, Info } from 'react-feather'
+import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather'
 import { Button, SecondaryButton } from '../../components/button'
 import { parse } from 'papaparse'
 import { useAppDispatch, useAppSelector } from '../../store'
@@ -14,9 +14,11 @@ import payersApi, { useGetPayerEmailsQuery, useGetPayerQuery } from '../../api/p
 import upstreamUsersApi from '../../api/upstream-users'
 import { createSelector } from '@reduxjs/toolkit'
 import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency'
-import { omit, uniq } from 'remeda'
+import { identity, omit, uniq } from 'remeda'
 import { tw } from '../../tailwind'
 import { addDays, format } from 'date-fns'
+import { useDialog } from '../../components/dialog'
+import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog'
 
 const tryParseInt = (v: string) => {
   try {
@@ -181,6 +183,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const [massCreateDebtsMutation, results] = useMassCreateDebtsMutation()
   const dispatch = useAppDispatch()
   const [csvData, setCsvData] = useState('')
+  const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog)
 
   const parsedCsv = useMemo(() => {
     try {
@@ -194,12 +197,15 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
 
   const [components, setComponents] = useState([])
 
+  const [defaultOverrides, setDefaultOverrides] = useState({})
+
   const defaults = useMemo(() => {
     return {
       dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
       ...pDefaults,
+      ...defaultOverrides,
     }
-  }, [pDefaults])
+  }, [pDefaults, defaultOverrides])
 
   useEffect(() => {
     let newComponents = [...components]
@@ -223,6 +229,32 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
       dryRun,
       components: components.filter(c => c.isNew).map(c => ({ ...omit(c, ['isNew', 'amount']), amount: euro(c.amount) })),
     })
+  }
+
+  const makeDefaultValueCell = <K extends keyof typeof defaults, V>(
+    key: string,
+    title: string,
+    inputComponent: any = TextField,
+    format: ((v: (typeof defaults)[K]) => string) = identity,
+    map: ((v: V) => (typeof defaults)[K]) = identity,
+  ) => {
+    return (
+      <div className="flex items-center">
+        {defaults[key] ? format(defaults[key]) : <span className="text-gray-500 italic">Empty</span>}
+        <Edit className="text-gray-500 ml-1.5 h-4 w-4 cursor-pointer" onClick={async () => {
+          const { changed, value } = await showSetColumnDefaultValueDialog({
+            columnKey: key,
+            columnTitle: title,
+            value: defaults[key],
+            inputComponent,
+          });
+
+          if (changed) {
+            setDefaultOverrides((overrides) => Object.assign({}, overrides, { [key]: map(value as V) }));
+          }
+        }} />
+      </div>
+    );
   }
 
   return (
@@ -255,66 +287,88 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
             <TableCell className="whitespace-nowrap">Member ID</TableCell>
             <TableCell>TKO-äly member account ID</TableCell>
             <TableCell rowSpan={2}>At least one must be defined</TableCell>
-            <TableCell>{defaults.tkoalyUserId ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('tkoalyUserId', 'Member ID')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Email</TableCell>
             <TableCell>Recipient email</TableCell>
-            <TableCell>{defaults.email ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('email', 'Email')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Debt Center ID</TableCell>
             <TableCell>Name or ID of the debt center which will contain the created debts. If a name is specified and no such debt center exists, a new one is created.</TableCell>
             <TableCell>Required</TableCell>
-            <TableCell>{defaults.debtCenter ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('debtCenter', 'Debt Center')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Payer Name</TableCell>
             <TableCell>Name of the payer. Used in case no payer profile exists for the payer.</TableCell>
             <TableCell>Required in case a payer profile must be created and no name for the payer is known. Eg. for non-member payers.</TableCell>
-            <TableCell>{defaults.amount ? formatEuro(defaults.amount) : <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('name', 'Payer Name')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Amount</TableCell>
             <TableCell>Base amount of the debt in euros excluding any additional debt components</TableCell>
             <TableCell>Required</TableCell>
-            <TableCell>{defaults.amount ? formatEuro(defaults.amount) : <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('amount', 'Amount', EuroField, formatEuro, euro)}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Title</TableCell>
             <TableCell>Title for the debt</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell>{defaults.title ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('title', 'Title')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Description</TableCell>
             <TableCell>Description for the debt</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell>{defaults.description ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('description', 'Description')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Date</TableCell>
             <TableCell>Original publishing date of the debt</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell></TableCell>
+            <TableCell>
+              {makeDefaultValueCell('date', 'Date')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Due Date</TableCell>
             <TableCell>Due date for the debt</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell>{defaults.dueDate ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('dueDate', 'Due Date')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Reference Number</TableCell>
             <TableCell>Reference number for the automatically created invoice</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell>{defaults.referenceNumber ?? <span className="text-gray-500 italic">Empty</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('referenceNumber', 'Reference Number')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell className="whitespace-nowrap">Payment Number</TableCell>
             <TableCell>Identifier for the debt used in book-keeping.</TableCell>
             <TableCell>Optional</TableCell>
-            <TableCell>{defaults.paymentNumber ?? <span className="text-gray-500 italic">Automatic</span>}</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('paymentNumber', 'Payment Number')}
+            </TableCell>
           </tr>
           <tr>
             <TableCell colSpan={4}>
