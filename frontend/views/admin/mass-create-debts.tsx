@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Formik, Field } from 'formik'
 import { TabularFieldList } from '../../components/tabular-field-list'
 import { EuroField } from '../../components/euro-field'
 import { TextField } from '../../components/text-field'
@@ -10,33 +9,25 @@ import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather'
 import { Button, SecondaryButton } from '../../components/button'
 import { parse } from 'papaparse'
 import { useAppDispatch, useAppSelector } from '../../store'
-import payersApi, { useGetPayerEmailsQuery, useGetPayerQuery } from '../../api/payers'
+import payersApi from '../../api/payers'
 import upstreamUsersApi from '../../api/upstream-users'
 import { createSelector } from '@reduxjs/toolkit'
 import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency'
-import { identity, omit, uniq } from 'remeda'
+import { identity, omit } from 'remeda'
 import { tw } from '../../tailwind'
 import { addDays, format } from 'date-fns'
 import { useDialog } from '../../components/dialog'
 import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog'
 
-const tryParseInt = (v: string) => {
-  try {
-    return parseInt(v, 10)
-  } catch {
-    return null
-  }
-}
-
 const selectPayers = createSelector(
   [
     (state) => state,
-    (_state, rows: Array<{ email: string, tkoalyUserId: string }>) => rows,
+    (_state, rows: Array<{ email?: string, tkoalyUserId?: number }>) => rows,
   ],
   (state, rows) => rows.map(({ email, tkoalyUserId }) => ({
     email: payersApi.endpoints.getPayerByEmail.select(email)(state),
-    payer: payersApi.endpoints.getPayerByTkoalyId.select(tryParseInt(tkoalyUserId))(state),
-    user: upstreamUsersApi.endpoints.getUpstreamUser.select(tryParseInt(tkoalyUserId))(state),
+    payer: payersApi.endpoints.getPayerByTkoalyId.select(tkoalyUserId)(state),
+    user: upstreamUsersApi.endpoints.getUpstreamUser.select(tkoalyUserId)(state),
   })),
 )
 
@@ -52,9 +43,9 @@ type ParsedRow = {
   components: Array<string>
 }
 
-const parseDate = (v) => v
+const parseDate = (v: string) => v
 
-const parseEuros = (v) => {
+const parseEuros = (v: string) => {
   const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2)
 
   if (centsPart && centsPart.length > 2) {
@@ -64,9 +55,9 @@ const parseEuros = (v) => {
   return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0))
 }
 
-const parseReferenceNumber = (v) => v
+const parseReferenceNumber = (v: string) => v
 
-const DebtStatusItem = ({ result, index, components }) => {
+const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
   return (
     <div className="rounded bg-white border shadow mb-2 p-2">
       <div className="flex">
@@ -422,7 +413,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
         <ul>
           {results.isLoading ? 'Loading...' : ''}
           {!results.isLoading && !results.data ? 'No results' : ''}
-          {results.data && results.data.map((row, i) => <DebtStatusItem result={row} index={i} components={components} />)}
+          {results.data && results.data.map((row, i) => <DebtStatusItem result={row} index={i} />)}
         </ul>
       </p>
     </div>
