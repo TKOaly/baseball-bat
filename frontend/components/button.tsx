@@ -1,43 +1,66 @@
+import { Loader } from 'react-feather'
 import styled from 'styled-components'
 import { Link } from 'wouter'
 import { tw } from '../tailwind'
 
-export const Button = tw.button`
-  bg-blue-500
+const commonClasses = `
+  inline-flex
+  gap-1.5
+  items-center
   rounded-md
   py-1.5
   px-3
-  text-white
-  font-bold
-  shadow
-  hover:bg-blue-600
-  active:ring-2
-`;
-
-export const DisabledButton = tw.button`
-  bg-gray-100
-  rounded-md
-  py-1.5
-  cursor-not-allowed
-  px-3
-  text-gray-400
   font-bold
   shadow-sm
-  hover:bg-gray-100
-  active:ring-2
-`;
+`
 
-export const SecondaryButton = tw.button`
-  bg-gray-200
-  rounded-md
-  py-1.5
-  px-3
-  text-gray-600
-  font-bold
-  shadow-sm
-  hover:bg-gray-300
-  active:ring-2
-`;
+const classNames = {
+  default: `
+    ${commonClasses}
+    bg-blue-500
+    text-white
+    hover:bg-blue-600
+    active:ring-2
+  `,
+  secondary: `
+    ${commonClasses}
+    bg-gray-200
+    text-gray-600
+    hover:bg-gray-300
+    active:ring-2
+  `,
+  disabled: `
+    ${commonClasses}
+    bg-gray-100
+    cursor-not-allowed
+    text-gray-400
+    hover:bg-gray-100
+    active:ring-2
+  `,
+}
+
+export const Button = ({ secondary, disabled, children, loading = false, onClick }) => {
+  let styleName = 'default'
+
+  if (secondary) {
+    styleName = 'secondary'
+  }
+
+  if (disabled) {
+    styleName = 'disabled'
+  }
+
+  return (
+    <button className={classNames[styleName]} onClick={onClick}>
+      <Loader className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${loading ? 'w-5' : 'w-0'} overflow-hidden`} />
+      {children}
+    </button>
+  )
+}
+
+export const DisabledButton = (props) => <Button disabled {...props} />
+
+export const SecondaryButton = (props) => <Button secondary {...props} />
 
 export const RedButton = styled(Button)`
   background: #f44336;
