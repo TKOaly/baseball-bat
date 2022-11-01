@@ -59,7 +59,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
       label=''
       scroll
       renderTrigger={(props) => (
-        <div className={`flex ${(options.allowlist.length + options.blocklist.length > 0) && 'text-blue-500'} items-center`} {...props}>
+        <div {...props} className={`flex ${(options.allowlist.length + options.blocklist.length > 0) && 'text-blue-500'} items-center ${props.style}`}>
           <span className="flex-grow">{column.name}</span>
           <span className="text-gray-400 relative">
             {(options.allowlist.length + options.blocklist.length > 0) ? 'Active' : 'Any'}
