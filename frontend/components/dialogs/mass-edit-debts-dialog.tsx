@@ -9,6 +9,7 @@ import { Debt } from '../../../common/types'
 import { useMemo } from 'react'
 import * as dfns from 'date-fns'
 import { useUpdateMultipleDebtsMutation } from '../../api/debt'
+import { ResourceSelectField } from '../resource-select-field'
 
 type Props = {
   onClose: () => void,
@@ -18,6 +19,7 @@ type Props = {
 type FormValues = {
   name: string
   dueDate: string | null
+  debtCenter: { id: string, type: 'debt_center' } | null
 }
 
 export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
@@ -26,10 +28,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name)
     const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'))
+    const debtCenters = uniqBy(debts, d => d.debtCenterId)
 
     return {
       name: names.length === 1 ? names[0].name : '',
       dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
+      debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
     }
   }, [debts])
 
@@ -39,6 +43,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       values: {
         ...values,
         dueDate: values.dueDate === null ? null : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
+        centerId: values.debtCenter?.id,
       },
     });
 
@@ -51,8 +56,15 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
     <Formik
       initialValues={initialValues}
       onSubmit={onSubmit}
+      validate={(values) => {
+        if (values.debtCenter === null) {
+          return { debtCenter: 'Debt center is required' };
+        }
+
+        return {};
+      }}
     >
-      {({ submitForm }) => (
+      {({ submitForm, isSubmitting, isValid }) => (
         <DialogBase onClose={() => onClose()}>
           <DialogHeader>Edit {debts.length} debts</DialogHeader>
           <DialogContent>
@@ -67,10 +79,17 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
               name="dueDate"
               component={DateField}
             />
+
+            <InputGroup
+              label="Collection"
+              name="debtCenter"
+              component={ResourceSelectField}
+              type="debt_center"
+            />
           </DialogContent>
           <DialogFooter>
-            <SecondaryButton onClick={() => onClose()}>Cancel</SecondaryButton>
-            <Button onClick={() => submitForm()}>Save</Button>
+            <Button secondary onClick={() => onClose()}>Cancel</Button>
+            <Button disabled={!isValid} loading={isSubmitting} onClick={() => submitForm()}>Save</Button>
           </DialogFooter>
         </DialogBase>
       )}

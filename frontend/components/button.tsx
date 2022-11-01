@@ -39,7 +39,7 @@ const classNames = {
   `,
 }
 
-export const Button = ({ secondary, disabled, children, loading = false, onClick }) => {
+export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick }) => {
   let styleName = 'default'
 
   if (secondary) {
