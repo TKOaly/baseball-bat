@@ -175,6 +175,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const dispatch = useAppDispatch()
   const [csvData, setCsvData] = useState('')
   const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog)
+  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle')
 
   const parsedCsv = useMemo(() => {
     try {
@@ -213,13 +214,15 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
     setComponents(newComponents)
   }, [parsedCsv])
 
-  const submit = (dryRun: boolean) => {
-    massCreateDebtsMutation({
+  const submit = async (dryRun: boolean) => {
+    setState(dryRun ? 'dry-run' : 'run')
+    await massCreateDebtsMutation({
       defaults,
       debts: parsedCsv,
       dryRun,
       components: components.filter(c => c.isNew).map(c => ({ ...omit(c, ['isNew', 'amount']), amount: euro(c.amount) })),
     })
+    setState('idle')
   }
 
   const makeDefaultValueCell = <K extends keyof typeof defaults, V>(
@@ -404,8 +407,8 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
           </>
         )}
         <div>
-          <SecondaryButton className="mr-2" onClick={() => submit(true)}>Dry run</SecondaryButton>
-          <Button onClick={() => submit(false)}>Create debts</Button>
+          <Button secondary loading={state === 'dry-run'} className="mr-2" onClick={() => submit(true)}>Dry run</Button>
+          <Button loading={state === 'run'} onClick={() => submit(false)}>Create debts</Button>
         </div>
         <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
           Results
