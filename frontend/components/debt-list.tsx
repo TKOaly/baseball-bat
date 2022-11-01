@@ -37,28 +37,39 @@ export const DebtList = (props: Props) => {
         {
           name: 'Status',
           getValue: (row) => {
+            const badges = [];
+
             if (row.credited) {
-              return 'Credited';
+              badges.push('Credited');
             }
 
             if (row.draft) {
-              return 'Draft'
+              badges.push('Draft');
             }
 
             if (row.status === 'paid') {
-              return 'Paid'
+              badges.push('Paid');
             }
 
-            return 'Unpaid'
+            if (row.status === 'unpaid') {
+              badges.push('Unpaid');
+            }
+
+            if (row.status === 'mispaid') {
+              badges.push('Mispaid');
+            }
+
+            return badges;
           },
-          render: (value) => {
+          render: (value) => value.map((value) => {
             return {
-              'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white">Draft</span>,
-              'Unpaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Unpaid</span>,
-              'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white">Paid</span>,
-              'Credited': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Credited</span>,
+              'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white mr-1">Draft</span>,
+              'Unpaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-1">Unpaid</span>,
+              'Mispaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">Mispaid</span>,
+              'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">Paid</span>,
+              'Credited': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">Credited</span>,
             }[value]
-          },
+          }),
         },
         {
           name: 'Labels',
