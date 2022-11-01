@@ -54,6 +54,21 @@ type FilterState = {
 }
 
 const FilterDropdownItem = ({ column, rows, options, onChange }) => {
+  let containsArrays = false
+
+  const rowValues =
+    rows
+      .flatMap((r: Row) => {
+        const value = getColumnValue(column, r);
+
+        if (Array.isArray(value)) {
+          containsArrays = true;
+          return value.map((v) => [r, v]);
+        } else {
+          return [[r, value]];
+        }
+      })
+
   return (
     <Dropdown
       label=''
@@ -67,8 +82,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
         </div>
       )}
       options={
-        rows
-          .map((r) => [r, getColumnValue(column, r)])
+        rowValues
           .reduce(([list, values]: [any[], Set<string>], [row, value]: [any, string]) => {
             if (values.has(value)) {
               return [list, values];
@@ -89,7 +103,13 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
             let displayValue = String(value)
 
             if (column.render) {
-              displayValue = column.render(value, row)
+              let renderValue = value
+
+              if (containsArrays && !Array.isArray(renderValue)) {
+                renderValue = [value]
+              }
+
+              displayValue = column.render(renderValue, row)
             }
 
             return {
@@ -178,11 +198,17 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
             modeStrict = true
           }
 
-          if (options.allowlist.includes(value)) {
+          let values = [value]
+
+          if (Array.isArray(value)) {
+            values = value
+          }
+
+          if (values.some(v => options.allowlist.includes(v))) {
             return true;
           }
 
-          if (options.blocklist.includes(value)) {
+          if (values.some(v => options.blocklist.includes(v))) {
             return false;
           }
         })
