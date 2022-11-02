@@ -91,6 +91,12 @@ const debtApi = rtkApi.injectEndpoints({
       invalidatesTags: [{ type: 'Debt', id: 'LIST' }],
     }),
 
+    massCreateDebtsProgress: builder.query<{ current: number, total: number, message: string, result: any }, string>({
+      query: (id) => ({
+        url: '/debt/mass-create/poll/' + id,
+      }),
+    }),
+
     deleteDebt: builder.mutation<void, string>({
       query: (id) => ({
         method: 'DELETE',
@@ -188,6 +194,7 @@ export const {
   useUpdateDebtMutation,
   useDeleteDebtComponentMutation,
   useUpdateMultipleDebtsMutation,
+  useMassCreateDebtsProgressQuery,
 } = debtApi
 
 export default debtApi

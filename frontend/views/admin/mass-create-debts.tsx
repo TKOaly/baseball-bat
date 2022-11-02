@@ -4,7 +4,7 @@ import { TabularFieldList } from '../../components/tabular-field-list'
 import { EuroField } from '../../components/euro-field'
 import { TextField } from '../../components/text-field'
 import { useGetDebtCenterQuery } from '../../api/debt-centers'
-import { useMassCreateDebtsMutation } from '../../api/debt'
+import { useMassCreateDebtsMutation, useMassCreateDebtsProgressQuery } from '../../api/debt'
 import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather'
 import { Button, SecondaryButton } from '../../components/button'
 import { parse } from 'papaparse'
@@ -18,6 +18,7 @@ import { tw } from '../../tailwind'
 import { addDays, format } from 'date-fns'
 import { useDialog } from '../../components/dialog'
 import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog'
+import { skipToken } from '@reduxjs/toolkit/dist/query/react'
 
 const selectPayers = createSelector(
   [
@@ -170,12 +171,26 @@ const TableCell = tw.td`
 export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const debtCenterId = params.id
 
+  const [progressId, setProgressId] = useState(null)
+  const [results, setResults] = useState()
   const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId)
-  const [massCreateDebtsMutation, results] = useMassCreateDebtsMutation()
+  const [massCreateDebtsMutation] = useMassCreateDebtsMutation()
+  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: 200 })
   const dispatch = useAppDispatch()
   const [csvData, setCsvData] = useState('')
   const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog)
   const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle')
+
+  useEffect(() => {
+    if (!progress)
+      return;
+
+    if (progress.result) {
+      setState('idle');
+      setResults(progress.result);
+      setProgressId(null)
+    }
+  }, [progress])
 
   const parsedCsv = useMemo(() => {
     try {
@@ -216,13 +231,19 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
 
   const submit = async (dryRun: boolean) => {
     setState(dryRun ? 'dry-run' : 'run')
-    await massCreateDebtsMutation({
+
+    const result = await massCreateDebtsMutation({
       defaults,
       debts: parsedCsv,
       dryRun,
       components: components.filter(c => c.isNew).map(c => ({ ...omit(c, ['isNew', 'amount']), amount: euro(c.amount) })),
     })
-    setState('idle')
+
+    if ('data' in result) {
+      setProgressId(result.data.progress);
+    } else {
+      setState('idle');
+    }
   }
 
   const makeDefaultValueCell = <K extends keyof typeof defaults, V>(
@@ -411,12 +432,26 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
           <Button loading={state === 'run'} onClick={() => submit(false)}>Create debts</Button>
         </div>
         <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
+          Progress
+        </div>
+        <p>
+          <div className="relative text-sm">
+            <div className="rounded-md px-1 py-0.5 overflow-hidden bg-gray-200 shadow-sm border border-gray-300">
+              {progress && `(${progress.current} / ${progress.total}) ${progress.message}`}
+            </div>
+            <div className="absolute inset-0 overflow-hidden rounded-md">
+              <div className="will-change-[width] rounded-l-md px-1 py-0.5 overflow-hidden bg-gray-200 shadow-sm border-l border-t border-b border-blue-600 w-full left-0 top-0 bottom-0 px-1 py-0.5 overflow-hidden bg-blue-600 text-white" style={{ width: `${(progress ? (progress.current / progress.total * 100) : 0).toFixed()}%` }}>
+                {progress && `(${progress.current} / ${progress.total}) ${progress.message}`}
+              </div>
+            </div>
+          </div>
+        </p>
+        <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
           Results
         </div>
         <ul>
-          {results.isLoading ? 'Loading...' : ''}
-          {!results.isLoading && !results.data ? 'No results' : ''}
-          {results.data && results.data.map((row, i) => <DebtStatusItem result={row} index={i} />)}
+          {progress && !progress.result ? 'Loading...' : ''}
+          {progress?.result && progress.result.map((row, i) => <DebtStatusItem result={row} index={i} />)}
         </ul>
       </p>
     </div>
