@@ -15,6 +15,7 @@ import { addDays, format } from 'date-fns';
 import { useDialog } from '../../components/dialog';
 import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog';
 import { skipToken } from '@reduxjs/toolkit/dist/query/react';
+import { Progress } from '../../components/progress';
 
 type ParsedRow = {
   tkoalyUserId?: number
@@ -415,16 +416,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
           Progress
         </div>
         <p>
-          <div className="relative text-sm">
-            <div className="rounded-md px-1 py-0.5 overflow-hidden bg-gray-200 shadow-sm border border-gray-300">
-              {progress && `(${progress.current} / ${progress.total}) ${progress.message}`}
-            </div>
-            <div className="absolute inset-0 overflow-hidden rounded-md">
-              <div className="will-change-[width] rounded-l-md px-1 py-0.5 overflow-hidden bg-gray-200 shadow-sm border-l border-t border-b border-blue-600 w-full left-0 top-0 bottom-0 px-1 py-0.5 overflow-hidden bg-blue-600 text-white" style={{ width: `${(progress ? (progress.current / progress.total * 100) : 0).toFixed()}%` }}>
-                {progress && `(${progress.current} / ${progress.total}) ${progress.message}`}
-              </div>
-            </div>
-          </div>
+          <Progress value={progress?.current ?? 0} max={progress?.total ?? 0} message={progress?.message} noText={!progress} />
         </p>
         <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
           Results
