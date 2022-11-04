@@ -107,7 +107,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
   };
 
   const columns = header.map((title: string) => {
-    const normalized = title.toLowerCase();
+    const normalized = title.toLowerCase().trim();
     const column = columnMapping[normalized];
 
     if (column) {
@@ -126,7 +126,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
 
     if (column.type === 'standard') {
       try {
-        acc[column.key] = column.parser(value);
+        acc[column.key] = column.parser(value.trim());
       } catch {
         acc[column.key] = null;
       }
