@@ -1,19 +1,19 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Page, Header, Title, Section, TextField, SectionContent } from '../../components/resource-page/resource-page'
-import { TransactionList } from '../../components/transaction-list'
-import { useGetBankStatementQuery } from '../../api/banking/statements'
-import { useGetStatementTransactionsQuery } from '../../api/banking/transactions'
-import { useGetBankAccountQuery } from '../../api/banking/accounts'
-import { format, parseISO } from 'date-fns'
-import { formatEuro } from '../../../common/currency'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Page, Header, Title, Section, TextField, SectionContent } from '../../components/resource-page/resource-page';
+import { TransactionList } from '../../components/transaction-list';
+import { useGetBankStatementQuery } from '../../api/banking/statements';
+import { useGetStatementTransactionsQuery } from '../../api/banking/transactions';
+import { useGetBankAccountQuery } from '../../api/banking/accounts';
+import { format, parseISO } from 'date-fns';
+import { formatEuro } from '../../../common/currency';
 
 export const BankStatement = ({ id }: { id: string }) => {
-  const { data: statement, isLoading } = useGetBankStatementQuery(id)
-  const { data: transactions } = useGetStatementTransactionsQuery(id)
-  const { data: account } = useGetBankAccountQuery(statement?.accountIban, { skip: !statement })
+  const { data: statement, isLoading } = useGetBankStatementQuery(id);
+  const { data: transactions } = useGetStatementTransactionsQuery(id);
+  const { data: account } = useGetBankAccountQuery(statement?.accountIban, { skip: !statement });
 
   if (isLoading || !statement) {
-    return 'Loading...'
+    return 'Loading...';
   }
 
   return (
@@ -44,4 +44,4 @@ export const BankStatement = ({ id }: { id: string }) => {
       </Section>
     </Page>
   );
-}
+};

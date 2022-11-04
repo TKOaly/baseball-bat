@@ -1,10 +1,10 @@
-import { TableView } from '../../components/table-view'
-import { useGetPaymentsQuery } from '../../api/payments'
-import { useLocation } from 'wouter'
+import { TableView } from '../../components/table-view';
+import { useGetPaymentsQuery } from '../../api/payments';
+import { useLocation } from 'wouter';
 
 export const PaymentsListing = () => {
-  const { data: payments } = useGetPaymentsQuery(null)
-  const [, setLocation] = useLocation()
+  const { data: payments } = useGetPaymentsQuery(null);
+  const [, setLocation] = useLocation();
 
   return (
     <>
@@ -18,7 +18,7 @@ export const PaymentsListing = () => {
           {
             getValue: (row) => {
               if (row.credited) {
-                return 'Credited'
+                return 'Credited';
               }
 
               return row.status;
@@ -40,7 +40,7 @@ export const PaymentsListing = () => {
           {
             getValue: (row) => row.payment_number,
             name: 'No.',
-          }
+          },
         ]}
       />
     </>

@@ -1,15 +1,15 @@
-import React, { useRef, useState } from 'react'
-import { DayPicker } from 'react-day-picker'
-import { Calendar } from 'react-feather'
-import { format } from 'date-fns'
-import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
+import React, { useRef, useState } from 'react';
+import { DayPicker } from 'react-day-picker';
+import { Calendar } from 'react-feather';
+import { format } from 'date-fns';
+import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 import 'react-day-picker/dist/style.css';
 
 export const DateField = ({ value, onChange, ...props }) => {
-  const [calendarOpen, setCalendarOpen] = useState(false)
-  const ref = useRef()
-  useOutsideEventListener(ref, 'click', calendarOpen, () => setCalendarOpen(false))
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const ref = useRef();
+  useOutsideEventListener(ref, 'click', calendarOpen, () => setCalendarOpen(false));
 
   return (
     <div className="flex flex-col items-center relative" ref={ref}>
@@ -43,11 +43,11 @@ export const DateField = ({ value, onChange, ...props }) => {
             modifiersClassNames={{ selected: 'bg-blue-500' }}
             onSelect={(day) => {
               onChange({ target: { id: props.id, name: props.name, value: format(day, 'dd.MM.yyyy') } });
-              console.log(format(day, 'dd.mm.yyyy'))
+              console.log(format(day, 'dd.mm.yyyy'));
             }}
           />
         </div>
       )}
     </div>
-  )
-}
+  );
+};

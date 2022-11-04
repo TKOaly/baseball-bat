@@ -1,9 +1,9 @@
-import { useLocation } from 'wouter'
-import { Button, ButtonA, SecondaryButton } from '../components/button'
-import { SmallContainer } from '../components/containers'
+import { useLocation } from 'wouter';
+import React from 'react';
+import { Button, SecondaryButton } from '../components/button';
 
 export const Landing = () => {
-  const [, setLocation] = useLocation()
+  const [, setLocation] = useLocation();
 
   return (
     <>
@@ -24,12 +24,12 @@ export const Landing = () => {
         <li className="">
           <SecondaryButton
             className="w-full"
-            onClick={() => setLocation(`/auth/email`)}
+            onClick={() => setLocation('/auth/email')}
           >
             Email
           </SecondaryButton>
         </li>
       </ul>
     </>
-  )
-}
+  );
+};

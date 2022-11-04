@@ -1,8 +1,8 @@
-import { useLocation } from "wouter";
-import { SecondaryButton } from "../../components/button";
+import { useLocation } from 'wouter';
+import { SecondaryButton } from '../../components/button';
 
 export const Tools = () => {
-  const [, setLocation] = useLocation()
+  const [, setLocation] = useLocation();
 
   return (
     <div>

@@ -5,9 +5,9 @@ export const Stepper = ({
 }) => {
   const getStepStyle = (i) => {
     if (i < currentStage)
-      return 'h-3 w-3 bg-blue-500'
+      return 'h-3 w-3 bg-blue-500';
     else
-      return 'h-3 w-3 bg-gray-300'
+      return 'h-3 w-3 bg-gray-300';
   };
 
   return (
@@ -21,7 +21,7 @@ export const Stepper = ({
         />
       </div>
       {stages.map((stage, i) => (
-        <div className="w-4 h-4 flex items-center justify-center">
+        <div className="w-4 h-4 flex items-center justify-center" key={stage}>
           <div className={`relative flex-basis-[1em] rounded-full ${getStepStyle(i)} z-10`}>
             <div className="text-gray-600 w-80 left-[50%] -ml-40 text-center absolute text-sm top-[50%] mt-3" key={stage}>{stage}</div>
           </div>
@@ -29,10 +29,10 @@ export const Stepper = ({
       ))}
       <div className="absolute inset-x-1.5">
         <div className={`absolute flex ${loading && 'animate-scale'} items-center justify-center overflow-hidden flex-basis-[1em] rounded-full h-4 w-4 -top-2 -ml-2 bg-blue-500 z-10 transition-all`} style={{ left: `${currentStage / (stages.length - 1) * 100}%` }}>
-          <div className={`w-2 h-2 rounded-full bg-[#fbfbfb]`} />
+          <div className={'w-2 h-2 rounded-full bg-[#fbfbfb]'} />
           <div className="text-gray-600 w-80 left-[50%] -ml-40 text-center absolute text-sm top-[50%] mt-3" />
         </div>
       </div>
     </div>
   );
-}
+};

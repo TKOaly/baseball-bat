@@ -1,42 +1,42 @@
-import { differenceInDays, format, isPast } from 'date-fns'
-import React from 'react'
-import { AlertCircle, AlertTriangle, CheckCircle, Loader } from 'react-feather'
-import { useTranslation } from 'react-i18next'
-import { formatEuro, euro, sumEuroValues } from '../../common/currency'
+import { differenceInDays, format, isPast } from 'date-fns';
+import React from 'react';
+import { AlertCircle, AlertTriangle, CheckCircle, Loader } from 'react-feather';
+import { useTranslation } from 'react-i18next';
+import { formatEuro, euro, sumEuroValues } from '../../common/currency';
 
-import { useGetDebtQuery } from '../api/debt'
-import { useGetPaymentsByDebtQuery } from '../api/payments'
+import { useGetDebtQuery } from '../api/debt';
+import { useGetPaymentsByDebtQuery } from '../api/payments';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat([], { dateStyle: 'medium' }).format(parsed)
-}
+  return new Intl.DateTimeFormat([], { dateStyle: 'medium' }).format(parsed);
+};
 
 const formatDateRelative = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), "day")
-}
+  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), 'day');
+};
 
 export const DebtDetails = ({ params }) => {
-  const { t } = useTranslation([], { keyPrefix: 'paymentDetails' })
-  const { data: debt, isLoading } = useGetDebtQuery(params.id)
-  const { data: payments, isLoading: paymentsAreLoading } = useGetPaymentsByDebtQuery(params.id)
+  const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
+  const { data: debt, isLoading } = useGetDebtQuery(params.id);
+  const { data: payments, isLoading: paymentsAreLoading } = useGetPaymentsByDebtQuery(params.id);
 
   if (isLoading || paymentsAreLoading) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   const total = debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0));
 
   const defaultPayment = (payments || [])
-    .find((payment) => payment.type === 'invoice')
+    .find((payment) => payment.type === 'invoice');
 
-  const isLate = debt?.dueDate && isPast(new Date(debt.dueDate))
-  const isUnpaid = debt?.status === 'unpaid'
-  const isMispaid = debt?.status === 'mispaid'
-  const isPaid = debt?.status === 'paid'
+  const isLate = debt?.dueDate && isPast(new Date(debt.dueDate));
+  const isUnpaid = debt?.status === 'unpaid';
+  const isMispaid = debt?.status === 'mispaid';
+  const isPaid = debt?.status === 'paid';
 
   return (
     <div>
@@ -125,5 +125,5 @@ export const DebtDetails = ({ params }) => {
         </>
       )}
     </div>
-  )
-}
+  );
+};

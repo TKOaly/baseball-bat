@@ -1,42 +1,37 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreditPaymentMutation, useGetPaymentQuery } from '../../api/payments'
-import { Timeline } from '../../components/timeline'
-import { ExternalLink } from 'react-feather'
-import { DebtList } from '../../components/debt-list'
-import { TableView } from '../../components/table-view'
-import { SecondaryButton } from '../../components/button'
-import { Link, useLocation } from 'wouter'
-import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency'
-import { useGetDebtsByPaymentQuery } from '../../api/debt'
-import { Page, Header, Title, Actions, ActionButton, Section, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useCreditPaymentMutation, useGetPaymentQuery } from '../../api/payments';
+import { Timeline } from '../../components/timeline';
+import { DebtList } from '../../components/debt-list';
+import { cents, formatEuro } from '../../../common/currency';
+import { useGetDebtsByPaymentQuery } from '../../api/debt';
+import { Page, Header, Title, Actions, ActionButton, Section, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page';
 
 export const PaymentDetails = ({ params }) => {
-  const { data: payment, isLoading } = useGetPaymentQuery(params.id)
-  const { data: debts } = useGetDebtsByPaymentQuery(params.id)
-  const [creditPayment] = useCreditPaymentMutation()
-  const [, setLocation] = useLocation()
+  const { data: payment, isLoading } = useGetPaymentQuery(params.id);
+  const { data: debts } = useGetDebtsByPaymentQuery(params.id);
+  const [creditPayment] = useCreditPaymentMutation();
 
   if (isLoading || !payment) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   let statusBadge: { text: string, color: BadgeColor } = {
     text: 'Unpaid',
     color: 'gray',
-  }
+  };
 
   if (payment.credited) {
     statusBadge = {
       text: 'Credited',
       color: 'blue',
-    }
+    };
   }
 
   if (payment.status === 'paid') {
     statusBadge = {
       text: 'Paid',
       color: 'green',
-    }
+    };
   }
 
   const timelineEvents = payment.events
@@ -46,7 +41,7 @@ export const PaymentDetails = ({ params }) => {
         'created': 'Payment created',
         'payment': `Payment of ${formatEuro(cents(e.amount))} received`,
       }[e.type],
-    }))
+    }));
 
   return (
     <Page>
@@ -56,7 +51,7 @@ export const PaymentDetails = ({ params }) => {
             segments={[
               {
                 text: 'Payments',
-                url: '/admin/payments'
+                url: '/admin/payments',
               },
               payment.payment_number ? '' + payment.payment_number : '',
             ]}
@@ -88,5 +83,5 @@ export const PaymentDetails = ({ params }) => {
         </SectionContent>
       </Section>
     </Page>
-  )
-}
+  );
+};

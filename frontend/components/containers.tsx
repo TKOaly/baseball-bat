@@ -1,4 +1,4 @@
-import styled from 'styled-components'
+import styled from 'styled-components';
 
 export const SmallContainer = styled.div`
   display: flex;
@@ -10,7 +10,7 @@ export const SmallContainer = styled.div`
   border-radius: 10px;
   width: 400px;
   min-height: 20%;
-`
+`;
 
 export const LargeContainer = styled.div`
   display: flex;
@@ -28,4 +28,4 @@ export const LargeContainer = styled.div`
     flex-direction: column;
     height: 100%;
   }
-`
+`;

@@ -1,28 +1,28 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useSendPayerDebtReminderMutation } from '../../api/payers'
-import { DebtList } from '../../components/debt-list'
-import { Page, Header, Title, Section, TextField, Field, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page'
-import * as dfns from 'date-fns'
-import { useDialog } from '../../components/dialog'
-import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog'
-import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useSendPayerDebtReminderMutation } from '../../api/payers';
+import { DebtList } from '../../components/debt-list';
+import { Page, Header, Title, Section, TextField, Field, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page';
+import * as dfns from 'date-fns';
+import { useDialog } from '../../components/dialog';
+import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
+import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
 
 export const PayerDetails = ({ params }) => {
-  const { data: payer } = useGetPayerQuery(params.id)
-  const { data: emails } = useGetPayerEmailsQuery(params.id)
-  const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true })
-  const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation()
-  const showRemindersSentDialog = useDialog(RemindersSentDialog)
-  const showSendRemindersDialog = useDialog(SendRemindersDialog)
+  const { data: payer } = useGetPayerQuery(params.id);
+  const { data: emails } = useGetPayerEmailsQuery(params.id);
+  const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true });
+  const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
+  const showRemindersSentDialog = useDialog(RemindersSentDialog);
+  const showSendRemindersDialog = useDialog(SendRemindersDialog);
 
   if (!payer || !emails)
-    return 'Loading...'
+    return 'Loading...';
 
   const overdue = (debts ?? [])
-    .filter(d => dfns.isPast(d.dueDate))
+    .filter(d => dfns.isPast(d.dueDate));
 
   const handleSendReminder = async () => {
-    const options = await showSendRemindersDialog({})
+    const options = await showSendRemindersDialog({});
 
     if (!options) {
       return;
@@ -32,7 +32,7 @@ export const PayerDetails = ({ params }) => {
       payerId: params.id,
       send: options.send,
       ignoreCooldown: options.ignoreCooldown,
-    })
+    });
 
     if ('data' in res) {
       await showRemindersSentDialog({
@@ -40,7 +40,7 @@ export const PayerDetails = ({ params }) => {
         debtCount: res.data.messageCount,
       });
     }
-  }
+  };
 
   return (
     <Page>
@@ -63,7 +63,13 @@ export const PayerDetails = ({ params }) => {
         <TextField label="Name" value={payer?.name} />
         <Field label="Emails">
           {emails.map((email) => (
-            <span title={`Source: ${email.source}`} className={`rounded-[3pt] text-sm py-0.5 px-2 ${{ primary: 'bg-blue-500 text-white', default: 'bg-gray-500 text-black', disabled: 'bg-gray-200 text-gray-500' }[email.priority]}`}>{email.email}</span>
+            <span
+              title={`Source: ${email.source}`}
+              className={`rounded-[3pt] text-sm py-0.5 px-2 ${{ primary: 'bg-blue-500 text-white', default: 'bg-gray-500 text-black', disabled: 'bg-gray-200 text-gray-500' }[email.priority]}`}
+              key={email.email}
+            >
+              {email.email}
+            </span>
           ))}
         </Field>
       </Section>
@@ -73,5 +79,5 @@ export const PayerDetails = ({ params }) => {
         </SectionContent>
       </Section>
     </Page>
-  )
-}
+  );
+};

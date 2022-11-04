@@ -1,14 +1,14 @@
-import axios from 'axios'
-import { Config } from '../config'
-import { TkoalyIdentity, UpstreamUser } from '../../common/types'
-import { Inject, Service } from 'typedi'
+import axios from 'axios';
+import { Config } from '../config';
+import { TkoalyIdentity, UpstreamUser } from '../../common/types';
+import { Inject, Service } from 'typedi';
 
 @Service()
 export class UsersService {
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
-  private _client: ReturnType<typeof axios.create> | null = null
+  private _client: ReturnType<typeof axios.create> | null = null;
 
   get client() {
     if (this._client !== null) {
@@ -20,13 +20,13 @@ export class UsersService {
       headers: {
         Service: this.config.serviceId,
       },
-    })
+    });
 
-    return this._client
+    return this._client;
   }
 
   async getUpstreamUserById(pId: TkoalyIdentity | 'me', token: string) {
-    const id = typeof pId === 'string' ? pId : pId.value
+    const id = typeof pId === 'string' ? pId : pId.value;
 
     try {
       const { data } = await this.client
@@ -34,12 +34,12 @@ export class UsersService {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        })
+        });
 
-      return data.payload
+      return data.payload;
     } catch (err) {
-      console.log(err)
-      throw new Error(`Failed to fetch upstream user ${id}`)
+      console.log(err);
+      throw new Error(`Failed to fetch upstream user ${id}`);
     }
   }
 
@@ -49,13 +49,13 @@ export class UsersService {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
+      });
 
-    return data.payload
+    return data.payload;
   }
 
   async getUpstreamUserByEmail(email: string, token: string) {
-    const users = await this.getUsers(token)
+    const users = await this.getUsers(token);
     return users.find(user => user.email === email);
   }
 
@@ -69,6 +69,6 @@ export class UsersService {
       .then(
         ({ data }) => data.payload,
         (err) => (console.log(err.response.data), []),
-      )
+      );
   }
 }

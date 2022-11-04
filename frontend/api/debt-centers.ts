@@ -1,5 +1,5 @@
-import rootApi from './rtk-api'
-import { DebtCenter, DebtCenterPatch, NewDebtCenter } from '../../common/types'
+import rootApi from './rtk-api';
+import { DebtCenter, DebtCenterPatch, NewDebtCenter } from '../../common/types';
 
 const debtCentersApi = rootApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,7 +28,7 @@ const debtCentersApi = rootApi.injectEndpoints({
         url: '/debtCenters/fromEvent',
         method: 'POST',
         body: payload,
-      })
+      }),
     }),
 
     updateDebtCenter: builder.mutation<DebtCenter, DebtCenterPatch>({
@@ -49,9 +49,9 @@ const debtCentersApi = rootApi.injectEndpoints({
         url: `/debtCenters/${id}`,
       }),
       invalidatesTags: (_, __, id) => [
-        { type: 'DebtCenter', id }
+        { type: 'DebtCenter', id },
       ],
-    })
+    }),
   }),
 });
 
@@ -62,6 +62,6 @@ export const {
   useCreateDebtCenterFromEventMutation,
   useUpdateDebtCenterMutation,
   useDeleteDebtCenterMutation,
-} = debtCentersApi
+} = debtCentersApi;
 
-export default debtCentersApi
+export default debtCentersApi;

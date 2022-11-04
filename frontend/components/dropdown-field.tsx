@@ -1,9 +1,8 @@
-import { memo, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react'
-import { useField } from 'formik'
-import _ from 'loash'
-import { equals } from 'remeda'
-import { ChevronDown } from 'react-feather'
-import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
+import { memo, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react';
+import { useField } from 'formik';
+import { equals } from 'remeda';
+import { ChevronDown } from 'react-feather';
+import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 export type DropdownFieldProps<V> = {
   name: string
@@ -17,6 +16,7 @@ export type DropdownFieldProps<V> = {
   allowCustom?: boolean
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
 export const DropdownField = memo(<V extends unknown>({
   name,
   value,
@@ -26,15 +26,15 @@ export const DropdownField = memo(<V extends unknown>({
   flushRight,
   createCustomOption,
   formatCustomOption,
-  allowCustom
+  allowCustom,
 }: DropdownFieldProps<V>) => {
   const [, meta] = useField(name);
-  const inputRef = useRef<HTMLInputElement>()
-  const ref = useRef()
-  const [search, setSearch] = useState('')
-  const [focused, setFocused] = useState(null)
+  const inputRef = useRef<HTMLInputElement>();
+  const ref = useRef();
+  const [search, setSearch] = useState('');
+  const [focused, setFocused] = useState(null);
 
-  const itemRefs = useRef([])
+  const itemRefs = useRef([]);
 
   const visibleOptions = useMemo(
     () => options.filter(option => !search || option.text && option.text.indexOf(search) > -1),
@@ -57,10 +57,10 @@ export const DropdownField = memo(<V extends unknown>({
     }
   }, [focused, itemRefs]);
 
-  const [open, setOpen] = useState(false)
-  const selectedOption = options.find(opt => equals(opt.value, value))
+  const [open, setOpen] = useState(false);
+  const selectedOption = options.find(opt => equals(opt.value, value));
 
-  useOutsideEventListener(ref, 'click', open, () => setOpen(false))
+  useOutsideEventListener(ref, 'click', open, () => setOpen(false));
 
   let selectedLabel = '';
 
@@ -130,9 +130,9 @@ export const DropdownField = memo(<V extends unknown>({
       <div
         tabIndex={allowCustom ? -2 : 0}
         onClick={() => {
-          setOpen(!open)
+          setOpen(!open);
           if (allowCustom && inputRef.current) {
-            inputRef.current.focus()
+            inputRef.current.focus();
           }
         }}
         className={`
@@ -193,7 +193,7 @@ export const DropdownField = memo(<V extends unknown>({
           shadow-lg
         `}
         style={{
-          display: open ? 'block' : 'none'
+          display: open ? 'block' : 'none',
         }}
       >
         <ul
@@ -211,6 +211,7 @@ export const DropdownField = memo(<V extends unknown>({
           {visibleOptions
             .map((option, optionIndex) => (
               <li
+                key={option.value}
                 className={`
                   py-1
                   px-2
@@ -222,14 +223,14 @@ export const DropdownField = memo(<V extends unknown>({
                   ${value === option.value && 'bg-gray-50'}
                 `}
                 tabIndex={-1}
-                onClick={(evt) => {
-                  setSearch('')
+                onClick={() => {
+                  setSearch('');
                   onChange({ target: { name, value: option.value } });
                   setOpen(false);
                 }}
                 onKeyDown={(evt) => {
                   if (evt.key === 'Enter') {
-                    setSearch('')
+                    setSearch('');
                     onChange({ target: { name, value: option.value } });
                     setOpen(false);
                     evt.stopPropagation();
@@ -258,14 +259,16 @@ export const DropdownField = memo(<V extends unknown>({
               tabIndex={-1}
               onClick={() => {
                 const option = createCustomOption(search);
-                setSearch('')
+                setSearch('');
                 onChange({ target: { name, value: option } });
                 setOpen(false);
               }}
-            >Create "{search}"</li>
+            >Create {'"'}{search}{'"'}</li>
           )}
         </ul>
       </div>
     </div>
   );
 });
+
+DropdownField.displayName = 'DropdownField';

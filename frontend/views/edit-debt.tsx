@@ -1,30 +1,27 @@
-import { Formik } from "formik";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { euro, NewDebtComponent, PayerIdentity } from "../../common/types";
-import * as dfns from 'date-fns'
-import { useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery, useGetDebtQuery, useUpdateDebtMutation } from "../api/debt";
-import { Breadcrumbs } from "../components/breadcrumbs";
-import { InputGroup } from "../components/input-group";
-import { TextField } from "../components/text-field";
-import { DropdownField } from "../components/dropdown-field";
-import { TabularFieldListFormik } from "../components/tabular-field-list";
-import { EuroField } from "../components/euro-field";
-import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from "../api/debt-centers";
-import { useGetUpstreamUsersQuery } from "../api/upstream-users";
-import { DateField } from "../components/datetime-field";
-import { TextareaField } from "../components/textarea-field";
-import { PublishedDebtEditConfirmation } from "../components/dialogs/published-debt-edit-confirmation";
-import * as O from 'fp-ts/lib/Option'
-import * as E from 'fp-ts/lib/Either'
-import * as TE from 'fp-ts/lib/TaskEither'
-import * as A from 'fp-ts/lib/Array'
-import { useDialog } from "../components/dialog";
-import { useLocation } from "wouter";
-import { useGetPayersQuery } from "../api/payers";
-import { DebtAssociatedResourceCreationConfirmationDialog } from "../components/dialogs/debt-associated-resource-creation-confirmation-dialog";
-import { pipe } from "fp-ts/lib/function";
-import { MutationTrigger } from "@reduxjs/toolkit/dist/query/react/buildHooks";
-import { MutationDefinition } from "@reduxjs/toolkit/dist/query";
+import { Formik } from 'formik';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { euro, NewDebtComponent, PayerIdentity } from '../../common/types';
+import * as dfns from 'date-fns';
+import { useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery, useGetDebtQuery, useUpdateDebtMutation } from '../api/debt';
+import { Breadcrumbs } from '../components/breadcrumbs';
+import { InputGroup } from '../components/input-group';
+import { TextField } from '../components/text-field';
+import { DropdownField } from '../components/dropdown-field';
+import { TabularFieldListFormik } from '../components/tabular-field-list';
+import { EuroField } from '../components/euro-field';
+import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from '../api/debt-centers';
+import { useGetUpstreamUsersQuery } from '../api/upstream-users';
+import { DateField } from '../components/datetime-field';
+import { TextareaField } from '../components/textarea-field';
+import { PublishedDebtEditConfirmation } from '../components/dialogs/published-debt-edit-confirmation';
+import * as E from 'fp-ts/lib/Either';
+import * as TE from 'fp-ts/lib/TaskEither';
+import * as A from 'fp-ts/lib/Array';
+import { useDialog } from '../components/dialog';
+import { useLocation } from 'wouter';
+import { useGetPayersQuery } from '../api/payers';
+import { DebtAssociatedResourceCreationConfirmationDialog } from '../components/dialogs/debt-associated-resource-creation-confirmation-dialog';
+import { pipe } from 'fp-ts/lib/function';
 
 type DebtFormValues = {
   name: string,
@@ -36,19 +33,19 @@ type DebtFormValues = {
 }
 
 export const EditDebt = ({ params }: { params: { id: string } }) => {
-  const { id } = params
-  const { data: users } = useGetUpstreamUsersQuery()
-  const { data: payers } = useGetPayersQuery()
-  const { data: debt } = useGetDebtQuery(id)
-  const { data: debtCenters } = useGetDebtCentersQuery()
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debt?.debtCenterId, { skip: !debt })
-  const [updateDebt] = useUpdateDebtMutation()
-  const [createDebtCenter] = useCreateDebtCenterMutation()
-  const [createDebtComponent] = useCreateDebtComponentMutation()
-  const [, setLocation] = useLocation()
-  const [editPublished, setEditPublished] = useState(false)
-  const showPublishedDebtEditConfirmationDialog = useDialog(PublishedDebtEditConfirmation)
-  const showResourceCreationDialog = useDialog(DebtAssociatedResourceCreationConfirmationDialog)
+  const { id } = params;
+  const { data: users } = useGetUpstreamUsersQuery();
+  const { data: payers } = useGetPayersQuery();
+  const { data: debt } = useGetDebtQuery(id);
+  const { data: debtCenters } = useGetDebtCentersQuery();
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debt?.debtCenterId, { skip: !debt });
+  const [updateDebt] = useUpdateDebtMutation();
+  const [createDebtCenter] = useCreateDebtCenterMutation();
+  const [createDebtComponent] = useCreateDebtComponentMutation();
+  const [, setLocation] = useLocation();
+  const [editPublished, setEditPublished] = useState(false);
+  const showPublishedDebtEditConfirmationDialog = useDialog(PublishedDebtEditConfirmation);
+  const showResourceCreationDialog = useDialog(DebtAssociatedResourceCreationConfirmationDialog);
 
   useEffect(() => {
     if (debt && !debt.draft && !editPublished) {
@@ -57,25 +54,25 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
           if (allow) {
             setEditPublished(true);
           } else {
-            setLocation(`/admin/debts/${id}`)
+            setLocation(`/admin/debts/${id}`);
           }
-        })
+        });
     }
-  }, [debt])
+  }, [debt]);
 
   const handleSubmit = async (values: DebtFormValues) => {
     if (!values.payer) {
       return;
     }
 
-    let existingComponents = debt.debtComponents.map(dc => dc.id)
+    const existingComponents = debt.debtComponents.map(dc => dc.id);
 
-    let confirmedRef = { value: false }
-    let newComponentsRef = { value: [] }
-    let existingComponentsRef = { value: existingComponents }
+    const confirmedRef = { value: false };
+    const newComponentsRef = { value: [] };
+    const existingComponentsRef = { value: existingComponents };
 
-    let separateComponents = () => {
-      let { left, right } = pipe(
+    const separateComponents = () => {
+      const { left, right } = pipe(
         values.components,
         A.map(({ component, amount }) => {
           if (typeof component !== 'string') {
@@ -84,27 +81,27 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
               amount: euro(amount),
             });
           } else if (existingComponentsRef.value.indexOf(component) === -1) {
-            const { name, amount } = debt.debtComponents.find(c => c.id === component)
+            const { name, amount } = debt.debtComponents.find(c => c.id === component);
 
             return E.left({
               name,
               amount,
-            })
+            });
           } else {
             return E.right(component);
           }
         }),
         A.separate,
-      )
+      );
 
       newComponentsRef.value = left;
 
       return { left, right };
-    }
+    };
 
     separateComponents();
 
-    let confirm = async () => {
+    const confirm = async () => {
       if (confirmedRef.value) {
         return true;
       }
@@ -112,16 +109,16 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       const confirmed = await showResourceCreationDialog({
         debtCenter: typeof values.center !== 'string' ? values.center.name : null,
         components: pipe(newComponentsRef.value, A.map((c) => c.name)),
-      })
+      });
 
       if (confirmed) {
         confirmedRef.value = true;
       }
 
       return confirmed;
-    }
+    };
 
-    let centerId = typeof values.center === 'string' ? values.center : null
+    let centerId = typeof values.center === 'string' ? values.center : null;
 
     if (centerId === null) {
       if (!await confirm()) {
@@ -132,7 +129,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         name: typeof values.center === 'string' ? '' : values.center.name,
         description: '',
         url: '',
-      })
+      });
 
       if ('data' in result) {
         centerId = result.data.id;
@@ -142,7 +139,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       }
     }
 
-    let { left: newComponents, right: components } = separateComponents()
+    const { left: newComponents, right: components } = separateComponents();
 
     if (newComponents.length > 0) {
       if (!await confirm()) {
@@ -150,14 +147,14 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       }
 
       const createDebtComponentTask = (param: NewDebtComponent) => async () => {
-        const result = await createDebtComponent(param)
+        const result = await createDebtComponent(param);
 
         if ('data' in result) {
           return E.right(result.data);
         } else {
           return E.left(result.error);
         }
-      }
+      };
 
       const result = await pipe(
         newComponents,
@@ -186,12 +183,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       payerId: values.payer,
       centerId,
       components,
-    })
+    });
 
     if ('data' in result) {
-      setLocation(`/admin/debts/${result.data.id}`)
+      setLocation(`/admin/debts/${result.data.id}`);
     }
-  }
+  };
 
   const initialValues = useMemo((): DebtFormValues => {
     if (debt) {
@@ -202,7 +199,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         due_date: dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy'),
         payer: debt.payerId,
         components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value * 100 })),
-      }
+      };
     } else {
       return {
         name: '',
@@ -213,20 +210,20 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         components: [],
       };
     }
-  }, [debt])
+  }, [debt]);
 
   const createCustomPayerOption = useCallback(
     (input) => ({
       type: 'email',
       value: input,
     }),
-    []
-  )
+    [],
+  );
 
   const formatCustomPayerOption = useCallback(
     ({ value }) => value,
-    []
-  )
+    [],
+  );
 
   const payerOptions = useMemo(() => {
     const options = [];
@@ -242,12 +239,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
     if (payers) {
       options.push(...payers.map(payer => ({
         value: payer.id,
-        text: payer.name
+        text: payer.name,
       })));
     }
 
     return options;
-  }, [users])
+  }, [users]);
 
   return (
     <div>
@@ -263,7 +260,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
               url: `/admin/debts/${id}`,
             },
             'Create Debt',
-            'Edit'
+            'Edit',
           ]}
         />
       </h1>
@@ -271,19 +268,19 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         enableReinitialize
         initialValues={initialValues}
         validate={(values) => {
-          const errors = {} as any;
+          const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
           if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
-            errors.due_date = 'Date must be in format <day>.<month>.<year>'
+            errors.due_date = 'Date must be in format <day>.<month>.<year>';
           } else if (!dfns.isMatch(values.due_date, 'dd.MM.yyyy')) {
-            errors.due_date = 'Invalid date'
+            errors.due_date = 'Invalid date';
           }
 
           return errors;
         }}
         onSubmit={handleSubmit}
       >
-        {({ values, submitForm, isSubmitting }) => (
+        {({ submitForm, isSubmitting }) => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
@@ -338,7 +335,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                   component: EuroField,
                   key: 'amount',
                   props: (row) => {
-                    const component = (centerComponents ?? []).find(c => c.id === row.component)
+                    const component = (centerComponents ?? []).find(c => c.id === row.component);
 
                     return {
                       readOnly: typeof row.component === 'string',
@@ -357,4 +354,4 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       </Formik>
     </div>
   );
-}
+};

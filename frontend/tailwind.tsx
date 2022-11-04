@@ -1,20 +1,20 @@
-import { ComponentType, ComponentProps } from "react";
+import React from 'react';
 
 type TailwindComponentProps<
-  C extends string | React.ComponentType<any>,
-  P = React.ComponentPropsWithRef<C extends keyof JSX.IntrinsicElements | React.ComponentType<any> ? C : never>
+  C extends string | React.ComponentType<any>, // eslint-disable-line
+  P = React.ComponentPropsWithRef<C extends keyof JSX.IntrinsicElements | React.ComponentType<any> ? C : never> // eslint-disable-line
   > = P
 
 type TailwindProxy = {
-  [K in keyof JSX.IntrinsicElements]: (className: TemplateStringsArray) => ComponentType<TailwindComponentProps<K>>
+  [K in keyof JSX.IntrinsicElements]: (className: TemplateStringsArray) => React.FC<TailwindComponentProps<K>>
 }
 
 export const tw: TailwindProxy = new Proxy({}, {
-  get(target, prop, receiver) {
-    return (className) => (props) => {
-      const Component = prop;
+  get: <P extends keyof JSX.IntrinsicElements>(_target: TailwindProxy, prop: P) => {
+    return (className: string) => (props: JSX.IntrinsicElements[P]) => { // eslint-disable-line
+      const Component: string = prop;
 
-      return <Component {...props} className={`${className} ${props.className}`} />;
+      return <Component {...Object.assign({}, props, { className: `${className} ${props.className}` })} />;
     };
-  }
-});
+  },
+}) as any; // eslint-disable-line

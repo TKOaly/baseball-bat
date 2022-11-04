@@ -1,13 +1,17 @@
-import { createSelector } from "@reduxjs/toolkit";
-import { format, parseISO } from "date-fns";
-import { useEffect } from "react";
-import { formatEuro } from "../../common/currency";
-import transactionsApi from "../api/banking/transactions";
-import debtApi from "../api/debt";
-import debtCentersApi from "../api/debt-centers";
-import payersApi from "../api/payers";
-import paymentsApi from "../api/payments";
-import { useAppSelector, useAppDispatch } from "../store";
+import { createSelector } from '@reduxjs/toolkit';
+import { format } from 'date-fns';
+import { useEffect } from 'react';
+import { formatEuro } from '../../common/currency';
+import { Payment } from '../../common/types';
+import debtApi from '../api/debt';
+import debtCentersApi from '../api/debt-centers';
+import payersApi from '../api/payers';
+import paymentsApi from '../api/payments';
+import { useAppSelector, useAppDispatch } from '../store';
+
+const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string } } => {
+  return p.type === 'invoice' && 'reference_number' in p.data;
+};
 
 const selectResourceDetails = createSelector(
   [
@@ -16,8 +20,8 @@ const selectResourceDetails = createSelector(
     (_state, _type, id: string) => id,
   ],
   (state, type, id) => {
-    let name: string
-    let details = []
+    let name: string;
+    const details = [];
 
     if (type === 'debt') {
       const debt = debtApi.endpoints.getDebt.select(id)(state);
@@ -26,11 +30,11 @@ const selectResourceDetails = createSelector(
         return null;
       }
 
-      name = debt.data.name
+      name = debt.data.name;
 
       details.push(
-        ['Created', format(parseISO(debt.data.createdAt), 'dd.MM.yyyy')],
-        ['Due date', format(parseISO(debt.data.dueDate), 'dd.MM.yyyy')],
+        ['Created', format(debt.data.createdAt, 'dd.MM.yyyy')],
+        ['Due date', format(debt.data.dueDate, 'dd.MM.yyyy')],
         ['Payer', debt.data.payer.name],
         ['Amount', formatEuro(debt.data.total)],
       );
@@ -45,13 +49,13 @@ const selectResourceDetails = createSelector(
         ['Member', payer.data.tkoalyUserId?.value ? 'Yes' : 'No'],
         ...payer.data.emails.map(({ email }) => ['Email', email]),
       );
-      name = payer.data?.name
+      name = payer.data?.name;
     } else if (type === 'debt_center') {
       const debt_center = debtCentersApi.endpoints.getDebtCenter.select(id)(state);
-      name = debt_center.data?.name
+      name = debt_center.data?.name;
     } else if (type === 'payment') {
       const payment = paymentsApi.endpoints.getPayment.select(id)(state);
-      name = payment.data?.title
+      name = payment.data?.title;
 
       if (!payment.data) {
         return null;
@@ -59,8 +63,8 @@ const selectResourceDetails = createSelector(
 
       details.push(['Number', payment.data.payment_number]);
 
-      if ('reference_number' in payment.data.data) {
-        details.push(['Reference', (payment.data.data as any).reference_number]);
+      if (isPaymentInvoice(payment.data)) {
+        details.push(['Reference', payment.data.data.reference_number]);
       }
     } else {
       return null;
@@ -73,7 +77,7 @@ const selectResourceDetails = createSelector(
       details,
     };
   },
-)
+);
 
 export const useFetchResourceDetails = (type: string, id: string, skip = false) => {
   const dispatch = useAppDispatch();
@@ -94,6 +98,6 @@ export const useFetchResourceDetails = (type: string, id: string, skip = false) 
     }
   }, [type, id, skip]);
 
-  return useAppSelector((state) => selectResourceDetails(state, type, id))
-}
+  return useAppSelector((state) => selectResourceDetails(state, type, id));
+};
 

@@ -1,21 +1,30 @@
-import { useRef, useState } from "react";
-import { ChevronDown } from "react-feather";
-import { usePopperTooltip } from "react-popper-tooltip";
-import { useOutsideEventListener } from '../hooks/useOutsideEventListener'
+import { useRef, useState } from 'react';
+import { ChevronDown } from 'react-feather';
+import { usePopperTooltip } from 'react-popper-tooltip';
+import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
-export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, showArrow = true, options, onSelect, ...props }) => {
-  const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'bottom-end', trigger: 'click', offset: [0, 0] })
-  const [open, setOpen] = useState(false)
-  const dropdownRef = useRef()
+type DropdownProps = {
+  label?: string
+  scroll?: boolean
+  renderTrigger?: (arg: any, arg2: { label: string | null, open: boolean }) => React.ReactNode // eslint-disable-line
+  showArrow?: boolean
+  options: any[] // eslint-disable-line
+  onSelect?: (value: string) => void
+}
 
-  useOutsideEventListener(dropdownRef, 'click', open, () => open && setOpen(false))
+export const Dropdown = <P extends DropdownProps>({ label = null, scroll = false, renderTrigger = null, showArrow = true, options, onSelect, ...props }: P) => {
+  const { visible, getTooltipProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'bottom-end', trigger: 'click', offset: [0, 0] });
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef();
+
+  useOutsideEventListener(dropdownRef, 'click', open, () => open && setOpen(false));
 
   const customTrigger = renderTrigger?.({
     onClick: (e) => {
       setOpen(!open);
       e.stopPropagation();
     },
-    className: "text-sm text-gray-500 cursor-pointer",
+    className: 'text-sm text-gray-500 cursor-pointer',
     ref: setTriggerRef,
   }, { label, open });
 
@@ -39,7 +48,7 @@ export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, s
                 marginLeft: '0.33em',
                 strokeWidth: '2px',
                 transform: visible ? 'rotate(180deg)' : 'rotate(0deg)',
-                transitionDuration: '200ms'
+                transitionDuration: '200ms',
               }}
             />
           )}
@@ -66,28 +75,28 @@ export const Dropdown = ({ label = null, scroll = false, renderTrigger = null, s
         })}
       >
         <ul className="py-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownDefault">
-          {(options ?? []).map(option => {
+          {(options ?? []).map((option, i) => {
             if (option.divider) {
               return (
-                <li className="h-[1px] bg-gray-200 my-1"></li>
-              )
+                <li className="h-[1px] bg-gray-200 my-1" key={i}></li>
+              );
             }
 
             return (
-              <li>
+              <li key={option.value}>
                 <button
                   onClick={(evt) => {
                     evt.stopPropagation();
-                    onSelect?.(option.value)
-                    option.onSelect?.()
-                    setOpen(false)
+                    onSelect?.(option.value);
+                    option.onSelect?.();
+                    setOpen(false);
                   }}
                   className="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                 >
                   {option.text}
                 </button>
               </li>
-            )
+            );
           })}
         </ul>
       </div>

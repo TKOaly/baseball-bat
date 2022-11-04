@@ -1,15 +1,15 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button, SecondaryButton } from '../../components/button'
-import { TextField } from '../../components/text-field'
-import { DateField } from '../../components/datetime-field'
-import { InputGroup } from '../input-group'
-import { Formik } from 'formik'
-import { uniqBy } from 'remeda'
-import { Debt } from '../../../common/types'
-import { useMemo } from 'react'
-import * as dfns from 'date-fns'
-import { useUpdateMultipleDebtsMutation } from '../../api/debt'
-import { ResourceSelectField } from '../resource-select-field'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button } from '../../components/button';
+import { TextField } from '../../components/text-field';
+import { DateField } from '../../components/datetime-field';
+import { InputGroup } from '../input-group';
+import { Formik } from 'formik';
+import { uniqBy } from 'remeda';
+import { Debt } from '../../../common/types';
+import { useMemo } from 'react';
+import * as dfns from 'date-fns';
+import { useUpdateMultipleDebtsMutation } from '../../api/debt';
+import { ResourceSelectField } from '../resource-select-field';
 
 type Props = {
   onClose: () => void,
@@ -23,19 +23,19 @@ type FormValues = {
 }
 
 export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
-  const [updateMultipleDebtsMutation] = useUpdateMultipleDebtsMutation()
+  const [updateMultipleDebtsMutation] = useUpdateMultipleDebtsMutation();
 
   const initialValues = useMemo<FormValues>(() => {
-    const names = uniqBy(debts, d => d.name)
-    const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'))
-    const debtCenters = uniqBy(debts, d => d.debtCenterId)
+    const names = uniqBy(debts, d => d.name);
+    const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'));
+    const debtCenters = uniqBy(debts, d => d.debtCenterId);
 
     return {
       name: names.length === 1 ? names[0].name : '',
       dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
       debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
-    }
-  }, [debts])
+    };
+  }, [debts]);
 
   const onSubmit = async (values: FormValues) => {
     const res = await updateMultipleDebtsMutation({
@@ -50,7 +50,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
     if ('data' in res) {
       onClose();
     }
-  }
+  };
 
   return (
     <Formik
@@ -94,5 +94,5 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         </DialogBase>
       )}
     </Formik>
-  )
-}
+  );
+};

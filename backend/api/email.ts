@@ -1,27 +1,27 @@
-import { Inject, Service } from "typedi"
-import { route, router } from "typera-express"
-import { notFound, ok } from "typera-express/response"
-import { AuthService } from "../auth-middleware"
-import { EmailService } from "../services/email"
-import { validateBody } from "../validate-middleware"
-import * as t from 'io-ts'
+import { Inject, Service } from 'typedi';
+import { route, router } from 'typera-express';
+import { notFound, ok } from 'typera-express/response';
+import { AuthService } from '../auth-middleware';
+import { EmailService } from '../services/email';
+import { validateBody } from '../validate-middleware';
+import * as t from 'io-ts';
 
 @Service()
 export class EmailApi {
   @Inject(() => EmailService)
-  emailService: EmailService
+    emailService: EmailService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   private getEmails() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async () => {
         const emails = await this.emailService.getEmails();
-        return ok(emails)
-      })
+        return ok(emails);
+      });
   }
 
   private getEmail() {
@@ -30,8 +30,8 @@ export class EmailApi {
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
         const email = await this.emailService.getEmail(ctx.routeParams.id);
-        return ok(email)
-      })
+        return ok(email);
+      });
   }
 
   private renderEmail() {
@@ -41,13 +41,13 @@ export class EmailApi {
         const email = await this.emailService.getEmail(ctx.routeParams.id);
 
         if (!email) {
-          return notFound()
+          return notFound();
         }
 
-        ctx.res.setHeader('Content-Security-Policy', "frame-ancestors 'self'")
+        ctx.res.setHeader('Content-Security-Policy', 'frame-ancestors \'self\'');
 
         return ok(email.html ?? email.text);
-      })
+      });
   }
 
   private sendEmails() {
@@ -58,10 +58,10 @@ export class EmailApi {
       .handler(async ({ body }) => {
         await Promise.all(body.ids.map(async (id) => {
           await this.emailService.sendEmail(id);
-        }))
+        }));
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   router() {
@@ -70,6 +70,6 @@ export class EmailApi {
       this.getEmail(),
       this.renderEmail(),
       this.sendEmails(),
-    )
+    );
   }
 }

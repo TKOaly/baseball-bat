@@ -1,12 +1,12 @@
-import { useGetEmailsQuery, useSendEmailsMutation } from '../../api/email'
-import { TableView } from '../../components/table-view'
-import { useLocation } from 'wouter'
-import { format } from 'date-fns'
+import { useGetEmailsQuery, useSendEmailsMutation } from '../../api/email';
+import { TableView } from '../../components/table-view';
+import { useLocation } from 'wouter';
+import { format } from 'date-fns';
 
 export const EmailsListing = () => {
-  const [, setLocation] = useLocation()
-  const { data: emails } = useGetEmailsQuery(null)
-  const [sendEmails] = useSendEmailsMutation()
+  const [, setLocation] = useLocation();
+  const { data: emails } = useGetEmailsQuery(null);
+  const [sendEmails] = useSendEmailsMutation();
 
   return (
     <>
@@ -17,7 +17,7 @@ export const EmailsListing = () => {
         columns={[
           {
             name: 'Recipient',
-            getValue: 'recipient'
+            getValue: 'recipient',
           },
           {
             name: 'Subject',
@@ -41,7 +41,7 @@ export const EmailsListing = () => {
               }
 
               return 'Pending';
-            }
+            },
           },
         ]}
         selectable={true}
@@ -50,12 +50,12 @@ export const EmailsListing = () => {
             key: 'send',
             text: 'Send',
             onSelect: async (emails) => {
-              await sendEmails(emails.map(e => e.id))
+              await sendEmails(emails.map(e => e.id));
             },
-          }
+          },
         ]}
         onRowClick={(row) => setLocation(`/admin/emails/${row.id}`)}
       />
     </>
   );
-}
+};

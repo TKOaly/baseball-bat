@@ -1,17 +1,8 @@
-import { createSelector } from "@reduxjs/toolkit"
-import { format, parseISO } from "date-fns"
-import { useEffect, useState } from "react"
-import debtApi from "../api/debt"
-import debtCentersApi from "../api/debt-centers"
-import payersApi from "../api/payers"
-import paymentsApi from "../api/payments"
-import { useAppDispatch, useAppSelector } from "../store"
-import { useDialog } from "./dialog"
-import { GlobalSearchDialog } from "./dialogs/global-search-dialog"
+import { useDialog } from './dialog';
+import { GlobalSearchDialog } from './dialogs/global-search-dialog';
 import 'react-popper-tooltip/dist/styles.css';
-import { usePopperTooltip } from 'react-popper-tooltip'
-import { formatEuro } from "../../common/currency"
-import { useFetchResourceDetails } from "../hooks/use-fetch-resource-details"
+import { usePopperTooltip } from 'react-popper-tooltip';
+import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
 
 export type Props = {
   type?: string,
@@ -21,21 +12,21 @@ export type Props = {
 }
 
 export const ResourceSelectField = (props: Props) => {
-  const showSearchDialog = useDialog(GlobalSearchDialog)
-  const selected = props.value
-  const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'top', delayShow: 300, offset: [0, 0] })
-  const resourceDetails = useFetchResourceDetails(selected?.type, selected?.id, !selected)
+  const showSearchDialog = useDialog(GlobalSearchDialog);
+  const selected = props.value;
+  const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'top', delayShow: 300, offset: [0, 0] });
+  const resourceDetails = useFetchResourceDetails(selected?.type, selected?.id, !selected);
 
   const handleOpen = async () => {
     const result = await showSearchDialog({
       type: props.type,
       title: props.type ? `Select a ${props.type.replace('_', ' ')}` : 'Select a resource',
-    })
+    });
 
     if (result !== null) {
       props?.onChange?.({ target: { value: result, name: props.name } }, result);
     }
-  }
+  };
 
   return (
     <div>
@@ -69,7 +60,7 @@ export const ResourceSelectField = (props: Props) => {
               </tr>
               {
                 (resourceDetails.details ?? []).map(([label, value]) => (
-                  <tr>
+                  <tr key={label}>
                     <th className="text-left text-gray-700 pr-2">{label}</th>
                     <td>{value}</td>
                   </tr>
@@ -83,5 +74,5 @@ export const ResourceSelectField = (props: Props) => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};

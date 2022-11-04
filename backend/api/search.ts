@@ -1,9 +1,9 @@
-import { route, router } from "typera-express"
-import sql from 'sql-template-strings'
-import { PgClient } from "../db"
-import { AuthService } from "../auth-middleware"
-import { Inject, Service } from "typedi"
-import { ok } from "typera-express/response"
+import { route, router } from 'typera-express';
+import sql from 'sql-template-strings';
+import { PgClient } from '../db';
+import { AuthService } from '../auth-middleware';
+import { Inject, Service } from 'typedi';
+import { ok } from 'typera-express/response';
 
 export type ResultRow = {
   type: 'payer' | 'debt' | 'debt_center'
@@ -13,17 +13,17 @@ export type ResultRow = {
 @Service()
 export class SearchApi {
   @Inject(() => PgClient)
-  pg: PgClient
+    pg: PgClient;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   private search() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const { term, type } = ctx.req.query
+        const { term, type } = ctx.req.query;
 
         const results = await this.pg.any<ResultRow>(sql`
           SELECT *
@@ -40,6 +40,6 @@ export class SearchApi {
   router() {
     return router(
       this.search(),
-    )
+    );
   }
 }

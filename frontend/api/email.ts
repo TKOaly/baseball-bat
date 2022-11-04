@@ -1,5 +1,5 @@
-import rtkApi from './rtk-api'
-import { Email } from '../../common/types'
+import rtkApi from './rtk-api';
+import { Email } from '../../common/types';
 
 const emailApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -8,7 +8,7 @@ const emailApi = rtkApi.injectEndpoints({
       providesTags: (result) => [
         { type: 'Email' as const, id: 'LIST' },
         ...result.map((email) => ({ type: 'Email' as const, id: email.id })),
-      ]
+      ],
     }),
 
     getEmail: builder.query<Email, string>({
@@ -25,13 +25,13 @@ const emailApi = rtkApi.injectEndpoints({
       invalidatesTags: (_result, _error, ids) => [
         { type: 'Email' as const, id: 'LIST' },
         ...ids.map((id) => ({ type: 'Email' as const, id })),
-      ]
-    })
-  })
-})
+      ],
+    }),
+  }),
+});
 
 export const {
   useGetEmailsQuery,
   useGetEmailQuery,
   useSendEmailsMutation,
-} = emailApi
+} = emailApi;

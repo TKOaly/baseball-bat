@@ -1,20 +1,19 @@
-import React from 'react'
-import { Formik } from 'formik'
-import { Session } from '../../common/types'
-import { DropdownField } from '../components/dropdown-field'
-import { TabularFieldListFormik } from '../components/tabular-field-list'
-import { TextField } from '../components/text-field'
-import { InputGroup } from '../components/input-group'
-import { useTranslation } from 'react-i18next'
-import { useGetPayerEmailsQuery, useUpdatePayerEmailsMutation, useUpdatePayerPreferencesMutation } from '../api/payers'
-import { useAppSelector } from '../store'
+import React from 'react';
+import { Formik } from 'formik';
+import { DropdownField } from '../components/dropdown-field';
+import { TabularFieldListFormik } from '../components/tabular-field-list';
+import { TextField } from '../components/text-field';
+import { InputGroup } from '../components/input-group';
+import { useTranslation } from 'react-i18next';
+import { useGetPayerEmailsQuery, useUpdatePayerEmailsMutation, useUpdatePayerPreferencesMutation } from '../api/payers';
+import { useAppSelector } from '../store';
 
 export const Settings = () => {
-  const { t } = useTranslation([], { keyPrefix: 'settings' })
-  const [updatePreferences] = useUpdatePayerPreferencesMutation()
-  const [updatePayerEmails] = useUpdatePayerEmailsMutation()
-  const session = useAppSelector((state) => state.session)
-  const { data, isLoading } = useGetPayerEmailsQuery(session.payerId, { skip: !session.payerId })
+  const { t } = useTranslation([], { keyPrefix: 'settings' });
+  const [updatePreferences] = useUpdatePayerPreferencesMutation();
+  const [updatePayerEmails] = useUpdatePayerEmailsMutation();
+  const session = useAppSelector((state) => state.session);
+  const { data } = useGetPayerEmailsQuery(session.payerId, { skip: !session.payerId });
 
   return (
     <div>
@@ -32,12 +31,12 @@ export const Settings = () => {
               uiLanguage: values.uiLanguage,
               emailLanguage: values.emailLanguage,
             },
-          })
+          });
 
           await updatePayerEmails({
             payerId: 'me',
             emails: values.emails,
-          })
+          });
         }}
       >
         {({ submitForm, isSubmitting }) => (
@@ -94,5 +93,5 @@ export const Settings = () => {
         )}
       </Formik>
     </div>
-  )
-}
+  );
+};

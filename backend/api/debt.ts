@@ -1,59 +1,54 @@
-import { Router, route, router, Route, Response, Middleware } from 'typera-express'
-import { AuthService } from '../auth-middleware'
-import { CreateDebtOptions, DebtService } from '../services/debt'
-import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response'
-import { validate, v4 as uuidv4 } from 'uuid'
-import { Inject, Service } from 'typedi'
-import { Config } from '../config'
-import { DebtCentersService } from '../services/debt_centers'
-import { Type, TypeOf } from 'io-ts'
-import * as t from 'io-ts'
-import { convertToDbDate, DateString, dateString, dbDateString, DbDateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, NewDebt, PayerProfile, tkoalyIdentity } from '../../common/types'
-import { PayerService } from '../services/payer'
-import { validateBody } from '../validate-middleware'
-import { PaymentService } from '../services/payements'
-import { EmailService } from '../services/email'
-import { parse, format, addDays, isMatch, parseISO, isPast } from 'date-fns'
-import { split } from 'fp-ts/lib/string'
-import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
-import { flow, pipe } from 'fp-ts/lib/function'
-import * as E from 'fp-ts/lib/Either'
-import * as A from 'fp-ts/lib/Array'
-import * as TE from 'fp-ts/lib/TaskEither'
-import * as T from 'fp-ts/lib/Task'
-import * as S from 'fp-ts/lib/string'
-import { concatAll } from 'fp-ts/lib/Monoid'
-import { Either, foldW } from 'fp-ts/lib/Either'
-import { euroValue } from '../../common/currency'
-import { UsersService } from '../services/users'
-import { uniqBy } from 'remeda'
-import * as EQ from 'fp-ts/lib/Eq'
-import { RedisClientType } from 'redis'
+import { Router, route, router } from 'typera-express';
+import { AuthService } from '../auth-middleware';
+import { CreateDebtOptions, DebtService } from '../services/debt';
+import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response';
+import { validate, v4 as uuidv4 } from 'uuid';
+import { Inject, Service } from 'typedi';
+import { Config } from '../config';
+import { DebtCentersService } from '../services/debt_centers';
+import { Type } from 'io-ts';
+import * as t from 'io-ts';
+import { convertToDbDate, dateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, NewDebt, PayerProfile, tkoalyIdentity } from '../../common/types';
+import { PayerService } from '../services/payer';
+import { validateBody } from '../validate-middleware';
+import { PaymentService } from '../services/payements';
+import { EmailService } from '../services/email';
+import { parse, parseISO } from 'date-fns';
+import { pipe } from 'fp-ts/lib/function';
+import * as E from 'fp-ts/lib/Either';
+import * as A from 'fp-ts/lib/Array';
+import * as TE from 'fp-ts/lib/TaskEither';
+import * as T from 'fp-ts/lib/Task';
+import * as S from 'fp-ts/lib/string';
+import { euroValue } from '../../common/currency';
+import { UsersService } from '../services/users';
+import * as EQ from 'fp-ts/lib/Eq';
+import { RedisClientType } from 'redis';
 
 const debtCenter = t.type({
   name: t.string,
   url: t.string,
-  description: t.string
-})
+  description: t.string,
+});
 
 const newOrExisting = <T>(type: Type<T>) => t.union([
   type,
   t.type({
     id: t.string,
-  })
-])
+  }),
+]);
 
 const payerIdentity = t.union([
   t.type({ type: t.literal('tkoaly'), value: t.number }),
   t.type({ type: t.literal('email'), value: t.string }),
   t.type({ type: t.literal('internal'), value: t.string }),
-])
+]);
 
 const debtComponent = t.type({
   name: t.string,
   amount: t.number,
   description: t.string,
-})
+});
 
 const createDebtPayload = t.type({
   name: t.string,
@@ -62,38 +57,36 @@ const createDebtPayload = t.type({
   description: t.string,
   components: t.array(newOrExisting(debtComponent)),
   due_date: dateString,
-})
-
-type CreateDebtPayload = TypeOf<typeof createDebtPayload>
+});
 
 @Service()
 export class DebtApi {
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   @Inject('redis')
-  redis: RedisClientType
+    redis: RedisClientType;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => UsersService)
-  usersService: UsersService
+    usersService: UsersService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService
+    debtCentersService: DebtCentersService;
 
   @Inject(() => EmailService)
-  emailService: EmailService
+    emailService: EmailService;
 
   private createDebtComponent() {
     return route
@@ -102,7 +95,7 @@ export class DebtApi {
       .handler(async (ctx) => {
         const component = await this.debtService.createDebtComponent(ctx.req.body);
         return ok(component);
-      })
+      });
   }
 
   private getDebt() {
@@ -113,15 +106,15 @@ export class DebtApi {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
-          return notFound()
+          return notFound();
         }
 
         if (ctx.session.accessLevel === 'normal' && debt.payerId.value !== ctx.session.payerId) {
-          return unauthorized()
+          return unauthorized();
         }
 
         return ok(debt);
-      })
+      });
   }
 
   private getDebts() {
@@ -131,7 +124,7 @@ export class DebtApi {
       .handler(async () => {
         const debts = await this.debtService.getDebts();
         return ok(debts);
-      })
+      });
   }
 
   private getDebtsByPayment() {
@@ -142,16 +135,16 @@ export class DebtApi {
         const payment = await this.paymentService.getPayment(ctx.routeParams.id);
 
         if (!payment) {
-          return notFound()
+          return notFound();
         }
 
         if (ctx.session.accessLevel != 'admin' && payment.payer_id !== ctx.session.payerId) {
-          return unauthorized()
+          return unauthorized();
         }
 
         const debts = await this.debtService.getDebtsByPayment(payment.id);
         return ok(debts);
-      })
+      });
   }
 
   private publishDebts() {
@@ -164,13 +157,13 @@ export class DebtApi {
           const debt = await this.debtService.getDebt(id);
 
           if (!debt) {
-            return Promise.reject('No such debt')
+            return Promise.reject('No such debt');
           }
 
-          const email = await this.payerService.getPayerPrimaryEmail(debt.payerId)
+          const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
 
           if (!email) {
-            return Promise.reject('No email for payer found')
+            return Promise.reject('No email for payer found');
           }
 
           await this.debtService.publishDebt(id);
@@ -202,11 +195,11 @@ export class DebtApi {
           }
 
           return;
-        }))
+        }));
 
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   private createDebt() {
@@ -215,18 +208,18 @@ export class DebtApi {
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(createDebtPayload))
       .handler(async (ctx) => {
-        const payload = ctx.body
+        const payload = ctx.body;
 
-        const payer = await this.payerService.getOrCreatePayerProfileForIdentity(payload.payer, ctx.req.cookies.token)
+        const payer = await this.payerService.getOrCreatePayerProfileForIdentity(payload.payer, ctx.req.cookies.token);
 
         if (!payer) {
-          throw new Error('Could not find or create a payer profile for the payer')
+          throw new Error('Could not find or create a payer profile for the payer');
         }
 
-        let centerId: string
+        let centerId: string;
 
         if (typeof payload.center === 'string') {
-          centerId = payload.center
+          centerId = payload.center;
         } else {
           const center = await this.debtCentersService.createDebtCenter({
             name: payload.center.name,
@@ -235,10 +228,10 @@ export class DebtApi {
           });
 
           if (!center) {
-            throw new Error('Failed to create a new debt center')
+            throw new Error('Failed to create a new debt center');
           }
 
-          centerId = center.id
+          centerId = center.id;
         }
 
         const componentIds = await Promise.all(
@@ -255,12 +248,12 @@ export class DebtApi {
               });
 
               return createdComponent.id;
-            })
-        )
-        const dueDate = convertToDbDate(payload.due_date)
+            }),
+        );
+        const dueDate = convertToDbDate(payload.due_date);
 
         if (!dueDate) {
-          return internalServerError('Date conversion error')
+          return internalServerError('Date conversion error');
         }
 
         const debt = await this.debtService.createDebt({
@@ -273,7 +266,7 @@ export class DebtApi {
         });
 
         return ok(debt);
-      })
+      });
   }
 
   private updateMultipleDebts() {
@@ -301,8 +294,8 @@ export class DebtApi {
             dueDate: ctx.body.values.dueDate === undefined ? undefined : parseISO(ctx.body.values.dueDate),
             payerId: ctx.body.values.payerId,
             components: ctx.body.values.components ?? [],
-          })
-        }
+          });
+        };
 
         return pipe(
           ctx.body.debts,
@@ -311,8 +304,8 @@ export class DebtApi {
             () => badRequest(),
             (debts) => ok(debts),
           )),
-        )()
-      })
+        )();
+      });
   }
 
   private updateDebt() {
@@ -336,16 +329,16 @@ export class DebtApi {
           dueDate: ctx.body.dueDate === undefined ? undefined : parseISO(ctx.body.dueDate),
           payerId: ctx.body.payerId,
           components: ctx.body.components ?? [],
-        })
+        });
 
         return pipe(
           updated,
           E.foldW(
             () => badRequest(),
             (debt) => ok(debt),
-          )
-        )
-      })
+          ),
+        );
+      });
   }
 
   private getPaymentsContainingDebt() {
@@ -353,20 +346,20 @@ export class DebtApi {
       .get('/:id/payments')
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
       .handler(async (ctx) => {
-        const debt = await this.debtService.getDebt(ctx.routeParams.id)
+        const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
-          return notFound()
+          return notFound();
         }
 
         if (ctx.session.accessLevel === 'normal' && debt.payerId.value !== ctx.session.payerId) {
-          return unauthorized()
+          return unauthorized();
         }
 
-        const payments = await this.paymentService.getPaymentsContainingDebt(ctx.routeParams.id)
+        const payments = await this.paymentService.getPaymentsContainingDebt(ctx.routeParams.id);
 
-        return ok(payments)
-      })
+        return ok(payments);
+      });
   }
 
   private massCreateDebts() {
@@ -384,13 +377,13 @@ export class DebtApi {
       }
 
       if (email) {
-        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email))
+        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email));
 
         if (payer) {
           return payer;
         }
 
-        const user = await this.usersService.getUpstreamUserByEmail(email, token)
+        const user = await this.usersService.getUpstreamUserByEmail(email, token);
 
         if (user) {
           if (dryRun) {
@@ -404,9 +397,9 @@ export class DebtApi {
               updatedAt: new Date(),
               stripeCustomerId: '',
               disabled: false,
-            }
+            };
           } else {
-            return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token)
+            return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token);
           }
         }
 
@@ -421,16 +414,16 @@ export class DebtApi {
               emails: [],
               stripeCustomerId: '',
               disabled: false,
-            }
+            };
           } else {
-            let payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name })
-            return payer
+            const payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name });
+            return payer;
           }
         }
       }
 
       return null;
-    }
+    };
 
     const resolveDebtCenter = async (debtCenter: string, dryRun: boolean) => {
       if (validate(debtCenter)) {
@@ -438,10 +431,10 @@ export class DebtApi {
         return byId;
       }
 
-      const byName = await this.debtCentersService.getDebtCenterByName(debtCenter)
+      const byName = await this.debtCentersService.getDebtCenterByName(debtCenter);
 
       if (byName) {
-        return byName
+        return byName;
       }
 
       if (dryRun) {
@@ -452,15 +445,15 @@ export class DebtApi {
           url: '',
           createdAt: new Date(),
           updatedAt: new Date(),
-        }
+        };
       } else {
         return await this.debtCentersService.createDebtCenter({
           name: debtCenter,
           description: '',
           url: '',
-        })
+        });
       }
-    }
+    };
 
     return route
       .post('/mass-create')
@@ -498,7 +491,7 @@ export class DebtApi {
         dryRun: t.boolean,
       })))
       .handler(async (ctx) => {
-        const { debts, defaults, dryRun, components } = ctx.body
+        const { debts, defaults, dryRun, components } = ctx.body;
 
         const progressId = uuidv4();
 
@@ -509,90 +502,90 @@ export class DebtApi {
             message,
             result,
           }));
-        }
+        };
 
         updateProgress(0, 'Starting...');
 
         (async () => {
           try {
             const handleDebt = async (debt: typeof debts[0], index: number) => {
-              const details = { ...defaults, ...debt }
+              const details = { ...defaults, ...debt };
 
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving payer...`)
+              updateProgress(index + 1, `Debt ${index + 1}: Resolving payer...`);
 
-              const payer = await resolvePayer(details, ctx.req.cookies.token, dryRun)
+              const payer = await resolvePayer(details, ctx.req.cookies.token, dryRun);
 
               if (!payer && !details.email) {
-                return Promise.reject({ debtIndex: index, error: 'NO_PAYER_OR_EXPLICIT_EMAIL' })
+                return Promise.reject({ debtIndex: index, error: 'NO_PAYER_OR_EXPLICIT_EMAIL' });
               }
 
-              let email = details.email
-              let emailSource = 'explicit'
+              let email = details.email;
+              let emailSource = 'explicit';
 
               if (!email && payer) {
-                const primary = await this.payerService.getPayerPrimaryEmail(payer.id)
+                const primary = await this.payerService.getPayerPrimaryEmail(payer.id);
 
                 if (!primary) {
-                  return Promise.reject({ debtIndex: index, error: 'PAYER_HAS_NO_EMAIL' })
+                  return Promise.reject({ debtIndex: index, error: 'PAYER_HAS_NO_EMAIL' });
                 }
 
-                email = primary.email
-                emailSource = 'profile'
+                email = primary.email;
+                emailSource = 'profile';
               }
 
               if (!details.title) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'title' })
+                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'title' });
               }
 
               if (!details.description) {
-                details.description = ''
+                details.description = '';
               }
 
               if (!details.debtCenter) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'debtCenter' })
+                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'debtCenter' });
               }
 
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt center...`)
+              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt center...`);
 
-              const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun)
+              const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun);
 
               if (!debtCenter) {
-                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' })
+                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' });
               }
 
               if (!details.dueDate) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'dueDate' })
+                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'dueDate' });
               }
 
-              let dueDate = convertToDbDate(details.dueDate)
+              const dueDate = convertToDbDate(details.dueDate);
 
               if (!dueDate) {
-                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' })
+                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' });
               }
 
-              let createdDebt: Debt | null = null
-              let debtComponents: Array<DebtComponent> = []
+              let createdDebt: Debt | null = null;
+              let debtComponents: Array<DebtComponent> = [];
 
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt components...`)
+              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt components...`);
 
               if (!dryRun) {
                 if (!payer) {
                   return Promise.reject({
                     debtIndex: index,
                     error: 'NO_PAYER',
-                  })
+                  });
                 }
 
-                const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any)
+                const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any);
 
                 debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
-                  const match = existingDebtComponents.find(ec => ec.name === c)
+                  const match = existingDebtComponents.find(ec => ec.name === c);
 
                   if (match) {
-                    return match
+                    return match;
                   }
 
-                  const componentDetails = components.find(({ name }) => name === c)
+                  const componentDetails = components.find(({ name }) => name === c);
 
                   if (componentDetails) {
                     return await this.debtService.createDebtComponent({
@@ -600,38 +593,38 @@ export class DebtApi {
                       amount: componentDetails.amount,
                       debtCenterId: debtCenter.id,
                       description: c,
-                    })
+                    });
                   }
 
-                  return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' })
-                }))
+                  return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' });
+                }));
 
                 if (details.amount) {
                   const existingBasePrice = existingDebtComponents.find((dc) => {
-                    console.log(dc, details)
+                    console.log(dc, details);
                     return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
-                  })
+                  });
 
                   if (existingBasePrice) {
-                    debtComponents.push(existingBasePrice)
+                    debtComponents.push(existingBasePrice);
                   } else {
                     debtComponents.push(await this.debtService.createDebtComponent({
                       name: 'Base Price',
                       amount: details.amount,
                       debtCenterId: debtCenter.id,
                       description: 'Base Price',
-                    }))
+                    }));
                   }
                 }
 
-                let options: CreateDebtOptions = {}
+                const options: CreateDebtOptions = {};
 
                 if (details.paymentNumber) {
-                  options.paymentNumber = details.paymentNumber
+                  options.paymentNumber = details.paymentNumber;
                 }
 
                 if (details.referenceNumber) {
-                  options.defaultPaymentReferenceNumber = details.referenceNumber
+                  options.defaultPaymentReferenceNumber = details.referenceNumber;
                 }
 
                 const newDebt: NewDebt = {
@@ -641,15 +634,15 @@ export class DebtApi {
                   payer: payer.id,
                   dueDate,
                   components: debtComponents.map(c => c.id),
-                }
+                };
 
                 if (details.date) {
                   newDebt.createdAt = parse(details.date, 'd.M.yyyy', new Date());
                 }
 
-                updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`)
+                updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`);
 
-                createdDebt = await this.debtService.createDebt(newDebt, options)
+                createdDebt = await this.debtService.createDebt(newDebt, options);
               } else {
                 createdDebt = {
                   id: '',
@@ -666,11 +659,11 @@ export class DebtApi {
                   updatedAt: new Date(),
                   debtComponents,
                   credited: false,
-                }
+                };
 
                 if (details.components && details.components.length > 0) {
                   debtComponents = await Promise.all(details.components.map(async (c) => {
-                    const componentDetails = components.find(({ name }) => name === c)
+                    const componentDetails = components.find(({ name }) => name === c);
 
                     if (componentDetails) {
                       return {
@@ -681,18 +674,18 @@ export class DebtApi {
                         debtCenterId: debtCenter.id,
                         createdAt: new Date(),
                         updatedAt: new Date(),
-                      } as DebtComponent
+                      } as DebtComponent;
                     }
 
-                    const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id)
-                    const match = existing.find(ec => ec.name === c)
+                    const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id);
+                    const match = existing.find(ec => ec.name === c);
 
                     if (match) {
-                      return match
+                      return match;
                     }
 
-                    return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' })
-                  }))
+                    return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' });
+                  }));
                 }
 
                 if (details.amount) {
@@ -704,7 +697,7 @@ export class DebtApi {
                     debtCenterId: debtCenter.id,
                     createdAt: new Date(),
                     updatedAt: new Date(),
-                  })
+                  });
                 }
               }
 
@@ -715,25 +708,25 @@ export class DebtApi {
                 debt: createdDebt,
                 components: debtComponents,
                 debtCenter,
-              }
-            }
+              };
+            };
 
             // Run handleDebt sequentically over debts
             const results = await debts.reduce(
               (prev, debt, index) => prev.then(async (results) => [...results, await handleDebt(debt, index)]),
               Promise.resolve([] as Array<Awaited<ReturnType<typeof handleDebt>>>),
-            )
+            );
 
-            updateProgress(debts.length, `Finished!`, results)
+            updateProgress(debts.length, 'Finished!', results);
 
           } catch (e) {
-            console.error(e)
-            updateProgress(debts.length, `Error!`, [])
+            console.error(e);
+            updateProgress(debts.length, 'Error!', []);
           }
-        })()
+        })();
 
-        return ok({ progress: progressId })
-      })
+        return ok({ progress: progressId });
+      });
   }
 
   private massCreateDebtsProgressPoll() {
@@ -741,14 +734,14 @@ export class DebtApi {
       .get('/mass-create/poll/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const progress = await this.redis.get(`mass-import-progress:${ctx.routeParams.id}`)
+        const progress = await this.redis.get(`mass-import-progress:${ctx.routeParams.id}`);
 
         if (progress === null) {
           return notFound();
         }
 
         return ok(JSON.parse(progress));
-      })
+      });
   }
 
   private deleteDebt() {
@@ -758,8 +751,8 @@ export class DebtApi {
       .handler(async (ctx) => {
         await this.debtService.deleteDebt(ctx.routeParams.id);
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   private creditDebt() {
@@ -769,8 +762,8 @@ export class DebtApi {
       .handler(async (ctx) => {
         await this.debtService.creditDebt(ctx.routeParams.id);
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   private markPaidWithCash() {
@@ -781,19 +774,19 @@ export class DebtApi {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
-          return notFound('Debt not found')
+          return notFound('Debt not found');
         }
 
         if (debt.draft) {
-          return badRequest('Cannot mark draft debts as paid')
+          return badRequest('Cannot mark draft debts as paid');
         }
 
         if (debt.credited) {
-          return badRequest('Cannot mark credited debts as paid')
+          return badRequest('Cannot mark credited debts as paid');
         }
 
         if (debt.status === 'paid') {
-          return badRequest('Debt already paid')
+          return badRequest('Debt already paid');
         }
 
         const payment = await this.paymentService.createPayment({
@@ -802,15 +795,15 @@ export class DebtApi {
           message: `Cash payment of debt "${debt.name}"`,
           debts: [debt.id],
           data: {},
-        })
+        });
 
         await this.paymentService.createPaymentEvent(payment.id, {
           type: 'payment',
           amount: await this.debtService.getDebtTotal(debt.id),
-        })
+        });
 
-        return ok(payment)
-      })
+        return ok(payment);
+      });
   }
 
   private sendAllReminders() {
@@ -822,8 +815,8 @@ export class DebtApi {
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const getEmailPayerId = ([_, debt]: [Email, Debt]) => debt.payerId.value
-        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq)
+        const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
+        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
 
         return pipe(
           () => this.debtService.sendAllReminders(!ctx.body.send, ctx.body.ignoreCooldown),
@@ -832,8 +825,8 @@ export class DebtApi {
             payerCount: A.uniq(EmailPayerEq)(right).length,
             errors: left,
           })),
-        )()
-      })
+        )();
+      });
   }
 
   private sendReminder() {
@@ -844,17 +837,17 @@ export class DebtApi {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
-          return notFound('Debt not found')
+          return notFound('Debt not found');
         }
 
         const result = await this.debtService.sendReminder(debt);
 
         if (E.isRight(result)) {
-          return ok(result.right)
+          return ok(result.right);
         } else {
-          return internalServerError(result.left)
+          return internalServerError(result.left);
         }
-      })
+      });
   }
 
   public router(): Router {
@@ -875,6 +868,6 @@ export class DebtApi {
       this.sendReminder(),
       this.updateDebt(),
       this.updateMultipleDebts(),
-    )
+    );
   }
 }

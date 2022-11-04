@@ -7,7 +7,7 @@ export interface Props<V> {
   value: V
 }
 
-export const ButtonGroupSelector = <V extends unknown>({ options, onChange, value }: Props<V>) => {
+export function ButtonGroupSelector<V>({ options, onChange, value }: Props<V>) {
   return (
     <div className="rounded-md border overflow-hidden inline-flex shadow-sm bg-white">
       {
@@ -27,12 +27,13 @@ export const ButtonGroupSelector = <V extends unknown>({ options, onChange, valu
               className={`px-4 py-2 text-gray-700 ${rounding} ${active} text-sm border-r focus:ring-4 cursor-pointer hover:bg-gray-100`}
               onClick={() => onChange(option.value)}
               tabIndex={0}
+              key={option.value}
             >{option.text}</button>
           );
         })
       }
     </div>
   );
-};
+}
 
 

@@ -1,5 +1,5 @@
-import { Circle } from 'react-feather'
-import { formatRelative } from 'date-fns'
+import { Circle } from 'react-feather';
+import { formatRelative } from 'date-fns';
 
 export type TimelineEvent = {
   time: Date,
@@ -15,7 +15,7 @@ export const Timeline = ({ events }: TimelineProps) => {
   return (
     <ul className="px-3">
       {events.map((event, i) => (
-        <li className="flex items-start">
+        <li className="flex items-start" key={String(event.time)}>
           <div className="flex flex-col self-stretch items-center mr-3">
             <div className={`h-8 ${i > 0 ? 'w-0.5 bg-gray-300' : ''}`}></div>
             <Circle className="text-xs text-blue-500 group-hover:text-blue-500" style={{ width: '1em', strokeWidth: '4px' }} />
@@ -34,5 +34,5 @@ export const Timeline = ({ events }: TimelineProps) => {
       ))}
     </ul>
   );
-}
+};
 

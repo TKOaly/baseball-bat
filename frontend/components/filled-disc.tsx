@@ -15,4 +15,4 @@ export const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
     <circle cx="12" cy="12" r="10" />
     <circle cx="12" cy="12" r="3" fill="currentColor" />
   </svg>
-)
+);

@@ -1,4 +1,4 @@
-import rtkApi from '../rtk-api'
+import rtkApi from '../rtk-api';
 
 const accountsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -6,13 +6,13 @@ const accountsApi = rtkApi.injectEndpoints({
       query: () => '/banking/accounts',
       providesTags: [
         { type: 'BankAccount', id: 'LIST' },
-      ]
+      ],
     }),
 
     getBankAccount: builder.query<BankAccount, string>({
       query: (iban) => `/banking/accounts/${iban}`,
       providesTags: ({ iban }) => [
-        { type: 'BankAccount', id: iban }
+        { type: 'BankAccount', id: iban },
       ],
     }),
 
@@ -22,10 +22,10 @@ const accountsApi = rtkApi.injectEndpoints({
         url: '/banking/accounts',
         body: account,
       }),
-      invalidatesTags: (account) => [
+      invalidatesTags: () => [
         { type: 'BankAccount', id: 'LIST' },
       ],
-    })
+    }),
   }),
 });
 
@@ -33,4 +33,4 @@ export const {
   useGetBankAccountsQuery,
   useGetBankAccountQuery,
   useCreateBankAccountMutation,
-} = accountsApi
+} = accountsApi;

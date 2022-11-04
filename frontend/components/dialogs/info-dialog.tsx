@@ -1,5 +1,5 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button } from '../../components/button'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button } from '../../components/button';
 
 export const InfoDialog = ({ onClose, title, content }) => {
   return (
@@ -12,5 +12,5 @@ export const InfoDialog = ({ onClose, title, content }) => {
         <Button onClick={() => onClose()}>Close</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};

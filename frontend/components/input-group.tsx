@@ -1,17 +1,19 @@
-import { useField } from 'formik'
-import { ComponentProps, ComponentType, JSXElementConstructor } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-export type Props<C extends JSXElementConstructor<any>> = {
+import { useField } from 'formik';
+import { ComponentProps, ComponentType } from 'react';
+
+export type Props<C extends ComponentType<any>> = { // eslint-disable-line
   component: ComponentType<C>,
   label: string,
   fullWidth?: boolean,
   name: string
 } & ComponentProps<C>
 
-export const InputGroup = <C extends JSXElementConstructor<any>>({ component, fullWidth, label, ...props }: Props<C>) => {
-  const [field, meta] = useField(props.name)
+export const InputGroup = <C extends ComponentType<any>>({ component, fullWidth, label, ...props }: Props<C>) => {
+  const [field, meta] = useField(props.name);
 
-  const Component = component as any
+  const Component = component;
 
   return (
     <div className={`flex flex-col ${fullWidth && 'col-span-full'} my-4`}>
@@ -22,10 +24,10 @@ export const InputGroup = <C extends JSXElementConstructor<any>>({ component, fu
       {meta.error && typeof meta.error === 'string' && <span className="text-xs text-red-600 mt-1">{'' + meta.error}</span>}
     </div>
   );
-}
+};
 
-export const StandaloneInputGroup = <C extends JSXElementConstructor<any>>({ component, fullWidth, label, error, ...props }: Props<C> & { error?: string }) => {
-  const Component = component as any
+export const StandaloneInputGroup = <C extends ComponentType<any>>({ component, fullWidth, label, error, ...props }: Props<C> & { error?: string }) => {
+  const Component = component;
 
   return (
     <div className={`flex flex-col ${fullWidth && 'col-span-full'} my-4`}>
@@ -36,4 +38,4 @@ export const StandaloneInputGroup = <C extends JSXElementConstructor<any>>({ com
       {error && typeof error === 'string' && <span className="text-xs text-red-600 mt-1">{'' + error}</span>}
     </div>
   );
-}
+};

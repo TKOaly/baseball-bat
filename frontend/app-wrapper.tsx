@@ -1,42 +1,41 @@
-import React, { Suspense, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Provider } from 'react-redux'
-import { NewPayment } from './views/new-payment'
-import { store, useAppDispatch, useAppSelector } from './store'
-import { PaymentSelectionSidebar } from './components/payment-selection-sidebar'
-import { EmailAuth } from './views/email-auth'
-import { DebtDetails } from './views/debt-details'
-import { InvalidMagicLink } from './views/invalid-magic-link'
-import { PaymentDetails } from './views/payment-details'
-import { ConfirmEmailAuth } from './views/confirm-email-auth'
-import { Settings } from './views/settings'
-import { Route, Switch, useLocation, useRoute } from 'wouter'
-import { Loading } from './components/loading'
-import { Landing } from './views/landing'
-import { Main } from './views/main'
-import { Onboarding } from './views/onboarding'
-import { UpdatePaymentMethod } from './views/update-payment-method'
-import './style.css'
-import { authenticateSession, bootstrapSession, createSession, destroySession } from './session'
-import { Button } from './components/button'
-import { DialogContextProvider } from './components/dialog'
+import React, { Suspense, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Provider } from 'react-redux';
+import { NewPayment } from './views/new-payment';
+import { store, useAppDispatch, useAppSelector } from './store';
+import { PaymentSelectionSidebar } from './components/payment-selection-sidebar';
+import { EmailAuth } from './views/email-auth';
+import { DebtDetails } from './views/debt-details';
+import { InvalidMagicLink } from './views/invalid-magic-link';
+import { PaymentDetails } from './views/payment-details';
+import { ConfirmEmailAuth } from './views/confirm-email-auth';
+import { Settings } from './views/settings';
+import { Route, Switch, useLocation, useRoute } from 'wouter';
+import { Loading } from './components/loading';
+import { Landing } from './views/landing';
+import { Main } from './views/main';
+import { UpdatePaymentMethod } from './views/update-payment-method';
+import './style.css';
+import { authenticateSession, bootstrapSession, createSession, destroySession } from './session';
+import { Button } from './components/button';
+import { DialogContextProvider } from './components/dialog';
 
 const Navigation = () => {
-  const [, setLocation] = useLocation()
-  const { t, i18n } = useTranslation()
-  const session = useAppSelector((state) => state.session)
-  const dispatch = useAppDispatch()
+  const [, setLocation] = useLocation();
+  const { t, i18n } = useTranslation();
+  const session = useAppSelector((state) => state.session);
+  const dispatch = useAppDispatch();
 
   const handleLogOut = () => {
     dispatch(destroySession())
-      .then(() => setLocation('/'))
-  }
+      .then(() => setLocation('/'));
+  };
 
   return (
     <ul className="flex md:flex-col gap-2 px-3 items-stretch pt-5 w-full jusify-items-stretch">
       <li
         className="bg-gray-200 cursor-pointer rounded-lg py-2 px-3 flex-grow md:flex-grow-0 text-center md:text-left"
-        onClick={() => setLocation(`/`)}
+        onClick={() => setLocation('/')}
       >
         {t('navigation.debts')}
       </li>
@@ -56,7 +55,7 @@ const Navigation = () => {
         session.accessLevel === 'admin' && (
           <>
             <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
-            <li className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0" onClick={() => setLocation(`/admin/debt-centers`)}>{t('navigation.administration')}</li>
+            <li className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0" onClick={() => setLocation('/admin/debt-centers')}>{t('navigation.administration')}</li>
           </>
         )
       }
@@ -82,8 +81,8 @@ const Navigation = () => {
         </li>
       </>
     </ul>
-  )
-}
+  );
+};
 
 const PublicLayout = ({ children, sidebars }) => (
   <Provider store={store}>
@@ -110,30 +109,30 @@ const PublicLayout = ({ children, sidebars }) => (
   </Provider>
 );
 
-const LazyAdmin = React.lazy(() => import('./views/admin'))
+const LazyAdmin = React.lazy(() => import('./views/admin'));
 
 const useManageSession = () => {
-  const authToken = new URLSearchParams(window.location.search).get('token')
-  const [location, setLocation] = useLocation()
-  const { bootstrapping, token, authenticated, creatingSession } = useAppSelector((state) => state.session)
-  const dispatch = useAppDispatch()
+  const authToken = new URLSearchParams(window.location.search).get('token');
+  const [location, setLocation] = useLocation();
+  const { bootstrapping, token, authenticated, creatingSession } = useAppSelector((state) => state.session);
+  const dispatch = useAppDispatch();
 
-  const [allowUnauthenticated] = useRoute('/magic/invalid')
+  const [allowUnauthenticated] = useRoute('/magic/invalid');
 
   useEffect(() => {
     if (bootstrapping === 'pending') {
-      dispatch(bootstrapSession())
+      dispatch(bootstrapSession());
     } else if (bootstrapping === 'completed') {
       if (!authenticated) {
         if (authToken) {
-          const redirect = window.localStorage.getItem('redirect') ?? '/'
+          const redirect = window.localStorage.getItem('redirect') ?? '/';
 
           dispatch(authenticateSession(authToken))
             .then(() => {
               setLocation(redirect);
             });
         } else {
-          console.log(allowUnauthenticated)
+          console.log(allowUnauthenticated);
           if (!allowUnauthenticated) {
             setLocation('/auth');
           }
@@ -148,13 +147,13 @@ const useManageSession = () => {
           });
       }
     }
-  }, [bootstrapping, token, authToken, creatingSession, allowUnauthenticated])
+  }, [bootstrapping, token, authToken, creatingSession, allowUnauthenticated]);
 };
 
 const Routes = () => {
-  const { i18n } = useTranslation()
-  const [isAdminRoute] = useRoute('/admin/:rest*')
-  const session = useAppSelector((state) => state.session)
+  const { i18n } = useTranslation();
+  const [isAdminRoute] = useRoute('/admin/:rest*');
+  const session = useAppSelector((state) => state.session);
 
   useManageSession();
 
@@ -162,16 +161,16 @@ const Routes = () => {
     if (session?.preferences?.uiLanguage) {
       i18n.changeLanguage(session.preferences.uiLanguage);
     }
-  }, [session?.preferences?.uiLanguage])
+  }, [session?.preferences?.uiLanguage]);
 
   if (session.bootstrapping !== 'completed') {
     return (
       <Loading />
-    )
+    );
   }
 
   if (isAdminRoute && session.authenticated) {
-    return <LazyAdmin />
+    return <LazyAdmin />;
   }
 
   return (
@@ -183,27 +182,24 @@ const Routes = () => {
         <Route path="/magic/invalid" component={InvalidMagicLink} />
         {session.authenticated && (
           <>
-            <Route path="/onboarding">
-              <Onboarding session={session as any} />
-            </Route>
             <Route path="/">
-              <Main session={session as any} />
+              <Main />
             </Route>
             <Route path="/settings">
-              <Settings session={session as any} />
+              <Settings />
             </Route>
             <Route path="/debt/:id" component={DebtDetails} />
             <Route path="/payment/new" component={NewPayment} />
             <Route path="/payment/:id" component={PaymentDetails} />
             <Route path="/update-payment-method">
-              <UpdatePaymentMethod session={session as any} />
+              <UpdatePaymentMethod />
             </Route>
           </>
         )}
       </Switch>
     </PublicLayout>
   );
-}
+};
 
 export const AppWrapper = () => {
   return (
@@ -214,5 +210,5 @@ export const AppWrapper = () => {
         </Suspense>
       </Provider>
     </DialogContextProvider>
-  )
-}
+  );
+};

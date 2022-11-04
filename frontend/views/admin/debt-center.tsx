@@ -1,22 +1,22 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page'
-import { useDeleteDebtCenterMutation, useGetDebtCenterQuery } from '../../api/debt-centers'
-import { DebtList } from '../../components/debt-list'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, Actions, ActionButton } from '../../components/resource-page/resource-page';
+import { useDeleteDebtCenterMutation, useGetDebtCenterQuery } from '../../api/debt-centers';
+import { DebtList } from '../../components/debt-list';
 import { useLocation } from 'wouter';
-import { TableView } from '../../components/table-view'
+import { TableView } from '../../components/table-view';
 import { useGetDebtComponentsByCenterQuery, useGetDebtsByCenterQuery } from '../../api/debt';
 import { formatEuro } from '../../../common/currency';
-import { Button, SecondaryButton } from '../../components/button'
+import { Button, SecondaryButton } from '../../components/button';
 import { useDialog } from '../../components/dialog';
 import { InfoDialog } from '../../components/dialogs/info-dialog';
 
 export const DebtCenterDetails = ({ id }) => {
-  const [, setLocation] = useLocation()
-  const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id)
-  const { data: components } = useGetDebtComponentsByCenterQuery(id)
-  const { data: debts } = useGetDebtsByCenterQuery(id)
-  const [deleteDebtCenter] = useDeleteDebtCenterMutation()
-  const showInfoDialog = useDialog(InfoDialog)
+  const [, setLocation] = useLocation();
+  const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id);
+  const { data: components } = useGetDebtComponentsByCenterQuery(id);
+  const { data: debts } = useGetDebtsByCenterQuery(id);
+  const [deleteDebtCenter] = useDeleteDebtCenterMutation();
+  const showInfoDialog = useDialog(InfoDialog);
 
   const handleDelete = async () => {
     const result = await deleteDebtCenter(id);
@@ -29,7 +29,7 @@ export const DebtCenterDetails = ({ id }) => {
 
       setLocation('/admin/debt-centers');
     }
-  }
+  };
 
   if (isLoading || !debtCenter) {
     return (
@@ -64,7 +64,7 @@ export const DebtCenterDetails = ({ id }) => {
       <Section title="Debt Components">
         <SectionContent>
           <TableView
-            rows={(components ?? [])}
+            rows={(components ?? []).map(component => ({ ...component, key: component.id }))}
             columns={[
               { name: 'Name', getValue: 'name' },
               {
@@ -78,7 +78,6 @@ export const DebtCenterDetails = ({ id }) => {
                 getValue: 'description',
               },
             ]}
-            onRowClick={() => { }}
           />
         </SectionContent>
       </Section>

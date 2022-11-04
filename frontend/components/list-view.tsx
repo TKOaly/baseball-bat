@@ -1,7 +1,7 @@
-import { ReactNode, useState } from 'react'
-import { Dropdown } from '../components/dropdown'
-import { ButtonGroupSelector } from '../components/button-group-selector'
-import { tw } from '../tailwind'
+import { ReactNode, useState } from 'react';
+import { Dropdown } from '../components/dropdown';
+import { ButtonGroupSelector } from '../components/button-group-selector';
+import { tw } from '../tailwind';
 
 const ListViewCardContainer = tw.div`
   rounded-md
@@ -65,7 +65,7 @@ const ListViewCard = ({ item, onSelected }: ListViewItemProps) => {
       <div>{item.description}</div>
       {
         item.badges.map((badge) => (
-          <span className={`rounded-md mr-2 bg-gradient-to-br ${colors[badge.color]} py-0.5 px-2`}>{badge.label}</span>
+          <span className={`rounded-md mr-2 bg-gradient-to-br ${colors[badge.color]} py-0.5 px-2`} key={badge.label}>{badge.label}</span>
         ))
       }
     </ListViewCardContainer>
@@ -79,7 +79,7 @@ const ListViewRow = ({ item, onSelected }: ListViewItemProps) => {
       <div>
         {
           item.badges.map((badge) => (
-            <span className={`rounded-md mr-2 bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 py-0.5 px-2`}>{badge.label}</span>
+            <span className={`rounded-md mr-2 bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 py-0.5 px-2`} key={badge.label}>{badge.label}</span>
           ))
         }
       </div>
@@ -102,9 +102,9 @@ export const ListView = ({
   actions,
   onSelected,
 }: Props) => {
-  const [mode, setMode] = useState<ListViewMode>('cards')
+  const [mode, setMode] = useState<ListViewMode>('cards');
 
-  const ItemComponent = mode === 'cards' ? ListViewCard : ListViewRow
+  const ItemComponent = mode === 'cards' ? ListViewCard : ListViewRow;
 
   return (
     <div>
@@ -118,11 +118,11 @@ export const ListView = ({
           options={[
             {
               text: 'Grid',
-              value: 'cards' as ListViewMode
+              value: 'cards' as ListViewMode,
             },
             {
               text: 'List',
-              value: 'rows' as ListViewMode
+              value: 'rows' as ListViewMode,
             },
           ]}
         />

@@ -1,6 +1,5 @@
-import React, { InputHTMLAttributes, ReactNode } from 'react'
-import { useField } from 'formik'
-import * as R from 'remeda'
+import React, { InputHTMLAttributes, ReactNode } from 'react';
+import * as R from 'remeda';
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   flushLeft?: boolean,
@@ -47,3 +46,5 @@ export const TextField = React.forwardRef<HTMLInputElement, Props>((props, ref) 
     </div>
   );
 });
+
+TextField.displayName = 'TextField';

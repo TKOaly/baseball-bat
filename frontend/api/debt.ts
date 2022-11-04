@@ -1,9 +1,10 @@
-import rtkApi from './rtk-api'
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch } from '../../common/types'
+import rtkApi from './rtk-api';
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch } from '../../common/types';
 import { omit } from 'remeda';
+import { parseISO } from 'date-fns';
 
 export type DebtResponse = DebtWithPayer & {
-  debtComponents: Array<DebtComponent>,
+  debtComponents: Array<DebtComponent>
 }
 
 const debtApi = rtkApi.injectEndpoints({
@@ -23,7 +24,7 @@ const debtApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    createDebt: builder.mutation<Debt, NewDebt>({
+    createDebt: builder.mutation<Debt, NewDebt & { components: NewDebtComponent[] }>({
       query: (debt) => ({
         method: 'POST',
         url: '/debt',
@@ -45,20 +46,26 @@ const debtApi = rtkApi.injectEndpoints({
       providesTags: (result) => [
         { type: 'Debt' as const, id: 'LIST' },
         ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
-      ]
+      ],
     }),
 
     getDebt: builder.query<DebtResponse, string>({
       query: (id) => `/debt/${id}`,
       providesTags: (result) => [{ type: 'Debt', id: result.id }],
+      transformResponse: (result) => ({
+        ...result,
+        createdAt: parseISO(result.createdAt),
+        updatedAt: parseISO(result.updatedAt),
+        dueDate: parseISO(result.dueDate),
+      }),
     }),
 
     getDebts: builder.query<DebtWithPayer[], never>({
-      query: () => `/debt`,
+      query: () => '/debt',
       providesTags: (result) => [
         { type: 'Debt' as const, id: 'LIST' },
         ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
-      ]
+      ],
     }),
 
     getDebtsByPayment: builder.query<DebtWithPayer[], string>({
@@ -66,7 +73,7 @@ const debtApi = rtkApi.injectEndpoints({
       providesTags: (result) => [
         { type: 'Debt' as const, id: 'LIST' },
         ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
-      ]
+      ],
     }),
 
     publishDebts: builder.mutation<void, string[]>({
@@ -78,8 +85,8 @@ const debtApi = rtkApi.injectEndpoints({
       invalidatesTags: (_result, _err, ids) => [
         { type: 'Debt' as const, id: 'LIST' },
         { type: 'Email' as const, id: 'LIST' },
-        ...ids.map(id => ({ type: 'Debt' as const, id }))
-      ]
+        ...ids.map(id => ({ type: 'Debt' as const, id })),
+      ],
     }),
 
     massCreateDebts: builder.mutation<any, any>({
@@ -100,7 +107,7 @@ const debtApi = rtkApi.injectEndpoints({
     deleteDebt: builder.mutation<void, string>({
       query: (id) => ({
         method: 'DELETE',
-        url: `/debt/${id}`
+        url: `/debt/${id}`,
       }),
       invalidatesTags: (_, __, id) => [
         { type: 'Debt', id: 'LIST' },
@@ -144,7 +151,7 @@ const debtApi = rtkApi.injectEndpoints({
     sendAllReminders: builder.mutation<{ messageCount: number, payerCount: number }, { ignoreCooldown: boolean, send: boolean }>({
       query: (body) => ({
         method: 'POST',
-        url: `/debt/send-reminders`,
+        url: '/debt/send-reminders',
         body,
       }),
       invalidatesTags: [
@@ -167,11 +174,11 @@ const debtApi = rtkApi.injectEndpoints({
     updateMultipleDebts: builder.mutation<Debt[], { debts: string[], values: Omit<DebtPatch, 'id'> }>({
       query: (body) => ({
         method: 'POST',
-        url: `/debt/update-multiple`,
+        url: '/debt/update-multiple',
         body,
       }),
       invalidatesTags: (result) => result.map(({ id }) => ({ type: 'Debt' as const, id })),
-    })
+    }),
   }),
 });
 
@@ -195,6 +202,6 @@ export const {
   useDeleteDebtComponentMutation,
   useUpdateMultipleDebtsMutation,
   useMassCreateDebtsProgressQuery,
-} = debtApi
+} = debtApi;
 
-export default debtApi
+export default debtApi;

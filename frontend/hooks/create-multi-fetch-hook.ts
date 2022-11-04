@@ -1,11 +1,12 @@
-import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module'
-import { useState, useEffect } from 'react'
+import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
+import { useState, useEffect } from 'react';
 import { QueryArgFrom, ResultTypeFrom } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { RootState, useAppDispatch, useAppSelector } from '../store';
 import { createSelector } from '@reduxjs/toolkit';
 
-type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any> ? D : never
+type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any> ? D : never // eslint-disable-line
 
+// eslint-disable-next-line
 export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E): (params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => { data: ResultTypeFrom<EndpointDefinitionFrom<E>>[], isLoading: boolean } {
   const selectMultipleCustomFieldQueries = createSelector(
     [
@@ -13,21 +14,21 @@ export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpo
       (_state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params,
     ],
     (state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params.map((param) => endpoint.select(param)(state)),
-  )
+  );
 
   return (params) => {
-    const [results, setResults] = useState({ data: [], isLoading: true })
+    const [results, setResults] = useState({ data: [], isLoading: true });
 
-    const dispatch = useAppDispatch()
+    const dispatch = useAppDispatch();
 
     useEffect(() => {
       params.forEach((param) => {
         const result = dispatch(endpoint.initiate(param));
         result.unsubscribe();
       });
-    }, [params])
+    }, [params]);
 
-    const queries = useAppSelector((state) => selectMultipleCustomFieldQueries(state, params))
+    const queries = useAppSelector((state) => selectMultipleCustomFieldQueries(state, params));
 
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
@@ -36,8 +37,8 @@ export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpo
           isLoading: false,
         });
       }
-    }, [queries])
+    }, [queries]);
 
-    return results
-  }
-};
+    return results;
+  };
+}

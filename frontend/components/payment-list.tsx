@@ -1,15 +1,15 @@
-import React from 'react'
+import React from 'react';
 import { useLocation } from 'wouter';
 import { cents, formatEuro } from '../../common/currency';
 import { Payment } from '../../common/types';
-import { TableView } from './table-view'
+import { TableView } from './table-view';
 
 export type Props = {
   payments: Payment[]
 }
 
 export const PaymentList = ({ payments }: Props) => {
-  const [, setLocation] = useLocation()
+  const [, setLocation] = useLocation();
   return (
     <TableView
       selectable
@@ -33,8 +33,8 @@ export const PaymentList = ({ payments }: Props) => {
           getValue: (row) => {
             return formatEuro(cents(row.balance));
           },
-        }
+        },
       ]}
     />
   );
-}
+};

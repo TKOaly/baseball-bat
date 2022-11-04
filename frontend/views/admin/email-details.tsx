@@ -1,20 +1,17 @@
-import { ReactElement } from 'react'
-import { ExternalLink } from 'react-feather'
-import { Link } from 'wouter'
-import { useGetEmailQuery } from '../../api/email'
-import { useGetPayerByEmailQuery } from '../../api/payers'
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Page, Header, Title, Section, TextField, SectionDescription, SectionContent, LinkField, Field, BadgeField } from '../../components/resource-page/resource-page'
+import { useGetEmailQuery } from '../../api/email';
+import { useGetPayerByEmailQuery } from '../../api/payers';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Page, Header, Title, Section, TextField, SectionContent, LinkField, BadgeField } from '../../components/resource-page/resource-page';
 
 export const EmailDetails = ({ params }: { params: { id: string } }) => {
-  const { data: email } = useGetEmailQuery(params.id)
-  const { data: payer, isLoading: isPayerLoading } = useGetPayerByEmailQuery(email?.recipient, { skip: !email })
+  const { data: email } = useGetEmailQuery(params.id);
+  const { data: payer } = useGetPayerByEmailQuery(email?.recipient, { skip: !email });
 
   if (!email) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
-  let status = 'Pending'
+  let status = 'Pending';
 
   if (email.draft) {
     status = 'Draft';
@@ -51,5 +48,5 @@ export const EmailDetails = ({ params }: { params: { id: string } }) => {
         </SectionContent>
       </Section>
     </Page>
-  )
-}
+  );
+};

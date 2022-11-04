@@ -1,19 +1,18 @@
-import { Router, route, router } from 'typera-express'
-import { ok, badRequest, notFound } from 'typera-express/response'
-import { DebtCentersService } from '../services/debt_centers'
-import { DebtService } from '../services/debt'
-import { AuthService } from '../auth-middleware'
-import { Inject, Service } from 'typedi'
-import { Config } from '../config'
-import { EventsService } from '../services/events'
-import { euro, emailIdentity, tkoalyIdentity, dateString, convertToDbDate } from '../../common/types'
-import * as t from 'io-ts'
-import * as E from 'fp-ts/lib/Either'
-import { validateBody } from '../validate-middleware'
-import { PayerService } from '../services/payer'
-import { PaymentService } from '../services/payements'
-import { addDays, format } from 'date-fns'
-import { pipe } from 'fp-ts/lib/function'
+import { route, router } from 'typera-express';
+import { ok, badRequest, notFound } from 'typera-express/response';
+import { DebtCentersService } from '../services/debt_centers';
+import { DebtService } from '../services/debt';
+import { AuthService } from '../auth-middleware';
+import { Inject, Service } from 'typedi';
+import { Config } from '../config';
+import { EventsService } from '../services/events';
+import { euro, emailIdentity, dateString, convertToDbDate } from '../../common/types';
+import * as t from 'io-ts';
+import * as E from 'fp-ts/lib/Either';
+import { validateBody } from '../validate-middleware';
+import { PayerService } from '../services/payer';
+import { PaymentService } from '../services/payements';
+import { pipe } from 'fp-ts/lib/function';
 
 const createDebtCenterFromEventBody = t.type({
   events: t.array(t.number),
@@ -32,39 +31,39 @@ const createDebtCenterFromEventBody = t.type({
       })),
     })),
   }),
-})
+});
 
 @Service()
 export class DebtCentersApi {
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService
+    debtCentersService: DebtCentersService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   @Inject(() => EventsService)
-  eventsService: EventsService
+    eventsService: EventsService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService
+    paymentService: PaymentService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   getDebtCenters() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
       .handler(async () => {
-        const centers = await this.debtCentersService.getDebtCenters()
-        return ok(centers)
-      })
+        const centers = await this.debtCentersService.getDebtCenters();
+        return ok(centers);
+      });
   }
 
   getDebtCenter() {
@@ -72,14 +71,14 @@ export class DebtCentersApi {
       .get('/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const center = await this.debtCentersService.getDebtCenter(ctx.routeParams.id)
+        const center = await this.debtCentersService.getDebtCenter(ctx.routeParams.id);
 
         if (center) {
-          return ok(center)
+          return ok(center);
         } else {
-          return notFound()
+          return notFound();
         }
-      })
+      });
   }
 
   getDebtsByCenter() {
@@ -89,7 +88,7 @@ export class DebtCentersApi {
       .handler(async (ctx) => {
         const debts = await this.debtService.getDebtsByCenter(ctx.routeParams.id);
         return ok(debts);
-      })
+      });
   }
 
   getDebtComponentsByCenter() {
@@ -99,7 +98,7 @@ export class DebtCentersApi {
       .handler(async (ctx) => {
         const components = await this.debtService.getDebtComponentsByCenter(ctx.routeParams.id);
         return ok(components);
-      })
+      });
   }
 
   createDebtCenter() {
@@ -108,10 +107,10 @@ export class DebtCentersApi {
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
         try {
-          const center = await this.debtCentersService.createDebtCenter(ctx.req.body)
-          return ok(center)
+          const center = await this.debtCentersService.createDebtCenter(ctx.req.body);
+          return ok(center);
         } catch (err) {
-          console.log(err)
+          console.log(err);
 
           if ((err as any).constraint === 'name_unique') {
             return badRequest({
@@ -126,7 +125,7 @@ export class DebtCentersApi {
 
           throw err;
         }
-      })
+      });
   }
 
   deleteDebtCenter() {
@@ -139,7 +138,7 @@ export class DebtCentersApi {
         if (debts.length > 0) {
           return badRequest({
             error: 'contains_debts',
-          })
+          });
         }
 
         const deleted = await this.debtCentersService.deleteDebtCenter(ctx.routeParams.id);
@@ -147,11 +146,11 @@ export class DebtCentersApi {
         if (deleted === null) {
           return notFound({
             error: 'not_found',
-          })
+          });
         }
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   updateDebtCenter() {
@@ -167,12 +166,12 @@ export class DebtCentersApi {
         await this.debtCentersService.updateDebtCenter({
           id: ctx.routeParams.id,
           ...ctx.body,
-        })
+        });
 
-        const updated = await this.debtCentersService.getDebtCenter(ctx.routeParams.id)
+        const updated = await this.debtCentersService.getDebtCenter(ctx.routeParams.id);
 
-        return ok(updated)
-      })
+        return ok(updated);
+      });
   }
 
   createDebtCenterFromEvent() {
@@ -181,25 +180,25 @@ export class DebtCentersApi {
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(createDebtCenterFromEventBody))
       .handler(async (ctx) => {
-        const body = ctx.body
+        const body = ctx.body;
 
         const registrations = await Promise.all(
           body.events.map((id) => {
-            return this.eventsService.getEventRegistrations(id)
-          })
-        )
+            return this.eventsService.getEventRegistrations(id);
+          }),
+        );
 
         const center = await this.debtCentersService.createDebtCenter({
           name: body.settings.name,
           description: body.settings.description,
           url: '',
-        })
+        });
 
         if (!center) {
-          throw new Error('Unable to create new debt center')
+          throw new Error('Unable to create new debt center');
         }
 
-        let baseComponentId: string | null = null
+        let baseComponentId: string | null = null;
 
         if (body.settings.basePrice !== 0) {
           const baseComponent = await this.debtService.createDebtComponent({
@@ -209,7 +208,7 @@ export class DebtCentersApi {
             debtCenterId: center.id,
           });
 
-          baseComponentId = baseComponent.id
+          baseComponentId = baseComponent.id;
         }
 
         const components = await Promise.all(
@@ -217,11 +216,11 @@ export class DebtCentersApi {
             return this.debtService.createDebtComponent({
               name: mapping.name,
               amount: euro(mapping.price),
-              description: `Autogenerated from event registration fields`,
+              description: 'Autogenerated from event registration fields',
               debtCenterId: center.id,
-            })
-          })
-        )
+            });
+          }),
+        );
 
         await Promise.all(
           registrations.flatMap((registrations, i) => registrations.map(async (registration) => {
@@ -230,30 +229,30 @@ export class DebtCentersApi {
             const componentIds = body.settings.componentMappings
               .flatMap((mapping, i) => {
                 const matches = mapping.rules.some((rule) => {
-                  console.log(eventId, rule.event, rule.answer, registration.answers.find((a) => a.question_id === rule.question)?.answer)
+                  console.log(eventId, rule.event, rule.answer, registration.answers.find((a) => a.question_id === rule.question)?.answer);
                   return eventId === rule.event &&
                     registration.answers
-                      .find((a) => a.question_id === rule.question)?.answer === rule.answer
-                })
+                      .find((a) => a.question_id === rule.question)?.answer === rule.answer;
+                });
 
                 return matches ? [i] : [];
               })
-              .map((componentIndex) => components[componentIndex].id)
+              .map((componentIndex) => components[componentIndex].id);
 
             const payerIdentity = registration.userId
               ? registration.userId
-              : emailIdentity(registration.email)
+              : emailIdentity(registration.email);
 
-            const payer = await this.payerService.createPayerProfileForExternalIdentity(payerIdentity, ctx.req.cookies.token, registration.name)
+            const payer = await this.payerService.createPayerProfileForExternalIdentity(payerIdentity, ctx.req.cookies.token, registration.name);
 
             if (!payer) {
-              throw new Error('Unable to create payer profile for the debt')
+              throw new Error('Unable to create payer profile for the debt');
             }
 
-            const dueDate = convertToDbDate(body.settings.dueDate)
+            const dueDate = convertToDbDate(body.settings.dueDate);
 
             if (!dueDate) {
-              throw new Error('Date conversion error')
+              throw new Error('Date conversion error');
             }
 
             const debt = await this.debtService.createDebt({
@@ -265,12 +264,14 @@ export class DebtCentersApi {
                 : componentIds,
               payer: payer.id,
               dueDate,
-            })
-          }))
-        )
+            });
 
-        return ok(center)
-      })
+            return debt;
+          })),
+        );
+
+        return ok(center);
+      });
   }
 
   private deleteDebtComponent() {
@@ -278,7 +279,7 @@ export class DebtCentersApi {
       .delete('/:debtCenterId/components/:debtComponentId')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const { debtCenterId, debtComponentId } = ctx.routeParams
+        const { debtCenterId, debtComponentId } = ctx.routeParams;
 
         return pipe(
           await this.debtService.deleteDebtComponent(debtCenterId, debtComponentId),
@@ -286,8 +287,8 @@ export class DebtCentersApi {
             () => notFound(),
             ({ affectedDebts }) => ok({ affectedDebts }),
           ),
-        )
-      })
+        );
+      });
   }
 
   router() {
@@ -300,8 +301,8 @@ export class DebtCentersApi {
       this.createDebtCenterFromEvent(),
       this.updateDebtCenter(),
       this.deleteDebtComponent(),
-      this.deleteDebtCenter()
-    )
+      this.deleteDebtCenter(),
+    );
   }
 }
 

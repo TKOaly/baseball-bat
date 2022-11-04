@@ -1,4 +1,4 @@
-import rtkApi from './rtk-api'
+import rtkApi from './rtk-api';
 
 const authApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -30,16 +30,16 @@ const authApi = rtkApi.injectEndpoints({
       query: () => ({
         url: '/auth/init',
         method: 'POST',
-      })
+      }),
     }),
-  })
-})
+  }),
+});
 
 export const {
   useRequestAuthCodeMutation,
   useValidateAuthCodeMutation,
   usePollAuthStatusQuery,
-  useCreateSessionMutation
-} = authApi
+  useCreateSessionMutation,
+} = authApi;
 
-export default authApi
+export default authApi;

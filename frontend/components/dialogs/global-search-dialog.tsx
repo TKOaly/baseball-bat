@@ -1,11 +1,11 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button } from '../../components/button'
-import { TextField } from '../text-field'
-import { useSearchQuery } from '../../api/search'
-import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'wouter'
-import { Dropdown } from '../dropdown'
-import { useFetchResourceDetails } from '../../hooks/use-fetch-resource-details'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button } from '../../components/button';
+import { TextField } from '../text-field';
+import { useSearchQuery } from '../../api/search';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
+import { Dropdown } from '../dropdown';
+import { useFetchResourceDetails } from '../../hooks/use-fetch-resource-details';
 
 export type Props = {
   onClose: (_: { id: string, type: string } | null) => void,
@@ -16,7 +16,7 @@ export type Props = {
 }
 
 const SearchResultItem = ({ type, id, name, onSelect }) => {
-  const details = useFetchResourceDetails(type, id)
+  const details = useFetchResourceDetails(type, id);
 
   return (
     <div
@@ -32,7 +32,7 @@ const SearchResultItem = ({ type, id, name, onSelect }) => {
       <table className="text-sm">
         {
           details && details.details.map(([label, value]) => (
-            <tr>
+            <tr key={label}>
               <th className="text-left text-gray-700 pr-2">{label}</th>
               <td>{value}</td>
             </tr>
@@ -41,15 +41,15 @@ const SearchResultItem = ({ type, id, name, onSelect }) => {
       </table>
     </div>
   );
-}
+};
 
 export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOnSelect = false }: Props) => {
-  const [term, setTerm] = useState('')
-  const [type, setType] = useState(pType)
-  const isTypeLocked = pType !== undefined
-  const { data: results, isLoading } = useSearchQuery({ term, type }, { skip: term === '' })
-  const [, setLocation] = useLocation()
-  const inputRef = useRef<HTMLInputElement>()
+  const [term, setTerm] = useState('');
+  const [type, setType] = useState(pType);
+  const isTypeLocked = pType !== undefined;
+  const { data: results } = useSearchQuery({ term, type }, { skip: term === '' });
+  const [, setLocation] = useLocation();
+  const inputRef = useRef<HTMLInputElement>();
 
   useEffect(() => {
     if (inputRef.current) {
@@ -73,8 +73,8 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
     onClose({
       type,
       id,
-    })
-  }
+    });
+  };
 
   return (
     <DialogBase onClose={() => onClose(null)}>
@@ -97,7 +97,6 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
               formatCustomOption={() => 'Asd'}
               label='Type'
               onSelect={(value) => setType(value)}
-              onChange={() => { }}
             />
           )}
           <TextField
@@ -111,6 +110,7 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
         <div className="overflow-y-scroll max-h-80 px-5 mt-3 -mb-3 -mx-3 border-t overflow-hidden">
           {(results ?? []).map(({ type, name, id }) => (
             <SearchResultItem
+              key={id}
               type={type}
               id={id}
               name={name}
@@ -123,5 +123,5 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
         <Button onClick={() => onClose()}>Close</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};

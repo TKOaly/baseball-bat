@@ -1,6 +1,6 @@
-import { Button, SecondaryButton } from '../components/button'
+import { Button, SecondaryButton } from '../components/button';
 
-export const ConfirmEmailAuth = ({ params }) => {
+export const ConfirmEmailAuth = () => {
   return (
     <>
       <h1 className="text-xl font-bold text-gray-500">Authentication Successful</h1>
@@ -10,9 +10,9 @@ export const ConfirmEmailAuth = ({ params }) => {
       </p>
 
       <ul className="flex flex-col gap-2 items-center">
-        <li className="inline"><Button className="">Continue Here</Button></li>
+        <li className="inline"><Button>Continue Here</Button></li>
         <li><SecondaryButton>Continue in Initial Browser</SecondaryButton></li>
       </ul>
     </>
   );
-}
+};

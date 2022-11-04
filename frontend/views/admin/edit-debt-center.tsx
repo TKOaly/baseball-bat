@@ -1,25 +1,23 @@
-import { PropsWithChildren, createContext, InputHTMLAttributes, useMemo } from "react";
-import { ChevronsRight } from "react-feather"
-import { Formik, FormikErrors, useField } from "formik"
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreateDebtCenterMutation, useGetDebtCenterQuery, useUpdateDebtCenterMutation } from "../../api/debt-centers";
-import { useLocation } from "wouter";
-import { InputGroup } from '../../components/input-group'
-import { TextField } from '../../components/text-field'
-import { TextareaField } from '../../components/textarea-field'
-import * as A from 'fp-ts/lib/Array'
-import * as TE from 'fp-ts/lib/TaskEither'
-import * as E from 'fp-ts/lib/Either'
-import * as S from 'fp-ts/lib/string'
-import { TabularFieldListFormik } from "../../components/tabular-field-list";
-import { EuroField } from "../../components/euro-field";
-import { DropdownField } from "../../components/dropdown-field";
-import { useCreateDebtComponentMutation, useDeleteDebtComponentMutation, useGetDebtComponentsByCenterQuery, useGetDebtComponentsByCenterQuery } from "../../api/debt";
-import { DebtComponent, euro, NewDebtComponent } from "../../../common/types";
-import { pipe } from "fp-ts/lib/function";
-import { useDialog } from "../../components/dialog";
-import { DebtCenterConfirmationDialog } from "../../components/dialogs/debt-center-edit-confirmation-dialog";
-import { contramap, Eq } from "fp-ts/lib/Eq";
+import { useMemo } from 'react';
+import { Formik } from 'formik';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useGetDebtCenterQuery, useUpdateDebtCenterMutation } from '../../api/debt-centers';
+import { useLocation } from 'wouter';
+import { InputGroup } from '../../components/input-group';
+import { TextField } from '../../components/text-field';
+import { TextareaField } from '../../components/textarea-field';
+import * as A from 'fp-ts/lib/Array';
+import * as TE from 'fp-ts/lib/TaskEither';
+import * as E from 'fp-ts/lib/Either';
+import * as S from 'fp-ts/lib/string';
+import { TabularFieldListFormik } from '../../components/tabular-field-list';
+import { EuroField } from '../../components/euro-field';
+import { useCreateDebtComponentMutation, useDeleteDebtComponentMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
+import { euro, NewDebtComponent } from '../../../common/types';
+import { pipe } from 'fp-ts/lib/function';
+import { useDialog } from '../../components/dialog';
+import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-center-edit-confirmation-dialog';
+import { contramap } from 'fp-ts/lib/Eq';
 
 type FormComponentValue = {
   name: string,
@@ -36,14 +34,14 @@ type FormValues = {
 }
 
 export const EditDebtCenter = ({ params }) => {
-  const { id } = params
-  const { data: debtCenter } = useGetDebtCenterQuery(id)
-  const { data: components } = useGetDebtComponentsByCenterQuery(id)
-  const [createDebtComponent] = useCreateDebtComponentMutation()
-  const [, setLocation] = useLocation()
-  const [deleteDebtComponent] = useDeleteDebtComponentMutation()
-  const [updateDebtCenter] = useUpdateDebtCenterMutation()
-  const showDebtCenterConfirmationDialog = useDialog(DebtCenterConfirmationDialog)
+  const { id } = params;
+  const { data: debtCenter } = useGetDebtCenterQuery(id);
+  const { data: components } = useGetDebtComponentsByCenterQuery(id);
+  const [createDebtComponent] = useCreateDebtComponentMutation();
+  const [, setLocation] = useLocation();
+  const [deleteDebtComponent] = useDeleteDebtComponentMutation();
+  const [updateDebtCenter] = useUpdateDebtCenterMutation();
+  const showDebtCenterConfirmationDialog = useDialog(DebtCenterConfirmationDialog);
 
   const initialValues = useMemo(() => {
     if (!debtCenter) {
@@ -52,7 +50,7 @@ export const EditDebtCenter = ({ params }) => {
         url: '',
         description: '',
         components: [],
-      }
+      };
     } else {
       return {
         name: debtCenter.name,
@@ -66,9 +64,9 @@ export const EditDebtCenter = ({ params }) => {
             amount: c.amount.value / 100,
             description: c.description,
           })),
-      }
+      };
     }
-  }, [debtCenter, components])
+  }, [debtCenter, components]);
 
   const handleSubmit = async (values: FormValues) => {
     const result = await updateDebtCenter({
@@ -76,14 +74,14 @@ export const EditDebtCenter = ({ params }) => {
       name: values.name,
       description: values.description,
       url: values.url,
-    })
+    });
 
     const newComponents = pipe(
       values.components,
       A.filter((c) => c.id === null),
-    )
+    );
 
-    const IdEq = contramap((c: { id: string, name: string }) => c.id)(S.Eq)
+    const IdEq = contramap((c: { id: string, name: string }) => c.id)(S.Eq);
 
     const removedComponents = pipe(
       components,
@@ -91,16 +89,16 @@ export const EditDebtCenter = ({ params }) => {
         values.components,
         A.filter((c) => c.id !== null),
       )),
-    )
+    );
 
     if (removedComponents.length > 0 || newComponents.length > 0) {
       const confirmed = await showDebtCenterConfirmationDialog({
         remove: removedComponents.map(c => c.name),
         create: newComponents.map(c => c.name),
-      })
+      });
 
       if (!confirmed) {
-        return
+        return;
       }
 
       const deleteDebtComponentTask = (debtComponentId: string) => async () => {
@@ -114,24 +112,24 @@ export const EditDebtCenter = ({ params }) => {
         } else {
           return E.left(result.error);
         }
-      }
+      };
 
       const createDebtComponentTask = (newComponent: NewDebtComponent) => async () => {
-        const result = await createDebtComponent(newComponent)
+        const result = await createDebtComponent(newComponent);
 
         if ('data' in result) {
           return E.right(result.data);
         } else {
           return E.left(result.error);
         }
-      }
+      };
 
       if (removedComponents.length > 0) {
         const result = await pipe(
           removedComponents,
           A.map((c) => c.id),
           A.traverse(TE.ApplicativePar)(deleteDebtComponentTask),
-        )()
+        )();
 
         if ('error' in result) {
           return;
@@ -143,7 +141,7 @@ export const EditDebtCenter = ({ params }) => {
           newComponents,
           A.map((c) => ({ ...c, debtCenterId: id, amount: euro(c.amount) })),
           A.traverse(TE.ApplicativePar)(createDebtComponentTask),
-        )()
+        )();
 
         if ('error' in result) {
           return;
@@ -152,9 +150,9 @@ export const EditDebtCenter = ({ params }) => {
     }
 
     if ('data' in result) {
-      setLocation(`/admin/debt-centers/${id}`)
+      setLocation(`/admin/debt-centers/${id}`);
     }
-  }
+  };
 
   return (
     <div>
@@ -175,7 +173,7 @@ export const EditDebtCenter = ({ params }) => {
           const errors: Record<string, string> = {};
 
           if (values.name.length < 3) {
-            errors.name = 'Name must be longer than 3 characters.'
+            errors.name = 'Name must be longer than 3 characters.';
           }
 
           /*const componentNames = new Set();

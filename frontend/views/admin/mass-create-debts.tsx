@@ -1,36 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { TabularFieldList } from '../../components/tabular-field-list'
-import { EuroField } from '../../components/euro-field'
-import { TextField } from '../../components/text-field'
-import { useGetDebtCenterQuery } from '../../api/debt-centers'
-import { useMassCreateDebtsMutation, useMassCreateDebtsProgressQuery } from '../../api/debt'
-import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather'
-import { Button, SecondaryButton } from '../../components/button'
-import { parse } from 'papaparse'
-import { useAppDispatch, useAppSelector } from '../../store'
-import payersApi from '../../api/payers'
-import upstreamUsersApi from '../../api/upstream-users'
-import { createSelector } from '@reduxjs/toolkit'
-import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency'
-import { identity, omit } from 'remeda'
-import { tw } from '../../tailwind'
-import { addDays, format } from 'date-fns'
-import { useDialog } from '../../components/dialog'
-import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog'
-import { skipToken } from '@reduxjs/toolkit/dist/query/react'
-
-const selectPayers = createSelector(
-  [
-    (state) => state,
-    (_state, rows: Array<{ email?: string, tkoalyUserId?: number }>) => rows,
-  ],
-  (state, rows) => rows.map(({ email, tkoalyUserId }) => ({
-    email: payersApi.endpoints.getPayerByEmail.select(email)(state),
-    payer: payersApi.endpoints.getPayerByTkoalyId.select(tkoalyUserId)(state),
-    user: upstreamUsersApi.endpoints.getUpstreamUser.select(tkoalyUserId)(state),
-  })),
-)
+import { useEffect, useMemo, useState } from 'react';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { TabularFieldList } from '../../components/tabular-field-list';
+import { EuroField } from '../../components/euro-field';
+import { TextField } from '../../components/text-field';
+import { useGetDebtCenterQuery } from '../../api/debt-centers';
+import { useMassCreateDebtsMutation, useMassCreateDebtsProgressQuery } from '../../api/debt';
+import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather';
+import { Button } from '../../components/button';
+import { parse } from 'papaparse';
+import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency';
+import { identity, omit } from 'remeda';
+import { tw } from '../../tailwind';
+import { addDays, format } from 'date-fns';
+import { useDialog } from '../../components/dialog';
+import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog';
+import { skipToken } from '@reduxjs/toolkit/dist/query/react';
 
 type ParsedRow = {
   tkoalyUserId?: number
@@ -44,20 +28,21 @@ type ParsedRow = {
   components: Array<string>
 }
 
-const parseDate = (v: string) => v
+const parseDate = (v: string) => v;
 
 const parseEuros = (v: string) => {
-  const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2)
+  const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2);
 
   if (centsPart && centsPart.length > 2) {
-    throw 'Only up to 2 decimal places allowed in the amount column.'
+    throw 'Only up to 2 decimal places allowed in the amount column.';
   }
 
-  return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0))
-}
+  return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0));
+};
 
-const parseReferenceNumber = (v: string) => v
+const parseReferenceNumber = (v: string) => v;
 
+// eslint-disable-next-line
 const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
   return (
     <div className="rounded bg-white border shadow mb-2 p-2">
@@ -74,7 +59,7 @@ const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
           </div>
           {result.components?.length > 0 && (
             <ul>
-              {result.components.filter(({ id }) => id !== '8d12e7ef-51db-465e-a5fa-b01cf01db5a8').map(({ name, amount }) => <li className="inline-block mr-1 text-sm"><span className="text-white bg-gray-400 rounded px-1 inline-block">{name} ({formatEuro(amount)})</span></li>)}
+              {result.components.filter(({ id }) => id !== '8d12e7ef-51db-465e-a5fa-b01cf01db5a8').map(({ id, name, amount }) => <li key={id} className="inline-block mr-1 text-sm"><span className="text-white bg-gray-400 rounded px-1 inline-block">{name} ({formatEuro(amount)})</span></li>)}
             </ul>
           )}
         </div>
@@ -91,19 +76,19 @@ const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
       {!result.payer && (
         <div className="rounded border flex mt-1 items-center p-2 gap-2 text-red-800 text-sm shadow border-red-300 bg-red-100">
           <AlertTriangle className="text-red-400" />
-          Payer profile not found and sufficient information for it's creation is not available.
+          Payer profile not found and sufficient information for it{'\''}s creation is not available.
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
 const parseCsv = (csv: string): Array<ParsedRow> => {
   const { data } = parse(csv);
-  let [header, ...rows] = data as Array<Array<string>>
+  const [header, ...rows] = data as Array<Array<string>>;
 
   if (!header) {
-    return []
+    return [];
   }
 
   const columnMapping = {
@@ -119,45 +104,45 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
     'description': 'description',
     'amount': ['amount', parseEuros],
     'reference number': ['referenceNumber', parseReferenceNumber],
-  }
+  };
 
   const columns = header.map((title: string) => {
     const normalized = title.toLowerCase();
-    const column = columnMapping[normalized]
+    const column = columnMapping[normalized];
 
     if (column) {
       const [key, parser] = typeof column === 'string'
         ? [column, (i) => i]
-        : column
+        : column;
 
       return { type: 'standard', key, parser };
     } else {
       return { type: 'component', name: title };
     }
-  })
+  });
 
   return rows.map(row => row.reduce((acc, value, i) => {
-    const column = columns[i]
+    const column = columns[i];
 
     if (column.type === 'standard') {
       try {
-        acc[column.key] = column.parser(value)
+        acc[column.key] = column.parser(value);
       } catch {
-        acc[column.key] = null
+        acc[column.key] = null;
       }
     } else if (value.toLowerCase() === 'true') {
-      acc.components.push(header[i])
+      acc.components.push(header[i]);
     }
 
-    return acc
-  }, { components: [] }))
-}
+    return acc;
+  }, { components: [] }));
+};
 
 const TableHeader = tw.th`
   px-2
   py-2
   text-left
-`
+`;
 
 const TableCell = tw.td`
   px-2
@@ -166,20 +151,18 @@ const TableCell = tw.td`
   border-t
   border-r
   last:border-r-none
-`
+`;
 
 export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
-  const debtCenterId = params.id
+  const debtCenterId = params.id;
 
-  const [progressId, setProgressId] = useState(null)
-  const [results, setResults] = useState()
-  const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId)
-  const [massCreateDebtsMutation] = useMassCreateDebtsMutation()
-  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: 200 })
-  const dispatch = useAppDispatch()
-  const [csvData, setCsvData] = useState('')
-  const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog)
-  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle')
+  const [progressId, setProgressId] = useState(null);
+  const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId);
+  const [massCreateDebtsMutation] = useMassCreateDebtsMutation();
+  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: 200 });
+  const [csvData, setCsvData] = useState('');
+  const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog);
+  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle');
 
   useEffect(() => {
     if (!progress)
@@ -187,10 +170,9 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
 
     if (progress.result) {
       setState('idle');
-      setResults(progress.result);
-      setProgressId(null)
+      setProgressId(null);
     }
-  }, [progress])
+  }, [progress]);
 
   const parsedCsv = useMemo(() => {
     try {
@@ -198,24 +180,22 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
     } catch (e) {
       return [];
     }
-  }, [csvData])
+  }, [csvData]);
 
-  const payers = useAppSelector((state) => selectPayers(state, parsedCsv))
+  const [components, setComponents] = useState([]);
 
-  const [components, setComponents] = useState([])
-
-  const [defaultOverrides, setDefaultOverrides] = useState({})
+  const [defaultOverrides, setDefaultOverrides] = useState({});
 
   const defaults = useMemo(() => {
     return {
       dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
       ...pDefaults,
       ...defaultOverrides,
-    }
-  }, [pDefaults, defaultOverrides])
+    };
+  }, [pDefaults, defaultOverrides]);
 
   useEffect(() => {
-    let newComponents = [...components]
+    const newComponents = [...components]
       .filter(({ name }) => parsedCsv.some(r => r.components.indexOf(name) > -1));
 
     parsedCsv
@@ -224,32 +204,32 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
         if (newComponents.findIndex(c2 => c2.name === c1) === -1) {
           newComponents.push({ name: c1, amount: 0, isNew: true });
         }
-      })
+      });
 
-    setComponents(newComponents)
-  }, [parsedCsv])
+    setComponents(newComponents);
+  }, [parsedCsv]);
 
   const submit = async (dryRun: boolean) => {
-    setState(dryRun ? 'dry-run' : 'run')
+    setState(dryRun ? 'dry-run' : 'run');
 
     const result = await massCreateDebtsMutation({
       defaults,
       debts: parsedCsv,
       dryRun,
       components: components.filter(c => c.isNew).map(c => ({ ...omit(c, ['isNew', 'amount']), amount: euro(c.amount) })),
-    })
+    });
 
     if ('data' in result) {
       setProgressId(result.data.progress);
     } else {
       setState('idle');
     }
-  }
+  };
 
   const makeDefaultValueCell = <K extends keyof typeof defaults, V>(
     key: string,
     title: string,
-    inputComponent: any = TextField,
+    inputComponent: any = TextField, // eslint-disable-line
     format: ((v: (typeof defaults)[K]) => string) = identity,
     map: ((v: V) => (typeof defaults)[K]) = identity,
   ) => {
@@ -270,7 +250,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
         }} />
       </div>
     );
-  }
+  };
 
   return (
     <div>
@@ -387,7 +367,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
           </tr>
           <tr>
             <TableCell colSpan={4}>
-              Any other columns are interpreted to represent debt components. Rows which contain "True" in such columns will result in a debt with that debt component. Prices for the debt components can be specified in the table below.
+              Any other columns are interpreted to represent debt components. Rows which contain {'"True"'} in such columns will result in a debt with that debt component. Prices for the debt components can be specified in the table below.
             </TableCell>
           </tr>
         </table>
@@ -420,7 +400,7 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
                   header: 'Status',
                   component: TextField,
                   props: { readOnly: true },
-                }
+                },
               ]}
               createNew={() => ({})}
               onChange={setComponents}
@@ -451,9 +431,9 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
         </div>
         <ul>
           {progress && !progress.result ? 'Loading...' : ''}
-          {progress?.result && progress.result.map((row, i) => <DebtStatusItem result={row} index={i} />)}
+          {progress?.result && progress.result.map((row, i) => <DebtStatusItem result={row} index={i} key={i} />)}
         </ul>
       </p>
     </div>
-  )
-}
+  );
+};

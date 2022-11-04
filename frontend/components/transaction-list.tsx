@@ -1,19 +1,19 @@
-import { BankTransaction } from '../../common/types'
-import { formatEuro, cents } from '../../common/currency'
-import { parseISO, format } from 'date-fns'
-import { TableView } from './table-view'
-import { ExternalLink } from 'react-feather'
-import { useLocation } from 'wouter'
-import { useDialog } from './dialog'
-import { TransactionRegistrationDialog } from './dialogs/transaction-registration-dialog'
+import { BankTransaction } from '../../common/types';
+import { formatEuro, cents } from '../../common/currency';
+import { parseISO, format } from 'date-fns';
+import { TableView } from './table-view';
+import { ExternalLink } from 'react-feather';
+import { useLocation } from 'wouter';
+import { useDialog } from './dialog';
+import { TransactionRegistrationDialog } from './dialogs/transaction-registration-dialog';
 
 export type Props = {
   transactions: BankTransaction[]
 }
 
 export const TransactionList = ({ transactions }: Props) => {
-  const [, setLocation] = useLocation()
-  const showTransactionRegistrationDialog = useDialog(TransactionRegistrationDialog)
+  const [, setLocation] = useLocation();
+  const showTransactionRegistrationDialog = useDialog(TransactionRegistrationDialog);
 
   return (
     <TableView
@@ -27,7 +27,7 @@ export const TransactionList = ({ transactions }: Props) => {
               transactions,
             });
           },
-        }
+        },
       ]}
       columns={[
         {
@@ -78,7 +78,7 @@ export const TransactionList = ({ transactions }: Props) => {
                 {row.payment.payment_number}
                 <ExternalLink className="h-4 text-blue-500 relative" />
               </div>
-            )
+            );
           },
         },
       ]}

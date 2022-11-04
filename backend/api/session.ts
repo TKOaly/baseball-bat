@@ -1,22 +1,22 @@
-import { route, router } from 'typera-express'
-import { AuthService } from '../auth-middleware'
-import { PayerService, } from '../services/payer'
-import { internalIdentity } from '../../common/types'
-import { badRequest, ok, redirect } from 'typera-express/response'
-import { Inject, Service } from 'typedi'
-import { Config } from '../config'
-import base64url from 'base64url'
+import { route, router } from 'typera-express';
+import { AuthService } from '../auth-middleware';
+import { PayerService } from '../services/payer';
+import { internalIdentity } from '../../common/types';
+import { ok, redirect } from 'typera-express/response';
+import { Inject, Service } from 'typedi';
+import { Config } from '../config';
+import base64url from 'base64url';
 
 @Service()
 export class SessionApi {
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   getSession() {
     return route
@@ -26,14 +26,14 @@ export class SessionApi {
         if (session.authLevel === 'unauthenticated') {
           return ok({
             authLevel: 'unauthenticated',
-          })
+          });
         }
 
-        const id = internalIdentity(session.payerId)
+        const id = internalIdentity(session.payerId);
 
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id)
-        const paymentMethod = await this.payerService.getPaymentMethod(id)
-        const preferences = await this.payerService.getPayerPreferences(id)
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id);
+        const paymentMethod = await this.payerService.getPaymentMethod(id);
+        const preferences = await this.payerService.getPayerPreferences(id);
 
         return ok({
           authLevel: session.authLevel,
@@ -41,8 +41,8 @@ export class SessionApi {
           payerProfile,
           paymentMethod,
           preferences,
-        })
-      })
+        });
+      });
   }
 
   login() {
@@ -51,16 +51,16 @@ export class SessionApi {
       .handler((ctx) => {
         const payload = base64url.encode(JSON.stringify({
           target: ctx.req.query.target,
-        }))
+        }));
 
-        let redirectUrl = null
+        let redirectUrl = null;
 
         if (ctx.req.query.target === 'welcome' && typeof ctx.req.query.token === 'string') {
-          redirectUrl = `${this.config.appUrl}/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`
+          redirectUrl = `${this.config.appUrl}/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`;
         }
 
-        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}${redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''}`)
-      })
+        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}${redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''}`);
+      });
   }
 
   /*getSetupIntent() {
@@ -93,6 +93,6 @@ export class SessionApi {
       this.login(),
       //this.getSetupIntent(),
       //this.confirmCardSetup()
-    )
+    );
   }
 }

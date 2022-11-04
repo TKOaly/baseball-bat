@@ -1,44 +1,43 @@
-import { Parser, Router, route, router } from 'typera-express'
-import { ok } from 'typera-express/response'
-import { EventsService } from '../services/events'
-import { nonEmptyArray, tkoalyIdentity, internalIdentity } from '../../common/types'
-import { AuthService } from '../auth-middleware'
-import { PayerService } from '../services/payer'
-import * as t from 'io-ts'
-import { Service, Inject } from 'typedi'
-import * as dfn from 'date-fns'
+import { Router, route, router } from 'typera-express';
+import { ok } from 'typera-express/response';
+import { EventsService } from '../services/events';
+import { internalIdentity } from '../../common/types';
+import { AuthService } from '../auth-middleware';
+import { PayerService } from '../services/payer';
+import { Service, Inject } from 'typedi';
+import * as dfn from 'date-fns';
 
 @Service()
 export class EventsApi {
   @Inject(() => EventsService)
-  eventsService: EventsService
+    eventsService: EventsService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   getEvents() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
       .handler(async ({ session }) => {
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId))
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId));
 
         if (!payerProfile || !payerProfile.tkoalyUserId) {
-          return ok([])
+          return ok([]);
         }
 
-        const events = await this.eventsService.getEvents(payerProfile.tkoalyUserId)
+        const events = await this.eventsService.getEvents(payerProfile.tkoalyUserId);
 
         const withStatus = await this.payerService.getEventsWithPaymentStatus(
           payerProfile.id,
-          events
-        )
+          events,
+        );
 
-        return ok(withStatus)
-      })
+        return ok(withStatus);
+      });
   }
 
   getEventRegistrations() {
@@ -48,7 +47,7 @@ export class EventsApi {
       .handler(async (ctx) => {
         const registrations = await this.eventsService.getEventRegistrations(ctx.routeParams.id);
         return ok(registrations);
-      })
+      });
   }
 
   getEventCustomFields() {
@@ -58,7 +57,7 @@ export class EventsApi {
       .handler(async (ctx) => {
         const fields = await this.eventsService.getEventCustomFields(ctx.routeParams.id);
         return ok(fields);
-      })
+      });
   }
 
   getAllEvents() {
@@ -73,7 +72,7 @@ export class EventsApi {
         });
 
         return ok(events);
-      })
+      });
   }
 
   router(): Router {
@@ -81,7 +80,7 @@ export class EventsApi {
       this.getEvents(),
       this.getEventRegistrations(),
       this.getEventCustomFields(),
-      this.getAllEvents()
-    )
+      this.getAllEvents(),
+    );
   }
 }

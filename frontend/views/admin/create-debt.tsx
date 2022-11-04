@@ -1,37 +1,18 @@
-import { Formik } from 'formik'
-import { useLocation } from 'wouter'
-import { useMemo, useCallback } from 'react'
-
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { DateField } from '../../components/datetime-field'
-import { DropdownField } from '../../components/dropdown-field'
-import { EuroField } from '../../components/euro-field'
-import { euro, PayerIdentity } from '../../../common/types'
-import { InputGroup } from '../../components/input-group'
-import * as R from 'remeda'
-import { TabularFieldListFormik } from '../../components/tabular-field-list'
-import { TextareaField } from '../../components/textarea-field'
-import { TextField } from '../../components/text-field'
-import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from '../../api/debt-centers'
-import { useCreateDebtMutation, useGetDebtComponentsQuery, useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt'
-import { useGetUpstreamUsersQuery } from '../../api/upstream-users'
-import { format, addDays, isMatch } from 'date-fns'
-
-const useQuery = () => {
-  const [location] = useLocation()
-
-  const query = useMemo(() => {
-    const search = location.split('?', 1)[1];
-
-    if (!search) {
-      return {};
-    }
-
-    return Object.fromEntries(new URLSearchParams(search));
-  }, [location]);
-
-  return query;
-};
+import { Formik } from 'formik';
+import { useMemo, useCallback } from 'react';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { DateField } from '../../components/datetime-field';
+import { DropdownField } from '../../components/dropdown-field';
+import { EuroField } from '../../components/euro-field';
+import { PayerIdentity } from '../../../common/types';
+import { InputGroup } from '../../components/input-group';
+import { TabularFieldListFormik } from '../../components/tabular-field-list';
+import { TextareaField } from '../../components/textarea-field';
+import { TextField } from '../../components/text-field';
+import { useGetDebtCentersQuery } from '../../api/debt-centers';
+import { useCreateDebtMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
+import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
+import { format, addDays, isMatch } from 'date-fns';
 
 type DebtFormValues = {
   name: string,
@@ -44,13 +25,10 @@ type DebtFormValues = {
 }
 
 export const CreateDebt = ({ debtCenterId }) => {
-  const { data: users } = useGetUpstreamUsersQuery()
-  const { data: debtCenters } = useGetDebtCentersQuery()
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId })
-  const [createDebt] = useCreateDebtMutation()
-  const [createDebtCenter] = useCreateDebtCenterMutation()
-  const [createDebtComponent] = useCreateDebtComponentMutation()
-  const debtComponentsQuery = useGetDebtComponentsQuery(null)
+  const { data: users } = useGetUpstreamUsersQuery();
+  const { data: debtCenters } = useGetDebtCentersQuery();
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
+  const [createDebt] = useCreateDebtMutation();
 
   const submitDebtForm = async (values: DebtFormValues) => {
     await createDebt({
@@ -67,23 +45,23 @@ export const CreateDebt = ({ debtCenterId }) => {
           amount,
           name: component.name,
           description: '',
-        }
-      })
-    } as any)
-  }
+        };
+      }),
+    });
+  };
 
   const createCustomPayerOption = useCallback(
     (input) => ({
       type: 'email',
       value: input,
     }),
-    []
-  )
+    [],
+  );
 
   const formatCustomPayerOption = useCallback(
     ({ value }) => value,
-    []
-  )
+    [],
+  );
 
   const payerOptions = useMemo(() => {
     if (!users) return [];
@@ -93,7 +71,7 @@ export const CreateDebt = ({ debtCenterId }) => {
       text: user.screenName,
       label: user.username,
     }));
-  }, [users])
+  }, [users]);
 
   return (
     <div>
@@ -119,19 +97,19 @@ export const CreateDebt = ({ debtCenterId }) => {
           amount: 1234.31,
         } as DebtFormValues}
         validate={(values) => {
-          const errors = {} as any;
+          const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
           if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
-            errors.due_date = 'Date must be in format <day>.<month>.<year>'
+            errors.due_date = 'Date must be in format <day>.<month>.<year>';
           } else if (!isMatch(values.due_date, 'dd.MM.yyyy')) {
-            errors.due_date = 'Invalid date'
+            errors.due_date = 'Invalid date';
           }
 
           return errors;
         }}
         onSubmit={submitDebtForm}
       >
-        {({ values, submitForm, isSubmitting }) => (
+        {({ submitForm, isSubmitting }) => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
@@ -143,7 +121,7 @@ export const CreateDebt = ({ debtCenterId }) => {
                 text: center.name,
                 value: center.id,
               }))}
-              createCustomOption={(name) => ({ name })}
+              createCustomOption={(name: string) => ({ name })}
               formatCustomOption={({ name }) => name}
             />
             <InputGroup
@@ -186,7 +164,7 @@ export const CreateDebt = ({ debtCenterId }) => {
                   component: EuroField,
                   key: 'amount',
                   props: (row) => {
-                    const component = (centerComponents ?? []).find(c => c.id === row.component)
+                    const component = (centerComponents ?? []).find(c => c.id === row.component);
 
                     return {
                       readOnly: typeof row.component === 'string',

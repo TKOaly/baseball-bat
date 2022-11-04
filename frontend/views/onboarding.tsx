@@ -1,26 +1,25 @@
-import { Elements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
-import { useLocation } from 'wouter'
-import { Session } from '../../common/types'
-import { SmallContainer } from '../components/containers'
-import { Loading } from '../components/loading'
-import { PaymentForm } from '../components/payment-form'
-import { useSetupIntent } from '../hooks'
-import { getStripe } from '../stripe'
+import React from 'react';
+import { Elements } from '@stripe/react-stripe-js';
+import { Session } from '../../common/types';
+import { SmallContainer } from '../components/containers';
+import { Loading } from '../components/loading';
+import { PaymentForm } from '../components/payment-form';
+import { useSetupIntent } from '../hooks';
+import { getStripe } from '../stripe';
 
 type Props = {
   session: Session
 }
 
 export const Onboarding = ({ session }: Props) => {
-  const clientSecret = useSetupIntent()
+  const clientSecret = useSetupIntent();
 
   if (!clientSecret) {
     return (
       <SmallContainer>
         <Loading />
       </SmallContainer>
-    )
+    );
   }
 
   return (
@@ -31,5 +30,5 @@ export const Onboarding = ({ session }: Props) => {
         <PaymentForm />
       </SmallContainer>
     </Elements>
-  )
-}
+  );
+};

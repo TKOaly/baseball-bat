@@ -1,5 +1,5 @@
-import { TableView } from './table-view'
-import { Debt, DebtWithPayer, PayerProfile } from '../../common/types'
+import { TableView } from './table-view';
+import { Debt, DebtWithPayer, PayerProfile } from '../../common/types';
 import { Link, useLocation } from 'wouter';
 import { useDeleteDebtMutation, usePublishDebtsMutation } from '../api/debt';
 import { ExternalLink } from 'react-feather';
@@ -12,13 +12,13 @@ export type Props = {
 }
 
 export const DebtList = (props: Props) => {
-  const [publishDebts] = usePublishDebtsMutation()
-  const [deleteDebt] = useDeleteDebtMutation()
-  const [, setLocation] = useLocation()
-  const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog)
+  const [publishDebts] = usePublishDebtsMutation();
+  const [deleteDebt] = useDeleteDebtMutation();
+  const [, setLocation] = useLocation();
+  const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog);
 
   const rows: (DebtWithPayer & { key: string })[] = (props.debts ?? [])
-    .map((d) => props.payer ? ({ ...d, payer: props.payer, key: d.id }) : ({ ...d, key: d.id })) as any
+    .map((d) => props.payer ? ({ ...d, payer: props.payer, key: d.id }) : ({ ...d, key: d.id })) as any; // eslint-disable-line
 
   return (
     <TableView
@@ -68,7 +68,7 @@ export const DebtList = (props: Props) => {
               'Mispaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">Mispaid</span>,
               'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">Paid</span>,
               'Credited': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">Credited</span>,
-            }[value]
+            }[value];
           }),
         },
         {
@@ -80,7 +80,7 @@ export const DebtList = (props: Props) => {
               {Math.random() > 0.5 && <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Manual</span>}
             </>
           ),
-        }
+        },
       ]}
       actions={[
         {
@@ -88,14 +88,14 @@ export const DebtList = (props: Props) => {
           text: 'Delete',
           disabled: (row) => !row.draft,
           onSelect: async (rows) => {
-            await Promise.all(rows.map(({ id }) => deleteDebt(id)))
+            await Promise.all(rows.map(({ id }) => deleteDebt(id)));
           },
         },
         {
           key: 'publish',
           text: 'Publish',
           onSelect: async (rows) => {
-            await publishDebts(rows.map(r => r.id))
+            await publishDebts(rows.map(r => r.id));
           },
         },
         {
@@ -103,16 +103,16 @@ export const DebtList = (props: Props) => {
           text: 'Edit',
           onSelect: async (debts) => {
             if (debts.length === 1) {
-              setLocation(`/admin/debts/${debts[0].id}/edit`)
-              return
+              setLocation(`/admin/debts/${debts[0].id}/edit`);
+              return;
             }
 
             await showMassEditDebtsDialog({
               debts,
-            })
+            });
           },
-        }
+        },
       ]}
     />
   );
-}
+};

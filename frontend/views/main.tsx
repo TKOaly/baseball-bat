@@ -1,24 +1,19 @@
-import { useReducer, useState } from 'react'
-import { CheckCircle, ChevronRight, Circle, Info } from 'react-feather'
-import { useLocation } from 'wouter'
-import { Trans, useTranslation } from 'react-i18next'
-import { euro, EuroValue, Session } from '../../common/types'
-import { LargeContainer } from '../components/containers'
-import { Stepper } from '../components/stepper'
-import { TextField } from '../components/text-field'
-import { EventList } from '../components/event-list'
-import { Dialog } from '../components/dialog'
-import { Loading } from '../components/loading'
-import { PaymentTab } from '../components/payment-tab'
-import { useEvents } from '../hooks'
-import paymentPoolSlice from '../state/payment-pool'
-import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useUpdatePayerPreferencesMutation } from '../api/payers'
-import { cents, formatEuro, sumEuroValues } from '../../common/currency'
-import { format, isPast } from 'date-fns'
-import { Button, SecondaryButton } from '../components/button'
-import { useGetUpstreamUserQuery } from '../api/upstream-users'
-import { useAppDispatch, useAppSelector } from '../store'
-import { useGetOwnPaymentsQuery } from '../api/payments'
+import React from 'react';
+import { useState } from 'react';
+import { CheckCircle, ChevronRight, Circle, Info } from 'react-feather';
+import { useLocation } from 'wouter';
+import { Trans, useTranslation } from 'react-i18next';
+import { euro } from '../../common/types';
+import { TextField } from '../components/text-field';
+import { Dialog } from '../components/dialog';
+import paymentPoolSlice from '../state/payment-pool';
+import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useUpdatePayerPreferencesMutation } from '../api/payers';
+import { cents, formatEuro, sumEuroValues } from '../../common/currency';
+import { format, isPast } from 'date-fns';
+import { Button, SecondaryButton } from '../components/button';
+import { useGetUpstreamUserQuery } from '../api/upstream-users';
+import { useAppDispatch, useAppSelector } from '../store';
+import { useGetOwnPaymentsQuery } from '../api/payments';
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -36,22 +31,17 @@ const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
     <circle cx="12" cy="12" r="10" />
     <circle cx="12" cy="12" r="3" fill="currentColor" />
   </svg>
-)
-
-type Props = {
-  session: Session
-}
+);
 
 const WelcomeDialog = () => {
-  const [stage, setStage] = useState(0)
-  const [membership, setMembership] = useState(null)
-  const [name, setName] = useState('')
-  const { data: user, isError: isUserError, isLoading: isUserLoading } = useGetUpstreamUserQuery('me')
-  const { data: profile, isError: isPayerError, isLoading: isPayerLoading } = useGetPayerQuery('me')
-  const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value, { skip: !profile })
-  const hasConfirmedMembership = useAppSelector((state) => state.session.preferences?.hasConfirmedMembership)
-  const token = useAppSelector((state) => state.session.token)
-  const [updatePreferences] = useUpdatePayerPreferencesMutation()
+  const [stage, setStage] = useState(0);
+  const [, setMembership] = useState(null);
+  const { data: user, isError: isUserError, isLoading: isUserLoading } = useGetUpstreamUserQuery('me');
+  const { data: profile, isError: isPayerError, isLoading: isPayerLoading } = useGetPayerQuery('me');
+  const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value, { skip: !profile });
+  const hasConfirmedMembership = useAppSelector((state) => state.session.preferences?.hasConfirmedMembership);
+  const token = useAppSelector((state) => state.session.token);
+  const [updatePreferences] = useUpdatePayerPreferencesMutation();
 
   const open = !isUserLoading && !(user || hasConfirmedMembership);
 
@@ -62,13 +52,13 @@ const WelcomeDialog = () => {
         preferences: {
           hasConfirmedMembership: true,
         },
-      })
+      });
 
       return;
     }
 
-    window.location.replace(`${process.env.BACKEND_URL}/api/session/login?target=welcome&token=${encodeURIComponent(token)}`)
-  }
+    window.location.replace(`${process.env.BACKEND_URL}/api/session/login?target=welcome&token=${encodeURIComponent(token)}`);
+  };
 
   return (
     <Dialog open={open} noClose>
@@ -87,7 +77,7 @@ const WelcomeDialog = () => {
           <>
             <p className="mb-2">
               It seems that this is your first time using this service.
-              Let's get started by confirming a few basic things...
+              Let{'\''}s get started by confirming a few basic things...
             </p>
 
             <p className="mb-5">
@@ -111,7 +101,7 @@ const WelcomeDialog = () => {
 
             <div className="flex flex-col gap-3 mb-5">
               <Button onClick={() => { setMembership(true); setStage(3); }}>Yes</Button>
-              <SecondaryButton onClick={() => { }}>No</SecondaryButton>
+              <SecondaryButton>No</SecondaryButton>
             </div>
           </>
         )}
@@ -148,31 +138,31 @@ const WelcomeDialog = () => {
 
             <TextField className="w-60" />
 
-            <Button onClick={() => { }}>Complete</Button>
+            <Button>Complete</Button>
           </>
         )}
       </div>
     </Dialog>
-  )
-}
+  );
+};
 
-export const Main = (props: Props) => {
-  const [, setLocation] = useLocation()
-  const { t } = useTranslation()
-  const { data: debts } = useGetPayerDebtsQuery({ id: 'me' })
-  const { data: payments } = useGetOwnPaymentsQuery()
-  const { data: profile } = useGetPayerQuery('me')
-  const dispatch = useAppDispatch()
-  const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments)
+export const Main = () => {
+  const [, setLocation] = useLocation();
+  const { t } = useTranslation();
+  const { data: debts } = useGetPayerDebtsQuery({ id: 'me' });
+  const { data: payments } = useGetOwnPaymentsQuery();
+  const { data: profile } = useGetPayerQuery('me');
+  const dispatch = useAppDispatch();
+  const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments);
 
   const toggleDebtSelection = (debt) => {
-    dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id))
-  }
+    dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id));
+  };
 
   const handlePayAll = async () => {
-    dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidDepts.map(p => p.id)))
-    setLocation('/payment/new')
-  }
+    dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidDepts.map(p => p.id)));
+    setLocation('/payment/new');
+  };
 
   const unpaidDepts = (debts ?? []).filter(p => p.status === 'unpaid' && !p.credited);
   const paidDepts = (debts ?? []).filter(p => p.status === 'paid' || p.credited);
@@ -208,7 +198,11 @@ export const Main = (props: Props) => {
       </h3>
 
       {unpaidDepts.map((p) => (
-        <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => toggleDebtSelection(p)}>
+        <div
+          className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
+          onClick={() => toggleDebtSelection(p)}
+          key={p.id}
+        >
           <div className="flex items-center">
             {
               selectedDebts.indexOf(p.id) >= 0
@@ -245,7 +239,10 @@ export const Main = (props: Props) => {
       </h3>
 
       {(payments ?? []).filter(p => !p.credited && p.status !== 'paid').map((p) => (
-        <div className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer">
+        <div
+          className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
+          key={p.id}
+        >
           <div className="flex items-center">
             <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
             <div>
@@ -273,7 +270,7 @@ export const Main = (props: Props) => {
       </h3>
 
       {paidDepts.map((p) => (
-        <div className="rounded-md border border-blue-400 mt-5 p-4 shadow-sm">
+        <div className="rounded-md border border-blue-400 mt-5 p-4 shadow-sm" key={p.id}>
           <div className="flex items-center">
             <CheckCircle className="text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
             <h4>{p?.name}</h4>
@@ -290,5 +287,5 @@ export const Main = (props: Props) => {
         </div>
       )}
     </>
-  )
-}
+  );
+};

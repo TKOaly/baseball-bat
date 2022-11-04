@@ -1,79 +1,73 @@
-import { router, route, Router } from 'typera-express'
-import { internalServerError, redirect, ok, badRequest, notFound, unauthorized } from 'typera-express/response'
-import { UsersService } from '../services/users'
-import { sign } from '../jwt'
-import { PayerService } from '../services/payer'
-import { EmailService } from '../services/email'
-import { PgClient } from '../db'
-import { v4 as uuid } from 'uuid'
-import { Inject, Service } from 'typedi'
-import { Config } from '../config'
-import { emailIdentity, internalIdentity, TkoalyIdentity, tkoalyIdentity } from '../../common/types'
-import { validateBody } from '../validate-middleware'
-import * as t from 'io-ts'
-import { randomElem } from 'fp-ts/lib/Random'
-import { split } from 'fp-ts/lib/string'
-import { flow, pipe } from 'fp-ts/lib/function'
-import { map, range, reduce } from 'fp-ts/lib/NonEmptyArray'
-import { commandOptions, RedisClientType } from 'redis'
-import { AccessLevel, AuthService } from '../auth-middleware'
-import { MagicLinkService } from '../services/magic-links'
+import { router, route, Router } from 'typera-express';
+import { internalServerError, redirect, ok, badRequest, notFound, unauthorized } from 'typera-express/response';
+import { UsersService } from '../services/users';
+import { PayerService } from '../services/payer';
+import { EmailService } from '../services/email';
+import { PgClient } from '../db';
+import { Inject, Service } from 'typedi';
+import { Config } from '../config';
+import { emailIdentity, internalIdentity, TkoalyIdentity, tkoalyIdentity } from '../../common/types';
+import { validateBody } from '../validate-middleware';
+import * as t from 'io-ts';
+import { RedisClientType } from 'redis';
+import { AuthService } from '../auth-middleware';
+import { MagicLinkService } from '../services/magic-links';
 
 const sendAuthCodeBody = t.type({
-  email: t.string
-})
+  email: t.string,
+});
 
 const validateAuthCodeBody = t.type({
   id: t.string,
   code: t.string,
-})
+});
 
 @Service()
 export class AuthApi {
   @Inject(() => UsersService)
-  usersService: UsersService
+    usersService: UsersService;
 
   @Inject(() => MagicLinkService)
-  magicLinkService: MagicLinkService
+    magicLinkService: MagicLinkService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => PgClient)
-  pg: PgClient
+    pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject('redis')
-  redis: RedisClientType
+    redis: RedisClientType;
 
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   @Inject(() => EmailService)
-  emailService: EmailService
+    emailService: EmailService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   private authCompleted() {
     return route
       .get('/auth-completed')
       .handler(async ({ req }) => {
-        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token)
-        const payerProfile = await this.payerService.createPayerProfileFromTkoalyUser(upstreamUser)
+        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token);
+        const payerProfile = await this.payerService.createPayerProfileFromTkoalyUser(upstreamUser);
 
         if (!payerProfile) {
-          return internalServerError()
+          return internalServerError();
         }
 
         const sessionToken = await this.authService.createSession();
-        const { token } = await this.authService.createAuthToken(payerProfile.id, sessionToken)
+        const { token } = await this.authService.createAuthToken(payerProfile.id, sessionToken);
         await this.authService.resolveAuthToken(token);
 
-        return redirect(302, `${this.config.appUrl}/?token=${token}`)
-      })
+        return redirect(302, `${this.config.appUrl}/?token=${token}`);
+      });
   }
 
   private getUsers() {
@@ -84,46 +78,46 @@ export class AuthApi {
         const users = await this.usersService.getUsers(req.cookies.token);
 
         return ok(users);
-      })
+      });
   }
 
   private getUser() {
     return route
       .get('/api/users/:id')
       .use(this.authService.createAuthMiddleware({
-        accessLevel: 'normal'
+        accessLevel: 'normal',
       }))
       .handler(async (ctx) => {
-        let userId: TkoalyIdentity | 'me'
+        let userId: TkoalyIdentity | 'me';
 
         if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
-          return unauthorized()
+          return unauthorized();
         }
 
         if (ctx.routeParams.id === 'me') {
-          const profile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.session.payerId))
+          const profile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.session.payerId));
 
           if (profile && profile.tkoalyUserId) {
-            userId = profile?.tkoalyUserId
+            userId = profile?.tkoalyUserId;
           } else {
-            return notFound()
+            return notFound();
           }
         } else {
           try {
-            userId = tkoalyIdentity(parseInt(ctx.routeParams.id))
+            userId = tkoalyIdentity(parseInt(ctx.routeParams.id));
           } catch {
-            return notFound()
+            return notFound();
           }
         }
 
         const user = await this.usersService.getUpstreamUserById(userId, ctx.req.cookies.token);
 
         if (!user) {
-          return notFound()
+          return notFound();
         }
 
-        return ok(user)
-      })
+        return ok(user);
+      });
   }
 
   private initSession() {
@@ -131,8 +125,8 @@ export class AuthApi {
       .post('/api/auth/init')
       .handler(async () => {
         const token = await this.authService.createSession();
-        return ok({ token })
-      })
+        return ok({ token });
+      });
   }
 
   private mergeSession() {
@@ -143,21 +137,21 @@ export class AuthApi {
         allowQueryToken: true,
       }))
       .handler(async ({ req, session }) => {
-        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token)
-        const associatedProfile = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(upstreamUser.id))
+        const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token);
+        const associatedProfile = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(upstreamUser.id));
 
         if (associatedProfile) {
-          await this.payerService.mergeProfiles(associatedProfile.id, internalIdentity(session.payerId))
+          await this.payerService.mergeProfiles(associatedProfile.id, internalIdentity(session.payerId));
         } else {
-          await this.payerService.setProfileTkoalyIdentity(internalIdentity(session.payerId), tkoalyIdentity(upstreamUser.id))
+          await this.payerService.setProfileTkoalyIdentity(internalIdentity(session.payerId), tkoalyIdentity(upstreamUser.id));
         }
 
         await this.payerService.updatePayerPreferences(internalIdentity(session.payerId), {
           hasConfirmedMembership: true,
-        })
+        });
 
-        return redirect(302, `${this.config.appUrl}`)
-      })
+        return redirect(302, `${this.config.appUrl}`);
+      });
   }
 
   private authenticateSession() {
@@ -171,57 +165,54 @@ export class AuthApi {
         unauthenticated: true,
       }))
       .handler(async ({ body, session, req }) => {
-        const authenticated = await this.authService.getAuthTokenStatus(body.id)
+        const authenticated = await this.authService.getAuthTokenStatus(body.id);
 
         if (!authenticated) {
-          console.log('Not authenticated!')
-          return unauthorized()
+          console.log('Not authenticated!');
+          return unauthorized();
         }
 
-        const payerId = await this.authService.getAuthTokenPayerId(body.id)
+        const payerId = await this.authService.getAuthTokenPayerId(body.id);
 
         if (!payerId) {
-          console.log('No such user')
-          return unauthorized()
+          console.log('No such user');
+          return unauthorized();
         }
 
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(payerId)
+        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(payerId);
 
         if (!payerProfile) {
-          console.log('Could not fetch user')
-          return unauthorized()
+          console.log('Could not fetch user');
+          return unauthorized();
         }
 
         if (!payerProfile.tkoalyUserId) {
-          return unauthorized()
+          return unauthorized();
         }
 
-        const upstreamUser = await this.usersService.getUpstreamUserById(payerProfile.tkoalyUserId, req.cookies.token)
+        const upstreamUser = await this.usersService.getUpstreamUserById(payerProfile.tkoalyUserId, req.cookies.token);
 
         if (upstreamUser?.role !== 'yllapitaja') {
-          return unauthorized()
+          return unauthorized();
         }
 
-        let sessionToken: string | null = session.token
+        let sessionToken: string | null = session.token;
 
         if (body.remote) {
-          sessionToken = await this.authService.getAuthTokenSession(body.id)
+          sessionToken = await this.authService.getAuthTokenSession(body.id);
         }
 
         if (!sessionToken) {
-          console.log('No remote session')
-          return badRequest()
+          console.log('No remote session');
+          return badRequest();
         }
 
-        await this.authService.authenticate(sessionToken, payerId, 'email', req.cookies.token)
+        await this.authService.authenticate(sessionToken, payerId, 'email', req.cookies.token);
 
-        console.log(`Authenticated session ${sessionToken} with auth token ${body.id}`)
+        console.log(`Authenticated session ${sessionToken} with auth token ${body.id}`);
 
         return ok();
-      })
-  }
-
-  private auhtenticateRemoteSession() {
+      });
   }
 
   private destroySession() {
@@ -234,7 +225,7 @@ export class AuthApi {
         await this.authService.destroySession(ctx.session.token);
 
         return ok();
-      })
+      });
   }
 
   private sendAuthCode() {
@@ -245,13 +236,13 @@ export class AuthApi {
       }))
       .use(validateBody(sendAuthCodeBody))
       .handler(async ({ body, session }) => {
-        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(body.email))
+        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(body.email));
 
         if (!payer) {
-          return notFound()
+          return notFound();
         }
 
-        const { token, code, secret } = await this.authService.createAuthToken(payer.id, session.token)
+        const { token, code, secret } = await this.authService.createAuthToken(payer.id, session.token);
 
         await this.emailService.sendEmailDirect({
           recipient: body.email,
@@ -266,10 +257,10 @@ export class AuthApi {
               oneTime: true,
             }),
           },
-        })
+        });
 
-        return ok({ id: token })
-      })
+        return ok({ id: token });
+      });
   }
 
   private validateAuthCode() {
@@ -280,16 +271,16 @@ export class AuthApi {
       }))
       .use(validateBody(validateAuthCodeBody))
       .handler(async ({ body }) => {
-        const valid = await this.authService.validateAuthTokenCode(body.id, body.code)
+        const valid = await this.authService.validateAuthTokenCode(body.id, body.code);
 
         if (valid) {
-          await this.authService.resolveAuthToken(body.id)
+          await this.authService.resolveAuthToken(body.id);
 
-          return ok({ success: true })
+          return ok({ success: true });
         }
 
-        return ok({ success: false })
-      })
+        return ok({ success: false });
+      });
   }
 
   private confirmAuthWithLink() {
@@ -297,19 +288,19 @@ export class AuthApi {
       .get('/api/auth/confirm')
       .handler(async ({ req }) => {
         if (typeof req.query.id !== 'string' || typeof req.query.secret !== 'string') {
-          return badRequest()
+          return badRequest();
         }
 
-        const valid = await this.authService.validateAuthTokenSecret(req.query.id, req.query.secret)
+        const valid = await this.authService.validateAuthTokenSecret(req.query.id, req.query.secret);
 
         if (!valid) {
-          return unauthorized({})
+          return unauthorized({});
         }
 
-        await this.authService.resolveAuthToken(req.query.id)
+        await this.authService.resolveAuthToken(req.query.id);
 
-        return redirect(302, `${this.config.appUrl}/auth/email/confirm/${req.query.id}`)
-      })
+        return redirect(302, `${this.config.appUrl}/auth/email/confirm/${req.query.id}`);
+      });
   }
 
   private pollAuthStatus() {
@@ -319,8 +310,8 @@ export class AuthApi {
       .handler(async ({ body }) => {
         return ok({
           authenticated: await this.authService.getAuthTokenStatus(body.id, 3),
-        })
-      })
+        });
+      });
   }
 
   private renderTemplate() {
@@ -328,11 +319,11 @@ export class AuthApi {
       .get('/template/:name/:type')
       .handler(async (ctx) => {
         if (ctx.routeParams.type !== 'html' && ctx.routeParams.type !== 'text') {
-          return badRequest()
+          return badRequest();
         }
 
-        return ok(this.emailService.renderTemplate(ctx.routeParams.name, ctx.routeParams.type, {}))
-      })
+        return ok(this.emailService.renderTemplate(ctx.routeParams.name, ctx.routeParams.type, {}));
+      });
   }
 
   router(): Router {
@@ -348,7 +339,7 @@ export class AuthApi {
       this.authenticateSession(),
       this.getUser(),
       this.destroySession(),
-      this.mergeSession()
-    )
+      this.mergeSession(),
+    );
   }
 }

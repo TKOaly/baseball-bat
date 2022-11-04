@@ -1,41 +1,34 @@
-import { TextField } from '../components/text-field'
-import { Button } from '../components/button'
-import { Stepper } from '../components/stepper'
-import { InputGroup } from '../components/input-group'
-import { Field, Formik, FormikBag } from 'formik';
-import { useLocation } from 'wouter'
+import { TextField } from '../components/text-field';
+import { Button } from '../components/button';
+import { Stepper } from '../components/stepper';
+import { InputGroup } from '../components/input-group';
+import { Formik } from 'formik';
+import { useLocation } from 'wouter';
 import { useEffect, useReducer, useState } from 'react';
-import authApi, { usePollAuthStatusQuery, useRequestAuthCodeMutation, useValidateAuthCodeMutation } from '../api/auth'
-import { useDispatch } from 'react-redux';
+import { usePollAuthStatusQuery, useRequestAuthCodeMutation, useValidateAuthCodeMutation } from '../api/auth';
 import { useAppDispatch } from '../store';
 import { authenticateSession } from '../session';
 
-const sleep = (timeout: number) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, timeout);
-  })
-}
-
-const SendStep = ({ onCompletion, setLoading, dispatch, state }) => {
-  const [sendAuthCodeMutation] = useRequestAuthCodeMutation()
+const SendStep = ({ onCompletion, setLoading, dispatch }) => {
+  const [sendAuthCodeMutation] = useRequestAuthCodeMutation();
 
   const sendAuthCode = async ({ email }, { setErrors }) => {
     setLoading(true);
-    const res = await sendAuthCodeMutation(email)
+    const res = await sendAuthCodeMutation(email);
 
     if ('error' in res) {
       setErrors({
-        email: 'No user with such email in the system.'
-      })
+        email: 'No user with such email in the system.',
+      });
     } else {
       dispatch({
         type: 'SET_AUTH_ID',
         payload: {
           id: res.data.id,
-        }
-      })
+        },
+      });
 
-      onCompletion()
+      onCompletion();
     }
   };
 
@@ -44,7 +37,7 @@ const SendStep = ({ onCompletion, setLoading, dispatch, state }) => {
       initialValues={{ email: '' }}
       onSubmit={sendAuthCode}
     >
-      {({ values, submitForm }) => (
+      {({ submitForm }) => (
         <div className="w-80 mx-auto py-5">
           <InputGroup
             name="email"
@@ -57,55 +50,55 @@ const SendStep = ({ onCompletion, setLoading, dispatch, state }) => {
         </div>
       )}
     </Formik>
-  )
-}
+  );
+};
 
 
 const ConfirmStep = ({ state, onCompletion }) => {
-  const [validateAuthCode] = useValidateAuthCodeMutation()
-  const [pollingInterval, setPollingInterval] = useState(1)
+  const [validateAuthCode] = useValidateAuthCodeMutation();
+  const [pollingInterval, setPollingInterval] = useState(1);
 
-  const authStatus = usePollAuthStatusQuery({ id: state.id }, { pollingInterval })
+  const authStatus = usePollAuthStatusQuery({ id: state.id }, { pollingInterval });
 
   useEffect(() => {
     if (authStatus.data?.authenticated) {
-      setPollingInterval(0)
-      onCompletion()
+      setPollingInterval(0);
+      onCompletion();
     }
-  }, [authStatus])
+  }, [authStatus]);
 
   return (
     <Formik
       initialValues={{ code: '' }}
       validate={({ code }) => {
-        const errors: { code?: string } = {}
+        const errors: { code?: string } = {};
 
         if (code.length !== 8) {
-          errors.code = 'Code should be 8 characters in length'
+          errors.code = 'Code should be 8 characters in length';
         }
 
-        return errors
+        return errors;
       }}
       onSubmit={async ({ code }, ctx) => {
-        const res = await validateAuthCode({ id: state.id, code })
+        const res = await validateAuthCode({ id: state.id, code });
 
         if ('data' in res && res.data.success) {
-          onCompletion()
+          onCompletion();
         } else {
           ctx.setErrors({
             code: 'Invalid Code',
-          })
+          });
         }
       }}
     >
-      {({ values, submitForm, setFieldValue }) => (
+      {({ submitForm, setFieldValue }) => (
         <div className="w-80 mx-auto py-5">
           <InputGroup
             name="code"
             component={TextField}
             placeholder="Confirmation Code"
             onChange={(evt) => {
-              setFieldValue('code', evt.target.value.toUpperCase().replace(/[^A-Z0-9]/, ''))
+              setFieldValue('code', evt.target.value.toUpperCase().replace(/[^A-Z0-9]/, ''));
             }}
           />
           <div className="mt-3 text-right">
@@ -114,24 +107,24 @@ const ConfirmStep = ({ state, onCompletion }) => {
         </div>
       )}
     </Formik>
-  )
-}
+  );
+};
 
 const SuccessStep = ({ state }) => {
-  const dispatch = useAppDispatch()
-  const [, setLocation] = useLocation()
+  const dispatch = useAppDispatch();
+  const [, setLocation] = useLocation();
 
   const onContinue = () => {
     dispatch(authenticateSession(state.id))
-      .then(() => setLocation('/'))
-  }
+      .then(() => setLocation('/'));
+  };
 
   return (
     <>
       <Button onClick={onContinue}>Continue</Button>
     </>
-  )
-}
+  );
+};
 
 type State = {
   id: string | null
@@ -144,24 +137,23 @@ const reducer = (state: State, { type, payload }: Event): State => {
     return {
       ...state,
       id: payload.id,
-    }
+    };
   }
 
-  return state
-}
+  return state;
+};
 
 const initialState: State = {
-  id: null
-}
+  id: null,
+};
 
 export const EmailAuth = () => {
-  const [, setLocation] = useLocation()
-  const [stage, setStage] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [stage, setStage] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const [state, dispatch] = useReducer(reducer, initialState)
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const StepComponent = [SendStep, ConfirmStep, SuccessStep][stage]
+  const StepComponent = [SendStep, ConfirmStep, SuccessStep][stage];
 
   return (
     <>
@@ -188,5 +180,5 @@ export const EmailAuth = () => {
         dispatch={dispatch}
       />
     </>
-  )
+  );
 };

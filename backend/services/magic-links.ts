@@ -1,12 +1,12 @@
-import { Inject, Service } from "typedi";
-import { internalIdentity, InternalIdentity } from "../../common/types";
-import { Config } from "../config";
-import * as crypto from 'crypto'
-import { RedisClientType } from "redis";
-import * as E from 'fp-ts/lib/Either'
-import * as t from 'io-ts'
-import { flow, pipe } from "fp-ts/lib/function";
-import * as O from "fp-ts/lib/Option";
+import { Inject, Service } from 'typedi';
+import { internalIdentity, InternalIdentity } from '../../common/types';
+import { Config } from '../config';
+import * as crypto from 'crypto';
+import { RedisClientType } from 'redis';
+import * as E from 'fp-ts/lib/Either';
+import * as t from 'io-ts';
+import { pipe } from 'fp-ts/lib/function';
+import * as O from 'fp-ts/lib/Option';
 
 const magicLinkPayload = t.intersection([
   t.type({
@@ -20,7 +20,7 @@ const magicLinkPayload = t.intersection([
     email: t.string,
     profileId: t.string,
   }),
-])
+]);
 
 export type MagicLinkPayload = t.TypeOf<typeof magicLinkPayload>
 
@@ -41,80 +41,80 @@ export type MagicLink = {
 @Service()
 export class MagicLinkService {
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   @Inject('redis')
-  redis: RedisClientType
+    redis: RedisClientType;
 
   getKey() {
-    const hash = crypto.createHash('sha256')
+    const hash = crypto.createHash('sha256');
     hash.update(this.config.magicLinkSecret);
-    return hash.digest()
+    return hash.digest();
   }
 
   async createMagicLink(options: MagicLinkOptions) {
-    const key = this.getKey()
-    const iv = crypto.randomBytes(16)
-    const cipher = crypto.createCipheriv('aes256', key, iv)
+    const key = this.getKey();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes256', key, iv);
 
     const payload = {
       ...options,
       ttl: options.ttl ?? (60 * 60),
       created: Date.now(),
-    }
+    };
 
-    let payload_buf = Buffer.from(JSON.stringify(payload), 'utf8')
+    const payload_buf = Buffer.from(JSON.stringify(payload), 'utf8');
 
-    let chipertext = Buffer.concat([
+    const chipertext = Buffer.concat([
       cipher.update(payload_buf),
       cipher.final(),
-    ])
+    ]);
 
-    let link_data = Buffer.concat([iv, Buffer.from(chipertext)])
-    let link_text = link_data.toString('base64url')
+    const link_data = Buffer.concat([iv, Buffer.from(chipertext)]);
+    const link_text = link_data.toString('base64url');
 
-    const hash = crypto.createHash('sha256')
-    hash.update(payload_buf)
+    const hash = crypto.createHash('sha256');
+    hash.update(payload_buf);
 
-    let link_hash = hash.digest('hex')
+    const link_hash = hash.digest('hex');
 
     if (options.oneTime) {
-      const key = 'magic-link:' + link_hash + ':valid'
-      console.log(key)
-      await this.redis.set('magic-link:' + link_hash + ':valid', 'true')
+      const key = 'magic-link:' + link_hash + ':valid';
+      console.log(key);
+      await this.redis.set('magic-link:' + link_hash + ':valid', 'true');
     }
 
-    return `${this.config.appUrl}/magic/${link_text}`
+    return `${this.config.appUrl}/magic/${link_text}`;
   }
 
   decodeMagicLink(payload: string): O.Option<MagicLink> {
-    const payload_buf = Buffer.from(payload, 'base64url')
+    const payload_buf = Buffer.from(payload, 'base64url');
 
     if (payload_buf.length % 16 !== 0) {
       return O.none;
     }
 
-    const iv_buf = Buffer.alloc(16)
-    const chipertext_buf = Buffer.alloc(payload_buf.length - 16)
-    payload_buf.copy(iv_buf, 0, 0, 16)
-    payload_buf.copy(chipertext_buf, 0, 16)
+    const iv_buf = Buffer.alloc(16);
+    const chipertext_buf = Buffer.alloc(payload_buf.length - 16);
+    payload_buf.copy(iv_buf, 0, 0, 16);
+    payload_buf.copy(chipertext_buf, 0, 16);
 
-    const key = this.getKey()
+    const key = this.getKey();
 
-    const decipher = crypto.createDecipheriv('aes256', key, iv_buf)
+    const decipher = crypto.createDecipheriv('aes256', key, iv_buf);
 
     const data_buf = Buffer.concat([
       decipher.update(chipertext_buf),
       decipher.final(),
-    ])
+    ]);
 
-    const hasher = crypto.createHash('sha256')
-    hasher.update(data_buf)
-    let hash = hasher.digest('hex')
+    const hasher = crypto.createHash('sha256');
+    hasher.update(data_buf);
+    const hash = hasher.digest('hex');
 
-    const data_str = data_buf.toString('utf8')
+    const data_str = data_buf.toString('utf8');
 
-    console.log(JSON.parse(data_str))
+    console.log(JSON.parse(data_str));
 
     return pipe(
       JSON.parse(data_str),
@@ -129,7 +129,7 @@ export class MagicLinkService {
           hash,
         }),
       ),
-    )
+    );
   }
 
   async validateMagicLink({ payload, hash }: MagicLink) {
@@ -138,10 +138,10 @@ export class MagicLinkService {
     }
 
     if (payload.oneTime) {
-      const key = `magic-link:${hash}:valid`
-      const result = await this.redis.del(key)
+      const key = `magic-link:${hash}:valid`;
+      const result = await this.redis.del(key);
 
-      console.log(key, result)
+      console.log(key, result);
 
       if (result === 0) {
         return false;

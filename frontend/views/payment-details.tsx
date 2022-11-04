@@ -1,24 +1,23 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { Timeline } from '../components/timeline'
-import { useGetPaymentQuery } from '../api/payments'
-import { Circle } from 'react-feather'
-import { useGetDebtsByPaymentQuery } from '../api/debt'
-import { formatEuro, euro, sumEuroValues, cents } from '../../common/currency'
-import { Payment } from '../../common/types'
-import { differenceInDays, formatRelative } from 'date-fns'
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { Timeline } from '../components/timeline';
+import { useGetPaymentQuery } from '../api/payments';
+import { useGetDebtsByPaymentQuery } from '../api/debt';
+import { formatEuro, euro, sumEuroValues, cents } from '../../common/currency';
+import { Payment } from '../../common/types';
+import { differenceInDays } from 'date-fns';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.DateTimeFormat([], { dateStyle: 'medium' }).format(parsed)
-}
+  return new Intl.DateTimeFormat([], { dateStyle: 'medium' }).format(parsed);
+};
 
 const formatDateRelative = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), "day")
-}
+  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), 'day');
+};
 
 type InvoiceData = {
   reference_number: string
@@ -26,8 +25,8 @@ type InvoiceData = {
 }
 
 const InvoiceDetails = ({ payment }: { payment: Payment }) => {
-  const data = payment.data as InvoiceData
-  const { t } = useTranslation([], { keyPrefix: 'paymentDetails' })
+  const data = payment.data as InvoiceData;
+  const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
 
   return (
     <div className="p-3">
@@ -70,17 +69,17 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
         </tr>
       </table>
     </div>
-  )
-}
+  );
+};
 
 export const PaymentDetails = ({ params }) => {
-  const id = params.id
-  const { t } = useTranslation()
-  const { data: payment, isLoading } = useGetPaymentQuery(id)
-  const { data: debts, isLoading: debtsAreLoading } = useGetDebtsByPaymentQuery(id, { skip: !payment })
+  const id = params.id;
+  const { t } = useTranslation();
+  const { data: payment, isLoading } = useGetPaymentQuery(id);
+  const { data: debts, isLoading: debtsAreLoading } = useGetDebtsByPaymentQuery(id, { skip: !payment });
 
   if (isLoading) {
-    return <span>Loading...</span>
+    return <span>Loading...</span>;
   }
 
   return (
@@ -115,9 +114,9 @@ export const PaymentDetails = ({ params }) => {
       </h3>
 
       <ul className="p-3">
-        {debtsAreLoading && "Loading..."}
+        {debtsAreLoading && 'Loading...'}
         {(debts ?? []).map((debt) => (
-          <li className="mb-2 tabular-nums">
+          <li className="mb-2 tabular-nums" key={debt.id}>
             <h4 className="font-bold flex">
               <span className="flex-grow">{debt.name}</span>
               <span>{formatEuro(debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
@@ -126,7 +125,7 @@ export const PaymentDetails = ({ params }) => {
               <p>{debt.description}</p>
               <ul>
                 {debt.debtComponents.map(dc => (
-                  <li className="flex">
+                  <li className="flex" key={dc.id}>
                     <span className="flex-grow">{dc.name}</span>
                     <span>{formatEuro(dc.amount)}</span>
                   </li>
@@ -158,9 +157,9 @@ export const PaymentDetails = ({ params }) => {
           {
             time: new Date(payment.created_at),
             title: t('paymentCreated'),
-          }
+          },
         ]}
       />
     </>
-  )
-}
+  );
+};

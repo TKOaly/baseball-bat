@@ -1,5 +1,4 @@
-import { Loader } from 'react-feather'
-import styled, { keyframes } from 'styled-components'
+import styled, { keyframes } from 'styled-components';
 
 const rotate = keyframes`
   0% {
@@ -9,7 +8,7 @@ const rotate = keyframes`
   100% {
     transform: rotate(360deg);
   }
-`
+`;
 
 const Wrapper = styled.div`
   background-color: #fbfbfb;
@@ -22,7 +21,7 @@ const Wrapper = styled.div`
     width: 5em;
     height: 5em;
   }
-`
+`;
 
 export const Loading = () => {
   return (
@@ -34,9 +33,9 @@ export const Loading = () => {
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         className="feather feather-loader text-blue-500"
       >
 
@@ -50,5 +49,5 @@ export const Loading = () => {
         <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
       </svg>
     </Wrapper>
-  )
-}
+  );
+};

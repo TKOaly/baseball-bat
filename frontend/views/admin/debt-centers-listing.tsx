@@ -1,20 +1,16 @@
-import { ListView } from '../../components/list-view'
-import { tw } from '../../tailwind'
 import { useLocation } from 'wouter';
-import { format, parseISO } from 'date-fns'
-import { useGetDebtCentersQuery } from '../../api/debt-centers'
-import { Button, SecondaryButton } from '../../components/button'
+import { format, parseISO } from 'date-fns';
+import { useGetDebtCentersQuery } from '../../api/debt-centers';
+import { Button, SecondaryButton } from '../../components/button';
 import { TableView } from '../../components/table-view';
 import { cents, formatEuro } from '../../../common/currency';
 
 export const DebtCentersListing = () => {
-  const { data, isLoading } = useGetDebtCentersQuery(null)
+  const { data } = useGetDebtCentersQuery(null);
 
   const [, setLocation] = useLocation();
 
-  const debtCenters = data && !isLoading ? data : [];
-
-  const rows = (data ?? []).map((center) => ({ key: center.id, ...center }))
+  const rows = (data ?? []).map((center) => ({ key: center.id, ...center }));
 
   return (
     <>
@@ -25,7 +21,7 @@ export const DebtCentersListing = () => {
       </p>
       <div className="flex gap-3 mb-7">
         <Button onClick={() => setLocation('/admin/debt-centers/create')}>Create</Button>
-        <SecondaryButton onClick={() => setLocation(`/admin/debt-centers/create-from-event`)}>Create from event</SecondaryButton>
+        <SecondaryButton onClick={() => setLocation('/admin/debt-centers/create-from-event')}>Create from event</SecondaryButton>
         <SecondaryButton onClick={() => setLocation('/admin/debts/create-debts-csv')}>Mass Import</SecondaryButton>
       </div>
       <TableView

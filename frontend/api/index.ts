@@ -1,4 +1,4 @@
-import { Session, DebtCenter, EventWithPaymentStatus } from '../../common/types'
+import { Session, DebtCenter, EventWithPaymentStatus } from '../../common/types';
 
 type RequestMethods =
   | 'GET'
@@ -17,41 +17,41 @@ export type RequestError = {
 }
 
 const getAuthToken = () => {
-  const maybeToken = localStorage.getItem('bbat_token')
-  if (!maybeToken) return Promise.resolve(null)
-  return Promise.resolve(maybeToken)
-}
+  const maybeToken = localStorage.getItem('bbat_token');
+  if (!maybeToken) return Promise.resolve(null);
+  return Promise.resolve(maybeToken);
+};
 
 const request = async <T>(
   method: RequestMethods,
   url: string,
   auth = true,
-  data?: any
-) =>
+  data?: any,
+): Promise<T> =>
   fetch(`${process.env.BACKEND_URL}${url}`, {
     method,
     headers: Object.assign(
       {
         'Content-Type': 'application/json',
       },
-      auth ? { Authorization: `Bearer ${await getAuthToken()}` } : {}
+      auth ? { Authorization: `Bearer ${await getAuthToken()}` } : {},
     ),
     body: data ? JSON.stringify(data) : undefined,
   }).then(res => {
-    if (res.ok) return res.json()
-    throw { status: res.status, statusText: res.statusText }
-  })
+    if (res.ok) return res.json();
+    throw { status: res.status, statusText: res.statusText };
+  });
 
-export const getSession = () => request<Session>('GET', '/api/session')
+export const getSession = () => request<Session>('GET', '/api/session');
 
 export const getSetupIntent = () =>
-  request<{ secret: string }>('GET', '/api/session/setup-intent')
+  request<{ secret: string }>('GET', '/api/session/setup-intent');
 
 export const getEvents = () =>
-  request<EventWithPaymentStatus[]>('GET', '/api/events')
+  request<EventWithPaymentStatus[]>('GET', '/api/events');
 
 export const payEvents = (events: number[]) =>
-  request<{ ok: boolean }>('POST', '/api/events/pay', true, { events })
+  request<{ ok: boolean }>('POST', '/api/events/pay', true, { events });
 
 export const getDebtCenters = () =>
-  request<DebtCenter[]>('GET', '/api/debtCenters')
+  request<DebtCenter[]>('GET', '/api/debtCenters');

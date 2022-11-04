@@ -1,11 +1,11 @@
-import { ListView } from '../../components/list-view'
-import { Button, SecondaryButton } from '../../components/button'
-import { useGetBankAccountsQuery } from '../../api/banking/accounts'
+import { ListView } from '../../components/list-view';
+import { Button, SecondaryButton } from '../../components/button';
+import { useGetBankAccountsQuery } from '../../api/banking/accounts';
 import { useLocation } from 'wouter';
 
 export const Banking = () => {
-  const { data: accounts } = useGetBankAccountsQuery()
-  const [, setLocation] = useLocation()
+  const { data: accounts } = useGetBankAccountsQuery();
+  const [, setLocation] = useLocation();
 
   return (
     <>

@@ -1,15 +1,15 @@
-import { useContext } from 'react'
-import styled from 'styled-components'
-import { EventWithPaymentStatus } from '../../common/types'
-import { PaymentPool } from '../state/payment-pool'
-import { Button, RedButton } from './button'
+import { useContext } from 'react';
+import styled from 'styled-components';
+import { EventWithPaymentStatus } from '../../common/types';
+import { PaymentPool } from '../state/payment-pool';
+import { Button, RedButton } from './button';
 
 const ConatentWrapper = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-`
+`;
 
 const List = styled.div`
   overflow: auto;
@@ -18,7 +18,7 @@ const List = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-`
+`;
 
 const Item = styled.div<{ paid: boolean }>`
   background: #ffffff;
@@ -30,14 +30,14 @@ const Item = styled.div<{ paid: boolean }>`
   justify-content: space-between;
   align-items: center;
   margin: 40px 0;
-  opacity: ${(props: any) => (props.paid ? 0.5 : 1)};
-`
+  opacity: ${({ paid }) => (paid ? 0.5 : 1)};
+`;
 
 const EventInfo = styled.div`
   display: flex;
   flex-direction: column;
   margin-left: 10px;
-`
+`;
 
 const PriceAndCTA = styled.div`
   display: flex;
@@ -45,15 +45,15 @@ const PriceAndCTA = styled.div`
   align-items: center;
   margin-right: 10px;
   width: 300px;
-`
+`;
 
 type Props = {
   events: EventWithPaymentStatus[]
 }
 
 const eventItem = (event: EventWithPaymentStatus) => {
-  const { dispatch, items } = useContext(PaymentPool)
-  const poolHasItem = items.some(item => item.eventId === event.id)
+  const { dispatch, items } = useContext(PaymentPool);
+  const poolHasItem = items.some(item => item.eventId === event.id);
 
   const ctaButton = (disabled: boolean) => {
     const dispatchPayload = {
@@ -71,7 +71,7 @@ const eventItem = (event: EventWithPaymentStatus) => {
           },
         ],
       },
-    }
+    };
 
     return poolHasItem ? (
       <RedButton onClick={() => dispatch(dispatchPayload)} disabled={disabled}>
@@ -81,10 +81,10 @@ const eventItem = (event: EventWithPaymentStatus) => {
       <Button onClick={() => dispatch(dispatchPayload)} disabled={disabled}>
         Add to pool
       </Button>
-    )
-  }
+    );
+  };
 
-  const isPaid = event.payment?.status === 'succeeded'
+  const isPaid = event.payment?.status === 'succeeded';
 
   return (
     <Item paid={isPaid} key={event.id}>
@@ -99,13 +99,13 @@ const eventItem = (event: EventWithPaymentStatus) => {
         {ctaButton(isPaid)}
       </PriceAndCTA>
     </Item>
-  )
-}
+  );
+};
 
 export const EventList = ({ events }: Props) => {
   return (
     <ConatentWrapper>
       <List>{events.map(event => eventItem(event))}</List>
     </ConatentWrapper>
-  )
-}
+  );
+};

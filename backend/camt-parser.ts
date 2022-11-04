@@ -1,8 +1,7 @@
-import { EuroValue, euro, cents } from '../common/currency'
-import { parseISO } from 'date-fns'
-import { JSDOM } from 'jsdom'
-import * as xml2js from 'xml2js'
-import xpath from 'xml2js-xpath'
+import { EuroValue, cents } from '../common/currency';
+import { parseISO } from 'date-fns';
+import * as xml2js from 'xml2js';
+import xpath from 'xml2js-xpath';
 
 export type AccountDetails = {
   iban: string
@@ -45,45 +44,45 @@ export type CamtStatement = {
 }
 
 const parseEuroValue = (value: string): EuroValue => {
-  const [euroPart, centPart] = value.split('.', 2)
+  const [euroPart, centPart] = value.split('.', 2);
 
   if (centPart.length !== 2) {
-    throw new Error('Invalid currency value: ' + value)
+    throw new Error('Invalid currency value: ' + value);
   }
 
 
 
-  return cents(parseInt(euroPart) * 100 + parseInt(centPart))
-}
+  return cents(parseInt(euroPart) * 100 + parseInt(centPart));
+};
 
 export const parseCamtStatement = async (content: string): Promise<CamtStatement> => {
-  const doc = await xml2js.parseStringPromise(content)
+  const doc = await xml2js.parseStringPromise(content);
 
   const find = (selector: string, root: any = doc) => {
-    let value
+    let value;
 
     try {
-      value = xpath.find(root, selector)[0]
+      value = xpath.find(root, selector)[0];
     } catch (e) {
-      return null
+      return null;
     }
 
     if (typeof value === 'object' && '_' in value) {
-      return value._
+      return value._;
     } else {
-      return value
+      return value;
     }
-  }
+  };
 
   const findOrThrow = (selector: string, root: any = doc): string => {
-    const value = find(selector, root)
+    const value = find(selector, root);
 
     if (!value) {
-      throw new Error('Could not parse CAMT statement: Not found: ' + selector)
+      throw new Error('Could not parse CAMT statement: Not found: ' + selector);
     }
 
-    return value
-  }
+    return value;
+  };
 
   const balances = xpath.find(doc, '//Document/BkToCstmrAcctRpt/Rpt/Bal')
     .map((bal) => (console.log(bal), {
@@ -92,24 +91,24 @@ export const parseCamtStatement = async (content: string): Promise<CamtStatement
       date: parseISO(findOrThrow('//Dt/Dt', bal)),
     }));
 
-  const openingBalance = balances.find(bal => bal.type === 'OPBD')
-  const closingBalance = balances.find(bal => bal.type === 'CLBD')
+  const openingBalance = balances.find(bal => bal.type === 'OPBD');
+  const closingBalance = balances.find(bal => bal.type === 'CLBD');
 
   if (!openingBalance || !closingBalance) {
-    throw new Error('Opening or closing balance not present in the CAMT statement')
+    throw new Error('Opening or closing balance not present in the CAMT statement');
   }
 
   const entries: StatementEntry[] = xpath.find(doc, '//Document/BkToCstmrAcctRpt/Rpt/Ntry')
     .map((ntry) => {
-      const cdtDbtInd = find('//CdtDbtInd', ntry)
-      let type: 'debit' | 'credit'
+      const cdtDbtInd = find('//CdtDbtInd', ntry);
+      let type: 'debit' | 'credit';
 
       if (cdtDbtInd === 'DBIT') {
-        type = 'debit'
+        type = 'debit';
       } else if (cdtDbtInd === 'CRDT') {
-        type = 'credit'
+        type = 'credit';
       } else {
-        throw new Error('Invalid statement entry cdtDbtInd: ' + cdtDbtInd)
+        throw new Error('Invalid statement entry cdtDbtInd: ' + cdtDbtInd);
       }
 
       return {
@@ -129,7 +128,7 @@ export const parseCamtStatement = async (content: string): Promise<CamtStatement
           },
         reference: find('//NtryDtls/TxDtls/RmtInf/Strd/CdtrRefInf/Ref', ntry),
         message: find('//NtryDtls/TxDtls/RmtInf/Ustrd', ntry),
-      }
+      };
     });
 
   return {
@@ -147,5 +146,5 @@ export const parseCamtStatement = async (content: string): Promise<CamtStatement
     openingBalance,
     closingBalance,
     entries,
-  }
-}
+  };
+};

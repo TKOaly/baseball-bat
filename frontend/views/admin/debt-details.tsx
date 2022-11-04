@@ -1,12 +1,12 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, useMarkPaidWithCashMutation, usePublishDebtsMutation, useSendReminderMutation } from '../../api/debt'
-import { useGetPaymentsByDebtQuery } from '../../api/payments'
-import { PaymentList } from '../../components/payment-list'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, useMarkPaidWithCashMutation, usePublishDebtsMutation, useSendReminderMutation } from '../../api/debt';
+import { useGetPaymentsByDebtQuery } from '../../api/payments';
+import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
-import * as dfns from 'date-fns'
+import * as dfns from 'date-fns';
 import { TextField as InputTextField } from '../../components/text-field';
 import { EuroField } from '../../components/euro-field';
-import { Page, Header, Title, Actions, ActionButton, Section, Field, TextField, DateField, CurrencyField, LinkField, BadgeField, SectionDescription, SectionContent } from '../../components/resource-page/resource-page'
+import { Page, Header, Title, Actions, ActionButton, Section, Field, TextField, DateField, CurrencyField, LinkField, BadgeField, SectionDescription, SectionContent } from '../../components/resource-page/resource-page';
 import { useLocation } from 'wouter';
 import { euro, sumEuroValues } from '../../../common/currency';
 import React from 'react';
@@ -14,74 +14,72 @@ import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 
 export const DebtDetails = ({ params }) => {
-  const { data: debt, isLoading } = useGetDebtQuery(params.id)
-  const { data: payments } = useGetPaymentsByDebtQuery(params.id)
-  const [deleteDebt] = useDeleteDebtMutation()
-  const showRemindersSentDialog = useDialog(RemindersSentDialog)
-  const [creditDebt] = useCreditDebtMutation()
-  const [markPaidWithCash] = useMarkPaidWithCashMutation()
-  const [, setLocation] = useLocation()
-  const [publishDebts] = usePublishDebtsMutation()
-  const [sendDebtReminder] = useSendReminderMutation()
+  const { data: debt, isLoading } = useGetDebtQuery(params.id);
+  const { data: payments } = useGetPaymentsByDebtQuery(params.id);
+  const [deleteDebt] = useDeleteDebtMutation();
+  const showRemindersSentDialog = useDialog(RemindersSentDialog);
+  const [creditDebt] = useCreditDebtMutation();
+  const [markPaidWithCash] = useMarkPaidWithCashMutation();
+  const [, setLocation] = useLocation();
+  const [publishDebts] = usePublishDebtsMutation();
+  const [sendDebtReminder] = useSendReminderMutation();
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   const handleDelete = () => {
-    deleteDebt(params.id)
-  }
+    deleteDebt(params.id);
+  };
 
   const handleCredit = () => {
-    creditDebt(params.id)
-  }
+    creditDebt(params.id);
+  };
 
   const handlePublish = () => {
-    publishDebts([params.id])
-  }
+    publishDebts([params.id]);
+  };
 
   const handleCashPayment = () => {
-    markPaidWithCash(params.id)
-  }
+    markPaidWithCash(params.id);
+  };
 
   const handleReminder = async () => {
-    const result = await sendDebtReminder(params.id)
+    const result = await sendDebtReminder(params.id);
 
     if ('data' in result) {
       showRemindersSentDialog({
         debtCount: 1,
         payerCount: 1,
-      })
+      });
     }
-  }
+  };
 
   let statusBadge: Pick<React.ComponentProps<typeof BadgeField>, 'text' | 'color'> = {
     text: 'Unpaid',
     color: 'gray',
-  }
+  };
 
   if (debt.draft) {
     statusBadge = {
       text: 'Draft',
       color: 'gray',
-    }
+    };
   }
 
   if (debt.credited) {
     statusBadge = {
       text: 'Credited',
       color: 'blue',
-    }
+    };
   }
 
   if (debt.status === 'paid') {
     statusBadge = {
       text: 'Paid',
       color: 'green',
-    }
+    };
   }
-
-  const dueDate = dfns.parseISO(debt.dueDate)
 
   return (
     <Page>
@@ -91,9 +89,9 @@ export const DebtDetails = ({ params }) => {
             segments={[
               {
                 text: 'Debts',
-                url: '/admin/debts'
+                url: '/admin/debts',
               },
-              debt?.name ?? ''
+              debt?.name ?? '',
             ]}
           />
         </Title>
@@ -108,7 +106,7 @@ export const DebtDetails = ({ params }) => {
           {debt?.status !== 'paid' && (
             <ActionButton secondary onClick={handleCashPayment}>Mark paid with cash</ActionButton>
           )}
-          {debt?.draft === false && dfns.isPast(dueDate) && (
+          {debt?.draft === false && dfns.isPast(debt.dueDate) && (
             <ActionButton secondary onClick={handleReminder}>Send reminder</ActionButton>
           )}
           <ActionButton secondary onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}>Edit</ActionButton>
@@ -124,9 +122,9 @@ export const DebtDetails = ({ params }) => {
           {debt.publishedAt === null ? 'Not published' : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
         </Field>
         <Field label="Due Date">
-          {dfns.format(dueDate, 'dd.MM.yyyy')}
-          {dfns.isPast(dueDate) && (
-            <div className={`ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600`}>Overdue</div>
+          {dfns.format(debt.dueDate, 'dd.MM.yyyy')}
+          {dfns.isPast(debt.dueDate) && (
+            <div className={'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'}>Overdue</div>
           )}
         </Field>
         <BadgeField label="Status" {...statusBadge} />

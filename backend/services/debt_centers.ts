@@ -1,10 +1,10 @@
-import { NewDebtCenter, DbDebtCenter, DebtCenter, DebtCenterPatch } from '../../common/types'
-import { PgClient } from '../db'
-import { Service, Inject } from 'typedi'
-import sql from 'sql-template-strings'
-import { cents } from '../../common/currency'
-import { DebtService } from './debt'
-import * as E from 'fp-ts/lib/Either'
+import { NewDebtCenter, DbDebtCenter, DebtCenter, DebtCenterPatch } from '../../common/types';
+import { PgClient } from '../db';
+import { Service, Inject } from 'typedi';
+import sql from 'sql-template-strings';
+import { cents } from '../../common/currency';
+import { DebtService } from './debt';
+import * as E from 'fp-ts/lib/Either';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
@@ -17,15 +17,15 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   unpaidCount: debtCenter.unpaid_count,
   total: debtCenter.total === undefined ? undefined : cents(parseInt('' + debtCenter.total)),
   url: debtCenter.url,
-})
+});
 
 @Service()
 export class DebtCentersService {
   @Inject(() => PgClient)
-  pg: PgClient
+    pg: PgClient;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   getDebtCenters() {
     return this.pg
@@ -45,19 +45,19 @@ export class DebtCentersService {
         WHERE NOT dc.deleted
         GROUP BY dc.id
       `)
-      .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter))
+      .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter));
   }
 
   getDebtCenterByName(name: string) {
     return this.pg
       .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`)
-      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters))
+      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   }
 
   getDebtCenter(id: string) {
     return this.pg
       .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`)
-      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters))
+      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   }
 
   createDebtCenter(center: NewDebtCenter) {
@@ -71,21 +71,21 @@ export class DebtCentersService {
         )
         RETURNING *
       `)
-      .then((dbDebtCenter) => dbDebtCenter && formatDebtCenter(dbDebtCenter))
+      .then((dbDebtCenter) => dbDebtCenter && formatDebtCenter(dbDebtCenter));
   }
 
   async deleteDebtCenter(id: string) {
     return await this.pg
       .one<{ id: string }>(sql`
         UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
-      `)
+      `);
   }
 
   async updateDebtCenter(center: DebtCenterPatch) {
-    const existing = await this.getDebtCenter(center.id)
+    const existing = await this.getDebtCenter(center.id);
 
     if (!existing) {
-      return E.left(new Error('No such debt center'))
+      return E.left(new Error('No such debt center'));
     }
 
     const query = sql`
@@ -96,10 +96,10 @@ export class DebtCentersService {
         url = ${center.url}
       WHERE
         id = ${center.id}
-    `
+    `;
 
-    await this.pg.one(query)
+    await this.pg.one(query);
 
-    return E.right(null)
+    return E.right(null);
   }
 }

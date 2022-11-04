@@ -1,45 +1,45 @@
-import { Inject, Service } from "typedi";
-import { route, router } from "typera-express";
-import { badRequest, internalServerError, notFound, ok, unauthorized } from "typera-express/response";
-import * as t from 'io-ts'
-import { internalIdentity, tkoalyIdentity } from "../../common/types";
-import { AuthService } from "../auth-middleware";
-import { DebtService } from "../services/debt";
-import { PaymentService } from "../services/payements";
-import { PayerService } from "../services/payer";
-import { UsersService } from "../services/users";
-import { validateBody } from "../validate-middleware";
-import { euro, euroValue, formatEuro, sumEuroValues } from "../../common/currency";
-import { EmailService } from "../services/email";
-import { Config } from "../config";
-import { parseISO } from "date-fns";
-import { BankingService } from "../services/banking";
+import { Inject, Service } from 'typedi';
+import { route, router } from 'typera-express';
+import { badRequest, notFound, ok, unauthorized } from 'typera-express/response';
+import * as t from 'io-ts';
+import { internalIdentity } from '../../common/types';
+import { AuthService } from '../auth-middleware';
+import { DebtService } from '../services/debt';
+import { PaymentService } from '../services/payements';
+import { PayerService } from '../services/payer';
+import { UsersService } from '../services/users';
+import { validateBody } from '../validate-middleware';
+import { euro, formatEuro, sumEuroValues } from '../../common/currency';
+import { EmailService } from '../services/email';
+import { Config } from '../config';
+import { parseISO } from 'date-fns';
+import { BankingService } from '../services/banking';
 
 @Service()
 export class PaymentsApi {
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService
+    paymentService: PaymentService;
 
   @Inject(() => BankingService)
-  bankingService: BankingService
+    bankingService: BankingService;
 
   @Inject(() => UsersService)
-  usersService: UsersService
+    usersService: UsersService;
 
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   @Inject(() => EmailService)
-  emailService: EmailService
+    emailService: EmailService;
 
   private getPayments() {
     return route
@@ -48,7 +48,7 @@ export class PaymentsApi {
       .handler(async () => {
         const payments = await this.paymentService.getPayments();
         return ok(payments);
-      })
+      });
   }
 
   private getPayment() {
@@ -62,14 +62,14 @@ export class PaymentsApi {
         const debts = await this.debtService.getDebtsByPayment(ctx.routeParams.id);
 
         if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== payment?.payer_id) {
-          return unauthorized()
+          return unauthorized();
         }
 
         return ok({
           payment,
           debts,
         });
-      })
+      });
   }
 
   private registerTransaction() {
@@ -80,13 +80,13 @@ export class PaymentsApi {
         transactionId: t.string,
       })))
       .handler(async (ctx) => {
-        const { id } = ctx.routeParams
-        const { transactionId } = ctx.body
+        const { id } = ctx.routeParams;
+        const { transactionId } = ctx.body;
 
         const transaction = await this.bankingService.getTransaction(transactionId);
 
         if (!transaction) {
-          return notFound('No such transaction found')
+          return notFound('No such transaction found');
         }
 
         const event = await this.paymentService.createPaymentEventFromTransaction(transaction, id);
@@ -117,19 +117,19 @@ export class PaymentsApi {
 
 
           return debt;
-        }))
+        }));
 
         const totals = await Promise.all(debts.map(d => this.debtService.getDebtTotal(d.id)));
-        const total = totals.reduce(sumEuroValues, euro(0))
+        const total = totals.reduce(sumEuroValues, euro(0));
 
         if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
-          return badRequest('All debts do not have the same payer')
+          return badRequest('All debts do not have the same payer');
         }
 
-        const email = await this.payerService.getPayerPrimaryEmail(debts[0].payerId)
+        const email = await this.payerService.getPayerPrimaryEmail(debts[0].payerId);
 
         if (!email) {
-          throw new Error(`Payer ${debts[0].payerId} does not have a primary email`)
+          throw new Error(`Payer ${debts[0].payerId} does not have a primary email`);
         }
 
         const payment = await this.paymentService.createInvoice({
@@ -154,17 +154,17 @@ export class PaymentsApi {
               amount: total,
               message: payment.message,
             },
-          })
+          });
 
           if (createdEmail === null) {
-            throw new Error('unable to create an email for the invoice')
+            throw new Error('unable to create an email for the invoice');
           }
 
-          await this.emailService.sendEmail(createdEmail.id)
+          await this.emailService.sendEmail(createdEmail.id);
         }
 
         return ok(payment);
-      })
+      });
   }
 
   private getOwnPayments() {
@@ -174,9 +174,9 @@ export class PaymentsApi {
         accessLevel: 'normal',
       }))
       .handler(async ({ session }) => {
-        const payments = await this.paymentService.getPayerPayments(internalIdentity(session.payerId))
-        return ok(payments)
-      })
+        const payments = await this.paymentService.getPayerPayments(internalIdentity(session.payerId));
+        return ok(payments);
+      });
   }
 
   private creditPayment() {
@@ -184,9 +184,9 @@ export class PaymentsApi {
       .post('/:id/credit')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        await this.paymentService.creditPayment(ctx.routeParams.id)
-        return ok()
-      })
+        await this.paymentService.creditPayment(ctx.routeParams.id);
+        return ok();
+      });
   }
 
   router() {
@@ -197,6 +197,6 @@ export class PaymentsApi {
       this.getPayment(),
       this.creditPayment(),
       this.registerTransaction(),
-    )
+    );
   }
 }

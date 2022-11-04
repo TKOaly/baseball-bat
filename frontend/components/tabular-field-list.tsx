@@ -1,22 +1,23 @@
 import { Field } from 'formik';
-import { ComponentProps, ComponentType, JSXElementConstructor } from 'react';
-import { X as Cross, Plus } from 'react-feather'
+import { ComponentProps } from 'react';
+import { X as Cross, Plus } from 'react-feather';
 
-type ColumnDef<T, C extends JSXElementConstructor<any>> = {
+type ColumnDef<T, C extends React.JSXElementConstructor<any>, V, K extends keyof ColumnMap, ColumnMap extends Record<K, V>> = { // eslint-disable-line
   key: string,
-  getValue?: (row: T) => any,
+  getValue?: (row: T) => V, // eslint-disable-line
   component: C,
   header: string,
   props?: ComponentProps<C> | ((row: T) => ComponentProps<C>),
 }
 
-type Props<T extends Object> = {
+type Props<T extends { key: string | number }, ColumnMap extends Record<string, unknown>> = {
   value: T[],
-  columns: ColumnDef<T, any>[],
+  columns: ColumnDef<T, any, any, keyof ColumnMap, ColumnMap>[], // eslint-disable-line
   createNew: () => T,
   readOnly?: boolean,
   onChange: (value: T[]) => void,
   errors?: Record<string, unknown>,
+  name?: string
 }
 
 type Tools<T> = {
@@ -25,9 +26,9 @@ type Tools<T> = {
   replace: (index: number, value: T) => void,
 }
 
-export const TabularFieldListFormik = <T extends Object>(props: Omit<Props<T>, 'onChange'> & { name: string, onChange: (evt: { target: { value: T[], name: string } }) => void }) => (
+export const TabularFieldListFormik = <T, C extends Record<string, unknown>>(props: Omit<Props<T, C>, 'onChange'> & { name: string, onChange: (evt: { target: { value: T[], name: string } }) => void }) => (
   <Field name={props.name}>
-    {({ field: { onChange, ...field } }) => (
+    {({ field }) => (
       <TabularFieldList
         {...props}
         {...field}
@@ -35,16 +36,17 @@ export const TabularFieldListFormik = <T extends Object>(props: Omit<Props<T>, '
       />
     )}
   </Field>
-)
+);
 
-export const TabularFieldList = <T extends Object>({
+export const TabularFieldList = <T extends { key: string | number }, C extends Record<string, unknown>>({
   columns,
   value,
   createNew,
   readOnly,
   onChange,
   errors,
-}: Props<T>) => {
+  name,
+}: Props<T, C>) => {
   const render = (tools: Tools<T>) => [
     ...value.flatMap((row, rowIndex) => {
       const fields = columns.map(({ component: Component, getValue, key, props }, i) => {
@@ -55,7 +57,7 @@ export const TabularFieldList = <T extends Object>({
         }
 
         return (
-          <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }}>
+          <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }} key={row.key}>
             <Component
               name={`${name}.${rowIndex}.${key}`}
               value={getValue ? getValue(row) : row[key]}
@@ -80,21 +82,21 @@ export const TabularFieldList = <T extends Object>({
             <button onClick={() => tools.remove(rowIndex)}>
               <Cross />
             </button>
-          </div>
+          </div>,
         );
       }
 
       fields.push(
         ...columns.map(({ key }) => {
-          const error = errors?.[`${name}.${rowIndex}.${key}`]
+          const error = errors?.[`${name}.${rowIndex}.${key}`];
 
           return (
-            <div className="text-sm text-red-500 px-1">
+            <div className="text-sm text-red-500 px-1" key={key}>
               {error && `${error}`}
             </div>
           );
         }),
-        !readOnly && <div />
+        !readOnly && <div />,
       );
 
       return fields;
@@ -103,25 +105,31 @@ export const TabularFieldList = <T extends Object>({
       <button onClick={() => tools.push(createNew())}>
         <Plus />
       </button>
-    </div>
-  ]
+    </div>,
+  ];
 
   let tools: Tools<T> = {
     push: (newItem) => onChange([...value, newItem]),
     remove: (index) => {
-      const copy = [...value]
-      copy.splice(index, 1)
-      onChange(copy)
+      const copy = [...value];
+      copy.splice(index, 1);
+      onChange(copy);
     },
     replace: (index, newValue) => {
-      const copy = [...value]
-      copy.splice(index, 1, newValue)
-      onChange(copy)
+      const copy = [...value];
+      copy.splice(index, 1, newValue);
+      onChange(copy);
     },
   };
 
   if (readOnly) {
-    tools = { push: () => { }, remove: () => { }, replace: () => { } }
+    tools = {
+      /* eslint-disable @typescript-eslint/no-empty-function */
+      push: () => { },
+      remove: () => { },
+      replace: () => { },
+      /* eslint-enable @typescript-eslint/no-empty-function */
+    };
   }
 
   return (
@@ -133,7 +141,7 @@ export const TabularFieldList = <T extends Object>({
     >
       {
         columns.map((column) => (
-          <div className="text-xs font-bold text-gray-500 pl-1.5">{column.header}</div>
+          <div className="text-xs font-bold text-gray-500 pl-1.5" key={column.key}>{column.header}</div>
         ))
       }
       {!readOnly && <div />}

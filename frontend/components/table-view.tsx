@@ -1,11 +1,15 @@
-import { identity, pipe } from 'fp-ts/lib/function';
-import { useMemo, useState } from 'react'
-import { Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { identity } from 'fp-ts/lib/function';
+import { useMemo, useState } from 'react';
+import { Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
 import { difference, concat, uniq } from 'remeda';
-import { Dropdown } from './dropdown'
+import { Dropdown } from './dropdown';
 import { FilledDisc } from './filled-disc';
 
-const union = <T extends unknown>(a: T[], b: T[]): T[] => uniq(concat(a, b))
+function union<T>(a: T[], b: T[]): T[] {
+  return uniq(concat(a, b));
+}
 
 const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string }, row: R): V => {
   if (typeof column.getValue === 'string') {
@@ -13,7 +17,7 @@ const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string },
   } else {
     return column.getValue(row);
   }
-}
+};
 
 export type Row = { key: string | number }
 
@@ -42,11 +46,11 @@ export type TableViewProps<R extends Row> = {
 
 const getColumnValue = <R extends Row>(column: Column<R>, row: R) => {
   if (typeof column.getValue === 'string') {
-    return row[column.getValue]
+    return row[column.getValue];
   }
 
-  return column.getValue(row)
-}
+  return column.getValue(row);
+};
 
 type FilterState = {
   allowlist: Array<any>,
@@ -54,7 +58,7 @@ type FilterState = {
 }
 
 const FilterDropdownItem = ({ column, rows, options, onChange }) => {
-  let containsArrays = false
+  let containsArrays = false;
 
   const rowValues =
     rows
@@ -67,7 +71,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
         } else {
           return [[r, value]];
         }
-      })
+      });
 
   return (
     <Dropdown
@@ -92,7 +96,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
             }
           }, [[], new Set()])[0]
           .map(([row, value]) => {
-            let icon = null
+            let icon = null;
 
             if (options.allowlist.includes(value)) {
               icon = <PlusSquare className="text-green-500 h-4" />;
@@ -100,16 +104,16 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
               icon = <MinusSquare className="text-red-500 h-4" />;
             }
 
-            let displayValue = String(value)
+            let displayValue = String(value);
 
             if (column.render) {
-              let renderValue = value
+              let renderValue = value;
 
               if (containsArrays && !Array.isArray(renderValue)) {
-                renderValue = [value]
+                renderValue = [value];
               }
 
-              displayValue = column.render(renderValue, row)
+              displayValue = column.render(renderValue, row);
             }
 
             return {
@@ -128,65 +132,65 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
           onChange({
             blocklist: union(options.blocklist, [value]),
             allowlist: difference(options.allowlist, [value]),
-          })
+          });
         } else if (options.blocklist.includes(value)) {
           onChange({
             ...options,
             blocklist: difference(options.blocklist, [value]),
-          })
+          });
         } else {
           onChange({
             ...options,
             allowlist: union(options.allowlist, [value]),
-          })
+          });
         }
       }}
     />
-  )
-}
+  );
+};
 
 export const TableView = <R extends Row>({ rows, columns, selectable, actions, onRowClick }: TableViewProps<R>) => {
-  const [selectedRows, setSelectedRows] = useState<Array<string | number>>([])
-  const [sorting, setSorting] = useState(null)
-  const [filters, setFilters] = useState<Record<string, FilterState>>({})
+  const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
+  const [sorting, setSorting] = useState(null);
+  const [filters, setFilters] = useState<Record<string, FilterState>>({});
 
   const sortedRows = useMemo(() => {
-    let tmpRows = [...rows]
+    let tmpRows = [...rows];
 
     if (sorting) {
-      const [sortCol, sortDir] = sorting
+      const [sortCol, sortDir] = sorting;
 
-      const column = columns.find(c => c.name === sortCol)
+      const column = columns.find(c => c.name === sortCol);
 
       if (!column) {
-        setSorting(null)
-        return rows
+        setSorting(null);
+        return rows;
       }
 
       const comparator = (a: R, b: R) => {
-        let va = getColumnValue(column, a)
-        let vb = getColumnValue(column, b)
+        let va = getColumnValue(column, a);
+        let vb = getColumnValue(column, b);
 
         if (sortDir === 'desc') {
-          [va, vb] = [vb, va]
+          [va, vb] = [vb, va];
         }
 
         if (va == vb) {
-          return 0
+          return 0;
         }
 
         if (va < vb) {
-          return 1
+          return 1;
         }
 
-        return -1
-      }
+        return -1;
+      };
 
-      tmpRows = tmpRows.sort(comparator)
+      tmpRows = tmpRows.sort(comparator);
     }
 
     const filter = (row: R) => {
-      let modeStrict = false
+      let modeStrict = false;
 
       const matches = Object.entries(filters)
         .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
@@ -195,13 +199,13 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           const value = getColumnValue(column, row);
 
           if (options.allowlist.length > 0) {
-            modeStrict = true
+            modeStrict = true;
           }
 
-          let values = [value]
+          let values = [value];
 
           if (Array.isArray(value)) {
-            values = value
+            values = value;
           }
 
           if (values.some(v => options.allowlist.includes(v))) {
@@ -211,38 +215,38 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           if (values.some(v => options.blocklist.includes(v))) {
             return false;
           }
-        })
+        });
 
       if (modeStrict) {
-        return matches.every(v => v === true)
+        return matches.every(v => v === true);
       } else {
-        return matches.every(v => v !== false)
+        return matches.every(v => v !== false);
       }
-    }
+    };
 
-    return tmpRows.filter(filter)
-  }, [rows, sorting, columns, filters])
+    return tmpRows.filter(filter);
+  }, [rows, sorting, columns, filters]);
 
   const toggleSelection = (row: Row['key']) => {
-    const newSet = [...selectedRows]
-    const index = selectedRows.indexOf(row)
+    const newSet = [...selectedRows];
+    const index = selectedRows.indexOf(row);
 
     if (index > -1) {
-      newSet.splice(index, 1)
+      newSet.splice(index, 1);
     } else {
-      newSet.push(row)
+      newSet.push(row);
     }
 
-    setSelectedRows(newSet)
-  }
+    setSelectedRows(newSet);
+  };
 
   const columnCount = columns.length;
 
   const availableActions = useMemo(() => {
     if (!actions || actions.length === 0)
-      return []
+      return [];
 
-    const matches = actions.map(a => typeof a.disabled !== 'boolean' || a.disabled === false)
+    const matches = actions.map(a => typeof a.disabled !== 'boolean' || a.disabled === false);
 
     for (const row of rows) {
       if (!selectedRows.includes(row.key))
@@ -256,11 +260,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
 
           return;
         }
-      })
+      });
     }
 
-    return matches.flatMap((matches, i) => matches ? [actions[i]] : [])
-  }, [selectedRows, actions])
+    return matches.flatMap((matches, i) => matches ? [actions[i]] : []);
+  }, [selectedRows, actions]);
 
   return (
     <div className="relative pt-5">
@@ -282,11 +286,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
           }))}
           onSelect={(col) => {
             if (!sorting || sorting[0] !== col) {
-              setSorting([col, 'desc'])
+              setSorting([col, 'desc']);
             } else if (sorting[1] === 'desc') {
-              setSorting([col, 'asc'])
+              setSorting([col, 'asc']);
             } else {
-              setSorting(null)
+              setSorting(null);
             }
           }}
         />
@@ -303,13 +307,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
               value: col.name,
             })),
             { divider: true },
-            { text: (<div className="flex items-center gap-1 -ml-2"><Square className="h-4 text-gray-500" /> TKO-äly member</div>) }
+            { text: (<div className="flex items-center gap-1 -ml-2"><Square className="h-4 text-gray-500" /> TKO-äly member</div>) },
           ]}
-          onSelect={() => { }}
         />
         <Dropdown
           label="Actions"
-          onSelect={() => { }}
           options={[
             { text: 'Select all', onSelect: () => setSelectedRows(sortedRows.map(r => r.key)) },
             { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
@@ -318,14 +320,14 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
               availableActions.length > 0
                 ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => sortedRows.find(r => r.key === key)).filter(identity)) }))]
                 : []
-            )
+            ),
           ]}
         />
       </div>
       <div className="grid bg-white border rounded-md shadow-sm" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
         {selectable && <div />}
         {columns.map((column) => (
-          <div className="relative h-0">
+          <div className="relative h-0" key={column.name}>
             <div className={`absolute ${column.align === 'right' ? 'right-3' : 'left-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
             <div className={`opacity-0 pointer-events-none ${column.align === 'right' ? 'pr-3' : 'pl-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
           </div>
@@ -352,24 +354,23 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                 )}
                 {
                   columns.map((column) => {
-                    const value = getRowColumnValue(column, row)
-                    let content = value
+                    const value = getRowColumnValue(column, row);
+                    let content = value;
 
                     if (column.render) {
-                      content = column.render(value, row)
+                      content = column.render(value, row);
                     }
 
                     return (
-                      <div className={`${i > 0 && 'border-t'} overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`}>
+                      <div className={`${i > 0 && 'border-t'} overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name}>
                         {content}
                       </div>
-                    )
+                    );
                   })
                 }
                 {actions && (
                   <div className={`${i > 0 && 'border-t'} relative px-3 py-2 flex items-center justify-center`}>
                     <Dropdown
-                      onSelect={() => { }}
                       renderTrigger={(props) => <MoreVertical {...props} />}
                       showArrow={false} className="h-[24px]"
                       options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
@@ -377,11 +378,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                   </div>
                 )}
               </div>
-            )
+            );
           })
         }
       </div>
     </div>
-  )
-}
+  );
+};
 

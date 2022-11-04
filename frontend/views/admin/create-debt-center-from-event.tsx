@@ -1,28 +1,23 @@
-import { forwardRef, useEffect, useImperativeHandle, useCallback, useRef, useState, useMemo } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useMemo } from 'react';
 import { Circle, Search, X } from 'react-feather';
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Stepper } from '../../components/stepper'
-import * as R from 'remeda'
-import { Event } from '../../../common/types'
-import { TextField } from '../../components/text-field'
-import eventsApi, { useGetEventCustomFieldsQuery, useGetEventRegistrationsQuery, useGetEventsQuery } from '../../api/events'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Stepper } from '../../components/stepper';
+import { Event } from '../../../common/types';
+import { TextField } from '../../components/text-field';
+import eventsApi, { useGetEventsQuery } from '../../api/events';
 import { addDays, format, isMatch, subYears } from 'date-fns';
-import { FilledDisc } from '../../components/filled-disc'
-import ReactModal from 'react-modal'
-import { ListView } from '../../components/list-view';
-import { TabularFieldList } from '../../components/tabular-field-list';
+import { FilledDisc } from '../../components/filled-disc';
+import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';
 import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
 import { TextareaField } from '../../components/textarea-field';
 import { FieldArray, Formik } from 'formik';
 import { DropdownField } from '../../components/dropdown-field';
 import { Button, DisabledButton, SecondaryButton } from '../../components/button';
-import { useDispatch, useSelector } from 'react-redux';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
-import { QueryDefinition } from '@reduxjs/toolkit/dist/query/react';
-import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module'
-import { EndpointDefinition, QueryArgFrom, ResultTypeFrom } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
+import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
+import { QueryArgFrom, ResultTypeFrom } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
 import { DateField } from '../../components/datetime-field';
 import { useLocation } from 'wouter';
@@ -34,14 +29,14 @@ type EventSelectionViewProps = {
 }
 
 const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
-  const starting = useMemo(() => subYears(new Date(), 1), [])
+  const starting = useMemo(() => subYears(new Date(), 1), []);
 
   const { data: events } = useGetEventsQuery({
     starting,
-  })
+  });
 
-  const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState([])
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState([]);
 
   const handleSelect = (event) => setSelected(prev => {
     const index = prev.indexOf(event.id);
@@ -79,6 +74,7 @@ const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
           <div
             className={`p-3 hover:border-blue-400 cursor-pointer rounded-md bg-white border shadow-sm mt-2 flex items-center ${selected.indexOf(event.id) > -1 && 'border-blue-400'}`}
             onClick={() => handleSelect(event)}
+            key={event.id}
           >
             {
               selected.indexOf(event.id) === -1
@@ -95,8 +91,10 @@ const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any> ? D : never
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E): (params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => ResultTypeFrom<EndpointDefinitionFrom<E>>[] | null {
   const selectMultipleCustomFieldQueries = createSelector(
     [
@@ -104,34 +102,34 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E)
       (_state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params,
     ],
     (state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params.map((param) => endpoint.select(param)(state)),
-  )
+  );
 
   return (params) => {
-    const [results, setResults] = useState(null)
+    const [results, setResults] = useState(null);
 
-    const dispatch = useAppDispatch()
+    const dispatch = useAppDispatch();
 
     useEffect(() => {
       params.forEach((param) => {
         const result = dispatch(endpoint.initiate(param));
         result.unsubscribe();
       });
-    }, [params])
+    }, [params]);
 
-    const queries = useAppSelector((state) => selectMultipleCustomFieldQueries(state, params))
+    const queries = useAppSelector((state) => selectMultipleCustomFieldQueries(state, params));
 
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
         setResults(queries.map(query => query.data));
       }
-    }, [queries])
+    }, [queries]);
 
-    return results
-  }
-};
+    return results;
+  };
+}
 
-const useFetchEventCustomFields = createMultiFetchHook(eventsApi.endpoints.getEventCustomFields)
-const useFetchEventRegistrations = createMultiFetchHook(eventsApi.endpoints.getEventRegistrations)
+const useFetchEventCustomFields = createMultiFetchHook(eventsApi.endpoints.getEventCustomFields);
+const useFetchEventRegistrations = createMultiFetchHook(eventsApi.endpoints.getEventRegistrations);
 
 const Modal = ({ open, onClose, children }) => {
   return (
@@ -153,18 +151,18 @@ const Modal = ({ open, onClose, children }) => {
           borderRadius: '0.375rem',
           borderColor: 'rgb(229, 231, 235)',
           boxShadow: 'rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px',
-          overflow: 'initial'
+          overflow: 'initial',
         },
       }}
     >
       {children}
     </ReactModal>
-  )
-}
+  );
+};
 
 const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
-  const [open, setOpen] = useState(false)
-  const promiseRef = useRef(null)
+  const [open, setOpen] = useState(false);
+  const promiseRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
     prompt: () => {
@@ -174,7 +172,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
 
       return new Promise((resolve, reject) => {
         promiseRef.current = [resolve, reject];
-        setOpen(true)
+        setOpen(true);
       });
     },
 
@@ -184,17 +182,17 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
         promiseRef.current[1]();
         promiseRef.current = null;
       }
-    }
-  }))
+    },
+  }));
 
   const handleClose = () => {
-    setOpen(false)
+    setOpen(false);
 
     if (promiseRef.current) {
       promiseRef.current[1]();
       promiseRef.current = null;
     }
-  }
+  };
 
   const handleSubmit = (values) => {
     if (promiseRef.current) {
@@ -202,8 +200,8 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
       promiseRef.current = null;
     }
 
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   return (
     <Modal open={open} onClose={handleClose}>
@@ -268,6 +266,8 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
   );
 });
 
+PricingRuleModal.displayName = 'PricingRuleModal';
+
 type Settings = {
   name: string,
   basePrice: number,
@@ -285,25 +285,25 @@ type Settings = {
 }
 
 const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (details: Settings) => void }) => {
-  const eventIds = useMemo(() => events.map(e => e.id), [events])
-  const eventCustomFieldsArray = useFetchEventCustomFields(eventIds)
+  const eventIds = useMemo(() => events.map(e => e.id), [events]);
+  const eventCustomFieldsArray = useFetchEventCustomFields(eventIds);
 
   const eventCustomFields = useMemo(() => {
     if (eventCustomFieldsArray === null) {
-      return null
+      return null;
     }
 
-    const map = new Map()
+    const map = new Map();
 
     eventCustomFieldsArray
       .forEach((fields, i) => {
-        map.set(eventIds[i], fields)
-      })
+        map.set(eventIds[i], fields);
+      });
 
-    return map
-  }, [eventCustomFieldsArray])
+    return map;
+  }, [eventCustomFieldsArray]);
 
-  const promptRef = useRef()
+  const promptRef = useRef();
 
   return (
     <div className="grid gap-x-5 gap-y-2 grid-cols-2">
@@ -317,12 +317,12 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
           componentMappings: [],
         } as Settings}
         validate={(values) => {
-          const errors = {} as any;
+          const errors: Partial<Record<keyof Settings, string>> = {};
 
           if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.dueDate)) {
-            errors.due_date = 'Date must be in format <day>.<month>.<year>'
+            errors.dueDate = 'Date must be in format <day>.<month>.<year>';
           } else if (!isMatch(values.dueDate, 'dd.MM.yyyy')) {
-            errors.due_date = 'Invalid date'
+            errors.dueDate = 'Invalid date';
           }
 
           return errors;
@@ -366,7 +366,7 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
                   return (
                     <>
                       {values.componentMappings.map((mapping, i) => (
-                        <div className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex">
+                        <div className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex" key={i}>
                           <StandaloneInputGroup
                             label="Name"
                             component={TextField}
@@ -375,7 +375,7 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
                               tools.replace(i, {
                                 ...mapping,
                                 name: evt.target.value,
-                              })
+                              });
                             }}
                           />
                           <StandaloneInputGroup
@@ -386,7 +386,7 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
                               tools.replace(i, {
                                 ...mapping,
                                 price: event.target.value,
-                              })
+                              });
                             }}
                           />
                           <div className="col-span-full">
@@ -395,7 +395,7 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
                                 {mapping.rules.length > 0 && (
                                   <div className="border mb-3 rounded-md shadow-sm">
                                     {mapping.rules.map((rule, i) => (
-                                      <div className="flex items-center border-b last:border-0 py-2 px-3">
+                                      <div className="flex items-center border-b last:border-0 py-2 px-3" key={i}>
                                         <Breadcrumbs
                                           segments={[
                                             '' + events.find(e => e.id === rule.event)?.name,
@@ -441,16 +441,16 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
 };
 
 const ConfirmationView = ({ events, settings, onConfirm }) => {
-  const eventIds = useMemo(() => events.map(e => e.id), [events])
-  const registrations = useFetchEventRegistrations(eventIds)
+  const eventIds = useMemo(() => events.map(e => e.id), [events]);
+  const registrations = useFetchEventRegistrations(eventIds);
 
   const total = useMemo(() => {
     if (!registrations) {
-      return 0
+      return 0;
     }
 
     return registrations.map(r => r.length).reduce((a, b) => a + b, 0);
-  }, [registrations])
+  }, [registrations]);
 
   return (
     <div>
@@ -466,11 +466,11 @@ const ConfirmationView = ({ events, settings, onConfirm }) => {
 };
 
 export const CreateDebtCenterFromEvent = () => {
-  const [wizardState, setWizardState] = useState<WizardState>('select-event')
-  const [events, setEvents] = useState(null)
-  const [settings, setSettings] = useState(null)
-  const [createDebtCenterFromEvent] = useCreateDebtCenterFromEventMutation()
-  const [, setLocation] = useLocation()
+  const [wizardState, setWizardState] = useState<WizardState>('select-event');
+  const [events, setEvents] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [createDebtCenterFromEvent] = useCreateDebtCenterFromEventMutation();
+  const [, setLocation] = useLocation();
 
   const handleConfirm = () => {
     createDebtCenterFromEvent({
@@ -478,15 +478,15 @@ export const CreateDebtCenterFromEvent = () => {
       settings,
     }).then(res => {
       if ('data' in res) {
-        setLocation(`/admin/debt-centers/${res.data.id}`)
+        setLocation(`/admin/debt-centers/${res.data.id}`);
       }
-    })
+    });
   };
 
-  let content = null
+  let content = null;
 
   if (wizardState === 'select-event') {
-    content = <EventSelectionView onSelect={(evt) => { setEvents(evt); setWizardState('settings') }} />;
+    content = <EventSelectionView onSelect={(evt) => { setEvents(evt); setWizardState('settings'); }} />;
   } else if (wizardState === 'settings') {
     content = <SettingsView
       events={events}
@@ -509,12 +509,12 @@ export const CreateDebtCenterFromEvent = () => {
         <Breadcrumbs
           segments={[
             { text: 'Debt Centers', url: '/admin/debt-centers' },
-            'Create from Event'
+            'Create from Event',
           ]}
         />
       </h1>
       <p className="mb-10">
-        Create a new debt center and debts corresponding to a calendar event and it's registrations.
+        Create a new debt center and debts corresponding to a calendar event and it{'\''}s registrations.
       </p>
       <Stepper
         stages={['Select Events', 'Configure', 'Confirmation']}
@@ -523,4 +523,4 @@ export const CreateDebtCenterFromEvent = () => {
       {content}
     </>
   );
-}
+};

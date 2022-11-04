@@ -1,5 +1,5 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button, SecondaryButton } from '../../components/button'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button, SecondaryButton } from '../../components/button';
 
 export const PublishedDebtEditConfirmation = ({ onClose }) => {
   return (
@@ -13,5 +13,5 @@ export const PublishedDebtEditConfirmation = ({ onClose }) => {
         <Button onClick={() => onClose(true)}>Continue</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};

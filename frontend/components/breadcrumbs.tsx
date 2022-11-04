@@ -1,5 +1,5 @@
-import { ChevronsRight } from 'react-feather'
-import { Link } from 'wouter'
+import { ChevronsRight } from 'react-feather';
+import { Link } from 'wouter';
 
 export type Segment = string | { text: string, url: string }
 

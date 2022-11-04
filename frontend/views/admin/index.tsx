@@ -1,40 +1,30 @@
-import { Link, Redirect, Route, Switch, useLocation } from 'wouter'
-import { tw } from '../../tailwind'
-import { CreateDebtCenter } from './create-debt-center'
-import { CreateDebtCenterFromEvent } from './create-debt-center-from-event'
-import { DialogTarget, useDialog } from '../../components/dialog'
-import { PayerListing } from './payer-listing'
-import { Banking } from './banking'
-import { ImportXMLStatement } from './import-xml-statement'
-import { CreateDebt } from './create-debt'
-import { DebtCenterDetails } from './debt-center'
-import { DebtCentersListing } from './debt-centers-listing'
-import { MassCreateDebts } from './mass-create-debts'
-import { DebtDetails } from './debt-details'
-import { DebtListing } from './debt-listing'
-import { PayerDetails } from './payer-details'
-import { PaymentDetails } from './payment-details'
-import { BankStatement } from './bank-statement'
-import { PaymentsListing } from './payments-listing'
-import { EmailsListing } from './emails-listing'
-import { EmailDetails } from './email-details'
-import { BankAccount } from './bank-account'
-import { CreateBankAccount } from './create-bank-account'
-import { CornerDownLeft } from 'react-feather'
-import { useEffect, useState } from 'react'
-import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog'
-import { TextField } from '../../components/text-field'
-import { EditDebt } from '../edit-debt'
-import { EditDebtCenter } from './edit-debt-center'
-
-const MenuItemLi = tw.li`
-  px-4
-  rounded-md
-  py-2.5
-  hover:bg-black
-  hover:bg-opacity-10
-  my-1
-`;
+import { Link, Redirect, Route, Switch, useLocation } from 'wouter';
+import { CreateDebtCenter } from './create-debt-center';
+import { CreateDebtCenterFromEvent } from './create-debt-center-from-event';
+import { DialogTarget, useDialog } from '../../components/dialog';
+import { PayerListing } from './payer-listing';
+import { Banking } from './banking';
+import { ImportXMLStatement } from './import-xml-statement';
+import { CreateDebt } from './create-debt';
+import { DebtCenterDetails } from './debt-center';
+import { DebtCentersListing } from './debt-centers-listing';
+import { MassCreateDebts } from './mass-create-debts';
+import { DebtDetails } from './debt-details';
+import { DebtListing } from './debt-listing';
+import { PayerDetails } from './payer-details';
+import { PaymentDetails } from './payment-details';
+import { BankStatement } from './bank-statement';
+import { PaymentsListing } from './payments-listing';
+import { EmailsListing } from './emails-listing';
+import { EmailDetails } from './email-details';
+import { BankAccount } from './bank-account';
+import { CreateBankAccount } from './create-bank-account';
+import { CornerDownLeft } from 'react-feather';
+import { useEffect, useState } from 'react';
+import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
+import { TextField } from '../../components/text-field';
+import { EditDebt } from '../edit-debt';
+import { EditDebtCenter } from './edit-debt-center';
 
 type MenuItemProps = {
   path?: string
@@ -42,8 +32,8 @@ type MenuItemProps = {
 }
 
 const MenuItem: React.FC<MenuItemProps> = ({ path, onClick, children }) => {
-  const [location, setLocation] = useLocation()
-  const matched = location.indexOf(path) === 0
+  const [location, setLocation] = useLocation();
+  const matched = location.indexOf(path) === 0;
 
   return (
     <li
@@ -59,7 +49,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, onClick, children }) => {
         onClick?.();
 
         if (path) {
-          setLocation(path)
+          setLocation(path);
         }
       }}
     >
@@ -69,8 +59,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, onClick, children }) => {
 };
 
 const Admin = () => {
-  const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow')
-  const showSearchDialog = useDialog(GlobalSearchDialog)
+  const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow');
+  const showSearchDialog = useDialog(GlobalSearchDialog);
 
   useEffect(() => {
     const handler = (evt) => {
@@ -118,15 +108,13 @@ const Admin = () => {
               {(params) => <MassCreateDebts params={params} defaults={{}} />}
             </Route>
             <Route path="/admin/debt-centers/:id">
-              {(params) => (params &&
-                <DebtCenterDetails id={(params as any).id} />
-              )}
+              {({ id }: { id: string }) => <DebtCenterDetails id={id} />}
             </Route>
             <Route path="/admin/debt-centers/:id/create-debt">
               {({ id }: { id: string }) => <CreateDebt debtCenterId={id} />}
             </Route>
             <Route path="/admin/debt-centers/:id/create-debts-csv">
-              {(params) => <MassCreateDebts params={params} defaults={{ debtCenter: params.id }} />}
+              {(params: { id: string }) => <MassCreateDebts params={params} defaults={{ debtCenter: params.id }} />}
             </Route>
             <Route path="/admin/debt-centers/:id/edit" component={EditDebtCenter} />
             <Route path="/admin/debts/create" component={CreateDebt} />
@@ -162,4 +150,4 @@ const Admin = () => {
   );
 };
 
-export default Admin
+export default Admin;

@@ -1,36 +1,34 @@
-import { Inject, Service } from "typedi";
-import { Middleware, route, router } from "typera-express";
-import { badRequest, ok } from "typera-express/response";
-import { bankAccount } from "../../common/types";
-import { AuthService } from "../auth-middleware";
-import { parseCamtStatement } from "../camt-parser";
-import { BankingService } from "../services/banking";
-import { validateBody } from "../validate-middleware";
-import multer from 'multer'
-
-type MulterMiddleware = Middleware.Middleware<{ file: Express.Multer.File }, any>
+import { Inject, Service } from 'typedi';
+import { Middleware, route, router } from 'typera-express';
+import { badRequest, ok } from 'typera-express/response';
+import { bankAccount } from '../../common/types';
+import { AuthService } from '../auth-middleware';
+import { parseCamtStatement } from '../camt-parser';
+import { BankingService } from '../services/banking';
+import { validateBody } from '../validate-middleware';
+import multer from 'multer';
 
 @Service()
 export class BankingApi {
   @Inject(() => BankingService)
-  bankingService: BankingService
+    bankingService: BankingService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   private upload = multer({
     storage: multer.memoryStorage(),
-  })
+  });
 
   private getBankAccounts() {
     return route
       .get('/accounts')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (_ctx) => {
+      .handler(async () => {
         const accounts = await this.bankingService.getBankAccounts();
 
         return ok(accounts);
-      })
+      });
   }
 
   private createBankAccount() {
@@ -42,7 +40,7 @@ export class BankingApi {
         await this.bankingService.createBankAccount(ctx.body);
 
         return ok();
-      })
+      });
   }
 
   private getBankAccount() {
@@ -50,9 +48,9 @@ export class BankingApi {
       .get('/accounts/:iban')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const account = await this.bankingService.getBankAccount(ctx.routeParams.iban)
-        return ok(account)
-      })
+        const account = await this.bankingService.getBankAccount(ctx.routeParams.iban);
+        return ok(account);
+      });
   }
 
   private getBankAccountStatements() {
@@ -60,9 +58,9 @@ export class BankingApi {
       .get('/accounts/:iban/statements')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const statements = await this.bankingService.getAccountStatements(ctx.routeParams.iban)
-        return ok(statements)
-      })
+        const statements = await this.bankingService.getAccountStatements(ctx.routeParams.iban);
+        return ok(statements);
+      });
   }
 
   private createBankStatement() {
@@ -72,7 +70,7 @@ export class BankingApi {
       .use(Middleware.wrapNative(this.upload.single('statement'), ({ req }) => ({ file: req.file })))
       .handler(async (ctx) => {
         if (!ctx.file) {
-          return badRequest('File `statement` required.')
+          return badRequest('File `statement` required.');
         }
 
         const content = ctx.file.buffer.toString('utf8');
@@ -95,10 +93,10 @@ export class BankingApi {
           closingBalance: statement.closingBalance,
         });
 
-        console.log(statement)
+        console.log(statement);
 
-        return ok()
-      })
+        return ok();
+      });
   }
 
   private getAccountTransactions() {
@@ -106,10 +104,10 @@ export class BankingApi {
       .get('/accounts/:iban/transactions')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const transactions = await this.bankingService.getAccountTransactions(ctx.routeParams.iban)
+        const transactions = await this.bankingService.getAccountTransactions(ctx.routeParams.iban);
 
-        return ok(transactions)
-      })
+        return ok(transactions);
+      });
   }
 
   private getBankStatement() {
@@ -117,10 +115,10 @@ export class BankingApi {
       .get('/statements/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const statement = await this.bankingService.getBankStatement(ctx.routeParams.id)
+        const statement = await this.bankingService.getBankStatement(ctx.routeParams.id);
 
-        return ok(statement)
-      })
+        return ok(statement);
+      });
   }
 
   private getBankStatementTransactions() {
@@ -128,10 +126,10 @@ export class BankingApi {
       .get('/statements/:id/transactions')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const transactions = await this.bankingService.getBankStatementTransactions(ctx.routeParams.id)
+        const transactions = await this.bankingService.getBankStatementTransactions(ctx.routeParams.id);
 
-        return ok(transactions)
-      })
+        return ok(transactions);
+      });
   }
 
   router() {
@@ -144,6 +142,6 @@ export class BankingApi {
       this.getBankAccountStatements(),
       this.getBankStatement(),
       this.getBankStatementTransactions(),
-    )
+    );
   }
 }

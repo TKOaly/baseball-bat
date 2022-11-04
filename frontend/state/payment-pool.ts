@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice } from '@reduxjs/toolkit';
 
 type PaymentPoolState = {
   selectedPayments: Array<string>,
@@ -6,7 +6,7 @@ type PaymentPoolState = {
 
 const initialState: PaymentPoolState = {
   selectedPayments: [],
-}
+};
 
 const paymentPoolSlice = createSlice({
   name: 'paymentPool',
@@ -26,6 +26,6 @@ const paymentPoolSlice = createSlice({
       state.selectedPayments = action.payload;
     },
   },
-})
+});
 
-export default paymentPoolSlice
+export default paymentPoolSlice;

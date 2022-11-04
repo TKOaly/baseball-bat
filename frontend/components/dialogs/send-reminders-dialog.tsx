@@ -1,6 +1,6 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button, SecondaryButton } from '../../components/button'
-import { useState } from 'react'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button, SecondaryButton } from '../../components/button';
+import { useState } from 'react';
 
 type Props = {
   onClose: (_: { send: boolean, ignoreCooldown: boolean } | null) => void,
@@ -8,15 +8,15 @@ type Props = {
 }
 
 export const SendRemindersDialog = ({ onClose, debtCount = null }: Props) => {
-  const [send, setSend] = useState(false)
-  const [ignoreCooldown, setIgnoreCooldown] = useState(false)
+  const [send, setSend] = useState(false);
+  const [ignoreCooldown, setIgnoreCooldown] = useState(false);
 
   return (
     <DialogBase onClose={() => onClose(null)}>
       <DialogHeader>Send payment notices</DialogHeader>
       <DialogContent>
         <p className="mb-4 text-sm">
-          You are about to send payment notices for {debtCount === null ? 'an unspecified amount of' : debtCount} debts. Check your preferences below and click "Send Notices".
+          You are about to send payment notices for {debtCount === null ? 'an unspecified amount of' : debtCount} debts. Check your preferences below and click {'"'}Send Notices{'"'}.
         </p>
         <div className="flex items-center mb-4">
           <input
@@ -44,5 +44,5 @@ export const SendRemindersDialog = ({ onClose, debtCount = null }: Props) => {
         <Button onClick={() => onClose({ send, ignoreCooldown })}>Send Notices</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};

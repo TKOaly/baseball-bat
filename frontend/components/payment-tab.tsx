@@ -1,12 +1,11 @@
-import { useContext, useState } from 'react'
-import styled from 'styled-components'
-import { Link } from 'wouter'
-import { Session } from '../../common/types'
-import { payEvents } from '../api'
-import { PaymentPool, PaymentPoolItem } from '../state/payment-pool'
-import { Button } from './button'
-import { Checkmark } from './checkmark'
-import { Loading } from './loading'
+import { useContext, useState } from 'react';
+import styled from 'styled-components';
+import { Link } from 'wouter';
+import { Session } from '../../common/types';
+import { payEvents } from '../api';
+import { PaymentPool, PaymentPoolItem } from '../state/payment-pool';
+import { Button } from './button';
+import { Loading } from './loading';
 
 const PaymentTabWrapper = styled.div`
   height: 100%;
@@ -14,7 +13,7 @@ const PaymentTabWrapper = styled.div`
   align-items: center;
   flex-direction: column;
   margin: 10px;
-`
+`;
 
 const PaymentPoolContainer = styled.div`
   background: #ffffff;
@@ -28,14 +27,14 @@ const PaymentPoolContainer = styled.div`
     margin: 10px;
     width: 100%;
   }
-`
+`;
 const PaymentPoolItemContainer = styled.div`
   font-family: 'Roboto Mono', monospace;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-`
+`;
 
 const paymentPoolItem = (item: PaymentPoolItem) => (
   <PaymentPoolItemContainer key={`${item.eventId}-pp`}>
@@ -48,7 +47,7 @@ const paymentPoolItem = (item: PaymentPoolItem) => (
       <p key={`${item.eventId}-${i}-pp-sum`}>{e.amount / 100}€</p>
     ))}
   </PaymentPoolItemContainer>
-)
+);
 
 const TotalAmount = ({ sum }: Record<'sum', number>) => (
   <>
@@ -58,45 +57,45 @@ const TotalAmount = ({ sum }: Record<'sum', number>) => (
       <p>{sum / 100}€</p>
     </PaymentPoolItemContainer>
   </>
-)
+);
 
 const PayButtonWrapper = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-`
+`;
 
 const CardInfo = styled.p`
   margin-left: 200px;
   font-family: 'Roboto Mono', monospace;
   width: 100%;
-`
+`;
 
 type PayButtonProps = {
   session: Session
 }
 
 const PayButton = ({ session }: PayButtonProps) => {
-  const [paymentLoading, setPaymentLoading] = useState(false)
-  const { items } = useContext(PaymentPool)
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const { items } = useContext(PaymentPool);
 
   if (paymentLoading) {
     return (
       <PayButtonWrapper>
         <Loading />
       </PayButtonWrapper>
-    )
+    );
   }
 
   const handleClick = () => {
-    setPaymentLoading(true)
+    setPaymentLoading(true);
     payEvents(items.map(i => i.eventId))
       .then(res => {
-        res.ok && window.location.reload()
+        res.ok && window.location.reload();
       })
-      .catch(() => setPaymentLoading(false))
-  }
+      .catch(() => setPaymentLoading(false));
+  };
 
   return (
     <PayButtonWrapper>
@@ -105,11 +104,11 @@ const PayButton = ({ session }: PayButtonProps) => {
         {session.paymentMethod.brand} **** {session.paymentMethod.last4}
       </CardInfo>
     </PayButtonWrapper>
-  )
-}
+  );
+};
 
 export const PaymentTab = ({ session }: { session: Session }) => {
-  const { items, totalSum } = useContext(PaymentPool)
+  const { items, totalSum } = useContext(PaymentPool);
 
   return (
     <PaymentTabWrapper>
@@ -121,5 +120,5 @@ export const PaymentTab = ({ session }: { session: Session }) => {
       </PaymentPoolContainer>
       <Link href="/update-payment-method">Update payment method</Link>
     </PaymentTabWrapper>
-  )
-}
+  );
+};

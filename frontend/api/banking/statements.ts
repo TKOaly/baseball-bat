@@ -1,5 +1,5 @@
-import rtkApi from '../rtk-api'
-import { BankStatement } from '../../../common/types'
+import rtkApi from '../rtk-api';
+import { BankStatement } from '../../../common/types';
 
 const statementsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -7,7 +7,7 @@ const statementsApi = rtkApi.injectEndpoints({
       query: (file) => {
         const body = new FormData();
 
-        body.append("statement", file);
+        body.append('statement', file);
 
         return {
           method: 'POST',
@@ -24,11 +24,11 @@ const statementsApi = rtkApi.injectEndpoints({
     getBankStatement: builder.query<BankStatement, string>({
       query: (id) => `/banking/statements/${id}`,
     }),
-  })
-})
+  }),
+});
 
 export const {
   useCreateBankStatementMutation,
   useGetBankAccountStatementsQuery,
   useGetBankStatementQuery,
-} = statementsApi
+} = statementsApi;

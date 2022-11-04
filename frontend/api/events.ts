@@ -1,5 +1,5 @@
-import rtkApi from './rtk-api'
-import { CustomField, Event, Registration } from '../../common/types'
+import rtkApi from './rtk-api';
+import { CustomField, Event, Registration } from '../../common/types';
 
 const eventsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -7,7 +7,7 @@ const eventsApi = rtkApi.injectEndpoints({
       query: ({ starting }) => ({
         url: '/events/all',
         params: { starting },
-      })
+      }),
     }),
 
     getEventRegistrations: builder.query<Registration[], number>({
@@ -16,14 +16,14 @@ const eventsApi = rtkApi.injectEndpoints({
 
     getEventCustomFields: builder.query<CustomField[], number>({
       query: (id) => `/events/${id}/fields`,
-    })
+    }),
   }),
-})
+});
 
 export const {
   useGetEventsQuery,
   useGetEventRegistrationsQuery,
-  useGetEventCustomFieldsQuery
-} = eventsApi
+  useGetEventCustomFieldsQuery,
+} = eventsApi;
 
-export default eventsApi
+export default eventsApi;

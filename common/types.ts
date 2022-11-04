@@ -1,5 +1,6 @@
 import * as t from 'io-ts'
 import * as Either from 'fp-ts/lib/Either'
+import * as tt from 'io-ts-types'
 import { flow, pipe } from 'fp-ts/lib/function'
 import { FromDbType } from '../backend/db'
 import { EuroValue, euro, euroValue } from './currency'
@@ -541,14 +542,14 @@ const newBankTransaction = t.intersection([
 ])
 
 const balance = t.type({
-  date: t.unknown,
+  date: tt.date,
   amount: euroValue,
 })
 
 const newBankStatement = t.type({
   id: t.string,
   accountIban: t.string,
-  generatedAt: t.unknown,
+  generatedAt: tt.date,
   transactions: t.array(newBankTransaction),
   openingBalance: balance,
   closingBalance: balance,
@@ -559,7 +560,7 @@ export type BankStatement = t.TypeOf<typeof newBankStatement>
 export type DbBankStatement = {
   id: string
   account: string
-  generated_at: string
+  generated_at: Date
   opening_balance_date: Date
   opening_balance: number
   closing_balance_date: Date

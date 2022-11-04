@@ -1,24 +1,23 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { Page, Header, Title, Section, TextField, SectionContent } from '../../components/resource-page/resource-page'
-import { useGetBankAccountQuery } from '../../api/banking/accounts'
-import { Button } from '../../components/button'
-import { TransactionList } from '../../components/transaction-list'
-import { useLocation } from 'wouter'
-import { TableView } from '../../components/table-view'
-import { useGetAccountTransactionsQuery } from '../../api/banking/transactions'
-import { cents, formatEuro } from '../../../common/currency'
-import { format, parseISO } from 'date-fns'
-import { useGetBankAccountStatementsQuery } from '../../api/banking/statements'
-import { ExternalLink } from 'react-feather'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Page, Header, Title, Section, TextField, SectionContent } from '../../components/resource-page/resource-page';
+import { useGetBankAccountQuery } from '../../api/banking/accounts';
+import { Button } from '../../components/button';
+import { TransactionList } from '../../components/transaction-list';
+import { useLocation } from 'wouter';
+import { TableView } from '../../components/table-view';
+import { useGetAccountTransactionsQuery } from '../../api/banking/transactions';
+import { cents, formatEuro } from '../../../common/currency';
+import { format } from 'date-fns';
+import { useGetBankAccountStatementsQuery } from '../../api/banking/statements';
 
 export const BankAccount = ({ iban }: { iban: string }) => {
-  const [, setLocation] = useLocation()
-  const { data: account, isLoading } = useGetBankAccountQuery(iban)
-  const { data: transactions } = useGetAccountTransactionsQuery(iban)
-  const { data: statements } = useGetBankAccountStatementsQuery(iban)
+  const [, setLocation] = useLocation();
+  const { data: account, isLoading } = useGetBankAccountQuery(iban);
+  const { data: transactions } = useGetAccountTransactionsQuery(iban);
+  const { data: statements } = useGetBankAccountStatementsQuery(iban);
 
   if (isLoading) {
-    return 'Loading...'
+    return 'Loading...';
   }
 
   return (
@@ -80,5 +79,5 @@ export const BankAccount = ({ iban }: { iban: string }) => {
         </SectionContent>
       </Section>
     </Page>
-  )
-}
+  );
+};

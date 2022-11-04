@@ -1,44 +1,42 @@
-import { Inject, Service } from "typedi";
-import { route, router } from "typera-express";
-import { internalServerError, notFound, ok, unauthorized } from "typera-express/response";
-import * as t from 'io-ts'
-import { Debt, Email, emailIdentity, internalIdentity, payerPreferences, tkoalyIdentity } from "../../common/types";
-import { AuthService } from "../auth-middleware";
-import * as A from 'fp-ts/lib/Array'
-import * as TE from 'fp-ts/lib/TaskEither'
-import * as E from 'fp-ts/lib/Either'
-import * as T from 'fp-ts/lib/Task'
-import * as S from 'fp-ts/lib/string'
-import * as EQ from 'fp-ts/lib/Eq'
-import { DebtService } from "../services/debt";
-import { PayerService } from "../services/payer";
-import { validateBody } from "../validate-middleware";
-import { EmailService } from "../services/email";
-import { Config } from "../config";
-import { PaymentService } from "../services/payements";
-import { isBefore, isPast, parseISO, subMonths } from "date-fns";
-import { pipe } from "fp-ts/lib/function";
-import { predicate } from "fp-ts";
+import { Inject, Service } from 'typedi';
+import { route, router } from 'typera-express';
+import { notFound, ok, unauthorized } from 'typera-express/response';
+import * as t from 'io-ts';
+import { Debt, Email, emailIdentity, internalIdentity, tkoalyIdentity } from '../../common/types';
+import { AuthService } from '../auth-middleware';
+import * as A from 'fp-ts/lib/Array';
+import * as E from 'fp-ts/lib/Either';
+import * as T from 'fp-ts/lib/Task';
+import * as S from 'fp-ts/lib/string';
+import * as EQ from 'fp-ts/lib/Eq';
+import { DebtService } from '../services/debt';
+import { PayerService } from '../services/payer';
+import { validateBody } from '../validate-middleware';
+import { EmailService } from '../services/email';
+import { Config } from '../config';
+import { PaymentService } from '../services/payements';
+import { isBefore, isPast, subMonths } from 'date-fns';
+import { pipe } from 'fp-ts/lib/function';
 
 @Service()
 export class PayersApi {
   @Inject(() => PayerService)
-  payerService: PayerService
+    payerService: PayerService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   @Inject(() => EmailService)
-  emailService: EmailService
+    emailService: EmailService;
 
   @Inject(() => Config)
-  config: Config
+    config: Config;
 
   private getPayer() {
     return route
@@ -52,17 +50,17 @@ export class PayersApi {
         }
 
         if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
-          return unauthorized('Not authorized')
+          return unauthorized('Not authorized');
         }
 
-        const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id))
+        const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
 
         if (payer) {
-          return ok(payer)
+          return ok(payer);
         }
 
-        return notFound()
-      })
+        return notFound();
+      });
   }
 
   private getPayers() {
@@ -70,9 +68,9 @@ export class PayersApi {
       .get('/')
       .use(this.authService.createAuthMiddleware())
       .handler(async () => {
-        const payers = await this.payerService.getPayerProfiles()
-        return ok(payers)
-      })
+        const payers = await this.payerService.getPayerProfiles();
+        return ok(payers);
+      });
   }
 
   private getPayerByEmail() {
@@ -80,14 +78,14 @@ export class PayersApi {
       .get('/by-email/:email')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(ctx.routeParams.email))
+        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(ctx.routeParams.email));
 
         if (!payer) {
-          return notFound()
+          return notFound();
         }
 
-        return ok(payer)
-      })
+        return ok(payer);
+      });
   }
 
   private updatePayerPreferences() {
@@ -100,17 +98,17 @@ export class PayersApi {
       })))
       .handler(async (ctx) => {
         if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
-          return unauthorized('Not authorized')
+          return unauthorized('Not authorized');
         }
 
         const id = ctx.routeParams.id === 'me'
           ? internalIdentity(ctx.session.payerId)
-          : internalIdentity(ctx.routeParams.id)
+          : internalIdentity(ctx.routeParams.id);
 
         const updated = await this.payerService.updatePayerPreferences(id, ctx.body);
 
         return ok(updated);
-      })
+      });
   }
 
   private getPayerByTkoalyId() {
@@ -118,14 +116,14 @@ export class PayersApi {
       .get('/by-tkoaly-id/:id(int)')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(ctx.routeParams.id))
+        const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(ctx.routeParams.id));
 
         if (!payer) {
-          return notFound()
+          return notFound();
         }
 
-        return ok(payer)
-      })
+        return ok(payer);
+      });
   }
 
   private getPayerDebts() {
@@ -140,15 +138,15 @@ export class PayersApi {
         }
 
         if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
-          return unauthorized('Not authorized')
+          return unauthorized('Not authorized');
         }
 
-        const includeDrafts = ctx.session.accessLevel === 'admin' && ctx.req.query.includeDrafts === 'true'
+        const includeDrafts = ctx.session.accessLevel === 'admin' && ctx.req.query.includeDrafts === 'true';
 
         const debts = await this.debtService.getDebtsByPayer(internalIdentity(id), { includeDrafts, includeCredited: true });
 
         return ok(debts);
-      })
+      });
   }
 
   private getSessionPayer() {
@@ -156,14 +154,14 @@ export class PayersApi {
       .get('/session')
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
       .handler(async (ctx) => {
-        const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.session.payerId))
+        const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.session.payerId));
 
         if (payer) {
-          return ok(payer)
+          return ok(payer);
         }
 
-        return notFound()
-      })
+        return notFound();
+      });
   }
 
   private getPayerEmails() {
@@ -174,12 +172,12 @@ export class PayersApi {
       }))
       .handler(async (ctx) => {
         if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== ctx.routeParams.id) {
-          return unauthorized()
+          return unauthorized();
         }
 
-        const emails = await this.payerService.getPayerEmails(internalIdentity(ctx.routeParams.id))
-        return ok(emails)
-      })
+        const emails = await this.payerService.getPayerEmails(internalIdentity(ctx.routeParams.id));
+        return ok(emails);
+      });
   }
 
   private updatePayerEmails() {
@@ -195,19 +193,19 @@ export class PayersApi {
         ]),
       }))))
       .handler(async (ctx) => {
-        let id = ctx.routeParams.id
+        let id = ctx.routeParams.id;
 
         if (ctx.session.accessLevel !== 'admin' && id !== 'me') {
-          return unauthorized('Not authorized')
+          return unauthorized('Not authorized');
         }
 
         if (id === 'me') {
-          id = ctx.session.payerId
+          id = ctx.session.payerId;
         }
 
-        const iid = internalIdentity(id)
+        const iid = internalIdentity(id);
 
-        const existing = await this.payerService.getPayerEmails(iid)
+        const existing = await this.payerService.getPayerEmails(iid);
 
         for (const { email, priority } of ctx.body) {
           const foundIndex = existing.findIndex((e) => e.email === email);
@@ -236,7 +234,7 @@ export class PayersApi {
         const results = await this.payerService.getPayerEmails(iid);
 
         return ok(results);
-      })
+      });
   }
 
   private sendPaymentReminder() {
@@ -248,7 +246,7 @@ export class PayersApi {
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const { ignoreCooldown } = ctx.body
+        const { ignoreCooldown } = ctx.body;
 
         const id = internalIdentity(ctx.routeParams.id);
         const debts = await this.debtService.getDebtsByPayer(id);
@@ -260,9 +258,9 @@ export class PayersApi {
 
         const overdue = debts.filter((debt) => isPast(debt.dueDate) && (ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
 
-        const getEmailPayerId = ([_, debt]: [Email, Debt]) => debt.payerId.value
-        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq)
-        const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !ctx.body.send))
+        const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
+        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
+        const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !ctx.body.send));
 
         return pipe(
           overdue,
@@ -272,8 +270,8 @@ export class PayersApi {
             messageCount: right.length,
             payerCount: A.uniq(EmailPayerEq)(right).length,
             errors: left,
-          }))
-        )()
+          })),
+        )();
       });
   }
 
@@ -289,6 +287,6 @@ export class PayersApi {
       this.updatePayerEmails(),
       this.getPayers(),
       this.sendPaymentReminder(),
-    )
+    );
   }
 }

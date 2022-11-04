@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useEffect } from "react";
+import { RefObject, useCallback, useEffect } from 'react';
 
 export const useOutsideEventListener = <T extends keyof DocumentEventMap, E extends HTMLElement>(
   ref: RefObject<E>,
@@ -7,15 +7,15 @@ export const useOutsideEventListener = <T extends keyof DocumentEventMap, E exte
   eventHandler: (evt: DocumentEventMap[T]) => void,
 ) => {
   const handler = useCallback((evt: DocumentEventMap[T]) => {
-    if (ref.current && !ref.current.contains(evt.target as any)) {
+    if (ref.current && evt.target instanceof Node && !ref.current.contains(evt.target)) {
       eventHandler(evt);
     }
-  }, [eventHandler, ref])
+  }, [eventHandler, ref]);
 
   useEffect(() => {
     if (enable) {
-      document.addEventListener(eventName, handler, true)
-      return () => document.removeEventListener(eventName, handler, true)
+      document.addEventListener(eventName, handler, true);
+      return () => document.removeEventListener(eventName, handler, true);
     }
-  }, [enable, handler])
-}
+  }, [enable, handler]);
+};

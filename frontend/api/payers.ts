@@ -1,5 +1,5 @@
-import rtkApi from './rtk-api'
-import { Debt, DebtComponentDetails, PayerEmail, PayerPreferences, PayerProfile } from '../../common/types'
+import rtkApi from './rtk-api';
+import { Debt, DebtComponentDetails, PayerEmail, PayerPreferences, PayerProfile } from '../../common/types';
 
 export type UpdatePayerEmailsQueryPayload = {
   payerId: string,
@@ -19,7 +19,7 @@ const payersApi = rtkApi.injectEndpoints({
       query: (id) => `/payers/${id}`,
       providesTags: ({ id }) => [
         { type: 'Payer', id: id.value },
-      ]
+      ],
     }),
 
     updatePayerPreferences: builder.mutation<PayerPreferences, { payerId: string, preferences: Partial<PayerPreferences> }>({
@@ -30,7 +30,7 @@ const payersApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: (_, __, { payerId }) => [
         { type: 'Payer', id: payerId },
-      ]
+      ],
     }),
 
     updatePayerEmails: builder.mutation<PayerEmail[], UpdatePayerEmailsQueryPayload>({
@@ -78,7 +78,7 @@ const payersApi = rtkApi.injectEndpoints({
         url: `/payers/${id}/debts`,
         params: {
           includeDrafts: includeDrafts ? 'true' : 'false',
-        }
+        },
       }),
       providesTags: (debts) => debts.flatMap(({ id }) => [
         { type: 'Debt', id },
@@ -96,8 +96,8 @@ const payersApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Email', id: 'LIST' }],
     }),
-  })
-})
+  }),
+});
 
 export const {
   useGetPayerQuery,
@@ -109,6 +109,6 @@ export const {
   useUpdatePayerEmailsMutation,
   useGetPayersQuery,
   useSendPayerDebtReminderMutation,
-} = payersApi
+} = payersApi;
 
-export default payersApi
+export default payersApi;

@@ -1,16 +1,11 @@
-import { TaskEither } from 'fp-ts/lib/TaskEither'
-import * as pg from 'pg'
-import sql, { SQLStatement } from 'sql-template-strings'
-import { Service } from 'typedi'
-import * as O from 'fp-ts/lib/Option'
-import * as E from 'fp-ts/lib/Either'
-import * as TE from 'fp-ts/lib/TaskEither'
+import * as pg from 'pg';
+import sql, { SQLStatement } from 'sql-template-strings';
+import { Service } from 'typedi';
+import * as O from 'fp-ts/lib/Option';
+import * as E from 'fp-ts/lib/Either';
+import * as TE from 'fp-ts/lib/TaskEither';
 
-pg.types.setTypeParser(20, (value: string) => parseInt(value, 10))
-
-type TxOptions = {
-  serialized: boolean,
-}
+pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
   ? FirstItem extends string
@@ -50,7 +45,7 @@ export class PgClient {
   }
 
   static create(url: string): PgClient {
-    const pool = new pg.Pool({ max: 5, min: 0, connectionString: url })
+    const pool = new pg.Pool({ max: 5, min: 0, connectionString: url });
     return new PgClient(pool);
   }
 
@@ -83,27 +78,27 @@ export class PgClient {
 
     return result.rowCount > 0
       ? result.rows
-      : Promise.reject('No rows returned')
+      : Promise.reject('No rows returned');
   }
 
   async tx<T>(fn: (client: TxClient) => Promise<T>): Promise<T> {
-    const conn = await this.conn.connect()
+    const conn = await this.conn.connect();
 
     try {
-      await conn.query('BEGIN')
+      await conn.query('BEGIN');
 
       try {
         const result = await fn(txClient(conn));
-        await conn.query('COMMIT')
-        return result
+        await conn.query('COMMIT');
+        return result;
       } catch (err) {
         await conn.query('ROLLBACK');
-        console.log('TX ROLLBACK')
-        console.log(err)
-        throw err
+        console.log('TX ROLLBACK');
+        console.log(err);
+        throw err;
       }
     } finally {
-      conn.release()
+      conn.release();
     }
   }
 }
@@ -111,18 +106,18 @@ export class PgClient {
 const txClient = (client: pg.PoolClient): TxClient => {
   return {
     do: async (query: SQLStatement) => {
-      return client.query(query).then(res => res.rows)
+      return client.query(query).then(res => res.rows);
     },
-  }
-}
+  };
+};
 
 export const appendAll = <T>(
   arr: T[],
   fn: (t: T) => SQLStatement,
-  delimiter: string
+  delimiter: string,
 ) => {
   return arr.reduce(
     (sql, x, index) => sql.append(index === 0 ? '' : delimiter).append(fn(x)),
-    sql``
-  )
-}
+    sql``,
+  );
+};

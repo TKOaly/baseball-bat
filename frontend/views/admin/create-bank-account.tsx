@@ -1,22 +1,22 @@
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreateBankAccountMutation } from '../../api/banking/accounts'
-import { TextField } from '../../components/text-field'
-import { Formik } from 'formik'
-import { useLocation } from 'wouter'
-import { BankAccount } from '../../../common/types'
-import { InputGroup } from '../../components/input-group'
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useCreateBankAccountMutation } from '../../api/banking/accounts';
+import { TextField } from '../../components/text-field';
+import { Formik } from 'formik';
+import { useLocation } from 'wouter';
+import { BankAccount } from '../../../common/types';
+import { InputGroup } from '../../components/input-group';
 
 export const CreateBankAccount = () => {
-  const [, setLocation] = useLocation()
-  const [createBankAccount] = useCreateBankAccountMutation()
+  const [, setLocation] = useLocation();
+  const [createBankAccount] = useCreateBankAccountMutation();
 
   const submitForm = async (values: BankAccount) => {
-    const result = await createBankAccount(values)
+    const result = await createBankAccount(values);
 
     if ('data' in result) {
-      setLocation(`/admin/banking/accounts/${result.data.iban}`)
+      setLocation(`/admin/banking/accounts/${result.data.iban}`);
     }
-  }
+  };
 
   return (
     <div>
@@ -54,5 +54,5 @@ export const CreateBankAccount = () => {
         )}
       </Formik>
     </div>
-  )
-}
+  );
+};

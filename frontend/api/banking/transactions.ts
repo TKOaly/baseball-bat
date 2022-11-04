@@ -1,5 +1,5 @@
-import { BankTransaction } from '../../../common/types'
-import rtkApi from '../rtk-api'
+import { BankTransaction } from '../../../common/types';
+import rtkApi from '../rtk-api';
 
 const transactionsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -11,7 +11,7 @@ const transactionsApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: [
         { type: 'BankTransaction', id: 'LIST' },
-      ]
+      ],
     }),
 
     getAccountTransactions: builder.query<BankTransaction[], string>({
@@ -27,13 +27,13 @@ const transactionsApi = rtkApi.injectEndpoints({
         { type: 'BankTransaction', id: 'LIST' },
       ],
     }),
-  })
-})
+  }),
+});
 
 export const {
   useImportBankTransactionsMutation,
   useGetAccountTransactionsQuery,
   useGetStatementTransactionsQuery,
-} = transactionsApi
+} = transactionsApi;
 
-export default transactionsApi
+export default transactionsApi;

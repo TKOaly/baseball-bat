@@ -1,16 +1,18 @@
-import assert from 'assert'
-import * as dotenv from 'dotenv'
-import { Service } from 'typedi'
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-dotenv.config()
+import assert from 'assert';
+import * as dotenv from 'dotenv';
+import { Service } from 'typedi';
+
+dotenv.config();
 
 interface IConfig {
   dbUrl: string
   userServiceUrl: string
   userServiceApiUrl: string
   serviceId: string
-  eventServiceUrl: string | null
-  eventServiceToken: string | null
+  eventServiceUrl: string
+  eventServiceToken: string
   jwtSecret: string
   // stripeSecretKey: string
   appUrl: string
@@ -32,29 +34,29 @@ interface IConfig {
 
 @Service()
 export class Config implements IConfig {
-  dbUrl: string = ''
-  userServiceUrl: string = ''
-  userServiceApiUrl: string = ''
-  serviceId: string = ''
-  eventServiceUrl: string | null = null
-  eventServiceToken: string | null = null
-  jwtSecret: string = ''
+  dbUrl = '';
+  userServiceUrl = '';
+  userServiceApiUrl = '';
+  serviceId = '';
+  eventServiceUrl = '';
+  eventServiceToken = '';
+  jwtSecret = '';
   // stripeSecretKey: string = ''
-  appUrl: string = ''
+  appUrl = '';
   // stripeWebhookEndpointSecret: string = ''
-  redisUrl: string
+  redisUrl: string;
   emailDispatcher?: {
     url: string
     token: string
-  }
-  smtp?: {
+  };
+  smtp: {
     host: string
     port: number
     secure: boolean
     user?: string
     password?: string
-  }
-  magicLinkSecret: string = ''
+  };
+  magicLinkSecret = '';
 
   constructor(config: IConfig) {
     Object.assign(this, config);
@@ -74,33 +76,33 @@ export class Config implements IConfig {
       USER_SERVICE_API_URL,
       SERVICE_IDENTIFIER,
       MAGIC_LINK_SECRET,
-    } = process.env
+    } = process.env;
 
-    assert(POSTGRES_CONNECTION_STRING, 'POSTGRES_CONNECTION_STRING must be set.')
-    assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.')
-    assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.')
+    assert(POSTGRES_CONNECTION_STRING, 'POSTGRES_CONNECTION_STRING must be set.');
+    assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.');
+    assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.');
     assert(
       SERVICE_IDENTIFIER,
-      'SERVICE_IDENTIFIER must be set.'
-    )
-    assert(JWT_SECRET, 'JWT_SECRET must be set.')
+      'SERVICE_IDENTIFIER must be set.',
+    );
+    assert(JWT_SECRET, 'JWT_SECRET must be set.');
     // assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
-    assert(APP_URL, 'APP_URL must be set.')
+    assert(APP_URL, 'APP_URL must be set.');
     /*assert(
       STRIPE_WEBHOOK_ENDPOINT_SECRET,
       'STRIPE_WEBHOOK_ENDPOINT_SECRET must be set.'
     )*/
 
-    const emailDispatcher = Config.getEmailDispatcherConfig()
-    const smtp = Config.getSMTPConfig()
+    const emailDispatcher = Config.getEmailDispatcherConfig();
+    const smtp = Config.getSMTPConfig();
 
     return new Config({
       dbUrl: POSTGRES_CONNECTION_STRING,
       userServiceUrl: USER_SERVICE_URL,
       userServiceApiUrl: USER_SERVICE_API_URL,
       serviceId: SERVICE_IDENTIFIER,
-      eventServiceUrl: EVENT_SERVICE_URL ?? null,
-      eventServiceToken: EVENT_SERVICE_TOKEN ?? null,
+      eventServiceUrl: EVENT_SERVICE_URL ?? '',
+      eventServiceToken: EVENT_SERVICE_TOKEN ?? '',
       jwtSecret: JWT_SECRET,
       // stripeSecretKey: STRIPE_SECRET_KEY,
       appUrl: APP_URL,
@@ -109,11 +111,11 @@ export class Config implements IConfig {
       smtp,
       redisUrl: REDIS_URL!,
       magicLinkSecret: MAGIC_LINK_SECRET!,
-    })
+    });
   }
 
   static getEmailDispatcherConfig() {
-    const { EMAIL_DISPATCHER_TOKEN, EMAIL_DISPATCHER_URL } = process.env
+    const { EMAIL_DISPATCHER_TOKEN, EMAIL_DISPATCHER_URL } = process.env;
 
     if (!EMAIL_DISPATCHER_URL && !EMAIL_DISPATCHER_TOKEN) {
       return undefined;
@@ -122,22 +124,22 @@ export class Config implements IConfig {
     return {
       url: EMAIL_DISPATCHER_TOKEN!,
       token: EMAIL_DISPATCHER_URL!,
-    }
+    };
   }
 
   static getSMTPConfig() {
-    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD } = process.env
+    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD } = process.env;
 
     if (!SMTP_HOST) {
-      return undefined
+      throw new Error('SMTP_HOST not defined');
     }
 
     return {
-      host: SMTP_HOST!,
+      host: SMTP_HOST,
       port: parseInt(SMTP_PORT ?? '25', 10),
       secure: SMTP_SECURE === 'on',
       user: SMTP_USER,
       password: SMTP_PASSWORD,
-    }
+    };
   }
 }

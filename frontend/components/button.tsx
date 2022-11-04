@@ -1,7 +1,7 @@
-import { Loader } from 'react-feather'
-import styled from 'styled-components'
-import { Link } from 'wouter'
-import { tw } from '../tailwind'
+import { ComponentProps } from 'react';
+import { Loader } from 'react-feather';
+import styled from 'styled-components';
+import { Link } from 'wouter';
 
 const commonClasses = `
   inline-flex
@@ -12,7 +12,7 @@ const commonClasses = `
   px-3
   font-bold
   shadow-sm
-`
+`;
 
 const classNames = {
   default: `
@@ -37,17 +37,19 @@ const classNames = {
     hover:bg-gray-100
     active:ring-2
   `,
-}
+};
 
-export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick }) => {
-  let styleName = 'default'
+const noop = () => { }; // eslint-disable-line
+
+export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick = noop }) => {
+  let styleName = 'default';
 
   if (secondary) {
-    styleName = 'secondary'
+    styleName = 'secondary';
   }
 
   if (disabled) {
-    styleName = 'disabled'
+    styleName = 'disabled';
   }
 
   return (
@@ -55,12 +57,12 @@ export const Button = ({ secondary = false, disabled = false, children, loading 
       <Loader className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${loading ? 'w-5' : 'w-0'} overflow-hidden`} />
       {children}
     </button>
-  )
-}
+  );
+};
 
-export const DisabledButton = (props) => <Button disabled {...props} />
+export const DisabledButton = (props: Omit<ComponentProps<typeof Button>, 'disabled'>) => <Button disabled {...props} />;
 
-export const SecondaryButton = (props) => <Button secondary {...props} />
+export const SecondaryButton = (props: Omit<ComponentProps<typeof Button>, 'secondary'>) => <Button secondary {...props} />;
 
 export const RedButton = styled(Button)`
   background: #f44336;
@@ -68,7 +70,7 @@ export const RedButton = styled(Button)`
   &:hover {
     background: #e31000;
   }
-`
+`;
 
 export const ButtonA = styled.a`
   background: #22bd44;
@@ -91,7 +93,7 @@ export const ButtonA = styled.a`
   font-size: 1.2rem;
   font-weight: bold;
   text-decoration: none;
-`
+`;
 
 export const BackLink = styled(Link)`
   background: #f44336;
@@ -115,4 +117,4 @@ export const BackLink = styled(Link)`
   font-size: 1.2rem;
   font-weight: bold;
   text-decoration: none;
-`
+`;

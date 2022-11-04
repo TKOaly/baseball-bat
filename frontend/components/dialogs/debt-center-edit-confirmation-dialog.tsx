@@ -1,5 +1,5 @@
-import { Button, SecondaryButton } from '../../components/button'
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../dialog'
+import { Button, SecondaryButton } from '../../components/button';
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../dialog';
 
 export type Props = {
   onClose: (confirmed: boolean) => void,
@@ -10,7 +10,7 @@ export type Props = {
 const DebtComponentList = ({ components }: { components: string[] }) => (
   <ul className="mt-3">
     {components.map((name) => (
-      <li>
+      <li key={name}>
         <div className="rounded-md shadow-sm border p-1.5 text-sm items-center inline-flex pr-3 mb-2">
           <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">Debt Component</span>
           <span>{name}</span>
@@ -18,11 +18,9 @@ const DebtComponentList = ({ components }: { components: string[] }) => (
       </li>
     ))}
   </ul>
-)
+);
 
 export const DebtCenterConfirmationDialog = ({ onClose, remove, create }: Props) => {
-  console.log(remove, create)
-
   return (
     <DialogBase onClose={() => onClose(false)}>
       <DialogHeader>Creating additional resources</DialogHeader>
@@ -46,5 +44,5 @@ export const DebtCenterConfirmationDialog = ({ onClose, remove, create }: Props)
         <Button onClick={() => onClose(true)}>Continue</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};

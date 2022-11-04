@@ -1,17 +1,16 @@
-import { PropsWithChildren, createContext, InputHTMLAttributes } from "react";
-import { ChevronsRight } from "react-feather"
-import { Formik, FormikErrors, useField } from "formik"
-import { Breadcrumbs } from '../../components/breadcrumbs'
-import { useCreateDebtCenterMutation } from "../../api/debt-centers";
-import { useLocation } from "wouter";
-import { InputGroup } from '../../components/input-group'
-import { TextField } from '../../components/text-field'
-import { TextareaField } from '../../components/textarea-field'
-import { TabularFieldListFormik } from "../../components/tabular-field-list";
-import { EuroField } from "../../components/euro-field";
-import { DropdownField } from "../../components/dropdown-field";
-import { useCreateDebtComponentMutation } from "../../api/debt";
-import { euro } from "../../../common/types";
+import { Formik } from 'formik';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { useCreateDebtCenterMutation } from '../../api/debt-centers';
+import { useLocation } from 'wouter';
+import { InputGroup } from '../../components/input-group';
+import { TextField } from '../../components/text-field';
+import { TextareaField } from '../../components/textarea-field';
+import { TabularFieldListFormik } from '../../components/tabular-field-list';
+import { EuroField } from '../../components/euro-field';
+import { useCreateDebtComponentMutation } from '../../api/debt';
+import { euro } from '../../../common/types';
+import { useDialog } from '../../components/dialog';
+import { InfoDialog } from '../../components/dialogs/info-dialog';
 
 type FormValues = {
   name: string
@@ -21,9 +20,10 @@ type FormValues = {
 }
 
 export const CreateDebtCenter = () => {
-  const [createDebtCenter, { isLoading }] = useCreateDebtCenterMutation()
-  const [createDebtComponent] = useCreateDebtComponentMutation()
-  const [, setLocation] = useLocation()
+  const [createDebtCenter] = useCreateDebtCenterMutation();
+  const [createDebtComponent] = useCreateDebtComponentMutation();
+  const [, setLocation] = useLocation();
+  const showInfoDialog = useDialog(InfoDialog);
 
   return (
     <div>
@@ -42,29 +42,27 @@ export const CreateDebtCenter = () => {
           const errors: Record<string, string> = {};
 
           if (values.name.length < 3) {
-            errors.name = 'Name must be longer than 3 characters.'
+            errors.name = 'Name must be longer than 3 characters.';
           }
 
           const componentNames = new Set();
 
           values.components.forEach((component, i) => {
             if (componentNames.has(component.name)) {
-              errors[`components.${i}.name`] = 'Duplicate component name.'
+              errors[`components.${i}.name`] = 'Duplicate component name.';
             }
 
-            componentNames.add(component.name)
+            componentNames.add(component.name);
           });
-
-          console.log(errors);
 
           return errors;
         }}
         onSubmit={async (values, { setFieldError }) => {
           const res = await createDebtCenter(values);
 
-          if (!('data' in res && res.data)) {
-            setFieldError((res as any).error.data.field, (res as any).error.data.message);
-            return
+          if ('error' in res) {
+            setFieldError(res.error.data.field, res.error.data.message);
+            return;
           }
 
           const createComponents = values.components
@@ -78,15 +76,25 @@ export const CreateDebtCenter = () => {
               if ('data' in componentRes) {
                 return componentRes.data.id;
               } else {
-                setFieldError(`components.${i}.name`, 'Failed to create component.')
+                setFieldError(`components.${i}.name`, 'Failed to create component.');
                 throw new Error();
               }
-            })
+            });
 
           try {
-            await Promise.all(createComponents)
+            await Promise.all(createComponents);
             setLocation(`/admin/debt-centers/${res.data.id}`);
-          } finally { }
+          } catch (e) {
+            showInfoDialog({
+              title: 'Failed to create debt center',
+              content: (
+                <>
+                  <p>Failed to create debt center due to the following error:</p>
+                  <pre>{e}</pre>
+                </>
+              ),
+            });
+          }
         }}
       >
         {({ submitForm, isSubmitting }) => (

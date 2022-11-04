@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { BankTransaction } from '../../../common/types'
-import { useRegisterTransactionMutation } from '../../api/payments'
-import { Button, DisabledButton, SecondaryButton } from '../button'
-import { DialogBase, DialogHeader, DialogContent, DialogFooter } from '../dialog'
-import { ResourceSelectField } from '../resource-select-field'
+import { useState } from 'react';
+import { BankTransaction } from '../../../common/types';
+import { useRegisterTransactionMutation } from '../../api/payments';
+import { Button, DisabledButton, SecondaryButton } from '../button';
+import { DialogBase, DialogHeader, DialogContent, DialogFooter } from '../dialog';
+import { ResourceSelectField } from '../resource-select-field';
 
 export type Props = {
   transactions: BankTransaction[],
@@ -11,19 +11,19 @@ export type Props = {
 }
 
 export const TransactionRegistrationDialog = ({ transactions, onClose }: Props) => {
-  const [selected, setSelected] = useState(null)
-  const [registerTransaction] = useRegisterTransactionMutation()
+  const [selected, setSelected] = useState(null);
+  const [registerTransaction] = useRegisterTransactionMutation();
 
   const handleRegistration = async () => {
     const result = await registerTransaction({
       transactionId: transactions[0].id,
       paymentId: selected,
-    })
+    });
 
     if ('data' in result) {
       onClose();
     }
-  }
+  };
 
   return (
     <DialogBase onClose={() => onClose()}>
@@ -42,4 +42,4 @@ export const TransactionRegistrationDialog = ({ transactions, onClose }: Props) 
       </DialogFooter>
     </DialogBase>
   );
-}
+};

@@ -1,5 +1,5 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog'
-import { Button } from '../../components/button'
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { Button } from '../../components/button';
 
 export const RemindersSentDialog = ({ onClose, payerCount, debtCount }) => {
   return (
@@ -12,5 +12,5 @@ export const RemindersSentDialog = ({ onClose, payerCount, debtCount }) => {
         <Button onClick={() => onClose()}>Close</Button>
       </DialogFooter>
     </DialogBase>
-  )
-}
+  );
+};
