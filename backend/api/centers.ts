@@ -13,6 +13,7 @@ import { validateBody } from '../validate-middleware';
 import { PayerService } from '../services/payer';
 import { PaymentService } from '../services/payements';
 import { pipe } from 'fp-ts/lib/function';
+import { euroValue } from '../../common/currency';
 
 const createDebtCenterFromEventBody = t.type({
   events: t.array(t.number),
@@ -36,25 +37,25 @@ const createDebtCenterFromEventBody = t.type({
 @Service()
 export class DebtCentersApi {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   getDebtCenters() {
     return route
@@ -291,6 +292,28 @@ export class DebtCentersApi {
       });
   }
 
+  private updateDebtComponent() {
+    return route
+      .patch('/:debtCenterId/components/:debtComponentId')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.partial({
+        name: t.string,
+        amount: euroValue,
+      })))
+      .handler(async (ctx) => {
+        const { debtCenterId, debtComponentId } = ctx.routeParams;
+
+        const component = await this.debtService.updateDebtComponent(debtCenterId, debtComponentId, ctx.body);
+
+        if (!component) {
+          return notFound();
+        } else {
+          return ok(component);
+        }
+      })
+  }
+
+
   router() {
     return router(
       this.createDebtCenter(),
@@ -302,6 +325,7 @@ export class DebtCentersApi {
       this.updateDebtCenter(),
       this.deleteDebtComponent(),
       this.deleteDebtCenter(),
+      this.updateDebtComponent(),
     );
   }
 }

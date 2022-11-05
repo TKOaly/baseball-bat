@@ -5,6 +5,7 @@ export type Props = {
   onClose: (confirmed: boolean) => void,
   remove: string[]
   create: string[]
+  change: string[]
 }
 
 const DebtComponentList = ({ components }: { components: string[] }) => (
@@ -20,7 +21,7 @@ const DebtComponentList = ({ components }: { components: string[] }) => (
   </ul>
 );
 
-export const DebtCenterConfirmationDialog = ({ onClose, remove, create }: Props) => {
+export const DebtCenterConfirmationDialog = ({ onClose, remove, create, change }: Props) => {
   return (
     <DialogBase onClose={() => onClose(false)}>
       <DialogHeader>Creating additional resources</DialogHeader>
@@ -36,6 +37,13 @@ export const DebtCenterConfirmationDialog = ({ onClose, remove, create }: Props)
           <>
             <p>The following debt components are about to be created:</p>
             <DebtComponentList components={create} />
+          </>
+        )}
+
+        {change.length > 0 && (
+          <>
+            <p>The following debt components are about to be modified:</p>
+            <DebtComponentList components={change} />
           </>
         )}
       </DialogContent>

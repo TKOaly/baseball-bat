@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch } from '../../common/types';
 import { PgClient } from '../db';
 import sql from 'sql-template-strings';
 import { Inject, Service } from 'typedi';
@@ -57,16 +57,16 @@ export type CreateDebtOptions = {
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   async getDebt(id: string): Promise<Debt | null> {
     return this.pg
@@ -325,6 +325,23 @@ export class DebtService {
         affectedDebts: result.map(r => r.debt_id),
       });
     });
+  }
+
+  async updateDebtComponent(debtCenterId: string, debtComponentId: string, patch: DebtComponentPatch) {
+    const updated = await this.pg.one<DbDebtComponent>(sql`
+      UPDATE debt_component
+      SET
+        name = COALESCE(${patch.name}, name),
+        amount = COALESCE(${patch.amount?.value}, amount)
+      WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
+      RETURNING *
+    `)
+
+    if (!updated) {
+      return null;
+    }
+
+    return formatDebtComponent(updated);
   }
 
   async getDebtsByPayment(paymentId: string): Promise<Array<Debt>> {

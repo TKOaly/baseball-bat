@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api';
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch } from '../../common/types';
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch, DebtComponentPatch } from '../../common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns';
 
@@ -21,6 +21,14 @@ const debtApi = rtkApi.injectEndpoints({
       query: ({ debtCenterId, debtComponentId }) => ({
         method: 'DELETE',
         url: `/debtCenters/${debtCenterId}/components/${debtComponentId}`,
+      }),
+    }),
+
+    updateDebtComponent: builder.mutation<DebtComponent, { debtCenterId: string, debtComponentId: string, values: DebtComponentPatch }>({
+      query: ({ debtCenterId, debtComponentId, values }) => ({
+        method: 'PATCH',
+        url: `/debtCenters/${debtCenterId}/components/${debtComponentId}`,
+        body: values,
       }),
     }),
 
@@ -202,6 +210,7 @@ export const {
   useDeleteDebtComponentMutation,
   useUpdateMultipleDebtsMutation,
   useMassCreateDebtsProgressQuery,
+  useUpdateDebtComponentMutation,
 } = debtApi;
 
 export default debtApi;

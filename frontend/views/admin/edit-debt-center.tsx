@@ -7,13 +7,14 @@ import { InputGroup } from '../../components/input-group';
 import { TextField } from '../../components/text-field';
 import { TextareaField } from '../../components/textarea-field';
 import * as A from 'fp-ts/lib/Array';
+import * as O from 'fp-ts/lib/Option';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as E from 'fp-ts/lib/Either';
 import * as S from 'fp-ts/lib/string';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
-import { useCreateDebtComponentMutation, useDeleteDebtComponentMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
-import { euro, NewDebtComponent } from '../../../common/types';
+import { useCreateDebtComponentMutation, useDeleteDebtComponentMutation, useGetDebtComponentsByCenterQuery, useUpdateDebtComponentMutation } from '../../api/debt';
+import { DebtComponent, euro, NewDebtComponent } from '../../../common/types';
 import { pipe } from 'fp-ts/lib/function';
 import { useDialog } from '../../components/dialog';
 import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-center-edit-confirmation-dialog';
@@ -40,6 +41,7 @@ export const EditDebtCenter = ({ params }) => {
   const [createDebtComponent] = useCreateDebtComponentMutation();
   const [, setLocation] = useLocation();
   const [deleteDebtComponent] = useDeleteDebtComponentMutation();
+  const [updateDebtComponent] = useUpdateDebtComponentMutation();
   const [updateDebtCenter] = useUpdateDebtCenterMutation();
   const showDebtCenterConfirmationDialog = useDialog(DebtCenterConfirmationDialog);
 
@@ -91,10 +93,26 @@ export const EditDebtCenter = ({ params }) => {
       )),
     );
 
-    if (removedComponents.length > 0 || newComponents.length > 0) {
+    const changedComponents = pipe(
+      components,
+      A.intersection(IdEq)(values.components),
+      A.filterMap(({ id }) => {
+        const existing = components.find(c => c.id === id);
+        const modified = values.components.find(c => c.id === id);
+
+        if (existing.name !== modified.name || existing.amount.value / 100 !== modified.amount) {
+          return O.some([existing, modified] as [DebtComponent, FormComponentValue]);
+        } else {
+          return O.none;
+        }
+      }),
+    )
+
+    if (removedComponents.length > 0 || newComponents.length > 0 || changedComponents.length > 0) {
       const confirmed = await showDebtCenterConfirmationDialog({
         remove: removedComponents.map(c => c.name),
         create: newComponents.map(c => c.name),
+        change: changedComponents.map(([existing]) => existing.name),
       });
 
       if (!confirmed) {
@@ -124,6 +142,23 @@ export const EditDebtCenter = ({ params }) => {
         }
       };
 
+      const updateDebtComponentTask = (existing: DebtComponent, updated: FormComponentValue) => async () => {
+        const result = await updateDebtComponent({
+          debtCenterId: id,
+          debtComponentId: existing.id,
+          values: {
+            name: existing.name !== updated.name ? updated.name : undefined,
+            amount: existing.amount.value / 100 !== updated.amount ? euro(updated.amount) : undefined,
+          },
+        });
+
+        if ('data' in result) {
+          return E.right(result.data);
+        } else {
+          return E.left(result.error);
+        }
+      };
+
       if (removedComponents.length > 0) {
         const result = await pipe(
           removedComponents,
@@ -141,6 +176,17 @@ export const EditDebtCenter = ({ params }) => {
           newComponents,
           A.map((c) => ({ ...c, debtCenterId: id, amount: euro(c.amount) })),
           A.traverse(TE.ApplicativePar)(createDebtComponentTask),
+        )();
+
+        if ('error' in result) {
+          return;
+        }
+      }
+
+      if (changedComponents.length > 0) {
+        const result = await pipe(
+          changedComponents,
+          A.traverse(TE.ApplicativePar)(([existing, updated]) => updateDebtComponentTask(existing, updated)),
         )();
 
         if ('error' in result) {

@@ -289,6 +289,11 @@ export type DbDebtComponent = {
   updated_at: Date
 }
 
+export type DebtComponentPatch = Partial<{
+  name: string,
+  amount: EuroValue,
+}>
+
 export type DebtComponent = Omit<FromDbType<DbDebtComponent>, 'amount'> & { amount: EuroValue }
 
 export type NewDebtComponent = Omit<DebtComponent, 'id' | 'createdAt' | 'updatedAt' | 'amount'> & { amount: EuroValue }
