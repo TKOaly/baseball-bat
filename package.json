@@ -10,6 +10,8 @@
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up"
   },
   "dependencies": {
+    "@floating-ui/react-dom": "^1.0.0",
+    "@floating-ui/react-dom-interactions": "^0.10.3",
     "@parcel/transformer-react-refresh-wrap": "^2.3.1",
     "@reduxjs/toolkit": "^1.8.1",
     "@stripe/react-stripe-js": "^1.7.0",

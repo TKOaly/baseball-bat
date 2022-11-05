@@ -371,7 +371,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                 {actions && (
                   <div className={`${i > 0 && 'border-t'} relative px-3 py-2 flex items-center justify-center`}>
                     <Dropdown
-                      renderTrigger={(props) => <MoreVertical {...props} />}
+                      renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
                       showArrow={false} className="h-[24px]"
                       options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
                     />
