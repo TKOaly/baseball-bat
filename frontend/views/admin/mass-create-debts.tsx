@@ -131,7 +131,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
       } catch {
         acc[column.key] = null;
       }
-    } else if (value.toLowerCase() === 'true') {
+    } else if (value.trim().toLowerCase() === 'true') {
       acc.components.push(header[i]);
     }
 
