@@ -45,7 +45,10 @@ export const DebtDetails = ({ params }) => {
   };
 
   const handleReminder = async () => {
-    const result = await sendDebtReminder(params.id);
+    const result = await sendDebtReminder({
+      id: params.id,
+      draft: false,
+    });
 
     if ('data' in result) {
       showRemindersSentDialog({

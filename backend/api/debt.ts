@@ -1,4 +1,4 @@
-import { Router, route, router } from 'typera-express';
+import { Router, route, router, Parser } from 'typera-express';
 import { AuthService } from '../auth-middleware';
 import { CreateDebtOptions, DebtService } from '../services/debt';
 import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response';
@@ -186,6 +186,7 @@ export class DebtApi {
                 date: payment.created_at,
                 dueDate: debt.dueDate,
                 amount: total,
+                components: debt.debtComponents,
                 referenceNumber: payment.data?.reference_number ?? '<ERROR>',
                 link: `${this.config.appUrl}/payment/${debt.id}`,
                 message: debt.description,
@@ -832,6 +833,12 @@ export class DebtApi {
   private sendReminder() {
     return route
       .post('/:id/send-reminder')
+      .use(Parser.query(t.partial({
+        draft: t.union([
+          t.literal('yes'),
+          t.literal('no'),
+        ]),
+      })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
@@ -840,7 +847,7 @@ export class DebtApi {
           return notFound('Debt not found');
         }
 
-        const result = await this.debtService.sendReminder(debt);
+        const result = await this.debtService.sendReminder(debt, ctx.query.draft === 'yes');
 
         if (E.isRight(result)) {
           return ok(result.right);

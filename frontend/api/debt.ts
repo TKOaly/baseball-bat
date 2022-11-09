@@ -146,10 +146,13 @@ const debtApi = rtkApi.injectEndpoints({
       ],
     }),
 
-    sendReminder: builder.mutation<Email, string>({
-      query: (id) => ({
+    sendReminder: builder.mutation<Email, { id: string, draft?: boolean }>({
+      query: ({ id, draft }) => ({
         method: 'POST',
         url: `/debt/${id}/send-reminder`,
+        params: {
+          draft: draft ? 'yes' : 'no',
+        },
       }),
       invalidatesTags: [
         { type: 'Email', id: 'LIST' },
