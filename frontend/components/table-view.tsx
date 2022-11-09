@@ -34,6 +34,7 @@ export type Column<R> = {
   getValue: string | ((row: R) => any),
   render?: (value: any, row: R) => any,
   align?: 'right',
+  compareBy?: (value: any) => any,
 }
 
 export type TableViewProps<R extends Row> = {
@@ -73,6 +74,8 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
         }
       });
 
+  const compareBy = column.compareBy ?? identity;
+
   return (
     <Dropdown
       label=''
@@ -88,19 +91,21 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
       options={
         rowValues
           .reduce(([list, values]: [any[], Set<string>], [row, value]: [any, string]) => {
-            if (values.has(value)) {
+            if (values.has(compareBy(value))) {
               return [list, values];
             } else {
-              values.add(value);
+              values.add(compareBy(value));
               return [[...list, [row, value]], values];
             }
           }, [[], new Set()])[0]
           .map(([row, value]) => {
             let icon = null;
 
-            if (options.allowlist.includes(value)) {
+            const compareValue = compareBy(value);
+
+            if (options.allowlist.includes(compareValue)) {
               icon = <PlusSquare className="text-green-500 h-4" />;
-            } else if (options.blocklist.includes(value)) {
+            } else if (options.blocklist.includes(compareValue)) {
               icon = <MinusSquare className="text-red-500 h-4" />;
             }
 
@@ -128,20 +133,22 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
           })
       }
       onSelect={(value) => {
-        if (options.allowlist.includes(value)) {
+        const compareValue = compareBy(value);
+
+        if (options.allowlist.includes(compareValue)) {
           onChange({
-            blocklist: union(options.blocklist, [value]),
-            allowlist: difference(options.allowlist, [value]),
+            blocklist: union(options.blocklist, [compareValue]),
+            allowlist: difference(options.allowlist, [compareValue]),
           });
-        } else if (options.blocklist.includes(value)) {
+        } else if (options.blocklist.includes(compareValue)) {
           onChange({
             ...options,
-            blocklist: difference(options.blocklist, [value]),
+            blocklist: difference(options.blocklist, [compareValue]),
           });
         } else {
           onChange({
             ...options,
-            allowlist: union(options.allowlist, [value]),
+            allowlist: union(options.allowlist, [compareValue]),
           });
         }
       }}
@@ -168,8 +175,10 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
       }
 
       const comparator = (a: R, b: R) => {
-        let va = getColumnValue(column, a);
-        let vb = getColumnValue(column, b);
+        const compareBy = column.compareBy ?? identity;
+
+        let va = compareBy(getColumnValue(column, a));
+        let vb = compareBy(getColumnValue(column, b));
 
         if (sortDir === 'desc') {
           [va, vb] = [vb, va];
@@ -196,16 +205,17 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
         .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
         .map(([colName, options]) => {
           const column = columns.find(c => c.name === colName);
+          const compareBy = column.compareBy ?? identity;
           const value = getColumnValue(column, row);
 
           if (options.allowlist.length > 0) {
             modeStrict = true;
           }
 
-          let values = [value];
+          let values = [compareBy(value)];
 
           if (Array.isArray(value)) {
-            values = value;
+            values = value.map(compareBy);
           }
 
           if (values.some(v => options.allowlist.includes(v))) {
@@ -362,7 +372,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                     }
 
                     return (
-                      <div className={`${i > 0 && 'border-t'} overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name}>
+                      <div className={`${i > 0 && 'border-t'} whitespace-nowrap overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name}>
                         {content}
                       </div>
                     );
