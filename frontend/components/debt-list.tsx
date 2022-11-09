@@ -5,6 +5,7 @@ import { useDeleteDebtMutation, usePublishDebtsMutation } from '../api/debt';
 import { ExternalLink } from 'react-feather';
 import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';
+import { sortBy } from 'remeda';
 
 export type Props = {
   debts: (DebtWithPayer | Debt)[]
@@ -72,14 +73,12 @@ export const DebtList = (props: Props) => {
           }),
         },
         {
-          name: 'Labels',
-          getValue: () => null,
-          render: () => (
-            <>
-              {Math.random() > 0.5 && <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-2">External</span>}
-              {Math.random() > 0.5 && <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">Manual</span>}
-            </>
-          ),
+          name: 'Components',
+          getValue: (debt) => sortBy(debt.debtComponents, (dc) => dc.name),
+          compareBy: (value) => value.id,
+          render: (value) => value.map(({ name, id }) => (
+            <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600" key={id}>{name}</span>
+          )),
         },
       ]}
       actions={[

@@ -99,12 +99,23 @@ export class DebtService {
       .any<DbDebt>(sql`
         SELECT
           debt.*,
+          TO_JSON(payer_profiles.*) AS payer,
+          TO_JSON(debt_center.*) AS debt_center,
           CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(payer_profiles.*)) AS payer
+          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+          (
+            SELECT SUM(dc.amount) AS total
+            FROM debt_component_mapping dcm
+            JOIN debt_component dc ON dc.id = dcm.debt_component_id
+            WHERE dcm.debt_id = debt.id
+          ) AS total
         FROM debt
-        INNER JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        WHERE debt_center_id = ${id}
-        GROUP BY debt.id
+        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+        JOIN debt_center ON debt_center.id = debt.debt_center_id
+        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+        WHERE debt.debt_center_id = ${id}
+        GROUP BY debt.id, payer_profiles.*, debt_center.*
       `)
       .then(dbDebts => dbDebts.map(formatDebt));
   }
@@ -114,10 +125,22 @@ export class DebtService {
       .any<DbDebt>(sql`
         SELECT
           debt.*,
+          TO_JSON(payer_profiles.*) AS payer,
+          TO_JSON(debt_center.*) AS debt_center,
           CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          TO_JSON(payer_profiles.*) AS payer
+          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+          (
+            SELECT SUM(dc.amount) AS total
+            FROM debt_component_mapping dcm
+            JOIN debt_component dc ON dc.id = dcm.debt_component_id
+            WHERE dcm.debt_id = debt.id
+          ) AS total
         FROM debt
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+        JOIN debt_center ON debt_center.id = debt.debt_center_id
+        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+        GROUP BY debt.id, payer_profiles.*, debt_center.*
       `)
       .then(dbDebts => dbDebts.map(formatDebt));
   }
