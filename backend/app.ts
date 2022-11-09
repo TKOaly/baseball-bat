@@ -161,7 +161,7 @@ app.use(express.static('web-dist'));
 
 app.use('/', Container.get(MagicLinksApi).router().handler());
 
-cron.schedule('* * * 12 * * *', () => Container.get(DebtService).sendAllReminders());
+cron.schedule('0 12 * * *', () => Container.get(DebtService).sendAllReminders());
 
 app.listen(PORT, () => console.log(`backend istening on port ${PORT} 🚀`));
 

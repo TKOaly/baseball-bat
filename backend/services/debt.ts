@@ -506,7 +506,10 @@ export class DebtService {
       JOIN debt_statuses ON debt_statuses.id = debt.id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.due_date < NOW() AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month') AND NOT debt_statuses.is_paid
+      WHERE debt.due_date < NOW()
+        AND debt.published_at IS NOT NULL
+        AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month')
+        AND NOT debt_statuses.is_paid
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);
 
@@ -580,9 +583,11 @@ export class DebtService {
 
     const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.sendReminder(debt, draft));
 
-    return flow(
+    const result = await flow(
       A.traverse(T.ApplicativePar)(sendReminder),
       T.map(A.separate),
     )(debts)();
+
+    return result;
   }
 }
