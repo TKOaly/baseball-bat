@@ -21,22 +21,22 @@ import { pipe } from 'fp-ts/lib/function';
 @Service()
 export class PayersApi {
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   private getPayer() {
     return route
@@ -256,7 +256,7 @@ export class PayersApi {
           throw new Error('No such user or no primary email for user ' + ctx.routeParams.id);
         }
 
-        const overdue = debts.filter((debt) => isPast(debt.dueDate) && (ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
+        const overdue = debts.filter((debt) => debt.dueDate && isPast(debt.dueDate) && (ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
 
         const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
         const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);

@@ -6,6 +6,28 @@ Ole hyvä ja maksa velkasi mahdollisimman pian käyttäen alla olevia maksutieto
 Your debt '<%- title %>' was due on <%- formatDate(dueDate) %>.
 Please pay it as soon as possible using the payment details below:
 
+Invoice description / Laskun kuvaus
+===================================
+
+<%= message %>
+
+Breakdown / Erittely
+====================
+<%
+
+function formatLine(padding, left, right) {
+  return `${' '.repeat(padding)}${left} ${'.'.repeat(50-right.length-left.length-padding-2)} ${right}`;
+}
+
+%>
+<% for (const debt of debts) { -%>
+<%= formatLine(0, debt.name, formatEuro(debt.total)) %> 
+<% for (component of debt.debtComponents) { -%>
+<%= formatLine(2, component.name, formatEuro(component.amount)) %>
+<% } %>
+<% } -%>
+<%= formatLine(0, 'Total', formatEuro(amount)) %>
+
 Payment Details / Maksutiedot
 =============================
 

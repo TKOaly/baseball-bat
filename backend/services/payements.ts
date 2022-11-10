@@ -1,8 +1,14 @@
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
-import { BankTransaction, DbPaymentEventTransactionMapping, Debt, EuroValue, InternalIdentity, Payment } from '../../common/types';
-import { PgClient } from '../db';
+import { BankTransaction, DbEmail, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentStatus } from '../../common/types';
+import { FromDbType, PgClient } from '../db';
 import { DebtService } from './debt';
+import { Either } from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/lib/Either';
+import { EmailService } from './email';
+import { PayerService } from './payer';
+import { euro, sumEuroValues } from '../../common/currency';
+import { parseISO } from 'date-fns';
 
 type PaymentWithEvents = Payment & {
   events: Array<{
@@ -99,6 +105,9 @@ type DbPayment = {
   payer_id: string
   data: Record<string, unknown>,
   message: string
+  balance: number
+  status: 'canceled' | 'paid' | 'unpaid' | 'mispaid'
+  updated_at: Date
   created_at: Date
   payment_number: number
   credited: boolean
@@ -118,10 +127,16 @@ type NewPayment<T extends PaymentType> = {
 @Service()
 export class PaymentService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
+
+  @Inject(() => PayerService)
+  payerService: PayerService;
+
+  @Inject(() => EmailService)
+  emailService: EmailService;
 
   async getPayments() {
     return this.pg
@@ -194,31 +209,24 @@ export class PaymentService {
       `);
   }
 
-  async getDefaultInvoicePaymentForDebt(debtId: string) {
+  async getDefaultInvoicePaymentForDebt(debtId: string): Promise<Payment | null> {
     const payment = await this.pg
-      .any<DbPayment>(sql`
-        SELECT * FROM (
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            COALESCE(s.updated_at, p.created_at) AS updated_at,
-            (SELECT ARRAY_AGG(debt_id) FROM payment_debt_mappings WHERE payment_id = p.id) AS debt_ids
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-        ) s
-        WHERE ${debtId} = ANY (debt_ids) AND ARRAY_LENGTH(debt_ids, 1) = 1 AND type = 'invoice'
-        ORDER BY created_at
-        LIMIT 1
+      .one<DbPayment>(sql`
+        SELECT
+          p.*,
+          s.balance,
+          s.status,
+          s.payer,
+          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+          COALESCE(s.updated_at, p.created_at) AS updated_at
+        FROM payments p
+        JOIN payment_statuses s ON s.id = p.id
+        JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
+        JOIN debt d ON d.id = pdm.debt_id
+        WHERE d.id = ${debtId} AND d.default_payment = p.id
       `);
 
-    if (payment.length === 0) {
-      return null;
-    }
-
-    return payment[0];
+    return payment;
   }
 
   async logPaymentEvent(
@@ -271,7 +279,11 @@ export class PaymentService {
 
     const debts = results as Array<Debt>;
 
-    const due_dates = debts.map(debt => new Date(debt.dueDate)).sort();
+    if (debts.some(debt => debt.dueDate === null || debt.publishedAt === null)) {
+      throw Error('Not all debts have due dates or are published!');
+    }
+
+    const due_dates = debts.flatMap(debt => debt.dueDate ? [new Date(debt.dueDate)] : []).sort();
     const due_date = due_dates[0];
 
     return this.createPayment({
@@ -433,5 +445,46 @@ export class PaymentService {
         accounting_id: details.accountingId,
       },
     });
+  }
+
+  async getPaymentTotal() {
+  }
+
+  async sendNewPaymentNotification(id: string): Promise<Either<string, FromDbType<DbEmail>>> {
+    const payment = await this.getPayment(id);
+
+    if (!payment) {
+      return E.left('No such payment');
+    }
+
+    const debts = await this.debtService.getDebtsByPayment(id);
+    const total = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
+    const email = await this.payerService.getPayerPrimaryEmail(internalIdentity(payment.payer_id));
+
+    if (!email) {
+      return E.left('Could not determine email for payer');
+    }
+
+    if (!isPaymentInvoice(payment)) {
+      return E.left('Payment is not an invoice');
+    }
+
+    const created = await this.emailService.createEmail({
+      template: 'new-invoice',
+      recipient: email.email,
+      payload: {
+        title: payment.title,
+        number: payment.payment_number,
+        date: payment.created_at,
+        dueDate: parseISO(payment.data.due_date),
+        amount: total,
+        debts,
+        referenceNumber: payment.data.reference_number,
+        message: payment.message,
+      },
+      subject: '[Lasku / Invoice] ' + payment.title,
+    });
+
+    return E.fromNullable('Could not create email')(created);
   }
 }

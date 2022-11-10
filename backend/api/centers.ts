@@ -265,6 +265,7 @@ export class DebtCentersApi {
                 : componentIds,
               payer: payer.id,
               dueDate,
+              paymentCondition: null,
             });
 
             return debt;

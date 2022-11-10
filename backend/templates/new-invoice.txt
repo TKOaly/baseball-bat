@@ -1,0 +1,39 @@
+You have new pending invoices from TKO-äly
+
+This is an automated message regarding a new invoice assigned to you from
+TKO-äly. Below are the details of the invoice.
+
+Invoice message
+===============
+
+<%= message %>
+
+Breakdown
+=========
+<%
+
+function formatLine(padding, left, right) {
+  return `${' '.repeat(padding)}${left} ${'.'.repeat(50-right.length-left.length-padding-2)} ${right}`;
+}
+
+%>
+<% for (const debt of debts) { -%>
+<%= formatLine(0, debt.name, formatEuro(debt.total)) %> 
+<% for (component of debt.debtComponents) { -%>
+<%= formatLine(2, component.name, formatEuro(component.amount)) %>
+<% } %>
+<% } -%>
+<%= formatLine(0, 'Total', formatEuro(amount)) %>
+
+Payment details
+===============
+
+Title:             <%= title %>
+Invoice number:    <%= number %>
+Invoice date:      <%= formatDate(date) %>
+Due date:          <%= formatDate(dueDate) %>
+Total amount:      <%= formatEuro(amount) %>
+Reference number:  <%= referenceNumber %>
+Receiver name:     TKO-äly ry
+Receiver acccount: FI89 7997 7995 1312 86
+Receiver BIC:      HOLVFIHH

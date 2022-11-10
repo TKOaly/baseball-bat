@@ -307,7 +307,7 @@ export type DbDebt = {
   id: string
   name: string
   last_reminded: Date | null
-  due_date: Date
+  due_date: Date | null
   draft: boolean
   published_at: Date | null
   payer_id: string
@@ -316,12 +316,19 @@ export type DbDebt = {
   created_at: Date
   updated_at: Date
   status: DebtStatus
+  payment_condition: number | null
+  default_payment: string | null
   credited: boolean
 }
 
 export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
 
-export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total'> & { total?: EuroValue, payerId: InternalIdentity, status: DebtStatus, debtComponents: Array<DebtComponent> };
+export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total'> & {
+  total?: EuroValue,
+  payerId: InternalIdentity,
+  status: DebtStatus,
+  debtComponents: Array<DebtComponent>,
+};
 
 export type DebtWithPayer = Debt & { payer: PayerProfile };
 
@@ -357,8 +364,9 @@ export type NewDebt = {
   components: string[]
   name: string
   payer: PayerIdentity
-  dueDate: DbDateString,
+  dueDate: DbDateString | null,
   createdAt?: Date
+  paymentCondition: null | number
 }
 
 export type DebtPatch = {
@@ -433,6 +441,10 @@ export type Payment = {
   status: 'paid' | 'canceled' | 'mispaid' | 'unpaid',
   updated_at: Date
 }
+
+export const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string, due_date: string } } => {
+  return p.type === 'invoice' && p.data !== null && 'reference_number' in p.data && 'due_date' in p.data;
+};
 
 export type DbEmail = {
   id: string

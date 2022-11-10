@@ -9,10 +9,6 @@ import payersApi from '../api/payers';
 import paymentsApi from '../api/payments';
 import { useAppSelector, useAppDispatch } from '../store';
 
-const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string } } => {
-  return p.type === 'invoice' && 'reference_number' in p.data;
-};
-
 const selectResourceDetails = createSelector(
   [
     (state) => state,

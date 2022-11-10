@@ -8,7 +8,7 @@ import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, NewDebt, PayerProfile, tkoalyIdentity } from '../../common/types';
+import { convertToDbDate, dateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
@@ -50,14 +50,19 @@ const debtComponent = t.type({
   description: t.string,
 });
 
-const createDebtPayload = t.type({
-  name: t.string,
-  center: t.union([debtCenter, t.string]),
-  payer: payerIdentity,
-  description: t.string,
-  components: t.array(newOrExisting(debtComponent)),
-  due_date: dateString,
-});
+const createDebtPayload = t.intersection([
+  t.type({
+    name: t.string,
+    center: t.union([debtCenter, t.string]),
+    payer: payerIdentity,
+    description: t.string,
+    components: t.array(newOrExisting(debtComponent)),
+  }),
+  t.partial({
+    due_date: dateString,
+    payment_condition: t.union([t.null, t.number]),
+  }),
+]);
 
 @Service()
 export class DebtApi {
@@ -148,6 +153,21 @@ export class DebtApi {
   }
 
   private publishDebts() {
+    const createDefaultPaymentFor = async (debt: Debt): Promise<Payment> => {
+      const created = await this.paymentService.createInvoice({
+        title: debt.name,
+        message: debt.description,
+        series: 1,
+        debts: [debt.id],
+      });
+
+      if (!created) {
+        return Promise.reject('Could not create invoice for debt');
+      }
+
+      return created;
+    };
+
     return route
       .post('/publish')
       .use(this.authService.createAuthMiddleware())
@@ -160,6 +180,10 @@ export class DebtApi {
             return Promise.reject('No such debt');
           }
 
+          if (!debt.draft) {
+            return Promise.reject('Debt already published');
+          }
+
           const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
 
           if (!email) {
@@ -168,36 +192,28 @@ export class DebtApi {
 
           await this.debtService.publishDebt(id);
 
-          const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(id);
+          let defaultPayment = debt.defaultPayment
+            ? await this.paymentService.getDefaultInvoicePaymentForDebt(debt.defaultPayment)
+            : await createDefaultPaymentFor(debt);
 
-          if (payment) {
-            if (!('reference_number' in payment.data)) {
-              // return Promise.reject('No reference number for payment')
-            }
-
-            const total = await this.debtService.getDebtTotal(id);
-
-            await this.emailService.createEmail({
-              template: 'new-payment',
-              recipient: email.email,
-              payload: {
-                title: debt.name,
-                number: payment.payment_number,
-                date: payment.created_at,
-                dueDate: debt.dueDate,
-                amount: total,
-                components: debt.debtComponents,
-                referenceNumber: payment.data?.reference_number ?? '<ERROR>',
-                link: `${this.config.appUrl}/payment/${debt.id}`,
-                message: debt.description,
-              },
-              subject: '[Lasku / Invoice] ' + debt.name,
-            });
+          if (!defaultPayment) {
+            return Promise.reject(`No default invoice exists for payment`);
           }
 
-          return;
-        }));
+          if (!isPaymentInvoice(defaultPayment)) {
+            return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
+          }
 
+          const notificationEmail = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
+
+          if (E.isRight(notificationEmail)) {
+            await this.emailService.sendEmail(notificationEmail.right.id);
+
+            return Promise.resolve();
+          } else {
+            return Promise.reject('Failed to create notification email');
+          }
+        }));
 
         return ok();
       });
@@ -251,10 +267,15 @@ export class DebtApi {
               return createdComponent.id;
             }),
         );
-        const dueDate = convertToDbDate(payload.due_date);
 
-        if (!dueDate) {
-          return internalServerError('Date conversion error');
+        let dueDate = null
+
+        if (payload.due_date) {
+          dueDate = convertToDbDate(payload.due_date);
+
+          if (!dueDate) {
+            return internalServerError('Date conversion error');
+          }
         }
 
         const debt = await this.debtService.createDebt({
@@ -263,7 +284,8 @@ export class DebtApi {
           components: componentIds,
           centerId,
           payer: payer.id,
-          dueDate,
+          paymentCondition: payload.payment_condition ?? null,
+          dueDate: payload.due_date ? convertToDbDate(payload.due_date) : null,
         });
 
         return ok(debt);
@@ -481,6 +503,7 @@ export class DebtApi {
           date: dateString,
           amount: euroValue,
           dueDate: dateString,
+          paymentCondition: t.Int,
           components: t.array(t.string),
           paymentNumber: t.string,
           referenceNumber: t.string,
@@ -554,14 +577,31 @@ export class DebtApi {
                 return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' });
               }
 
-              if (!details.dueDate) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'dueDate' });
+              let dueDate = null;
+
+              if (details.dueDate) {
+                dueDate = convertToDbDate(details.dueDate);
+
+                if (!dueDate) {
+                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' });
+                }
               }
 
-              const dueDate = convertToDbDate(details.dueDate);
+              let paymentCondition = details.paymentCondition;
 
-              if (!dueDate) {
-                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' });
+              if (dueDate && paymentCondition) {
+                return Promise.reject({
+                  debtIndex: index,
+                  error: 'BOTH_DUE_DATE_AND_CONDITION',
+                })
+              } else if (!dueDate && !paymentCondition) {
+                const zero = t.Int.decode(0);
+
+                if (E.isRight(zero)) {
+                  paymentCondition = zero.right;
+                } else {
+                  throw Error('Unreachable.')
+                }
               }
 
               let createdDebt: Debt | null = null;
@@ -620,12 +660,16 @@ export class DebtApi {
 
                 const options: CreateDebtOptions = {};
 
-                if (details.paymentNumber) {
-                  options.paymentNumber = details.paymentNumber;
-                }
+                if (details.paymentNumber || details.referenceNumber) {
+                  options.defaultPayment = {};
 
-                if (details.referenceNumber) {
-                  options.defaultPaymentReferenceNumber = details.referenceNumber;
+                  if (details.paymentNumber) {
+                    options.defaultPayment.paymentNumber = details.paymentNumber;
+                  }
+
+                  if (details.referenceNumber) {
+                    options.defaultPayment.referenceNumber = details.referenceNumber;
+                  }
                 }
 
                 const newDebt: NewDebt = {
@@ -634,6 +678,7 @@ export class DebtApi {
                   name: details.title,
                   payer: payer.id,
                   dueDate,
+                  paymentCondition: paymentCondition ?? null,
                   components: debtComponents.map(c => c.id),
                 };
 
@@ -655,7 +700,9 @@ export class DebtApi {
                   debtCenterId: debtCenter.id,
                   status: 'unpaid',
                   lastReminded: null,
-                  dueDate: parseISO(dueDate),
+                  dueDate: dueDate ? parseISO(dueDate) : null,
+                  paymentCondition: paymentCondition ?? null,
+                  defaultPayment: null,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                   debtComponents,

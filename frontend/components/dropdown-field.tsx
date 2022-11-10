@@ -211,7 +211,7 @@ export const DropdownField = memo(<V extends unknown>({
           {visibleOptions
             .map((option, optionIndex) => (
               <li
-                key={option.value}
+                key={JSON.stringify(option.value)}
                 className={`
                   py-1
                   px-2

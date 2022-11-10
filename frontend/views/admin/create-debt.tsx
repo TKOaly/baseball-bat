@@ -18,10 +18,10 @@ type DebtFormValues = {
   name: string,
   center: string | { name: string },
   description: string,
-  due_date: string,
   components: { component: string | { name: string }, amount: number }[],
   amount: number,
   payer: PayerIdentity | null
+  paymentCondition: string | 'NOW'
 }
 
 export const CreateDebt = ({ debtCenterId }) => {
@@ -33,6 +33,7 @@ export const CreateDebt = ({ debtCenterId }) => {
   const submitDebtForm = async (values: DebtFormValues) => {
     await createDebt({
       ...values,
+      payment_condition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
       center: typeof values.center === 'string'
         ? values.center
         : { ...values.center, url: '', description: '' },
@@ -93,23 +94,25 @@ export const CreateDebt = ({ debtCenterId }) => {
           center: debtCenterId,
           payer: null,
           components: [],
-          due_date: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+          paymentCondition: '14',
           amount: 1234.31,
         } as DebtFormValues}
         validate={(values) => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
-          if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
-            errors.due_date = 'Date must be in format <day>.<month>.<year>';
-          } else if (!isMatch(values.due_date, 'dd.MM.yyyy')) {
-            errors.due_date = 'Invalid date';
+          try {
+            if (values.paymentCondition !== 'NOW') {
+              parseInt(values.paymentCondition);
+            }
+          } catch (e) {
+            errors.paymentCondition = 'Must be an integer';
           }
 
           return errors;
         }}
         onSubmit={submitDebtForm}
       >
-        {({ submitForm, isSubmitting }) => (
+        {({ submitForm, isSubmitting, setFieldError, setFieldValue }) => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
@@ -133,7 +136,28 @@ export const CreateDebt = ({ debtCenterId }) => {
               formatCustomOption={formatCustomPayerOption}
               options={payerOptions}
             />
-            <InputGroup label="Due Date" name="due_date" component={DateField} />
+            <InputGroup
+              label="Payment Condition"
+              name="paymentCondition"
+              component={TextField}
+              onChange={(evt) => {
+                const value = evt.target.value;
+
+                if (value === 'NOW') {
+                  setFieldValue('paymentCondition', 'NOW');
+                  return;
+                }
+
+                try {
+                  const matches = /[0-9]+/.exec(value);
+                  const integer = parseInt(matches[0]);
+                  setFieldValue('paymentCondition', integer === 0 ? 'NOW' : String(integer));
+                } catch (e) {
+                  setFieldValue('paymentCondition', value);
+                  setFieldError('paymentCondition', 'Integer expected');
+                }
+              }}
+            />
             <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
             <InputGroup
               label="Components"

@@ -64,7 +64,7 @@ const debtApi = rtkApi.injectEndpoints({
         ...result,
         createdAt: parseISO(result.createdAt),
         updatedAt: parseISO(result.updatedAt),
-        dueDate: parseISO(result.dueDate),
+        dueDate: result.dueDate ? parseISO(result.dueDate) : null,
       }),
     }),
 
@@ -93,6 +93,7 @@ const debtApi = rtkApi.injectEndpoints({
       invalidatesTags: (_result, _err, ids) => [
         { type: 'Debt' as const, id: 'LIST' },
         { type: 'Email' as const, id: 'LIST' },
+        { type: 'Payment' as const, id: 'LIST' },
         ...ids.map(id => ({ type: 'Debt' as const, id })),
       ],
     }),

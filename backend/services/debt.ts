@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice } from '../../common/types';
 import { PgClient } from '../db';
 import sql from 'sql-template-strings';
 import { Inject, Service } from 'typedi';
@@ -12,7 +12,7 @@ import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
 import * as T from 'fp-ts/lib/Task';
 import { flow, pipe } from 'fp-ts/lib/function';
-import { isPast } from 'date-fns';
+import { isPast, parseISO } from 'date-fns';
 import { EmailService } from './email';
 
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
@@ -27,9 +27,11 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
   dueDate: debt.due_date,
   publishedAt: debt.published_at,
   debtCenterId: debt.debt_center_id,
+  defaultPayment: debt.default_payment,
   debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
   credited: debt.credited,
   total: debt.total === undefined ? undefined : cents(debt.total),
+  paymentCondition: debt.payment_condition,
   debtComponents: debt.debt_components
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
     : [],
@@ -48,10 +50,7 @@ const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => (
 });
 
 export type CreateDebtOptions = {
-  noDefaultPayment?: boolean
-  defaultPaymentReferenceNumber?: string
-  paymentNumber?: string
-  paymentDate?: Date
+  defaultPayment?: Partial<NewInvoice>
 }
 
 @Service()
@@ -154,7 +153,13 @@ export class DebtService {
   }
 
   async publishDebt(debtId: string): Promise<void> {
-    await this.pg.any(sql`UPDATE debt SET published_at = NOW() WHERE id = ${debtId}`);
+    await this.pg.any(sql`
+      UPDATE debt
+      SET
+        published_at = NOW(),
+        due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
+      WHERE id = ${debtId}
+    `);
   }
 
   async createDebt(debt: NewDebt, options?: CreateDebtOptions): Promise<Debt> {
@@ -166,14 +171,15 @@ export class DebtService {
 
     const created = await this.pg
       .one<DbDebt>(sql`
-        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at)
+        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition)
         VALUES (
           ${debt.name},
           ${debt.description},
           ${debt.centerId},
           ${payerProfile.id.value},
           ${debt.dueDate},
-          COALESCE(${debt.createdAt}, NOW())
+          COALESCE(${debt.createdAt}, NOW()),
+          ${debt.paymentCondition}
         )
         RETURNING *
       `);
@@ -197,29 +203,13 @@ export class DebtService {
       }),
     );
 
-    if (!options?.noDefaultPayment) {
-      const invoiceOptions: Partial<NewInvoice> = {};
-
-      if (options?.paymentNumber) {
-        invoiceOptions.paymentNumber = options.paymentNumber;
-      }
-
-      if (options?.defaultPaymentReferenceNumber) {
-        invoiceOptions.referenceNumber = options.defaultPaymentReferenceNumber;
-      }
-
-      if (options?.paymentDate) {
-        invoiceOptions.createdAt = options.paymentDate;
-      } else if (debt.createdAt) {
-        invoiceOptions.createdAt = debt.createdAt;
-      }
-
+    if (options?.defaultPayment) {
       await this.paymentService.createInvoice({
         series: 1,
         message: debt.description,
         debts: [created.id],
         title: debt.name,
-        ...invoiceOptions,
+        ...options.defaultPayment,
       });
     }
 
@@ -375,7 +365,13 @@ export class DebtService {
           TO_JSON(payer_profiles.*) AS payer,
           TO_JSON(debt_center.*) AS debt_center,
           CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
+          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+          (
+            SELECT SUM(dc.amount) AS total
+            FROM debt_component_mapping dcm
+            JOIN debt_component dc ON dc.id = dcm.debt_component_id
+            WHERE dcm.debt_id = debt.id
+          ) AS total
         FROM payment_debt_mappings pdm
         JOIN debt ON debt.id = pdm.debt_id
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
@@ -535,13 +531,13 @@ export class DebtService {
 
     const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(debt.id);
 
-    if (!payment) {
+    if (!payment || !isPaymentInvoice(payment)) {
       return E.left('No default invoice found for debt');
     }
 
-    const dueDate = new Date(debt.dueDate);
+    const dueDate = debt.dueDate ? new Date(debt.dueDate) : null;
 
-    if (!isPast(dueDate)) {
+    if (dueDate === null || !isPast(dueDate)) {
       return E.left('Debt not due yet');
     }
 
@@ -550,13 +546,14 @@ export class DebtService {
       subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
       template: 'reminder',
       payload: {
-        dueDate: debt.dueDate,
-        amount: debt.total,
-        referenceNumber: payment.data.reference_number,
-        message: payment.message ?? debt.description,
-        title: debt.name,
+        title: payment.title,
         number: payment.payment_number,
-        date: debt.createdAt,
+        date: payment.created_at,
+        dueDate: parseISO(payment.data.due_date),
+        amount: debt.total,
+        debts: [debt],
+        referenceNumber: payment.data.reference_number,
+        message: payment.message,
       },
     });
 

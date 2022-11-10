@@ -109,7 +109,7 @@ export const DebtDetails = ({ params }) => {
           {debt?.status !== 'paid' && (
             <ActionButton secondary onClick={handleCashPayment}>Mark paid with cash</ActionButton>
           )}
-          {debt?.draft === false && dfns.isPast(debt.dueDate) && (
+          {debt?.draft === false && debt.dueDate && dfns.isPast(debt.dueDate) && (
             <ActionButton secondary onClick={handleReminder}>Send reminder</ActionButton>
           )}
           <ActionButton secondary onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}>Edit</ActionButton>
@@ -124,12 +124,19 @@ export const DebtDetails = ({ params }) => {
         <Field label="Published at">
           {debt.publishedAt === null ? 'Not published' : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
         </Field>
-        <Field label="Due Date">
-          {dfns.format(debt.dueDate, 'dd.MM.yyyy')}
-          {dfns.isPast(debt.dueDate) && (
-            <div className={'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'}>Overdue</div>
-          )}
-        </Field>
+        {debt.dueDate !== null && (
+          <Field label="Due Date">
+            {dfns.format(debt.dueDate, 'dd.MM.yyyy')}
+            {dfns.isPast(debt.dueDate) && (
+              <div className={'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'}>Overdue</div>
+            )}
+          </Field>
+        )}
+        {debt.paymentCondition !== null && (
+          <Field label="Payment Condition">
+            {debt.paymentCondition === 0 ? 'Immediately' : `${debt.paymentCondition} days`}
+          </Field>
+        )}
         <BadgeField label="Status" {...statusBadge} />
         <TextField fullWidth label="Description" value={debt.description} />
       </Section>
