@@ -41,10 +41,15 @@ const selectResourceDetails = createSelector(
         return null;
       }
 
+      if (payer.data.disabled) {
+        details.push(['Status', 'Disabled']);
+      }
+
       details.push(
         ['Member', payer.data.tkoalyUserId?.value ? 'Yes' : 'No'],
         ...payer.data.emails.map(({ email }) => ['Email', email]),
       );
+
       name = payer.data?.name;
     } else if (type === 'debt_center') {
       const debt_center = debtCentersApi.endpoints.getDebtCenter.select(id)(state);
