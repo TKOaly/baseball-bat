@@ -21,7 +21,7 @@ export const Progress: React.FC<Props> = ({
     text = null;
   }
 
-  let percentage = (!value || !max) ? 0 : (value / max);
+  const percentage = (!value || !max) ? 0 : (value / max);
 
   return (
     <div className="relative text-sm h-7">
@@ -64,4 +64,4 @@ export const Progress: React.FC<Props> = ({
       </div>
     </div>
   );
-}
+};

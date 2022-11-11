@@ -67,31 +67,31 @@ const createDebtPayload = t.intersection([
 @Service()
 export class DebtApi {
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject('redis')
-  redis: RedisClientType;
+    redis: RedisClientType;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
+    debtCentersService: DebtCentersService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   private createDebtComponent() {
     return route
@@ -192,12 +192,12 @@ export class DebtApi {
 
           await this.debtService.publishDebt(id);
 
-          let defaultPayment = debt.defaultPayment
+          const defaultPayment = debt.defaultPayment
             ? await this.paymentService.getDefaultInvoicePaymentForDebt(debt.defaultPayment)
             : await createDefaultPaymentFor(debt);
 
           if (!defaultPayment) {
-            return Promise.reject(`No default invoice exists for payment`);
+            return Promise.reject('No default invoice exists for payment');
           }
 
           if (!isPaymentInvoice(defaultPayment)) {
@@ -268,7 +268,7 @@ export class DebtApi {
             }),
         );
 
-        let dueDate = null
+        let dueDate = null;
 
         if (payload.due_date) {
           dueDate = convertToDbDate(payload.due_date);
@@ -593,14 +593,14 @@ export class DebtApi {
                 return Promise.reject({
                   debtIndex: index,
                   error: 'BOTH_DUE_DATE_AND_CONDITION',
-                })
+                });
               } else if (!dueDate && !paymentCondition) {
                 const zero = t.Int.decode(0);
 
                 if (E.isRight(zero)) {
                   paymentCondition = zero.right;
                 } else {
-                  throw Error('Unreachable.')
+                  throw Error('Unreachable.');
                 }
               }
 

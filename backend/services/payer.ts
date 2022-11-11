@@ -90,16 +90,16 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
 @Service()
 export class PayerService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject(() => EventsService)
-  eventsService: EventsService;
+    eventsService: EventsService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   async getPayerProfiles() {
     const dbProfiles = await this.pg

@@ -1,6 +1,5 @@
 import { DialogBase, DialogContent, DialogFooter, DialogHeader, useDialog } from '../../components/dialog';
 import { Button } from '../../components/button';
-import { AlertTriangle } from 'react-feather';
 import { ResourceSelectField } from '../resource-select-field';
 import { InternalIdentity } from '../../../common/types';
 import { useState } from 'react';
@@ -17,7 +16,7 @@ export const MergeProfilesDialog = (props: Props) => {
   const [primaryId, setPrimaryId] = useState(props.primaryId?.value);
   const [secondaryId, setSecondaryId] = useState(props.secondaryId?.value);
   const [mergeProfiles, { isLoading }] = useMergeProfilesMutation();
-  const showErrorDialog = useDialog(ErrorDialog)
+  const showErrorDialog = useDialog(ErrorDialog);
 
   const handleMerge = async () => {
     const result = await mergeProfiles({
@@ -34,7 +33,7 @@ export const MergeProfilesDialog = (props: Props) => {
       showErrorDialog({
         title: 'Failed to merge profiles',
         content: 'Could not merge the selected profiles.',
-      })
+      });
     }
   };
 

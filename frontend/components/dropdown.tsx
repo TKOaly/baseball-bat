@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronDown } from 'react-feather';
 import { useInteractions, useFloating, useListNavigation, useDismiss, useClick, FloatingPortal } from '@floating-ui/react-dom-interactions';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
@@ -21,9 +21,9 @@ export function Dropdown<P extends DropdownProps>({
   onSelect,
   ...props
 }: P) {
-  const [open, setOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(0)
-  const listRef = useRef([])
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef([]);
 
   const { x, y, reference, floating, strategy, context } = useFloating({
     open,
@@ -137,5 +137,5 @@ export function Dropdown<P extends DropdownProps>({
       </FloatingPortal>
     </div >
   );
-};
+}
 

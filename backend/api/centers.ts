@@ -37,25 +37,25 @@ const createDebtCenterFromEventBody = t.type({
 @Service()
 export class DebtCentersApi {
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
+    debtCentersService: DebtCentersService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => EventsService)
-  eventsService: EventsService;
+    eventsService: EventsService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   getDebtCenters() {
     return route
@@ -311,7 +311,7 @@ export class DebtCentersApi {
         } else {
           return ok(component);
         }
-      })
+      });
   }
 
 

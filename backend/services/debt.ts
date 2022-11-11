@@ -56,16 +56,16 @@ export type CreateDebtOptions = {
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   async getDebt(id: string): Promise<Debt | null> {
     return this.pg
@@ -348,7 +348,7 @@ export class DebtService {
         amount = COALESCE(${patch.amount?.value}, amount)
       WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
       RETURNING *
-    `)
+    `);
 
     if (!updated) {
       return null;

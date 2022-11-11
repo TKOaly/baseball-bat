@@ -1,14 +1,14 @@
-import * as t from 'io-ts'
-import * as Either from 'fp-ts/lib/Either'
-import * as tt from 'io-ts-types'
-import { flow, pipe } from 'fp-ts/lib/function'
-import { FromDbType } from '../backend/db'
-import { EuroValue, euro, euroValue } from './currency'
-import { isMatch } from 'date-fns'
-import { split } from 'fp-ts/lib/string'
-import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray'
-import { foldW } from 'fp-ts/lib/Either'
-export { EuroValue, euro }
+import * as t from 'io-ts';
+import * as Either from 'fp-ts/lib/Either';
+import * as tt from 'io-ts-types';
+import { flow, pipe } from 'fp-ts/lib/function';
+import { FromDbType } from '../backend/db';
+import { EuroValue, euro, euroValue } from './currency';
+import { isMatch } from 'date-fns';
+import { split } from 'fp-ts/lib/string';
+import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray';
+import { foldW } from 'fp-ts/lib/Either';
+export { EuroValue, euro };
 
 export type TkoAlyUserId = {
   type: 'upstream'
@@ -18,17 +18,17 @@ export type TkoAlyUserId = {
 export const tkoalyIdentity = (id: number): TkoalyIdentity => ({
   type: 'tkoaly',
   value: id,
-})
+});
 
 export const emailIdentity = (id: string): EmailIdentity => ({
   type: 'email',
   value: id,
-})
+});
 
 export const internalIdentity = (id: string): InternalIdentity => ({
   type: 'internal',
   value: id,
-})
+});
 
 export const numberFromString = new t.Type<number, string, unknown>(
   'numberFromString',
@@ -39,13 +39,13 @@ export const numberFromString = new t.Type<number, string, unknown>(
       Either.chain(value =>
         value.length === 0 || value === null
           ? Either.left([])
-          : t.number.decode(Number(value) || null)
-      )
+          : t.number.decode(Number(value) || null),
+      ),
     ),
-  String
-)
+  String,
+);
 
-const isNonEmpty = <T>(a: T[]): a is [T, ...T[]] => a.length > 0
+const isNonEmpty = <T>(a: T[]): a is [T, ...T[]] => a.length > 0;
 
 export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
   new t.Type<[T, ...T[]], T[], unknown>(
@@ -65,11 +65,11 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
                 value,
               },
             ])
-            : Either.right(value)
-        )
+            : Either.right(value),
+        ),
       ),
-    arr => arr
-  )
+    arr => arr,
+  );
 
 export type PaymentStatus =
   | 'requires_payment_method'
@@ -116,17 +116,17 @@ export type ApiEvent = {
 export const tkoalyIdentityT = t.type({
   type: t.literal('tkoaly'),
   value: t.number,
-})
+});
 
 export const emailIdentityT = t.type({
   type: t.literal('email'),
   value: t.string,
-})
+});
 
 export const internalIdentityT = t.type({
   type: t.literal('internal'),
   value: t.string,
-})
+});
 
 export type TkoalyIdentity = t.TypeOf<typeof tkoalyIdentityT>
 export type EmailIdentity = t.TypeOf<typeof emailIdentityT>
@@ -136,7 +136,7 @@ export const payerIdentity = t.union([
   emailIdentityT,
   tkoalyIdentityT,
   internalIdentityT,
-])
+]);
 
 export type PayerIdentity = t.TypeOf<typeof payerIdentity>
 
@@ -194,7 +194,7 @@ export const payerPreferences = t.type({
   uiLanguage: t.union([t.literal('fi'), t.literal('en')]),
   emailLanguage: t.union([t.literal('fi'), t.literal('en')]),
   hasConfirmedMembership: t.boolean,
-})
+});
 
 export type PayerPreferences = t.TypeOf<typeof payerPreferences>
 
@@ -222,7 +222,7 @@ export const TokenPayload = t.type({
   upstreamId: t.number,
   email: t.string,
   screenName: t.string,
-})
+});
 
 export type TokenPayload = t.TypeOf<typeof TokenPayload>
 
@@ -342,7 +342,7 @@ export const dateString = t.brand(
   t.string,
   (n): n is t.Branded<string, DateBrand> => isMatch(n, 'd.M.yyyy'),
   'Date',
-)
+);
 
 export type DateString = t.TypeOf<typeof dateString>
 
@@ -354,7 +354,7 @@ export const dbDateString = t.brand(
   t.string,
   (n): n is t.Branded<string, DbDateBrand> => isMatch(n, 'yyyy-MM-dd'),
   'DbDate',
-)
+);
 
 export type DbDateString = t.TypeOf<typeof dbDateString>
 
@@ -391,8 +391,8 @@ export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
   reverse,
   reduce(null as (string | null), (a, p) => a === null ? p : a + '-' + p),
   dbDateString.decode,
-  foldW(() => null, (a) => a)
-)
+  foldW(() => null, (a) => a),
+);
 
 export type ApiRegistration = {
   id: number
@@ -461,7 +461,7 @@ export type DbEmail = {
 export const bankAccount = t.type({
   iban: t.string,
   name: t.string,
-})
+});
 
 export type BankAccount = t.TypeOf<typeof bankAccount>
 
@@ -538,7 +538,7 @@ const exactlyOne = <T extends t.Props>(props: T) => new t.Type<
     return t.success(input as ExactlyOne<T>);
   },
   t.identity,
-)
+);
 
 
 const newBankTransaction = t.intersection([
@@ -556,12 +556,12 @@ const newBankTransaction = t.intersection([
     message: t.union([t.string, t.null]),
     reference: t.union([t.string, t.null]),
   }),
-])
+]);
 
 const balance = t.type({
   date: tt.date,
   amount: euroValue,
-})
+});
 
 const newBankStatement = t.type({
   id: t.string,
@@ -570,7 +570,7 @@ const newBankStatement = t.type({
   transactions: t.array(newBankTransaction),
   openingBalance: balance,
   closingBalance: balance,
-})
+});
 
 export type BankStatement = t.TypeOf<typeof newBankStatement>
 

@@ -21,22 +21,22 @@ import { pipe } from 'fp-ts/lib/function';
 @Service()
 export class PayersApi {
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   private getPayer() {
     return route

@@ -16,7 +16,7 @@ export const PayerDetails = ({ params }) => {
   const { data: payer } = useGetPayerQuery(params.id);
   const { data: emails } = useGetPayerEmailsQuery(params.id);
   const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true });
-  const { data: mergedPayer } = useGetPayerQuery(payer?.mergedTo?.value ?? skipToken)
+  const { data: mergedPayer } = useGetPayerQuery(payer?.mergedTo?.value ?? skipToken);
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);

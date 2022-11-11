@@ -110,7 +110,7 @@ const payersApi = rtkApi.injectEndpoints({
         { type: 'Payer', id: secondaryPayerId },
         { type: 'Payer', id: 'LIST' },
         { type: 'Debt', id: 'LIST' },
-        ...affectedDebts.map(id => ({ type: 'Debt' as const, id }))
+        ...affectedDebts.map(id => ({ type: 'Debt' as const, id })),
       ],
     }),
   }),

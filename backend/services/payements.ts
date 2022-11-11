@@ -1,6 +1,6 @@
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
-import { BankTransaction, DbEmail, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentStatus } from '../../common/types';
+import { BankTransaction, DbEmail, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment } from '../../common/types';
 import { FromDbType, PgClient } from '../db';
 import { DebtService } from './debt';
 import { Either } from 'fp-ts/lib/Either';
@@ -127,16 +127,16 @@ type NewPayment<T extends PaymentType> = {
 @Service()
 export class PaymentService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   async getPayments() {
     return this.pg
@@ -445,9 +445,6 @@ export class PaymentService {
         accounting_id: details.accountingId,
       },
     });
-  }
-
-  async getPaymentTotal() {
   }
 
   async sendNewPaymentNotification(id: string): Promise<Either<string, FromDbType<DbEmail>>> {

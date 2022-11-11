@@ -106,7 +106,7 @@ export const EditDebtCenter = ({ params }) => {
           return O.none;
         }
       }),
-    )
+    );
 
     if (removedComponents.length > 0 || newComponents.length > 0 || changedComponents.length > 0) {
       const confirmed = await showDebtCenterConfirmationDialog({

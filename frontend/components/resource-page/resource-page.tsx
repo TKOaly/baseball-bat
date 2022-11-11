@@ -6,7 +6,7 @@ import { formatEuro, EuroValue } from '../../../common/currency';
 import { format } from 'date-fns';
 
 export const ActionButton: React.FC<{ secondary?: boolean } & React.ComponentProps<typeof Button & typeof SecondaryButton>> = ({ secondary, children, ...props }) => {
-  const [active, setActive] = useState(false)
+  const [active, setActive] = useState(false);
   const ButtonComponent = secondary ? SecondaryButton : Button;
 
   const handle = async () => {

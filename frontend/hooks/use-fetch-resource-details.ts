@@ -2,7 +2,6 @@ import { createSelector } from '@reduxjs/toolkit';
 import { format } from 'date-fns';
 import { useEffect } from 'react';
 import { formatEuro } from '../../common/currency';
-import { Payment } from '../../common/types';
 import debtApi from '../api/debt';
 import debtCentersApi from '../api/debt-centers';
 import payersApi from '../api/payers';

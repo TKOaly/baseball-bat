@@ -1,7 +1,6 @@
 import { Formik } from 'formik';
 import { useMemo, useCallback } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { DateField } from '../../components/datetime-field';
 import { DropdownField } from '../../components/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { PayerIdentity } from '../../../common/types';
@@ -12,7 +11,6 @@ import { TextField } from '../../components/text-field';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { useCreateDebtMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
-import { format, addDays, isMatch } from 'date-fns';
 
 type DebtFormValues = {
   name: string,
