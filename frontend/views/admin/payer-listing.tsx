@@ -13,6 +13,7 @@ import * as TE from 'fp-ts/lib/TaskEither';
 import { pipe } from 'fp-ts/lib/function';
 import { ErrorDialog } from '../../components/dialogs/error-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
+import { useState } from 'react';
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
@@ -22,13 +23,26 @@ export const PayerListing = () => {
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
   const showErrorDialog = useDialog(ErrorDialog);
   const showMergeProfilesDialog = useDialog(MergeProfilesDialog);
+  const [showDisabled, setShowDisabled] = useState(false);
 
   const rows = (payers ?? [])
+    .filter((payer) => showDisabled || !payer.disabled)
     .map((payer) => ({ ...payer, key: payer.id.value }));
 
   return (
     <div>
       <h1 className="text-2xl mt-10 md-5">Payers</h1>
+
+      <div className="flex items-center my-4">
+        <input
+          type="checkbox"
+          checked={showDisabled}
+          className="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+          onClick={(evt) => setShowDisabled(evt.currentTarget.checked)}
+          id="show-disabled-checkbox"
+        />
+        <label htmlFor="show-disabled-checkbox" className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">Show disabled profiles</label>
+      </div>
 
       <TableView
         selectable
@@ -117,6 +131,13 @@ export const PayerListing = () => {
               ? <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Member</span>
               : <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">Non-member</span>,
           },
+          ...(!showDisabled ? [] : [{
+            name: 'Disabled',
+            getValue: (p) => p.disabled ? 'Yes' : 'No',
+            render: (_, p) => p.disabled
+              ? <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-600 text-xs font-bold text-white">Yes</span>
+              : <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">No</span>,
+          }]),
           {
             name: 'Paid percentage',
             getValue: (row) => row.debtCount ? row.paidCount / row.debtCount : 1,
