@@ -113,6 +113,7 @@ const badgeColorClasses = {
   'gray': 'bg-gray-300',
   'blue': 'bg-blue-500',
   'green': 'bg-green-500',
+  'red': 'bg-red-500 text-white',
 };
 
 export type BadgeColor = keyof typeof badgeColorClasses
