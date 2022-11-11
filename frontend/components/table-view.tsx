@@ -205,6 +205,11 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
         .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
         .map(([colName, options]) => {
           const column = columns.find(c => c.name === colName);
+
+          if (!column) {
+            return true;
+          }
+
           const compareBy = column.compareBy ?? identity;
           const value = getColumnValue(column, row);
 
@@ -382,7 +387,8 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                   <div className={`${i > 0 && 'border-t'} relative px-3 py-2 flex items-center justify-center`}>
                     <Dropdown
                       renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
-                      showArrow={false} className="h-[24px]"
+                      showArrow={false}
+                      className="h-[24px]"
                       options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
                     />
                   </div>
