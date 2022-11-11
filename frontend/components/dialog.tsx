@@ -132,8 +132,8 @@ export const DialogContent = ({ children }) => {
 
 export const DialogHeader = ({ children }) => {
   return (
-    <div className="flex gap-5 items-center p-3 border-b">
-      <span className="font-bold flex-grow">{children}</span>
+    <div className="flex gap-3 items-center p-3 border-b">
+      {children}
     </div>
   );
 };

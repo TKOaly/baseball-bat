@@ -11,6 +11,8 @@ import * as A from 'fp-ts/lib/Array';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import { pipe } from 'fp-ts/lib/function';
+import { ErrorDialog } from '../../components/dialogs/error-dialog';
+import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
@@ -18,6 +20,8 @@ export const PayerListing = () => {
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
+  const showErrorDialog = useDialog(ErrorDialog);
+  const showMergeProfilesDialog = useDialog(MergeProfilesDialog);
 
   const rows = (payers ?? [])
     .map((payer) => ({ ...payer, key: payer.id.value }));
@@ -75,6 +79,25 @@ export const PayerListing = () => {
                   debtCount: result.right.messageCount,
                 });
               }
+            },
+          },
+          {
+            key: 'merge',
+            text: 'Merge profiles',
+            onSelect: async (payers) => {
+              if (payers.length === 0 || payers.length > 2) {
+                showErrorDialog({
+                  title: 'Cannot merge profiles',
+                  content: 'Profile merging works only with 1-2 profiles!',
+                });
+
+                return;
+              }
+
+              await showMergeProfilesDialog({
+                primaryId: payers[0].id,
+                secondaryId: payers[1]?.id,
+              });
             },
           },
         ]}

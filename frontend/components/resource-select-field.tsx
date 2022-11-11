@@ -6,14 +6,14 @@ import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
 
 export type Props = {
   type?: string,
-  value?: { type: string, id: string }
+  value?: { type: string, id: string } | string,
   name?: string
-  onChange: (evt: { target: { value: { type: string, id: string }, name?: string } }, resource: { type: string, id: string }) => void,
+  onChange?: (evt: { target: { value: { type: string, id: string }, name?: string } }, resource: { type: string, id: string }) => void,
 }
 
 export const ResourceSelectField = (props: Props) => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
-  const selected = props.value;
+  const selected = props.type && typeof props.value === 'string' ? { type: props.type, id: props.value } : props.value;
   const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'top', delayShow: 300, offset: [0, 0] });
   const resourceDetails = useFetchResourceDetails(selected?.type, selected?.id, !selected);
 

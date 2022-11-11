@@ -6,14 +6,19 @@ import * as dfns from 'date-fns';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
+import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
+import { internalIdentity } from '../../../common/types';
+import { useLocation } from 'wouter';
 
 export const PayerDetails = ({ params }) => {
+  const [, setLocation] = useLocation();
   const { data: payer } = useGetPayerQuery(params.id);
   const { data: emails } = useGetPayerEmailsQuery(params.id);
   const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true });
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
+  const showMergeProfilesDialog = useDialog(MergeProfilesDialog);
 
   if (!payer || !emails)
     return 'Loading...';
@@ -57,6 +62,20 @@ export const PayerDetails = ({ params }) => {
           {overdue.length == 0 && (
             <ActionButton secondary onClick={handleSendReminder}>Send Reminder</ActionButton>
           )}
+          <ActionButton
+            secondary
+            onClick={async () => {
+              const result = await showMergeProfilesDialog({
+                secondaryId: internalIdentity(params.id),
+              });
+
+              if (result !== null) {
+                setLocation(`/admin/payers/${result.primaryId}`);
+              }
+            }}
+          >
+            Merge
+          </ActionButton>
         </Actions>
       </Header>
       <Section title="Details" columns={2}>

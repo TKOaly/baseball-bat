@@ -96,6 +96,23 @@ const payersApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Email', id: 'LIST' }],
     }),
+
+    mergeProfiles: builder.mutation<{ affectedDebts: string[] }, { primaryPayerId: string, secondaryPayerId: string }>({
+      query: (body) => ({
+        url: `/payers/${body.primaryPayerId}/merge`,
+        method: 'POST',
+        body: {
+          mergeWith: body.secondaryPayerId,
+        },
+      }),
+      invalidatesTags: ({ affectedDebts }, __, { primaryPayerId, secondaryPayerId }) => [
+        { type: 'Payer', id: primaryPayerId },
+        { type: 'Payer', id: secondaryPayerId },
+        { type: 'Payer', id: 'LIST' },
+        { type: 'Debt', id: 'LIST' },
+        ...affectedDebts.map(id => ({ type: 'Debt' as const, id }))
+      ],
+    }),
   }),
 });
 
@@ -109,6 +126,7 @@ export const {
   useUpdatePayerEmailsMutation,
   useGetPayersQuery,
   useSendPayerDebtReminderMutation,
+  useMergeProfilesMutation,
 } = payersApi;
 
 export default payersApi;

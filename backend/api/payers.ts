@@ -275,6 +275,25 @@ export class PayersApi {
       });
   }
 
+  private mergeProfiles() {
+    return route
+      .post('/:id/merge')
+      .use(validateBody(t.type({
+        mergeWith: t.string,
+      })))
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const primaryId = internalIdentity(ctx.routeParams.id);
+        const secondaryId = internalIdentity(ctx.body.mergeWith);
+
+        const debts = await this.payerService.mergeProfiles(primaryId, secondaryId);
+
+        return ok({
+          affectedDebts: debts,
+        });
+      });
+  }
+
   router() {
     return router(
       this.getPayerByEmail(),
@@ -287,6 +306,7 @@ export class PayersApi {
       this.updatePayerEmails(),
       this.getPayers(),
       this.sendPaymentReminder(),
+      this.mergeProfiles(),
     );
   }
 }

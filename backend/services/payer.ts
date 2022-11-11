@@ -90,16 +90,16 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
 @Service()
 export class PayerService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   async getPayerProfiles() {
     const dbProfiles = await this.pg
@@ -601,7 +601,7 @@ export class PayerService {
   }
 
   async mergeProfiles(primary: InternalIdentity, secondary: InternalIdentity) {
-    await this.pg.tx(async (tx) => {
+    return await this.pg.tx(async (tx) => {
       await tx.do(sql`
         UPDATE payer_profiles
         SET disabled = true, merged_to = ${primary.value}
@@ -613,7 +613,12 @@ export class PayerService {
         SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
         FROM payer_emails
         WHERE payer_id = ${secondary.value}
+        ON CONFLICT DO NOTHING
       `);
+
+      const debts = await tx.do<{ id: string }>(sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`);
+
+      return debts.map(debt => debt.id);
     });
   }
 }

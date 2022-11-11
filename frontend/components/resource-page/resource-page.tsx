@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Button, SecondaryButton } from '../button';
@@ -6,10 +6,18 @@ import { formatEuro, EuroValue } from '../../../common/currency';
 import { format } from 'date-fns';
 
 export const ActionButton: React.FC<{ secondary?: boolean } & React.ComponentProps<typeof Button & typeof SecondaryButton>> = ({ secondary, children, ...props }) => {
+  const [active, setActive] = useState(false)
   const ButtonComponent = secondary ? SecondaryButton : Button;
 
+  const handle = async () => {
+    setActive(true);
+    await Promise.resolve(props.onClick());
+    setActive(false);
+  };
+
+
   return (
-    <ButtonComponent {...props}>{children}</ButtonComponent>
+    <ButtonComponent loading={active} {...props} onClick={handle}>{children}</ButtonComponent>
   );
 };
 
