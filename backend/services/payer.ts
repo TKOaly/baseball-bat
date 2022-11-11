@@ -56,7 +56,7 @@ export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerE
   createdAt: profile.created_at,
   updatedAt: profile.updated_at,
   disabled: profile.disabled,
-  mergedTo: profile.merged_to === undefined
+  mergedTo: !profile.merged_to
     ? undefined
     : internalIdentity(profile.merged_to),
   emails: profile.emails ? profile.emails.map(formatPayerEmail) : [],

@@ -1,7 +1,7 @@
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useSendPayerDebtReminderMutation } from '../../api/payers';
 import { DebtList } from '../../components/debt-list';
-import { Page, Header, Title, Section, TextField, Field, SectionContent, Actions, ActionButton, BadgeField } from '../../components/resource-page/resource-page';
+import { Page, Header, Title, Section, TextField, Field, SectionContent, Actions, ActionButton, BadgeField, LinkField } from '../../components/resource-page/resource-page';
 import * as dfns from 'date-fns';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
@@ -9,12 +9,14 @@ import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dia
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { internalIdentity } from '../../../common/types';
 import { useLocation } from 'wouter';
+import { skipToken } from '@reduxjs/toolkit/dist/query/react';
 
 export const PayerDetails = ({ params }) => {
   const [, setLocation] = useLocation();
   const { data: payer } = useGetPayerQuery(params.id);
   const { data: emails } = useGetPayerEmailsQuery(params.id);
   const { data: debts } = useGetPayerDebtsQuery({ id: params.id, includeDrafts: true });
+  const { data: mergedPayer } = useGetPayerQuery(payer?.mergedTo?.value ?? skipToken)
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
@@ -92,6 +94,9 @@ export const PayerDetails = ({ params }) => {
           ))}
         </Field>
         <BadgeField label="Status" text={payer?.disabled ? 'Disabled' : 'Active'} color={payer?.disabled ? 'red' : 'gray'} />
+        {payer?.mergedTo && (
+          <LinkField label="Merged to" text={mergedPayer?.name} to={`/admin/payers/${payer?.mergedTo?.value}`} />
+        )}
       </Section>
       <Section title="Debts">
         <SectionContent>
