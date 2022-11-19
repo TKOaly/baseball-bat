@@ -25,35 +25,35 @@ const validateAuthCodeBody = t.type({
 @Service()
 export class AuthApi {
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   @Inject(() => MagicLinkService)
-    magicLinkService: MagicLinkService;
+  magicLinkService: MagicLinkService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject('redis')
-    redis: RedisClientType;
+  redis: RedisClientType;
 
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   private authCompleted() {
     return route
-      .get('/auth-completed')
+      .get('/api/auth/auth-completed')
       .handler(async ({ req }) => {
         const upstreamUser = await this.usersService.getUpstreamUser(req.cookies.token);
         const payerProfile = await this.payerService.createPayerProfileFromTkoalyUser(upstreamUser);
@@ -316,7 +316,7 @@ export class AuthApi {
 
   private renderTemplate() {
     return route
-      .get('/template/:name/:type')
+      .get('/api/template/:name/:type')
       .handler(async (ctx) => {
         if (ctx.routeParams.type !== 'html' && ctx.routeParams.type !== 'text') {
           return badRequest();
