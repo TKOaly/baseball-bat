@@ -10,8 +10,8 @@
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up"
   },
   "dependencies": {
-    "@floating-ui/react-dom": "^1.0.0",
-    "@floating-ui/react-dom-interactions": "^0.10.3",
+    "@floating-ui/react-dom": "^1.0.1",
+    "@floating-ui/react-dom-interactions": "^0.11.0",
     "@parcel/transformer-react-refresh-wrap": "^2.3.1",
     "@reduxjs/toolkit": "^1.8.1",
     "@stripe/react-stripe-js": "^1.7.0",
@@ -70,14 +70,10 @@
     "uuid": "^8.3.2",
     "wouter": "^2.8.0-alpha.2",
     "xml2js": "^0.4.23",
-    "xml2js-xpath": "^0.13.0"
+    "xml2js-xpath": "^0.13.0",
+    "dotenv": "^16.0.0"
   },
   "devDependencies": {
-    "@aws-cdk/aws-apigateway": "1.146.0",
-    "@aws-cdk/aws-certificatemanager": "1.146.0",
-    "@aws-cdk/aws-ec2": "1.146.0",
-    "@aws-cdk/aws-lambda": "1.146.0",
-    "@aws-cdk/core": "1.146.0",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
@@ -90,9 +86,7 @@
     "@types/styled-components": "^5.1.23",
     "@typescript-eslint/eslint-plugin": "^5.42.0",
     "@typescript-eslint/parser": "^5.42.0",
-    "aws-cdk": "^2.14.0",
     "concurrently": "^7.0.0",
-    "dotenv": "^16.0.0",
     "eslint": "^8.26.0",
     "eslint-plugin-react": "^7.31.10",
     "node-pg-migrate": "^6.2.1",

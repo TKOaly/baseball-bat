@@ -1,20 +1,38 @@
-FROM amazon/aws-lambda-nodejs:latest AS common
+FROM node:18 AS production-build 
 
 WORKDIR /app
 
+COPY package.json .
+COPY package-lock.json .
+RUN yarn install
+
 COPY . .
-
-RUN npm install -g yarn
-RUN yarn
-
-ENTRYPOINT ["/bin/bash", "-l", "-c"]
-
-FROM common AS production
 
 RUN yarn build:server
 RUN yarn build:frontend
+
+RUN yarn install --production && yarn cache clean
+
 CMD ["yarn start"]
 
-FROM common AS development
+FROM nginx:alpine AS production-nginx
 
+COPY --from=production-build /app/web-dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+
+FROM node:18-alpine AS production-backend
+
+COPY --from=production-build /app/build /app/build
+COPY --from=production-build /app/backend /app/backend
+COPY --from=production-build /app/package.json /app/package.json
+COPY --from=production-build /app/node_modules /app/node_modules
+
+WORKDIR /app
+
+CMD ["yarn start"]
+
+FROM node:18 AS development
+
+WORKDIR /app
+COPY . .
 CMD ["yarn start:dev"]
