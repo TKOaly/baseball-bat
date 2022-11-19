@@ -30,7 +30,7 @@ COPY --from=production-build /app/node_modules /app/node_modules
 
 WORKDIR /app
 
-CMD ["yarn start"]
+CMD ["yarn", "start"]
 
 FROM node:18 AS development
 
