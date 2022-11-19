@@ -25,6 +25,7 @@ FROM node:18-alpine AS production-backend
 COPY --from=production-build /app/build /app/build
 COPY --from=production-build /app/backend /app/backend
 COPY --from=production-build /app/package.json /app/package.json
+COPY --from=production-build /app/migrations /app/migrations
 COPY --from=production-build /app/node_modules /app/node_modules
 
 WORKDIR /app
