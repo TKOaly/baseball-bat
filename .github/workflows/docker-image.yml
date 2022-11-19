@@ -81,3 +81,32 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           target: production-backend
+
+
+  create-release-pr:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+
+    needs: [build]
+
+    steps:
+      - name: Checkout the Kubernetes configuration repository
+        uses: actions/checkout@v3
+        with:
+          repository: TKOaly/tko-aly-k8s-configs
+
+      - run: kustomize edit set image registry.tko-aly.fi/baseball-bat-{nginx,backend}:sha-$(echo $GITHUB_SHA | cut -c1-7)
+        working-directory: baseball-bat
+
+      - name: Create PR for deployment
+        uses: peter-evans/create-pull-request@v4
+        with:
+          add-paths: baseball-bat/kustomization.yaml
+          commit-message: Bump baseball-bat
+          branch: actions/bump-baseball-bat
+          title: Bump baseball-bat
+          body: |
+            Automatic PR to bump the configuration of baseball-bat to point to the latest commit.
+
