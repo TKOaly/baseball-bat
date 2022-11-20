@@ -31,7 +31,7 @@ export function Dropdown<P extends DropdownProps>({
     placement: 'bottom-end',
   });
 
-  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions(!context ? [] : [
+  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
     useClick(context),
     useDismiss(context),
     useListNavigation(context, {
