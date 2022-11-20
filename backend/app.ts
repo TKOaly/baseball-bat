@@ -129,35 +129,35 @@ const app = express()
     ).handler(),
   );
 
-// if (process.env.NODE_ENV !== 'production') {
-app.use(
-  '/:type(index|onboarding|update-payment-method|auth|admin|settings)',
-  express.static('web-dist/index.html'),
-);
+if (process.env.NODE_ENV !== 'production') {
+  app.use(
+    '/:type(index|onboarding|update-payment-method|auth|admin|settings)',
+    express.static('web-dist/index.html'),
+  );
 
-app.use(
-  '/magic/invalid',
-  express.static('web-dist/index.html'),
-);
-app.use(
-  '/payment/:id',
-  express.static('web-dist/index.html'),
-);
-app.use(
-  '/payment/new',
-  express.static('web-dist/index.html'),
-);
-app.use(
-  '/auth/email',
-  express.static('web-dist/index.html'),
-);
-app.use(
-  '/auth/email/confirm/:id',
-  express.static('web-dist/index.html'),
-);
-app.use('/admin/*', express.static('web-dist/index.html'));
-app.use(express.static('web-dist'));
-// }
+  app.use(
+    '/magic/invalid',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/payment/:id',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/payment/new',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/auth/email',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/auth/email/confirm/:id',
+    express.static('web-dist/index.html'),
+  );
+  app.use('/admin/*', express.static('web-dist/index.html'));
+  app.use(express.static('web-dist'));
+}
 
 app.use('/', Container.get(MagicLinksApi).router().handler());
 
