@@ -6,7 +6,7 @@
     "start:dev": "concurrently \"yarn start-server:dev\" \"yarn start-frontend:watch\"",
     "start": "node ./build/backend/app.js",
     "build:server": "tsc",
-    "build:frontend": "parcel build ./public/index.html --dist-dir ./web-dist",
+    "build:frontend": "parcel build --no-scope-hoist ./public/index.html --dist-dir ./web-dist",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up"
   },
   "dependencies": {
