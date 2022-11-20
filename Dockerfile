@@ -36,4 +36,4 @@ FROM node:18 AS development
 
 WORKDIR /app
 COPY . .
-CMD ["yarn start:dev"]
+CMD ["yarn", "start:dev"]
