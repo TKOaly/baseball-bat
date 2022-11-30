@@ -278,7 +278,7 @@ export class DebtApi {
           }
         }
 
-        if (payload.payment_condition !== null && payload.due_date !== null) {
+        if ((payload.payment_condition || payload.payment_condition === 0) && payload.due_date) {
           return badRequest({
             message: 'Payment condition and due date cannot be defined simultanously.',
           });
@@ -345,17 +345,34 @@ export class DebtApi {
         description: t.string,
         payerId: payerIdentity,
         centerId: t.string,
-        dueDate: t.string,
+        dueDate: t.union([t.null, t.string]),
+        paymentCondition: t.union([t.null, t.number]),
         components: t.array(t.string),
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
+        if (ctx.body.paymentCondition && ctx.body.dueDate) {
+          return badRequest({
+            "message": "Payment condition and due date cannot be defined simultanously.",
+          });
+        }
+
+        let dueDate = undefined;
+        let paymentCondition = undefined;
+
+        if (ctx.body.dueDate) {
+          dueDate = parseISO(ctx.body.dueDate);
+        } else if (ctx.body.paymentCondition) {
+          paymentCondition = ctx.body.paymentCondition;
+        }
+
         const updated = await this.debtService.updateDebt({
           id: ctx.routeParams.id,
           name: ctx.body.name,
           description: ctx.body.description,
           centerId: ctx.body.centerId,
-          dueDate: ctx.body.dueDate === undefined ? undefined : parseISO(ctx.body.dueDate),
+          dueDate,
+          paymentCondition,
           payerId: ctx.body.payerId,
           components: ctx.body.components ?? [],
         });

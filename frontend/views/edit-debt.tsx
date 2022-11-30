@@ -27,7 +27,8 @@ type DebtFormValues = {
   name: string,
   center: string | { name: string },
   description: string,
-  due_date: string,
+  due_date: string | null,
+  payment_condition: number | string | null,
   components: { component: string | { name: string }, amount: number }[],
   payer: PayerIdentity | null
 }
@@ -179,7 +180,8 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       id,
       name: values.name,
       description: values.description,
-      dueDate: dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()),
+      dueDate: values.due_date ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()) : null,
+      paymentCondition: values.payment_condition ? parseInt('' + values.payment_condition) : null,
       payerId: values.payer,
       centerId,
       components,
@@ -196,7 +198,8 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         name: debt.name,
         center: debt.debtCenterId,
         description: debt.description,
-        due_date: dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy'),
+        due_date: debt.dueDate ? dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy') : null,
+        payment_condition: debt.paymentCondition,
         payer: debt.payerId,
         components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value * 100 })),
       };
@@ -206,6 +209,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         center: { name: '' },
         description: '',
         due_date: dfns.format(new Date(), 'dd.MM.yyyy'),
+        payment_condition: null,
         payer: null,
         components: [],
       };
@@ -270,18 +274,21 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         validate={(values) => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
-          if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
-            errors.due_date = 'Date must be in format <day>.<month>.<year>';
-          } else if (!dfns.isMatch(values.due_date, 'dd.MM.yyyy')) {
-            errors.due_date = 'Invalid date';
+
+          if (values.due_date) {
+            if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
+              errors.due_date = 'Date must be in format <day>.<month>.<year>';
+            } else if (!dfns.isMatch(values.due_date, 'dd.MM.yyyy')) {
+              errors.due_date = 'Invalid date';
+            }
           }
 
           return errors;
         }}
         onSubmit={handleSubmit}
       >
-        {({ submitForm, isSubmitting }) => (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+        {({ submitForm, isSubmitting, setFieldValue, setFieldError }) => (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Center"
@@ -304,7 +311,43 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
               formatCustomOption={formatCustomPayerOption}
               options={payerOptions}
             />
-            <InputGroup label="Due Date" name="due_date" component={DateField} />
+            <InputGroup
+              narrow
+              label="Due Date"
+              name="due_date"
+              component={DateField}
+              onChange={(evt) => {
+                console.log(evt);
+                setFieldValue('due_date', evt.target.value);
+                setFieldValue('payment_condition', '');
+              }}
+            />
+            <InputGroup
+              narrow
+              label="Payment Condition"
+              name="payment_condition"
+              readOnly={debt && !debt.draft}
+              component={TextField}
+              onChange={(evt) => {
+                const value = evt.target.value;
+
+                setFieldValue('due_date', '');
+
+                if (value === 'NOW') {
+                  setFieldValue('payment_condition', 'NOW');
+                  return;
+                }
+
+                try {
+                  const matches = /[0-9]+/.exec(value);
+                  const integer = parseInt(matches[0]);
+                  setFieldValue('payment_condition', integer === 0 ? 'NOW' : String(integer));
+                } catch (e) {
+                  setFieldValue('payment_condition', value);
+                  setFieldError('payment_condition', 'Integer expected');
+                }
+              }}
+            />
             <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
             <InputGroup
               label="Components"

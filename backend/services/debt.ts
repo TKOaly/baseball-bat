@@ -1,6 +1,6 @@
 import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice } from '../../common/types';
 import { PgClient } from '../db';
-import sql from 'sql-template-strings';
+import sql, { SQLStatement } from 'sql-template-strings';
 import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
 import { formatDebtCenter } from './debt_centers';
@@ -56,16 +56,16 @@ export type CreateDebtOptions = {
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   async getDebt(id: string): Promise<Debt | null> {
     return this.pg
@@ -231,18 +231,45 @@ export class DebtService {
       }
     }
 
-    const query = sql`
-      UPDATE debt
-      SET
-        name = COALESCE(${debt.name}, name),
-        description = COALESCE(${debt.description}, description),
-        debt_center_id = COALESCE(${debt.centerId}, debt_center_id),
-        payer_id = COALESCE(${debt.payerId?.value}, payer_id),
-        due_date = COALESCE(${debt.dueDate}, due_date)
-      WHERE
-        id = ${debt.id}
-      RETURNING *
-    `;
+    const update = (table: string, condition: SQLStatement, values: Record<string, any>) => {
+      let query = sql`UPDATE `.append(table).append(' SET ');
+
+      let first = true;
+
+      for (const [column, value] of Object.entries(values)) {
+        if (value !== undefined) {
+          if (!first) {
+            query = query.append(', ');
+          }
+
+          query = query.append(column).append(sql` = ${value}`);
+        }
+
+        first = false;
+      }
+
+      query = query.append(' WHERE ').append(condition).append(' RETURNING *');
+
+      return query;
+    };
+
+    let due_date: Date | null | undefined = debt.dueDate;
+    let payment_condition: number | null | undefined = debt.paymentCondition;
+
+    if (due_date) {
+      payment_condition = null;
+    } else if (payment_condition) {
+      due_date = null;
+    }
+
+    const query = update('debt', sql`id = ${debt.id}`, {
+      name: debt.name,
+      description: debt.description,
+      debt_center_id: debt.centerId,
+      payer_id: debt.payerId?.value,
+      due_date,
+      payment_condition,
+    });
 
     let handleComponents: TE.TaskEither<Error, null> = async () => E.right(null);
 
