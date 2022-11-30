@@ -71,15 +71,6 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
     arr => arr,
   );
 
-export type PaymentStatus =
-  | 'requires_payment_method'
-  | 'requires_confirmation'
-  | 'requires_action'
-  | 'processing'
-  | 'requires_capture'
-  | 'canceled'
-  | 'succeeded'
-
 export type Event = {
   id: number
   name: string
@@ -91,13 +82,6 @@ export type Event = {
   location: string
   deleted: boolean
   price: EuroValue | null
-}
-
-export type EventWithPaymentStatus = Event & {
-  payment: {
-    status: PaymentStatus
-    createdAt: Date
-  } | null
 }
 
 export type ApiEvent = {
@@ -215,6 +199,24 @@ export type PaymentMethod = Omit<
 > & {
   payerId: InternalIdentity
   stripePaymentMethodId: string
+}
+
+export type DbPaymentEvent = {
+  id: string,
+  payment_id: string,
+  type: string,
+  amount: number,
+  time: Date,
+  data: unknown,
+};
+
+export type PaymentEvent = {
+  id: string,
+  paymentId: string,
+  type: string,
+  amount: EuroValue,
+  time: Date,
+  data: Record<string, unknown>,
 }
 
 export const TokenPayload = t.type({
@@ -362,6 +364,7 @@ export type NewDebt = {
   centerId?: string
   description: string
   components: string[]
+  publishedAt?: DbDateString | null
   name: string
   payer: PayerIdentity
   dueDate: DbDateString | null,
@@ -428,19 +431,22 @@ export type DbPayerEmail = {
 
 export type PayerEmail = Omit<FromDbType<DbPayerEmail>, 'payerId'> & { payerId: InternalIdentity }
 
+export type PaymentStatus = 'paid' | 'canceled' | 'mispaid' | 'unpaid';
+
 export type Payment = {
   id: string,
-  payment_number: number,
+  paymentNumber: number,
   type: 'invoice',
   data: object | null,
   message: string,
-  payer_id: string,
+  payerId: InternalIdentity,
   title: string,
-  created_at: Date,
-  balance: number,
+  createdAt: Date,
+  balance: EuroValue,
   credited: boolean
-  status: 'paid' | 'canceled' | 'mispaid' | 'unpaid',
-  updated_at: Date
+  status: PaymentStatus,
+  updatedAt: Date
+  events: Array<PaymentEvent>,
 }
 
 export const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string, due_date: string } } => {

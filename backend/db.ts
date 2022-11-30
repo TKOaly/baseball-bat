@@ -20,7 +20,7 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
 type Split<
   Str,
   Delim extends string
-  > = Str extends `${infer Head}${Delim}${infer Rest}`
+> = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
   ? Str extends ''
@@ -32,7 +32,7 @@ export type FromDbType<T extends object> = {
   [K in keyof T as Join<Split<K, '_'>>]: T[K]
 }
 
-type TxClient = {
+export type TxClient = {
   do: <A>(query: SQLStatement) => Promise<A[]>
 }
 

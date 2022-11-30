@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import { Inject, Service } from 'typedi';
@@ -162,6 +162,12 @@ export class DebtService {
     `);
   }
 
+  async setDefaultPayment(debtId: string, paymentId: string) {
+    await this.pg.any(sql`
+      UPDATE debt SET default_payment = ${paymentId} WHERE id = ${debtId}
+    `);
+  }
+
   async createDebt(debt: NewDebt, options?: CreateDebtOptions): Promise<Debt> {
     const payerProfile = await this.payerService.getPayerProfileByIdentity(debt.payer);
 
@@ -171,7 +177,7 @@ export class DebtService {
 
     const created = await this.pg
       .one<DbDebt>(sql`
-        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition)
+        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at)
         VALUES (
           ${debt.name},
           ${debt.description},
@@ -179,7 +185,8 @@ export class DebtService {
           ${payerProfile.id.value},
           ${debt.dueDate},
           COALESCE(${debt.createdAt}, NOW()),
-          ${debt.paymentCondition}
+          ${debt.paymentCondition},
+          ${debt.publishedAt}
         )
         RETURNING *
       `);
@@ -197,20 +204,21 @@ export class DebtService {
                 VALUES (${created.id}, ${component})
             `);
         } catch (e) {
-          console.log(e, created, component);
           throw e;
         }
       }),
     );
 
     if (options?.defaultPayment) {
-      await this.paymentService.createInvoice({
+      const payment = await this.paymentService.createInvoice({
         series: 1,
         message: debt.description,
         debts: [created.id],
         title: debt.name,
         ...options.defaultPayment,
       });
+
+      await this.setDefaultPayment(created.id, payment.id);
     }
 
     return formatDebt(created);
@@ -574,8 +582,8 @@ export class DebtService {
       template: 'reminder',
       payload: {
         title: payment.title,
-        number: payment.payment_number,
-        date: payment.created_at,
+        number: payment.paymentNumber,
+        date: payment.createdAt,
         dueDate: parseISO(payment.data.due_date),
         amount: debt.total,
         debts: [debt],
@@ -613,5 +621,17 @@ export class DebtService {
     )(debts)();
 
     return result;
+  }
+
+  async onDebtPaid(debt: Debt, payment: Payment, _event: PaymentEvent) {
+    const payments = await this.paymentService.getPaymentsContainingDebt(debt.id);
+
+    const promises = payments
+      .filter((p) => p.id !== payment.id)
+      .map(async (payment) => {
+        await this.paymentService.creditPayment(payment.id, 'paid');
+      });
+
+    await Promise.all(promises);
   }
 }

@@ -143,7 +143,7 @@ export class DebtApi {
           return notFound();
         }
 
-        if (ctx.session.accessLevel != 'admin' && payment.payer_id !== ctx.session.payerId) {
+        if (ctx.session.accessLevel != 'admin' && payment.payerId.value !== ctx.session.payerId) {
           return unauthorized();
         }
 
@@ -160,6 +160,8 @@ export class DebtApi {
         series: 1,
         debts: [debt.id],
       });
+
+      await this.debtService.setDefaultPayment(debt.id, created.id);
 
       if (!created) {
         return Promise.reject('Could not create invoice for debt');
@@ -526,6 +528,7 @@ export class DebtApi {
           date: dateString,
           amount: euroValue,
           dueDate: dateString,
+          publishedAt: dateString,
           paymentCondition: t.Int,
           components: t.array(t.string),
           paymentNumber: t.string,
@@ -610,6 +613,16 @@ export class DebtApi {
                 }
               }
 
+              let publishedAt = null;
+
+              if (details.publishedAt) {
+                publishedAt = convertToDbDate(details.publishedAt);
+
+                if (!publishedAt) {
+                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'publishedAt' });
+                }
+              }
+
               let paymentCondition = details.paymentCondition;
 
               if (dueDate && paymentCondition) {
@@ -665,7 +678,6 @@ export class DebtApi {
 
                 if (details.amount) {
                   const existingBasePrice = existingDebtComponents.find((dc) => {
-                    console.log(dc, details);
                     return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
                   });
 
@@ -701,6 +713,7 @@ export class DebtApi {
                   name: details.title,
                   payer: payer.id,
                   dueDate,
+                  publishedAt,
                   paymentCondition: paymentCondition ?? null,
                   components: debtComponents.map(c => c.id),
                 };

@@ -10,15 +10,15 @@ import * as dfn from 'date-fns';
 @Service()
 export class EventsApi {
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
-  getEvents() {
+  /*getEvents() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
@@ -38,7 +38,7 @@ export class EventsApi {
 
         return ok(withStatus);
       });
-  }
+  }*/
 
   getEventRegistrations() {
     return route
@@ -77,7 +77,7 @@ export class EventsApi {
 
   router(): Router {
     return router(
-      this.getEvents(),
+      //this.getEvents(),
       this.getEventRegistrations(),
       this.getEventCustomFields(),
       this.getAllEvents(),

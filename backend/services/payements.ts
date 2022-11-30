@@ -1,14 +1,16 @@
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
-import { BankTransaction, DbEmail, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment } from '../../common/types';
-import { FromDbType, PgClient } from '../db';
+import { BankTransaction, DbEmail, DbPaymentEvent, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentEvent, PaymentStatus } from '../../common/types';
+import { FromDbType, PgClient, TxClient } from '../db';
 import { DebtService } from './debt';
 import { Either } from 'fp-ts/lib/Either';
 import * as E from 'fp-ts/lib/Either';
 import { EmailService } from './email';
 import { PayerService } from './payer';
-import { euro, sumEuroValues } from '../../common/currency';
-import { parseISO } from 'date-fns';
+import { cents, euro, sumEuroValues } from '../../common/currency';
+import { formatISO, parseISO } from 'date-fns';
+
+export type PaymentCreditReason = 'manual' | 'paid';
 
 type PaymentWithEvents = Payment & {
   events: Array<{
@@ -61,6 +63,15 @@ function formatPaymentNumber(parts: [number, number]): string {
   return parts.map(n => n.toString().padStart(4, '0')).join('-');
 }
 
+const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
+  id: db.id,
+  paymentId: db.payment_id,
+  type: db.type,
+  amount: cents(db.amount),
+  time: db.time,
+  data: db.data as any,
+});
+
 export type NewInvoice = {
   title: string
   series: number
@@ -111,32 +122,48 @@ type DbPayment = {
   created_at: Date
   payment_number: number
   credited: boolean
-  events: Array<{ id: string, time: string, type: string, data: any, amount: number }>
+  events: Array<DbPaymentEvent>
 }
 
-type NewPayment<T extends PaymentType> = {
+type NewPayment<T extends PaymentType, D = null> = {
   type: T['type'],
   title: string,
   message: string,
-  data: Record<string, unknown>,
+  data: D,
   debts: Array<string>,
   paymentNumber?: string,
   createdAt?: Date
 }
 
+const formatPayment = (db: DbPayment): Payment => ({
+  id: db.id,
+  type: db.type,
+  title: db.title,
+  paymentNumber: db.payment_number,
+  payerId: internalIdentity(db.payer_id),
+  data: db.data,
+  message: db.message,
+  balance: cents(db.balance),
+  status: db.status,
+  updatedAt: db.updated_at,
+  createdAt: db.created_at,
+  credited: db.credited,
+  events: db.events.map(formatPaymentEvent),
+})
+
 @Service()
 export class PaymentService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   async getPayments() {
     return this.pg
@@ -154,8 +181,8 @@ export class PaymentService {
       `);
   }
 
-  async getPayment(id: string) {
-    return await this.pg
+  async getPayment(id: string): Promise<Payment | null> {
+    const result = await this.pg
       .one<DbPayment>(sql`
         SELECT
           p.*,
@@ -169,6 +196,8 @@ export class PaymentService {
         JOIN payment_statuses s ON s.id = p.id
         WHERE p.id = ${id}
       `);
+
+    return result && formatPayment(result);
   }
 
   async getPayerPayments(id: InternalIdentity) {
@@ -226,7 +255,7 @@ export class PaymentService {
         WHERE d.id = ${debtId} AND d.default_payment = p.id
       `);
 
-    return payment;
+    return payment && formatPayment(payment);
   }
 
   async logPaymentEvent(
@@ -279,7 +308,7 @@ export class PaymentService {
 
     const debts = results as Array<Debt>;
 
-    if (debts.some(debt => debt.dueDate === null || debt.publishedAt === null)) {
+    if (debts.some(debt => debt.dueDate === null && debt.publishedAt === null)) {
       throw Error('Not all debts have due dates or are published!');
     }
 
@@ -288,16 +317,16 @@ export class PaymentService {
 
     return this.createPayment({
       type: 'invoice',
-      data: { reference_number, due_date },
+      data: { reference_number, due_date: formatISO(due_date) },
       message: invoice.message,
       debts: invoice.debts,
       paymentNumber,
       title: invoice.title,
       createdAt: invoice.createdAt,
-    }) as any;
+    });
   }
 
-  async createPayment<T extends PaymentType>(payment: NewPayment<T>) {
+  async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>): Promise<Omit<Payment, 'data'> & { data: D }> {
     const paymentNumber = payment.paymentNumber ?? formatPaymentNumber(await this.createPaymentNumber());
 
     return this.pg.tx(async (tx) => {
@@ -306,6 +335,8 @@ export class PaymentService {
         VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber}, COALESCE(${payment.createdAt}, NOW()))
         RETURNING *
       `);
+
+      createdPayment.events = [];
 
       if (!createdPayment) {
         throw new Error('Could not create payment');
@@ -330,43 +361,91 @@ export class PaymentService {
         VALUES (${createdPayment.id}, 'created', ${-total})
       `);
 
-      return createdPayment;
+      return formatPayment(createdPayment) as any;
     });
   }
 
-  async createPaymentEvent(id: string, event: NewPaymentEvent) {
-    const created = await this.pg.one<{ id: string }>(sql`
-      INSERT INTO payment_events (payment_id, type, amount, data, time)
-      VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${event.time})
-      RETURNING *
-    `);
+  private async onPaymentPaid(id: string, event: PaymentEvent) {
+    const payment = await this.getPayment(id);
+    const debts = await this.debtService.getDebtsByPayment(id);
 
-    if (!created) {
-      throw new Error('Could not create payment event');
+    if (!payment) {
+      return;
     }
 
-    if (event.transaction) {
-      await this.pg.one(sql`
-        INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
-        VALUES (${created.id}, ${event.transaction})
+    await Promise.all(debts.map((debt) => this.debtService.onDebtPaid(debt, payment, event)));
+  }
+
+  async createPaymentEvent(id: string, event: NewPaymentEvent): Promise<PaymentEvent> {
+    const [created, oldStatus, newStatus] = await this.pg.tx(async (tx) => {
+      const [{ status: initialStatus }] = await tx.do<{ status: PaymentStatus }>(sql`
+        SELECT status FROM payment_statuses WHERE id = ${id}
       `);
+
+      const [created] = await tx.do<DbPaymentEvent>(sql`
+        INSERT INTO payment_events (payment_id, type, amount, data, time)
+        VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${event.time ?? new Date()})
+        RETURNING *
+      `);
+
+      if (!created) {
+        throw new Error('Could not create payment event');
+      }
+
+      if (event.transaction) {
+        await tx.do(sql`
+          INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
+          VALUES (${created.id}, ${event.transaction})
+        `);
+      }
+
+      const [{ status: newStatus }] = await tx.do<{ status: PaymentStatus }>(sql`
+        SELECT status FROM payment_statuses WHERE id = ${id}
+      `);
+
+      return [formatPaymentEvent(created), initialStatus, newStatus];
+    });
+
+    if (oldStatus !== newStatus) {
+      if (newStatus === 'paid') {
+        await this.onPaymentPaid(id, created);
+      }
     }
 
     return created;
   }
 
-  async creditPayment(id: string) {
+  async creditPayment(id: string, reason: PaymentCreditReason) {
     const payment = await this.getPayment(id);
 
     if (!payment) {
       throw new Error('Payment not found');
     }
 
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(payment.payerId);
+    const email = await this.payerService.getPayerPrimaryEmail(payment.payerId);
+    const debts = await this.debtService.getDebtsByPayment(id);
+    const amount = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
+
     await this.pg.any(sql`
       UPDATE payments
       SET credited = true
       WHERE id = ${id}
     `);
+
+    if (payer && email) {
+      this.emailService.createEmail({
+        template: 'payment-credited',
+        recipient: email.email,
+        subject: '[Invoice credited / Lasku hyvitetty] ' + payment.title,
+        payload: {
+          payment,
+          reason,
+          debts,
+          amount,
+        },
+      });
+    }
   }
 
   async getPaymentsByReferenceNumbers(rfs: string[]) {
@@ -395,7 +474,6 @@ export class PaymentService {
     `);
 
     if (existing_mapping) {
-      console.log('Existing mapping');
       return null;
     }
 
@@ -406,12 +484,10 @@ export class PaymentService {
     } else if (tx.reference) {
       [payment] = await this.getPaymentsByReferenceNumbers([tx.reference]);
     } else {
-      console.log('No reference');
       return null;
     }
 
     if (!payment) {
-      console.log('No match');
       return null;
     }
 
@@ -444,6 +520,7 @@ export class PaymentService {
       data: {
         accounting_id: details.accountingId,
       },
+      transaction: details.accountingId,
     });
   }
 
@@ -456,7 +533,7 @@ export class PaymentService {
 
     const debts = await this.debtService.getDebtsByPayment(id);
     const total = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
-    const email = await this.payerService.getPayerPrimaryEmail(internalIdentity(payment.payer_id));
+    const email = await this.payerService.getPayerPrimaryEmail(payment.payerId);
 
     if (!email) {
       return E.left('Could not determine email for payer');
@@ -471,8 +548,8 @@ export class PaymentService {
       recipient: email.email,
       payload: {
         title: payment.title,
-        number: payment.payment_number,
-        date: payment.created_at,
+        number: payment.paymentNumber,
+        date: payment.createdAt,
         dueDate: parseISO(payment.data.due_date),
         amount: total,
         debts,

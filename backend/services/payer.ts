@@ -4,7 +4,6 @@ import {
   DbPaymentMethod,
   EmailIdentity,
   Event,
-  EventWithPaymentStatus,
   ExternalIdentity,
   InternalIdentity,
   isEmailIdentity,
@@ -90,16 +89,16 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
 @Service()
 export class PayerService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   async getPayerProfiles() {
     const dbProfiles = await this.pg
@@ -551,7 +550,7 @@ export class PayerService {
     `)
   }*/
 
-  async getEventsWithPaymentStatus(id: PayerIdentity, registeredEvents: Event[]): Promise<EventWithPaymentStatus[]> {
+  /*async getEventsWithPaymentStatus(id: PayerIdentity, registeredEvents: Event[]): Promise<EventWithPaymentStatus[]> {
     const payerProfile = await this.getPayerProfileByIdentity(id);
 
     if (!payerProfile) {
@@ -589,7 +588,7 @@ export class PayerService {
             : null,
         };
       });
-  }
+  }*/
 
   updatePaymentStatus(paymentIntentId: string, status: PaymentStatus) {
     return this.pg.any(sql`

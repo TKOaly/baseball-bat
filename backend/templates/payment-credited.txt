@@ -1,0 +1,44 @@
+<% if (reason === 'paid') { %>
+Your invoice <%= payment.paymentNumber %> has been credited because you have paid a debt covered by the payment.
+<% } else { %>
+Your invoice <%= payment.paymentNumber %> has been credited. If you are unsure why this is, please contact the treasurer.
+<% } %>
+
+Below are the details of the credited payment.
+
+<% if (payment.message) { %>
+Invoice message
+=========
+
+<%= payment.message %>
+<% } %>
+
+Breakdown
+=========
+<%
+
+function formatLine(padding, left, right) {
+  return `${' '.repeat(padding)}${left} ${'.'.repeat(50-right.length-left.length-padding-2)} ${right}`;
+}
+
+%>
+<% for (const debt of debts) { -%>
+<%= formatLine(0, debt.name, formatEuro(debt.total)) %> 
+<% for (component of debt.debtComponents) { -%>
+<%= formatLine(2, component.name, formatEuro(component.amount)) %>
+<% } %>
+<% } -%>
+<%= formatLine(0, 'Total', formatEuro(amount)) %>
+
+Payment details
+===============
+
+Title:             <%= payment.title %>
+Invoice number:    <%= payment.paymentNumber %>
+Invoice date:      <%= formatDate(payment.createdAt) %>
+Due date:          <%= formatDate(new Date(payment.data.due_date)) %>
+Total amount:      <%= formatEuro(amount) %>
+Reference number:  <%= payment.data.reference_number %>
+Receiver name:     TKO-äly ry
+Receiver acccount: FI89 7997 7995 1312 86
+Receiver BIC:      HOLVFIHH

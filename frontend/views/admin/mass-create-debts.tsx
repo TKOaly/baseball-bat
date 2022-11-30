@@ -95,7 +95,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
   const columnMapping = {
     'member id': ['tkoalyUserId', parseInt],
     'due date': ['dueDate', parseDate],
-    'date': ['date', parseDate],
+    'date': ['publishedAt', parseDate],
     'debt center': 'debtCenter',
     'email': 'email',
     'payment number': 'paymentNumber',

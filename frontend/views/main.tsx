@@ -221,7 +221,7 @@ export const Main = () => {
                 <div className="py-0.5 px-1 text-xs rounded-sm bg-red-500 mx-2 font-bold text-white">Myöhässä</div>
               )
             }
-            <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues))}</span>
+            <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0)))}</span>
             <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/debt/${p.id}`)} />
           </div>
         </div>

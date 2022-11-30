@@ -11,10 +11,10 @@ import multer from 'multer';
 @Service()
 export class BankingApi {
   @Inject(() => BankingService)
-    bankingService: BankingService;
+  bankingService: BankingService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   private upload = multer({
     storage: multer.memoryStorage(),
@@ -92,8 +92,6 @@ export class BankingApi {
           openingBalance: statement.openingBalance,
           closingBalance: statement.closingBalance,
         });
-
-        console.log(statement);
 
         return ok();
       });

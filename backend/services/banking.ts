@@ -37,15 +37,15 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
 @Service()
 export class BankingService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   async createBankAccount(account: BankAccount) {
     await this.pg.any(sql`
       INSERT INTO bank_accounts (iban, name)
-      VALUES (${account.iban}, ${account.name})
+      VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${account.name})
     `);
   }
 
@@ -91,10 +91,7 @@ export class BankingService {
 
       if (existing.length > 0) {
         transaction = formatBankTransaction(existing[0]);
-        console.log('Existing!', transactions);
       } else {
-        console.log(`Ref: ${tx.reference} Msg: ${tx.message}`);
-
         const created = await this.pg.one<DbBankTransaction>(sql`
           INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
           VALUES (

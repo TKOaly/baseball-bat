@@ -18,28 +18,28 @@ import { BankingService } from '../services/banking';
 @Service()
 export class PaymentsApi {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => BankingService)
-    bankingService: BankingService;
+  bankingService: BankingService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   private getPayments() {
     return route
@@ -61,7 +61,7 @@ export class PaymentsApi {
         const payment = await this.paymentService.getPayment(ctx.routeParams.id);
         const debts = await this.debtService.getDebtsByPayment(ctx.routeParams.id);
 
-        if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== payment?.payer_id) {
+        if (ctx.session.accessLevel !== 'admin' && ctx.session.payerId !== payment?.payerId?.value) {
           return unauthorized();
         }
 
@@ -146,8 +146,8 @@ export class PaymentsApi {
             subject: '[Lasku / Invoice] ' + payment.title,
             payload: {
               title: payment.title,
-              number: payment.payment_number,
-              date: payment.created_at,
+              number: payment.paymentNumber,
+              date: payment.createdAt,
               dueDate: parseISO(payment.data.due_date),
               referenceNumber: payment.data.reference_number,
               link: `${this.config.appUrl}/payment/${payment.id}`,
@@ -184,7 +184,7 @@ export class PaymentsApi {
       .post('/:id/credit')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        await this.paymentService.creditPayment(ctx.routeParams.id);
+        await this.paymentService.creditPayment(ctx.routeParams.id, 'manual');
         return ok();
       });
   }
