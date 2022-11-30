@@ -157,13 +157,14 @@ const TableCell = tw.td`
 export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const debtCenterId = params.id;
 
+  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle');
   const [progressId, setProgressId] = useState(null);
+  const [poll, setPoll] = useState(false);
   const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId);
   const [massCreateDebtsMutation] = useMassCreateDebtsMutation();
-  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: 200 });
+  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: state !== 'idle' ? 200 : undefined });
   const [csvData, setCsvData] = useState('');
   const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog);
-  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle');
 
   useEffect(() => {
     if (!progress)
@@ -171,7 +172,6 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
 
     if (progress.result) {
       setState('idle');
-      setProgressId(null);
     }
   }, [progress]);
 
