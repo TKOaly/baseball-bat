@@ -7,16 +7,17 @@ export type Props<C extends ComponentType<any>> = { // eslint-disable-line
   component: ComponentType<C>,
   label: string,
   fullWidth?: boolean,
-  name: string
+  name: string,
+  narrow?: boolean
 } & ComponentProps<C>
 
-export const InputGroup = <C extends ComponentType<any>>({ component, fullWidth, label, ...props }: Props<C>) => {
+export const InputGroup = <C extends ComponentType<any>>({ component, narrow, fullWidth, label, ...props }: Props<C>) => {
   const [field, meta] = useField(props.name);
 
   const Component = component;
 
   return (
-    <div className={`flex flex-col ${fullWidth && 'col-span-full'} my-4`}>
+    <div className={`flex flex-col ${narrow !== true && !fullWidth && 'col-span-2'} ${fullWidth && 'col-span-full'} my-4`}>
       <span className={`text-sm font-bold ${meta.error ? 'text-red-500' : 'text-gray-800'}`}>{label}</span>
       <div>
         <Component {...field} {...props} error={meta.error} placeholder={props.placeholder ?? label} />

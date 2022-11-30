@@ -3,6 +3,7 @@ import { useMemo, useCallback } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { DropdownField } from '../../components/dropdown-field';
 import { EuroField } from '../../components/euro-field';
+import { DateField } from '../../components/datetime-field';
 import { PayerIdentity } from '../../../common/types';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
@@ -20,7 +21,8 @@ type DebtFormValues = {
   components: { component: string | { name: string }, amount: number }[],
   amount: number,
   payer: PayerIdentity | null
-  paymentCondition: string | 'NOW'
+  dueDate: string | null
+  paymentCondition: string | 'NOW' | null
 }
 
 export const CreateDebt = ({ debtCenterId }) => {
@@ -33,6 +35,7 @@ export const CreateDebt = ({ debtCenterId }) => {
   const submitDebtForm = async (values: DebtFormValues) => {
     const result = await createDebt({
       ...values,
+      due_date: values.dueDate,
       payment_condition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
       center: typeof values.center === 'string'
         ? values.center
@@ -117,7 +120,7 @@ export const CreateDebt = ({ debtCenterId }) => {
         onSubmit={submitDebtForm}
       >
         {({ submitForm, isSubmitting, setFieldError, setFieldValue }) => (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Center"
@@ -141,11 +144,25 @@ export const CreateDebt = ({ debtCenterId }) => {
               options={payerOptions}
             />
             <InputGroup
+              narrow
+              label="Due Date"
+              name="dueDate"
+              component={DateField}
+              onChange={(evt) => {
+                console.log(evt);
+                setFieldValue('dueDate', evt.target.value);
+                setFieldValue('paymentCondition', '');
+              }}
+            />
+            <InputGroup
+              narrow
               label="Payment Condition"
               name="paymentCondition"
               component={TextField}
               onChange={(evt) => {
                 const value = evt.target.value;
+
+                setFieldValue('dueDate', '');
 
                 if (value === 'NOW') {
                   setFieldValue('paymentCondition', 'NOW');

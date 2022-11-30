@@ -67,31 +67,31 @@ const createDebtPayload = t.intersection([
 @Service()
 export class DebtApi {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject('redis')
-    redis: RedisClientType;
+  redis: RedisClientType;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   private createDebtComponent() {
     return route
@@ -278,6 +278,12 @@ export class DebtApi {
           }
         }
 
+        if (payload.payment_condition !== null && payload.due_date !== null) {
+          return badRequest({
+            message: 'Payment condition and due date cannot be defined simultanously.',
+          });
+        }
+
         const debt = await this.debtService.createDebt({
           name: payload.name,
           description: payload.description,
@@ -285,7 +291,7 @@ export class DebtApi {
           centerId,
           payer: payer.id,
           paymentCondition: payload.payment_condition ?? null,
-          dueDate: payload.due_date ? convertToDbDate(payload.due_date) : null,
+          dueDate,
         });
 
         return ok(debt);
