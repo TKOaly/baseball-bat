@@ -11,6 +11,7 @@ import { TextField } from '../../components/text-field';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { useCreateDebtMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
+import { useLocation } from 'wouter';
 
 type DebtFormValues = {
   name: string,
@@ -27,9 +28,10 @@ export const CreateDebt = ({ debtCenterId }) => {
   const { data: debtCenters } = useGetDebtCentersQuery();
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
   const [createDebt] = useCreateDebtMutation();
+  const [, setLocation] = useLocation();
 
   const submitDebtForm = async (values: DebtFormValues) => {
-    await createDebt({
+    const result = await createDebt({
       ...values,
       payment_condition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
       center: typeof values.center === 'string'
@@ -47,6 +49,10 @@ export const CreateDebt = ({ debtCenterId }) => {
         };
       }),
     });
+
+    if ('data' in result) {
+      setLocation(`/admin/debts/${result.data.id}`);
+    }
   };
 
   const createCustomPayerOption = useCallback(
