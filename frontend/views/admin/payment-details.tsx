@@ -39,7 +39,7 @@ export const PaymentDetails = ({ params }) => {
       time: new Date(e.time),
       title: {
         'created': 'Payment created',
-        'payment': `Payment of ${formatEuro(cents(e.amount))} received`,
+        'payment': `Payment of ${formatEuro(e.amount)} received`,
       }[e.type],
     }));
 
@@ -53,7 +53,7 @@ export const PaymentDetails = ({ params }) => {
                 text: 'Payments',
                 url: '/admin/payments',
               },
-              payment.payment_number ? '' + payment.payment_number : '',
+              payment.paymentNumber ? '' + payment.paymentNumber : '',
             ]}
           />
         </Title>
@@ -65,7 +65,7 @@ export const PaymentDetails = ({ params }) => {
       </Header>
       <Section title="Details" columns={2}>
         <TextField label="Name" value={payment.title} />
-        <TextField label="Number" value={'' + payment.payment_number} />
+        <TextField label="Number" value={'' + payment.paymentNumber} />
         <BadgeField label="Status" {...statusBadge} />
         <TextField fullWidth label="Description" value={payment.message} />
       </Section>
