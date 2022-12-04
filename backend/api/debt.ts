@@ -159,6 +159,8 @@ export class DebtApi {
         message: debt.description,
         series: 1,
         debts: [debt.id],
+      }, {
+        sendNotification: true,
       });
 
       await this.debtService.setDefaultPayment(debt.id, created.id);
@@ -206,15 +208,7 @@ export class DebtApi {
             return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
           }
 
-          const notificationEmail = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
-
-          if (E.isRight(notificationEmail)) {
-            await this.emailService.sendEmail(notificationEmail.right.id);
-
-            return Promise.resolve();
-          } else {
-            return Promise.reject('Failed to create notification email');
-          }
+          return Promise.resolve();
         }));
 
         return ok();

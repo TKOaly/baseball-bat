@@ -35,11 +35,11 @@ const helmetConfig: HelmetOptions = {
       defaultSrc: ['\'self\'', '*.stripe.com'],
       scriptSrc:
         process.env.NODE_ENV !== 'production'
-          ? ['\'self\'', '*.stripe.com', '\'unsafe-eval\'', 'ws://bb-bat.tko-aly.localhost:1234', 'ws://localhost:1234']
+          ? ['\'self\'', '*.stripe.com', '\'unsafe-eval\'', 'ws://bbat.tko-aly.localhost:1234', 'ws://localhost:1234']
           : ['\'self\'', '*.stripe.com'],
       connectSrc:
         process.env.NODE_ENV !== 'production'
-          ? ['\'self\'', 'ws://bb-bat.tko-aly.localhost:1234', 'ws://localhost:1234']
+          ? ['\'self\'', 'ws://bbat.tko-aly.localhost:1234', 'ws://localhost:1234']
           : ['\'self\''],
       frameAncestors: ['*.stripe.com'],
     },

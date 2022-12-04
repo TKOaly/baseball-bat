@@ -215,6 +215,7 @@ export class DebtService {
         message: debt.description,
         debts: [created.id],
         title: debt.name,
+        createdAt: debt.publishedAt ? parseISO('' + debt.publishedAt) : undefined,
         ...options.defaultPayment,
       });
 

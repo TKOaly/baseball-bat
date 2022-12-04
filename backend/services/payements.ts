@@ -8,9 +8,13 @@ import * as E from 'fp-ts/lib/Either';
 import { EmailService } from './email';
 import { PayerService } from './payer';
 import { cents, euro, sumEuroValues } from '../../common/currency';
-import { formatISO, parseISO } from 'date-fns';
+import { formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
 
 export type PaymentCreditReason = 'manual' | 'paid';
+
+type PaymentCreationOptions = {
+  sendNotification?: boolean
+}
 
 type PaymentWithEvents = Payment & {
   events: Array<{
@@ -293,7 +297,7 @@ export class PaymentService {
     });
   }
 
-  async createInvoice(invoice: NewInvoice): Promise<Payment & { data: { due_date: string, reference_number: string } }> {
+  async createInvoice(invoice: NewInvoice, options: PaymentCreationOptions = {}): Promise<Payment & { data: { due_date: string, reference_number: string } }> {
     const [year, number] = await this.createPaymentNumber();
 
     const reference_number = invoice.referenceNumber ?? createReferenceNumber(invoice.series ?? 0, year, number);
@@ -323,13 +327,13 @@ export class PaymentService {
       paymentNumber,
       title: invoice.title,
       createdAt: invoice.createdAt,
-    });
+    }, options);
   }
 
-  async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>): Promise<Omit<Payment, 'data'> & { data: D }> {
+  async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {
     const paymentNumber = payment.paymentNumber ?? formatPaymentNumber(await this.createPaymentNumber());
 
-    return this.pg.tx(async (tx) => {
+    const created = await this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
         INSERT INTO payments (type, data, message, title, payment_number, created_at)
         VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber}, COALESCE(${payment.createdAt}, NOW()))
@@ -361,8 +365,28 @@ export class PaymentService {
         VALUES (${createdPayment.id}, 'created', ${-total})
       `);
 
-      return formatPayment(createdPayment) as any;
+      const formated = formatPayment(createdPayment) as any;
+
+      return formated;
     });
+
+    await this.onPaymentCreated(created, options);
+
+    return created;
+  }
+
+  async onPaymentCreated(payment: Payment, options: PaymentCreationOptions) {
+    const isBackdated = isBefore(payment.createdAt, subDays(new Date(), 1));
+
+    if (payment.type === 'invoice' && !isBackdated && options.sendNotification !== false) {
+      const email = await this.sendNewPaymentNotification(payment.id);
+
+      if (E.isRight(email)) {
+        await this.emailService.sendEmail(email.right.id);
+      } else {
+        throw email.left;
+      }
+    }
   }
 
   private async onPaymentPaid(id: string, event: PaymentEvent) {
@@ -525,6 +549,7 @@ export class PaymentService {
   }
 
   async sendNewPaymentNotification(id: string): Promise<Either<string, FromDbType<DbEmail>>> {
+    console.log(id);
     const payment = await this.getPayment(id);
 
     if (!payment) {

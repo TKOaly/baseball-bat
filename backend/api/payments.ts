@@ -137,31 +137,9 @@ export class PaymentsApi {
           debts: debts.map(d => d.id),
           title: 'Combined invoice',
           message: 'Invoice for the following debts:\n' + (debts.map(d => ` - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`).join('\n')),
+        }, {
+            sendNotification: ctx.body.sendEmail,
         });
-
-        if (ctx.body.sendEmail) {
-          const createdEmail = await this.emailService.createEmail({
-            template: 'new-payment',
-            recipient: email.email,
-            subject: '[Lasku / Invoice] ' + payment.title,
-            payload: {
-              title: payment.title,
-              number: payment.paymentNumber,
-              date: payment.createdAt,
-              dueDate: parseISO(payment.data.due_date),
-              referenceNumber: payment.data.reference_number,
-              link: `${this.config.appUrl}/payment/${payment.id}`,
-              amount: total,
-              message: payment.message,
-            },
-          });
-
-          if (createdEmail === null) {
-            throw new Error('unable to create an email for the invoice');
-          }
-
-          await this.emailService.sendEmail(createdEmail.id);
-        }
 
         return ok(payment);
       });
