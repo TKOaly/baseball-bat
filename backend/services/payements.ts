@@ -336,7 +336,14 @@ export class PaymentService {
     const created = await this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
         INSERT INTO payments (type, data, message, title, payment_number, created_at)
-        VALUES ('invoice', ${payment.data}, ${payment.message}, ${payment.title}, ${paymentNumber}, COALESCE(${payment.createdAt}, NOW()))
+        VALUES (
+          ${payment.type},
+          ${payment.data},
+          ${payment.message},
+          ${payment.title},
+          ${paymentNumber},
+          COALESCE(${payment.createdAt}, NOW())
+        )
         RETURNING *
       `);
 
@@ -458,7 +465,7 @@ export class PaymentService {
     `);
 
     if (payer && email) {
-      this.emailService.createEmail({
+      const message = await this.emailService.createEmail({
         template: 'payment-credited',
         recipient: email.email,
         subject: '[Invoice credited / Lasku hyvitetty] ' + payment.title,
@@ -469,6 +476,12 @@ export class PaymentService {
           amount,
         },
       });
+
+      if (!message) {
+        console.error('Failed to send message.');
+      } else {
+        await this.emailService.sendEmail(message.id);
+      }
     }
   }
 
@@ -549,7 +562,6 @@ export class PaymentService {
   }
 
   async sendNewPaymentNotification(id: string): Promise<Either<string, FromDbType<DbEmail>>> {
-    console.log(id);
     const payment = await this.getPayment(id);
 
     if (!payment) {

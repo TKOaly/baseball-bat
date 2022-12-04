@@ -630,7 +630,9 @@ export class DebtService {
     const promises = payments
       .filter((p) => p.id !== payment.id)
       .map(async (payment) => {
-        await this.paymentService.creditPayment(payment.id, 'paid');
+        if (payment.type === 'invoice') {
+          await this.paymentService.creditPayment(payment.id, 'paid');
+        }
       });
 
     await Promise.all(promises);

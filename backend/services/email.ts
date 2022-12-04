@@ -243,8 +243,20 @@ export class EmailService {
   }
 
   async createEmail(email: NewEmail) {
-    const html = this.renderTemplate(email.template, 'html', email.payload);
-    const text = this.renderTemplate(email.template, 'text', email.payload);
+    let html;
+    let text;
+
+    try {
+      html = this.renderTemplate(email.template, 'html', email.payload);
+    } catch (error) {
+      console.error(`Failed to render HTML template '${email.template}': ${error}`);
+    }
+
+    try {
+      text = this.renderTemplate(email.template, 'text', email.payload);
+    } catch (error) {
+      console.error(`Failed to render text template '${email.template}': ${error}`);
+    }
 
     const result = await this.pg
       .one<DbEmail>(sql`

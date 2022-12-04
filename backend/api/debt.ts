@@ -874,10 +874,13 @@ export class DebtApi {
           debts: [debt.id],
           data: {},
         });
+        
+        const amount = await this.debtService.getDebtTotal(debt.id);
 
+        console.log(payment.id, amount);
         await this.paymentService.createPaymentEvent(payment.id, {
           type: 'payment',
-          amount: await this.debtService.getDebtTotal(debt.id),
+          amount,
         });
 
         return ok(payment);
