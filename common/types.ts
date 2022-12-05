@@ -308,6 +308,7 @@ export type DbDebtComponentMapping = {
 export type DbDebt = {
   id: string
   name: string
+  date: Date | null
   last_reminded: Date | null
   due_date: Date | null
   draft: boolean
@@ -367,6 +368,7 @@ export type NewDebt = {
   publishedAt?: DbDateString | null
   name: string
   payer: PayerIdentity
+  date?: DbDateString | null
   dueDate: DbDateString | null,
   createdAt?: Date
   paymentCondition: null | number
@@ -378,6 +380,7 @@ export type DebtPatch = {
   description?: string
   payerId?: PayerIdentity
   dueDate?: Date
+  date?: DbDateString
   paymentCondition?: number
   centerId?: string
   components?: string[]

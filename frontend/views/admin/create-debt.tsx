@@ -21,6 +21,7 @@ type DebtFormValues = {
   components: { component: string | { name: string }, amount: number }[],
   amount: number,
   payer: PayerIdentity | null
+  date: string | null
   dueDate: string | null
   paymentCondition: string | 'NOW' | null
 }
@@ -100,6 +101,7 @@ export const CreateDebt = ({ debtCenterId }) => {
           description: '',
           center: debtCenterId,
           payer: null,
+          date: null,
           components: [],
           paymentCondition: '14',
           amount: 1234.31,
@@ -120,7 +122,7 @@ export const CreateDebt = ({ debtCenterId }) => {
         onSubmit={submitDebtForm}
       >
         {({ submitForm, isSubmitting, setFieldError, setFieldValue }) => (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Center"
@@ -178,6 +180,12 @@ export const CreateDebt = ({ debtCenterId }) => {
                   setFieldError('paymentCondition', 'Integer expected');
                 }
               }}
+            />
+            <InputGroup
+              narrow
+              label="Date"
+              name="date"
+              component={DateField}
             />
             <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
             <InputGroup

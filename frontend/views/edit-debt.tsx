@@ -27,6 +27,7 @@ type DebtFormValues = {
   name: string,
   center: string | { name: string },
   description: string,
+  date: string | null,
   due_date: string | null,
   payment_condition: number | string | null,
   components: { component: string | { name: string }, amount: number }[],
@@ -181,6 +182,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       name: values.name,
       description: values.description,
       dueDate: values.due_date ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()) : null,
+      date: values.date,
       paymentCondition: values.payment_condition ? parseInt('' + values.payment_condition) : null,
       payerId: values.payer,
       centerId,
@@ -199,6 +201,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         center: debt.debtCenterId,
         description: debt.description,
         due_date: debt.dueDate ? dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy') : null,
+        date: debt.date ? dfns.format(new Date(debt.date), 'dd.MM.yyyy') : null,
         payment_condition: debt.paymentCondition,
         payer: debt.payerId,
         components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value * 100 })),
@@ -209,6 +212,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         center: { name: '' },
         description: '',
         due_date: dfns.format(new Date(), 'dd.MM.yyyy'),
+        date: null,
         payment_condition: null,
         payer: null,
         components: [],
@@ -288,7 +292,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         onSubmit={handleSubmit}
       >
         {({ submitForm, isSubmitting, setFieldValue, setFieldError }) => (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Center"
@@ -347,6 +351,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                   setFieldError('payment_condition', 'Integer expected');
                 }
               }}
+            />
+            <InputGroup
+              narrow
+              label="Date"
+              name="date"
+              component={DateField}
             />
             <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
             <InputGroup

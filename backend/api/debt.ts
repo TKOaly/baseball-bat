@@ -59,6 +59,7 @@ const createDebtPayload = t.intersection([
     components: t.array(newOrExisting(debtComponent)),
   }),
   t.partial({
+    date: dateString,
     due_date: dateString,
     payment_condition: t.union([t.null, t.number]),
   }),
@@ -274,6 +275,16 @@ export class DebtApi {
           }
         }
 
+        let date = null;
+
+        if (payload.date) {
+          date = convertToDbDate(payload.date);
+
+          if (!date) {
+            return internalServerError('Date conversion error');
+          }
+        }
+
         if ((payload.payment_condition || payload.payment_condition === 0) && payload.due_date) {
           return badRequest({
             message: 'Payment condition and due date cannot be defined simultanously.',
@@ -288,6 +299,7 @@ export class DebtApi {
           payer: payer.id,
           paymentCondition: payload.payment_condition ?? null,
           dueDate,
+          date,
         });
 
         return ok(debt);
@@ -340,6 +352,7 @@ export class DebtApi {
         name: t.string,
         description: t.string,
         payerId: payerIdentity,
+        date: dateString,
         centerId: t.string,
         dueDate: t.union([t.null, t.string]),
         paymentCondition: t.union([t.null, t.number]),
@@ -354,6 +367,7 @@ export class DebtApi {
         }
 
         let dueDate = undefined;
+        let date = undefined;
         let paymentCondition = undefined;
 
         if (ctx.body.dueDate) {
@@ -362,12 +376,23 @@ export class DebtApi {
           paymentCondition = ctx.body.paymentCondition;
         }
 
+        if (ctx.body.date) {
+          date = convertToDbDate(ctx.body.date);
+
+          if (!date) {
+            return badRequest({
+              message: "Invalid date.",
+            });
+          }
+        }
+
         const updated = await this.debtService.updateDebt({
           id: ctx.routeParams.id,
           name: ctx.body.name,
           description: ctx.body.description,
           centerId: ctx.body.centerId,
           dueDate,
+          date,
           paymentCondition,
           payerId: ctx.body.payerId,
           components: ctx.body.components ?? [],
@@ -607,6 +632,16 @@ export class DebtApi {
                 }
               }
 
+              let date = null;
+
+              if (details.date) {
+                date = convertToDbDate(details.date);
+
+                if (!date) {
+                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'date' });
+                }
+              }
+
               let publishedAt = null;
 
               if (details.publishedAt) {
@@ -707,14 +742,11 @@ export class DebtApi {
                   name: details.title,
                   payer: payer.id,
                   dueDate,
+                  date,
                   publishedAt,
                   paymentCondition: paymentCondition ?? null,
                   components: debtComponents.map(c => c.id),
                 };
-
-                if (details.date) {
-                  newDebt.createdAt = parse(details.date, 'd.M.yyyy', new Date());
-                }
 
                 updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`);
 
@@ -723,6 +755,7 @@ export class DebtApi {
                 createdDebt = {
                   id: '',
                   payerId: payer?.id ?? internalIdentity(''),
+                  date: null,
                   name: details.title,
                   description: details.description,
                   draft: true,

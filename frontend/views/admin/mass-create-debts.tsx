@@ -95,7 +95,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
   const columnMapping = {
     'member id': ['tkoalyUserId', parseInt],
     'due date': ['dueDate', parseDate],
-    'date': ['publishedAt', parseDate],
+    'date': ['date', parseDate],
     'debt center': 'debtCenter',
     'email': 'email',
     'payment number': 'paymentNumber',
@@ -348,6 +348,14 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
             <TableCell>Optional</TableCell>
             <TableCell>
               {makeDefaultValueCell('dueDate', 'Due Date')}
+            </TableCell>
+          </tr>
+          <tr>
+            <TableCell className="whitespace-nowrap">Date</TableCell>
+            <TableCell>Date of the debt</TableCell>
+            <TableCell>Optional</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('date', 'Date')}
             </TableCell>
           </tr>
           <tr>

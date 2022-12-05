@@ -18,6 +18,7 @@ import { EmailService } from './email';
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
   id: debt.id,
+  date: debt.date,
   lastReminded: debt.last_reminded,
   payerId: internalIdentity(debt.payer_id),
   createdAt: debt.created_at,
@@ -157,6 +158,7 @@ export class DebtService {
       UPDATE debt
       SET
         published_at = NOW(),
+        date = COALESCE(date, NOW())
         due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
       WHERE id = ${debtId}
     `);
@@ -177,7 +179,7 @@ export class DebtService {
 
     const created = await this.pg
       .one<DbDebt>(sql`
-        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at)
+        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at, date)
         VALUES (
           ${debt.name},
           ${debt.description},
@@ -186,7 +188,8 @@ export class DebtService {
           ${debt.dueDate},
           COALESCE(${debt.createdAt}, NOW()),
           ${debt.paymentCondition},
-          ${debt.publishedAt}
+          ${debt.publishedAt},
+          ${debt.date}
         )
         RETURNING *
       `);
@@ -277,6 +280,7 @@ export class DebtService {
       debt_center_id: debt.centerId,
       payer_id: debt.payerId?.value,
       due_date,
+      date: debt.date,
       payment_condition,
     });
 
