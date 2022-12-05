@@ -22,13 +22,13 @@ export const ActionButton: React.FC<{ secondary?: boolean } & React.ComponentPro
 };
 
 export const Section: React.FC<{ title: string, columns?: 1 | 2 }> = ({ title, columns = 1, children }) => (
-  <div className={'mt-5 mb-10'}>
+  <div className={'mt-5 mb-10'} data-cy="resource-section" data-cy-title={title}>
     <div className="flex items-center mt-4 mb-5">
       <div className="h-[1px] w-3 bg-gray-300" />
       <div className="text-gray-500 mx-2 text-xs font-bold uppercase">{title}</div>
       <div className="h-[1px] bg-gray-300 flex-grow" />
     </div>
-    <div className={`px-1 ${columns === 2 && 'grid grid-cols-2 gap-8'}`}>
+    <div className={`px-1 ${columns === 2 && 'grid grid-cols-2 gap-8'}`} data-cy="resource-section-content">
       {children}
     </div>
   </div>
@@ -39,13 +39,13 @@ export const SectionContent: React.FC = ({ children }) => (
 );
 
 const DataWrapper: React.FC = ({ children }) => (
-  <div>{children}</div>
+  <div data-cy="resource-field-content">{children}</div>
 );
 
 export type FieldProps = { label: string, fullWidth?: boolean }
 
 export const Field: React.FC<FieldProps> = ({ label, fullWidth, children }) => (
-  <div className={fullWidth ? 'col-span-full' : ''}>
+  <div className={fullWidth ? 'col-span-full' : ''} data-cy="resource-field" data-cy-label={label}>
     <div className="text-gray-500 text-xs font-bold uppercase">{label}</div>
     <div className="mt-1">
       <DataWrapper>{children}</DataWrapper>
@@ -59,7 +59,7 @@ export const SectionDescription: React.FC = ({ children }) => (
 
 export const Actions: React.FC = ({ children }) => {
   return (
-    <div className="flex gap-2 text-base">{children}</div>
+    <div className="flex flex-col items-end lg:items-center lg:flex-row gap-2 text-base">{children}</div>
   );
 };
 
@@ -89,13 +89,14 @@ export const LinkField: React.FC<FieldProps & { to: string, text: string }> = ({
 
   return (
     <Field {...props}>
-      <div
+      <a
+        href="#"
         className="flex items-center cursor-pointer gap-1"
         onClick={() => setLocation(to)}
       >
         {text}
         <ExternalLink className="h-4 text-blue-500 relative" />
-      </div>
+      </a>
     </Field>
   );
 };

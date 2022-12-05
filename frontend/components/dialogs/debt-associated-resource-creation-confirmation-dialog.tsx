@@ -20,7 +20,7 @@ export const DebtAssociatedResourceCreationConfirmationDialog = ({ onClose, comp
   resources.push(...components.map((name) => ({ type: 'Debt Component', name })));
 
   return (
-    <DialogBase onClose={() => onClose(false)}>
+    <DialogBase onClose={() => onClose(false)} data-cy="edit-resource-creation-confirmation-dialog">
       <DialogHeader>Creating additional resources</DialogHeader>
       <DialogContent>
         The following new resources are about to be created:

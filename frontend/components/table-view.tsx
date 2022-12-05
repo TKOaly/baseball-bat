@@ -282,7 +282,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
   }, [selectedRows, actions]);
 
   return (
-    <div className="relative pt-5">
+    <div className="relative pt-5" data-cy="table-view" data-visible-rows={sortedRows.length} data-total-rows={rows.length}>
       <div className="absolute left-full ml-2 w-60 flex flex-col gap-2 p-3">
         <Dropdown
           label="Sort"
@@ -377,7 +377,7 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
                     }
 
                     return (
-                      <div className={`${i > 0 && 'border-t'} whitespace-nowrap overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name}>
+                      <div className={`${i > 0 && 'border-t'} whitespace-nowrap overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name} data-row={i} data-column={column.name}>
                         {content}
                       </div>
                     );

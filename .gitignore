@@ -152,3 +152,7 @@ build
 
 cdk.context.json
 cdk.out
+
+# Cypress
+cypress/screenshots
+cypress/videos

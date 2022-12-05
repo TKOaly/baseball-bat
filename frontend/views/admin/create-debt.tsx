@@ -120,7 +120,7 @@ export const CreateDebt = ({ debtCenterId }) => {
         onSubmit={submitDebtForm}
       >
         {({ submitForm, isSubmitting, setFieldError, setFieldValue }) => (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8">
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Center"

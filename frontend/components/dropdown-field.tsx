@@ -1,3 +1,4 @@
+import React from 'react';
 import { memo, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react';
 import { useField } from 'formik';
 import { equals } from 'remeda';
@@ -31,7 +32,7 @@ export const DropdownField = memo(<V extends unknown>({
   const [, meta] = useField(name);
   const inputRef = useRef<HTMLInputElement>();
   const ref = useRef();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(null);
   const [focused, setFocused] = useState(null);
 
   const itemRefs = useRef([]);
@@ -162,7 +163,7 @@ export const DropdownField = memo(<V extends unknown>({
                 type="text"
                 className="flex-grow bg-transparent border-0 p-0 outline-0 box-shadow-[none] absolute inset-0 h-full w-full py-2 px-3"
                 onChange={(evt) => setSearch(evt.target.value)}
-                value={search === '' ? selectedLabel : search}
+                value={search ?? selectedLabel}
               />
               <div className="flex-grow" />
             </>
@@ -224,7 +225,7 @@ export const DropdownField = memo(<V extends unknown>({
                 `}
                 tabIndex={-1}
                 onClick={() => {
-                  setSearch('');
+                  setSearch(null);
                   onChange({ target: { name, value: option.value } });
                   setOpen(false);
                 }}
@@ -259,7 +260,7 @@ export const DropdownField = memo(<V extends unknown>({
               tabIndex={-1}
               onClick={() => {
                 const option = createCustomOption(search);
-                setSearch('');
+                setSearch(null);
                 onChange({ target: { name, value: option } });
                 setOpen(false);
               }}

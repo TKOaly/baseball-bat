@@ -41,7 +41,7 @@ const classNames = {
 
 const noop = () => { }; // eslint-disable-line
 
-export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick = noop }) => {
+export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick = noop, ...rest }) => {
   let styleName = 'default';
 
   if (secondary) {
@@ -53,7 +53,7 @@ export const Button = ({ secondary = false, disabled = false, children, loading 
   }
 
   return (
-    <button className={classNames[styleName]} onClick={onClick}>
+    <button {...rest} className={classNames[styleName]} onClick={onClick}>
       <Loader className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${loading ? 'w-5' : 'w-0'} overflow-hidden`} />
       {children}
     </button>

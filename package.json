@@ -30,6 +30,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "date-fns": "^2.28.0",
+    "dotenv": "^16.0.0",
     "ejs": "^3.1.7",
     "express": "^4.17.2",
     "flowbite": "^1.4.1",
@@ -47,6 +48,7 @@
     "multer": "^1.4.5-lts.1",
     "newtype-ts": "^0.3.5",
     "node-cron": "^3.0.2",
+    "node-pg-migrate": "^6.2.1",
     "nodemailer": "^6.7.3",
     "papaparse": "^5.3.2",
     "pg": "^8.7.3",
@@ -70,9 +72,7 @@
     "uuid": "^8.3.2",
     "wouter": "^2.8.0-alpha.2",
     "xml2js": "^0.4.23",
-    "xml2js-xpath": "^0.13.0",
-    "node-pg-migrate": "^6.2.1",
-    "dotenv": "^16.0.0"
+    "xml2js-xpath": "^0.13.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.2",
@@ -88,6 +88,7 @@
     "@typescript-eslint/eslint-plugin": "^5.42.0",
     "@typescript-eslint/parser": "^5.42.0",
     "concurrently": "^7.0.0",
+    "cypress": "^11.2.0",
     "eslint": "^8.26.0",
     "eslint-plugin-react": "^7.31.10",
     "parcel": "^2.7.0",

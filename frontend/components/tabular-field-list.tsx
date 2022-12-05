@@ -57,7 +57,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
         }
 
         return (
-          <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }} key={row.key}>
+          <div className={`relative focus-within:z-20 ${(!!errors?.[`${rowIndex}.${key}`]) && 'z-10'} relative`} style={{ marginLeft: i > 0 && '-1px' }} key={row.key} data-row={rowIndex} data-column={key}>
             <Component
               name={`${name}.${rowIndex}.${key}`}
               value={getValue ? getValue(row) : row[key]}
@@ -102,7 +102,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
       return fields;
     }),
     !readOnly && <div className="col-span-full flex justify-end pt-1 pr-2 text-gray-600">
-      <button onClick={() => tools.push(createNew())}>
+      <button onClick={() => tools.push(createNew())} data-cy="tabular-field-list-add-button">
         <Plus />
       </button>
     </div>,

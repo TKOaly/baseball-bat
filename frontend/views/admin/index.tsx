@@ -143,7 +143,7 @@ const Admin = () => {
           </Switch>
         </div>
       </div>
-      <div onClick={(evt) => evt.stopPropagation()}>
+      <div onClick={(evt) => evt.stopPropagation()} data-cy="dialogs">
         <DialogTarget />
       </div>
     </div>

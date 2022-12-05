@@ -17,6 +17,7 @@ export const Landing = () => {
           <Button
             className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow"
             onClick={() => window.location.replace(`${process.env.BACKEND_URL}/api/session/login`)}
+            data-cy="login-member-account-button"
           >
             TKO-äly Member Account
           </Button>
