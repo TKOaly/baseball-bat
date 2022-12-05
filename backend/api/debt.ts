@@ -208,12 +208,14 @@ export class DebtApi {
             return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
           }
 
-          const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
+          if (debt.status === 'unpaid') {
+            const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
 
-          if (E.isRight(message)) {
-            await this.emailService.sendEmail(message.right.id);
-          } else {
-            return Promise.reject('Could not send invoice notification.');
+            if (E.isRight(message)) {
+              await this.emailService.sendEmail(message.right.id);
+            } else {
+              return Promise.reject('Could not send invoice notification.');
+            }
           }
 
           return Promise.resolve();
