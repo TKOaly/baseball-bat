@@ -259,7 +259,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
     }
 
     return options;
-  }, [users]);
+  }, [users, payers]);
 
   return (
     <div>
