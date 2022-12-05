@@ -120,7 +120,7 @@ export const DebtDetails = ({ params }) => {
         <LinkField label="Payer" text={debt.payer.name} to={`/admin/payers/${debt.payer.id.value}`} />
         <LinkField label="Collection" text={debt.debtCenter.name} to={`/admin/debt-centers/${debt.debtCenter.id}`} />
         <CurrencyField label="Total" value={debt.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))} />
-        <DateField label="Date" value={new Date(debt.date)} />
+        { debt.date && <DateField label="Date" value={new Date(debt.date)} /> }
         <DateField time label="Created at" value={new Date(debt.createdAt)} />
         <Field label="Published at">
           {debt.publishedAt === null ? 'Not published' : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
