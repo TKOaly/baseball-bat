@@ -162,7 +162,7 @@ export class DebtApi {
         debts: [debt.id],
         date: debt.date ?? undefined,
       }, {
-        sendNotification: true,
+        sendNotification: false,
       });
 
       await this.debtService.setDefaultPayment(debt.id, created.id);
@@ -199,7 +199,7 @@ export class DebtApi {
           await this.debtService.publishDebt(id);
 
           const defaultPayment = debt.defaultPayment
-            ? await this.paymentService.getDefaultInvoicePaymentForDebt(debt.defaultPayment)
+            ? await this.paymentService.getPayment(debt.defaultPayment)
             : await createDefaultPaymentFor(debt);
 
           if (!defaultPayment) {
@@ -208,6 +208,14 @@ export class DebtApi {
 
           if (!isPaymentInvoice(defaultPayment)) {
             return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
+          }
+
+          const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
+
+          if (E.isRight(message)) {
+            await this.emailService.sendEmail(message.right.id);
+          } else {
+            return Promise.reject('Could not send invoice notification.');
           }
 
           return Promise.resolve();

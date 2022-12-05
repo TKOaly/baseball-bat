@@ -204,6 +204,8 @@ export class DebtService {
         title: debt.name,
         date: debt.date ? parseISO(debt.date) : undefined,
         ...options.defaultPayment,
+      }, {
+        sendNotification: false,
       });
 
       await this.setDefaultPayment(created.id, payment.id);
