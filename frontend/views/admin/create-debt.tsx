@@ -37,6 +37,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const submitDebtForm = async (values: DebtFormValues) => {
     const result = await createDebt({
       ...values,
+      date: values.date ? values.date : undefined,
       due_date: values.dueDate,
       payment_condition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
       center: typeof values.center === 'string'

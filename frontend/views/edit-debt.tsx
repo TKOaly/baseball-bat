@@ -189,7 +189,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       name: values.name,
       description: values.description,
       dueDate: values.due_date ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()) : null,
-      date: values.date,
+      date: values.date === null ? undefined : (values.date === '' ? null : values.date),
       paymentCondition: values.payment_condition ? parseInt('' + values.payment_condition) : null,
       payerId: values.payer,
       centerId,

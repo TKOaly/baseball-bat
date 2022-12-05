@@ -360,7 +360,7 @@ export class DebtApi {
         name: t.string,
         description: t.string,
         payerId: payerIdentity,
-        date: dateString,
+        date: t.union([t.null, dateString]),
         centerId: t.string,
         dueDate: t.union([t.null, t.string]),
         paymentCondition: t.union([t.null, t.number]),
@@ -384,7 +384,9 @@ export class DebtApi {
           paymentCondition = ctx.body.paymentCondition;
         }
 
-        if (ctx.body.date) {
+        if (ctx.body.date === null) {
+          date = null;
+        } else if (ctx.body.date !== undefined) {
           date = convertToDbDate(ctx.body.date);
 
           if (!date) {

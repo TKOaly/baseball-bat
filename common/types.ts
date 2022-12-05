@@ -393,7 +393,7 @@ export type DebtPatch = {
   description?: string
   payerId?: PayerIdentity
   dueDate?: Date
-  date?: DbDateString
+  date?: DbDateString | null
   paymentCondition?: number
   centerId?: string
   components?: string[]
