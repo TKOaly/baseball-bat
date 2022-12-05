@@ -4,7 +4,9 @@ import { Timeline } from '../../components/timeline';
 import { DebtList } from '../../components/debt-list';
 import { cents, formatEuro } from '../../../common/currency';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
-import { Page, Header, Title, Actions, ActionButton, Section, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page';
+import { Page, Header, Title, Actions, ActionButton, Section, DateField, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page';
+import { isPaymentInvoice } from '../../../common/types';
+import { parseISO } from 'date-fns';
 
 export const PaymentDetails = ({ params }) => {
   const { data: payment, isLoading } = useGetPaymentQuery(params.id);
@@ -43,6 +45,18 @@ export const PaymentDetails = ({ params }) => {
       }[e.type],
     }));
 
+  let invoiceDetailsSection = null;
+
+  if (isPaymentInvoice(payment)) {
+    invoiceDetailsSection = (
+      <Section title="Invoice Details" columns={2}>
+        <DateField label="Invoice Date" value={new Date(payment.data.date)} />
+        <DateField label="Due Date" value={new Date(payment.data.due_date)} />
+        <TextField label="Reference Number" value={payment.data.reference_number} />
+      </Section>
+    );
+  }
+
   return (
     <Page>
       <Header>
@@ -69,6 +83,7 @@ export const PaymentDetails = ({ params }) => {
         <BadgeField label="Status" {...statusBadge} />
         <TextField fullWidth label="Description" value={payment.message} />
       </Section>
+      {invoiceDetailsSection}
       <Section title="Debts">
         <SectionDescription>
 
