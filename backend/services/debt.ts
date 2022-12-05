@@ -88,7 +88,7 @@ export class DebtService {
           JOIN debt_component dc ON dc.id = dcm.debt_component_id
           WHERE dcm.debt_id = debt.id
         ) AS total,
-        ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT TO_JSONB(debt_tags.*)), NULL) AS tags
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
       JOIN debt_center ON debt_center.id = debt.debt_center_id
@@ -101,7 +101,7 @@ export class DebtService {
       query = query.append(' WHERE ').append(where).append(' ');
     }
 
-    query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
+    query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*, debt_tags.name`);
 
     return this.pg
       .any<DbDebt>(query)
