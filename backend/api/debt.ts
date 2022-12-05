@@ -33,9 +33,7 @@ const debtCenter = t.type({
 
 const newOrExisting = <T>(type: Type<T>) => t.union([
   type,
-  t.type({
-    id: t.string,
-  }),
+  t.string,
 ]);
 
 const payerIdentity = t.union([
@@ -260,8 +258,8 @@ export class DebtApi {
         const componentIds = await Promise.all(
           payload.components
             .map(async (component) => {
-              if ('id' in component) {
-                return component.id;
+              if (typeof component === 'string') {
+                return component;
               }
 
               const createdComponent = await this.debtService.createDebtComponent({
