@@ -83,12 +83,18 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
               amount: euro(amount),
             });
           } else if (existingComponentsRef.value.indexOf(component) === -1) {
-            const { name, amount } = debt.debtComponents.find(c => c.id === component);
+            const found = debt.debtComponents.find(c => c.id === component);
 
-            return E.left({
-              name,
-              amount,
-            });
+            if (found) {
+              const { name, amount } = found;
+
+              return E.left({
+                name,
+                amount,
+              });
+            } else {
+              return E.right(component);
+            }
           } else {
             return E.right(component);
           }
@@ -186,7 +192,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       paymentCondition: values.payment_condition ? parseInt('' + values.payment_condition) : null,
       payerId: values.payer,
       centerId,
-      components,
+      components, // : components.map((component) => typeof component === 'string' ? { id: component } : component),
     });
 
     if ('data' in result) {
@@ -204,7 +210,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         date: debt.date ? dfns.format(new Date(debt.date), 'dd.MM.yyyy') : null,
         payment_condition: debt.paymentCondition,
         payer: debt.payerId,
-        components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value * 100 })),
+        components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value / 100 })),
       };
     } else {
       return {
