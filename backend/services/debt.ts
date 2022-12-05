@@ -312,6 +312,10 @@ export class DebtService {
     return pipe(
       this.pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
+      TE.map((debt) => ({
+        ...debt,
+        tags: [],
+      })),
       TE.map(formatDebt),
       TE.chainFirst(() => handleComponents),
     )();
