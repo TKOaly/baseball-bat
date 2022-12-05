@@ -80,6 +80,14 @@ export const DebtList = (props: Props) => {
             <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600" key={id}>{name}</span>
           )),
         },
+        {
+          name: 'Tags',
+          getValue: (debt) => sortBy(debt.tags, (dc) => dc.name),
+          compareBy: (value) => value.name,
+          render: (value) => value.map(({ name }) => (
+            <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600" key={name}>{name}</span>
+          )),
+        },
       ]}
       actions={[
         {

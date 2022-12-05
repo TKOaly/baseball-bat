@@ -266,6 +266,7 @@ export class DebtCentersApi {
               payer: payer.id,
               dueDate,
               paymentCondition: null,
+              tags: [{ name: `from-event`, hidden: true }],
             });
 
             return debt;

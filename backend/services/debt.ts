@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import { Inject, Service } from 'typedi';
@@ -14,6 +14,11 @@ import * as T from 'fp-ts/lib/Task';
 import { flow, pipe } from 'fp-ts/lib/function';
 import { isPast, parseISO } from 'date-fns';
 import { EmailService } from './email';
+
+const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
+  name: tag.name,
+  hidden: tag.hidden,
+});
 
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
@@ -38,6 +43,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
     : [],
   payer: debt.payer && (Array.isArray(debt.payer) ? formatPayerProfile(debt.payer[0]) : formatPayerProfile(debt.payer)),
   status: debt.status,
+  tags: debt.tags.map(formatDebtTag),
 });
 
 const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => ({
@@ -68,81 +74,51 @@ export class DebtService {
   @Inject(() => EmailService)
   emailService: EmailService;
 
-  async getDebt(id: string): Promise<Debt | null> {
+  private async queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
+    let query = sql`
+      SELECT
+        debt.*,
+        TO_JSON(payer_profiles.*) AS payer,
+        TO_JSON(debt_center.*) AS debt_center,
+        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+        (
+          SELECT SUM(dc.amount) AS total
+          FROM debt_component_mapping dcm
+          JOIN debt_component dc ON dc.id = dcm.debt_component_id
+          WHERE dcm.debt_id = debt.id
+        ) AS total,
+        ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
+      FROM debt
+      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+      JOIN debt_center ON debt_center.id = debt.debt_center_id
+      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+      LEFT JOIN debt_tags ON debt_tags.debt_id = debt.id
+    `;
+
+    if (where) {
+      query = query.append(' WHERE ').append(where).append(' ');
+    }
+
+    query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
+
     return this.pg
-      .one<DbDebt>(sql`
-        SELECT
-          debt.*,
-          TO_JSON(payer_profiles.*) AS payer,
-          TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-          (
-            SELECT SUM(dc.amount) AS total
-            FROM debt_component_mapping dcm
-            JOIN debt_component dc ON dc.id = dcm.debt_component_id
-            WHERE dcm.debt_id = debt.id
-          ) AS total
-        FROM debt
-        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        JOIN debt_center ON debt_center.id = debt.debt_center_id
-        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        WHERE debt.id = ${id}
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `)
-      .then(dbDebt => dbDebt && formatDebt(dbDebt));
+      .any<DbDebt>(query)
+      .then(debts => debts.map(formatDebt));
+  }
+
+  async getDebt(id: string): Promise<Debt | null> {
+    const [debts] = await this.queryDebts(sql`debt.id = ${id}`);
+    return debts;
   }
 
   async getDebtsByCenter(id: string): Promise<Debt[]> {
-    return this.pg
-      .any<DbDebt>(sql`
-        SELECT
-          debt.*,
-          TO_JSON(payer_profiles.*) AS payer,
-          TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-          (
-            SELECT SUM(dc.amount) AS total
-            FROM debt_component_mapping dcm
-            JOIN debt_component dc ON dc.id = dcm.debt_component_id
-            WHERE dcm.debt_id = debt.id
-          ) AS total
-        FROM debt
-        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        JOIN debt_center ON debt_center.id = debt.debt_center_id
-        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        WHERE debt.debt_center_id = ${id}
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `)
-      .then(dbDebts => dbDebts.map(formatDebt));
+    return this.queryDebts(sql`debt.debt_center_id = ${id}`);
   }
 
   async getDebts(): Promise<Debt[]> {
-    return this.pg
-      .any<DbDebt>(sql`
-        SELECT
-          debt.*,
-          TO_JSON(payer_profiles.*) AS payer,
-          TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-          (
-            SELECT SUM(dc.amount) AS total
-            FROM debt_component_mapping dcm
-            JOIN debt_component dc ON dc.id = dcm.debt_component_id
-            WHERE dcm.debt_id = debt.id
-          ) AS total
-        FROM debt
-        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        JOIN debt_center ON debt_center.id = debt.debt_center_id
-        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `)
-      .then(dbDebts => dbDebts.map(formatDebt));
+    return this.queryDebts();
   }
 
   async getDebtComponentsByCenter(id: string): Promise<DebtComponent[]> {
@@ -177,22 +153,30 @@ export class DebtService {
       throw new Error('No such payer: ' + debt.payer.value);
     }
 
-    const created = await this.pg
-      .one<DbDebt>(sql`
-        INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at, date)
-        VALUES (
-          ${debt.name},
-          ${debt.description},
-          ${debt.centerId},
-          ${payerProfile.id.value},
-          ${debt.dueDate},
-          COALESCE(${debt.createdAt}, NOW()),
-          ${debt.paymentCondition},
-          ${debt.publishedAt},
-          ${debt.date}
-        )
-        RETURNING *
-      `);
+    const created = await this.pg.tx(async (tx) => {
+      const [created] = await tx 
+        .do<DbDebt>(sql`
+          INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at, date)
+          VALUES (
+            ${debt.name},
+            ${debt.description},
+            ${debt.centerId},
+            ${payerProfile.id.value},
+            ${debt.dueDate},
+            COALESCE(${debt.createdAt}, NOW()),
+            ${debt.paymentCondition},
+            ${debt.publishedAt},
+            ${debt.date}
+          )
+          RETURNING *
+        `);
+
+        const tags = (await Promise.all(debt.tags.map((tag) => tx.do<DbDebtTag>(sql`
+          INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${created.id}, ${tag.name}, ${tag.hidden}) RETURNING *;
+        `)))).flat();
+
+        return { ...created, tags };
+    });
 
     if (created === null) {
       throw new Error('Could not create debt');
@@ -411,13 +395,15 @@ export class DebtService {
             FROM debt_component_mapping dcm
             JOIN debt_component dc ON dc.id = dcm.debt_component_id
             WHERE dcm.debt_id = debt.id
-          ) AS total
+          ) AS total,
+          ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
         FROM payment_debt_mappings pdm
         JOIN debt ON debt.id = pdm.debt_id
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
         JOIN debt_center ON debt_center.id = debt.debt_center_id
         LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
         LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+        LEFT JOIN debt_tags ON debt_tags.debt_id = debt.id
         WHERE pdm.payment_id = ${paymentId}
         GROUP BY debt.id, payer_profiles.*, debt_center.*
       `)
@@ -433,12 +419,14 @@ export class DebtService {
         TO_JSON(debt_center.*) AS debt_center,
         SUM(debt_component.amount) AS total,
         CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components
+        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+        ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
       JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+      LEFT JOIN debt_tags ON debt_tags.debt_id = debt.id
       WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);

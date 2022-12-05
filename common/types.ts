@@ -305,9 +305,18 @@ export type DbDebtComponentMapping = {
   debt_id: string
 }
 
+export type DbDebtTag = {
+  name: string,
+  hidden: boolean,
+  debt_id: string
+}
+
+export type DebtTag = Omit<DbDebtTag, 'debt_id'>;
+
 export type DbDebt = {
   id: string
   name: string
+  tags: DbDebtTag[],
   date: Date | null
   last_reminded: Date | null
   due_date: Date | null
@@ -326,11 +335,12 @@ export type DbDebt = {
 
 export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
 
-export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total'> & {
+export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total' | 'tags'> & {
   total?: EuroValue,
   payerId: InternalIdentity,
   status: DebtStatus,
   debtComponents: Array<DebtComponent>,
+  tags: Array<DebtTag>,
 };
 
 export type DebtWithPayer = Debt & { payer: PayerProfile };
@@ -361,6 +371,8 @@ export const dbDateString = t.brand(
 
 export type DbDateString = t.TypeOf<typeof dbDateString>
 
+export type NewDebtTag = { name: string, hidden: boolean }
+
 export type NewDebt = {
   centerId?: string
   description: string
@@ -372,6 +384,7 @@ export type NewDebt = {
   dueDate: DbDateString | null,
   createdAt?: Date
   paymentCondition: null | number
+  tags: Array<NewDebtTag>
 }
 
 export type DebtPatch = {
