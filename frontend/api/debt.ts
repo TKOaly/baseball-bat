@@ -65,6 +65,7 @@ const debtApi = rtkApi.injectEndpoints({
         createdAt: parseISO(result.createdAt),
         updatedAt: parseISO(result.updatedAt),
         dueDate: result.dueDate ? parseISO(result.dueDate) : null,
+        date: result.date ? parseISO(result.date) : null,
       }),
     }),
 

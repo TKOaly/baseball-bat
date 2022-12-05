@@ -1,7 +1,8 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useEffect } from 'react';
 import { formatEuro } from '../../common/currency';
+import { isPaymentInvoice } from '../../common/types';
 import debtApi from '../api/debt';
 import debtCentersApi from '../api/debt-centers';
 import payersApi from '../api/payers';
@@ -29,10 +30,17 @@ const selectResourceDetails = createSelector(
 
       details.push(
         ['Created', format(debt.data.createdAt, 'dd.MM.yyyy')],
-        ['Due date', format(debt.data.dueDate, 'dd.MM.yyyy')],
         ['Payer', debt.data.payer.name],
         ['Amount', formatEuro(debt.data.total)],
       );
+
+      if (debt.data.dueDate) {
+        details.push(['Due date', format(debt.data.dueDate, 'dd.MM.yyyy')]);
+      }
+
+      if (debt.data.date) {
+        details.push(['Date', format(debt.data.date, 'dd.MM.yyyy')]);
+      }
     } else if (type === 'payer') {
       const payer = payersApi.endpoints.getPayer.select(id)(state);
 
@@ -61,10 +69,13 @@ const selectResourceDetails = createSelector(
         return null;
       }
 
-      details.push(['Number', payment.data.payment_number]);
+      details.push(['Number', payment.data.paymentNumber]);
 
       if (isPaymentInvoice(payment.data)) {
-        details.push(['Reference', payment.data.data.reference_number]);
+        details.push(
+          ['Date', format(parseISO(payment.data.data.date), 'dd.MM.yyyy')],
+          ['Reference', payment.data.data.reference_number],
+        );
       }
     } else {
       return null;
