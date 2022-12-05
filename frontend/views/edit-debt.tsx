@@ -40,7 +40,8 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
   const { data: payers } = useGetPayersQuery();
   const { data: debt } = useGetDebtQuery(id);
   const { data: debtCenters } = useGetDebtCentersQuery();
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debt?.debtCenterId, { skip: !debt });
+  const [debtCenterId, setDebtCenterId] = useState(debt?.debtCenterId);
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
   const [updateDebt] = useUpdateDebtMutation();
   const [createDebtCenter] = useCreateDebtCenterMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
@@ -297,119 +298,125 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         }}
         onSubmit={handleSubmit}
       >
-        {({ submitForm, isSubmitting, setFieldValue, setFieldError }) => (
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
-            <InputGroup label="Name" name="name" component={TextField} />
-            <InputGroup
-              label="Center"
-              name="center"
-              allowCustom
-              component={DropdownField}
-              options={(debtCenters ?? []).map((center) => ({
-                text: center.name,
-                value: center.id,
-              }))}
-              createCustomOption={(name) => ({ name })}
-              formatCustomOption={({ name }) => name}
-            />
-            <InputGroup
-              label="Payer"
-              name="payer"
-              allowCustom
-              component={DropdownField}
-              createCustomOption={createCustomPayerOption}
-              formatCustomOption={formatCustomPayerOption}
-              options={payerOptions}
-            />
-            <InputGroup
-              narrow
-              label="Due Date"
-              name="due_date"
-              component={DateField}
-              onChange={(evt) => {
-                console.log(evt);
-                setFieldValue('due_date', evt.target.value);
-                setFieldValue('payment_condition', '');
-              }}
-            />
-            <InputGroup
-              narrow
-              label="Payment Condition"
-              name="payment_condition"
-              readOnly={debt && !debt.draft}
-              component={TextField}
-              onChange={(evt) => {
-                const value = evt.target.value;
+        {({ values, submitForm, isSubmitting, setFieldValue, setFieldError }) => {
+          if (typeof values.center === 'string' && values.center !== debtCenterId) {
+            setDebtCenterId(values.center);
+          }
 
-                setFieldValue('due_date', '');
+          return (
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
+              <InputGroup label="Name" name="name" component={TextField} />
+              <InputGroup
+                label="Center"
+                name="center"
+                allowCustom
+                component={DropdownField}
+                options={(debtCenters ?? []).map((center) => ({
+                  text: center.name,
+                  value: center.id,
+                }))}
+                createCustomOption={(name) => ({ name })}
+                formatCustomOption={({ name }) => name}
+              />
+              <InputGroup
+                label="Payer"
+                name="payer"
+                allowCustom
+                component={DropdownField}
+                createCustomOption={createCustomPayerOption}
+                formatCustomOption={formatCustomPayerOption}
+                options={payerOptions}
+              />
+              <InputGroup
+                narrow
+                label="Due Date"
+                name="due_date"
+                component={DateField}
+                onChange={(evt) => {
+                  console.log(evt);
+                  setFieldValue('due_date', evt.target.value);
+                  setFieldValue('payment_condition', '');
+                }}
+              />
+              <InputGroup
+                narrow
+                label="Payment Condition"
+                name="payment_condition"
+                readOnly={debt && !debt.draft}
+                component={TextField}
+                onChange={(evt) => {
+                  const value = evt.target.value;
 
-                if (value === 'NOW') {
-                  setFieldValue('payment_condition', 'NOW');
-                  return;
-                }
+                  setFieldValue('due_date', '');
 
-                try {
-                  const matches = /[0-9]+/.exec(value);
-                  const integer = parseInt(matches[0]);
-                  setFieldValue('payment_condition', integer === 0 ? 'NOW' : String(integer));
-                } catch (e) {
-                  setFieldValue('payment_condition', value);
-                  setFieldError('payment_condition', 'Integer expected');
-                }
-              }}
-            />
-            <InputGroup
-              narrow
-              label="Date"
-              name="date"
-              component={DateField}
-            />
-            <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
-            <InputGroup
-              label="Components"
-              name="components"
-              fullWidth
-              component={TabularFieldListFormik}
-              createNew={() => ({
-                component: '',
-                amount: 0,
-              })}
-              columns={[
-                {
-                  header: 'Component',
-                  component: DropdownField,
-                  key: 'component',
-                  props: {
-                    options: (centerComponents ?? []).map((component) => ({
-                      value: component.id,
-                      text: component.name,
-                    })),
-                    allowCustom: true,
-                    formatCustomOption: ({ name }) => name,
-                    createCustomOption: (name) => ({ name }),
+                  if (value === 'NOW') {
+                    setFieldValue('payment_condition', 'NOW');
+                    return;
+                  }
+
+                  try {
+                    const matches = /[0-9]+/.exec(value);
+                    const integer = parseInt(matches[0]);
+                    setFieldValue('payment_condition', integer === 0 ? 'NOW' : String(integer));
+                  } catch (e) {
+                    setFieldValue('payment_condition', value);
+                    setFieldError('payment_condition', 'Integer expected');
+                  }
+                }}
+              />
+              <InputGroup
+                narrow
+                label="Date"
+                name="date"
+                component={DateField}
+              />
+              <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
+              <InputGroup
+                label="Components"
+                name="components"
+                fullWidth
+                component={TabularFieldListFormik}
+                createNew={() => ({
+                  component: '',
+                  amount: 0,
+                })}
+                columns={[
+                  {
+                    header: 'Component',
+                    component: DropdownField,
+                    key: 'component',
+                    props: {
+                      options: (centerComponents ?? []).map((component) => ({
+                        value: component.id,
+                        text: component.name,
+                      })),
+                      allowCustom: true,
+                      formatCustomOption: ({ name }) => name,
+                      createCustomOption: (name) => ({ name }),
+                    },
                   },
-                },
-                {
-                  header: 'Amount',
-                  component: EuroField,
-                  key: 'amount',
-                  props: (row) => {
-                    const component = (centerComponents ?? []).find(c => c.id === row.component);
+                  {
+                    header: 'Amount',
+                    component: EuroField,
+                    key: 'amount',
+                    props: (row) => {
+                      const component = (centerComponents ?? []).find(c => c.id === row.component);
 
-                    return {
-                      readOnly: typeof row.component === 'string',
-                      value: component ? component.amount.value / 100 : row.amount,
-                    };
+                      return {
+                        readOnly: typeof row.component === 'string',
+                        value: component ? component.amount.value / 100 : row.amount,
+                      };
+                    },
                   },
-                },
-              ]}
-            />
-            <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Save</button>
+                ]}
+              />
+              <div className="col-span-full flex items-center justify-end gap-3 mt-2">
+                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
+                <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Save</button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        }}
       </Formik>
     </div>
   );
