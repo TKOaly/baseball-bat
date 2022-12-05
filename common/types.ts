@@ -452,7 +452,7 @@ export type Payment = {
   events: Array<PaymentEvent>,
 }
 
-export const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string, due_date: string } } => {
+export const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string, due_date: string, date: string } } => {
   return p.type === 'invoice' && p.data !== null && 'reference_number' in p.data && 'due_date' in p.data;
 };
 

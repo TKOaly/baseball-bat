@@ -35,7 +35,7 @@ Payment details
 
 Title:             <%= payment.title %>
 Invoice number:    <%= payment.paymentNumber %>
-Invoice date:      <%= formatDate(payment.createdAt) %>
+Invoice date:      <%= formatDate(new Date(payment.data.date)) %>
 Due date:          <%= formatDate(new Date(payment.data.due_date)) %>
 Total amount:      <%= formatEuro(amount) %>
 Reference number:  <%= payment.data.reference_number %>

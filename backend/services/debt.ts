@@ -158,7 +158,7 @@ export class DebtService {
       UPDATE debt
       SET
         published_at = NOW(),
-        date = COALESCE(date, NOW())
+        date = COALESCE(date, NOW()),
         due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
       WHERE id = ${debtId}
     `);
@@ -218,7 +218,7 @@ export class DebtService {
         message: debt.description,
         debts: [created.id],
         title: debt.name,
-        createdAt: debt.publishedAt ? parseISO('' + debt.publishedAt) : undefined,
+        date: debt.date ? parseISO(debt.date) : undefined,
         ...options.defaultPayment,
       });
 
@@ -588,7 +588,7 @@ export class DebtService {
       payload: {
         title: payment.title,
         number: payment.paymentNumber,
-        date: payment.createdAt,
+        date: parseISO(payment.data.date),
         dueDate: parseISO(payment.data.due_date),
         amount: debt.total,
         debts: [debt],

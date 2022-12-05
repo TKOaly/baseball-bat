@@ -80,7 +80,7 @@ export type NewInvoice = {
   title: string
   series: number
   message: string
-  createdAt?: Date
+  date?: Date
   debts: string[]
   referenceNumber?: string
   paymentNumber?: string
@@ -321,12 +321,15 @@ export class PaymentService {
 
     return this.createPayment({
       type: 'invoice',
-      data: { reference_number, due_date: formatISO(due_date) },
+      data: {
+        reference_number,
+        due_date: formatISO(due_date),
+        date: invoice.date ?? new Date(),
+      },
       message: invoice.message,
       debts: invoice.debts,
       paymentNumber,
       title: invoice.title,
-      createdAt: invoice.createdAt,
     }, options);
   }
 
@@ -586,7 +589,7 @@ export class PaymentService {
       payload: {
         title: payment.title,
         number: payment.paymentNumber,
-        date: payment.createdAt,
+        date: parseISO(payment.data.date),
         dueDate: parseISO(payment.data.due_date),
         amount: total,
         debts,

@@ -160,6 +160,7 @@ export class DebtApi {
         message: debt.description,
         series: 1,
         debts: [debt.id],
+        date: debt.date ?? undefined,
       }, {
         sendNotification: true,
       });
