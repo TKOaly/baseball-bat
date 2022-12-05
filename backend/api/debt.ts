@@ -572,6 +572,9 @@ export class DebtApi {
       .handler(async (ctx) => {
         const { debts, defaults, dryRun, components } = ctx.body;
 
+
+        const tags = [{ name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true }];
+
         const progressId = uuidv4();
 
         const updateProgress = (current: number, message: string, result?: any) => {
@@ -756,7 +759,7 @@ export class DebtApi {
                   publishedAt,
                   paymentCondition: paymentCondition ?? null,
                   components: debtComponents.map(c => c.id),
-                  tags: [{ name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true }],
+                  tags,
                 };
 
                 updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`);
@@ -781,7 +784,7 @@ export class DebtApi {
                   updatedAt: new Date(),
                   debtComponents,
                   credited: false,
-                  tags: [{ name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true }],
+                  tags,
                 };
 
                 if (details.components && details.components.length > 0) {
