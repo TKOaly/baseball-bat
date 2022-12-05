@@ -141,6 +141,19 @@ export class BankingService {
     };
   }
 
+  async assignTransactionsToPaymentByReferenceNumber(paymentId: string, referenceNumber: string) {
+    const dbTransactions = await this.pg.any<DbBankTransaction>(sql`
+      SELECT * FROM bank_transactions WHERE reference = ${referenceNumber}
+    `);
+
+    const transactions = dbTransactions.map(formatBankTransaction);
+
+    await Promise.all(
+      transactions
+        .map((transaction) => this.paymentService.createPaymentEventFromTransaction(transaction, paymentId))
+    );
+  }
+
   async getAccountTransactions(iban: string) {
     const transactions = await this.pg.any<DbBankTransaction>(sql`
       SELECT

@@ -6,6 +6,7 @@ import { DebtService } from './debt';
 import { Either } from 'fp-ts/lib/Either';
 import * as E from 'fp-ts/lib/Either';
 import { EmailService } from './email';
+import { BankingService } from './banking';
 import { PayerService } from './payer';
 import { cents, euro, sumEuroValues } from '../../common/currency';
 import { formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
@@ -168,6 +169,9 @@ export class PaymentService {
 
   @Inject(() => EmailService)
   emailService: EmailService;
+
+  @Inject(() => BankingService)
+  bankingService: BankingService;
 
   async getPayments() {
     return this.pg
@@ -396,6 +400,10 @@ export class PaymentService {
       } else {
         throw email.left;
       }
+    }
+
+    if (isPaymentInvoice(payment)) {
+      await this.bankingService.assignTransactionsToPaymentByReferenceNumber(payment.id, payment.data.reference_number);
     }
   }
 
