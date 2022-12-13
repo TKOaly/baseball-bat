@@ -29,23 +29,24 @@ export type Action<R> = {
   onSelect?: (rows: Array<R>) => void
 }
 
-export type Column<R> = {
-  name: string,
-  getValue: string | ((row: R) => any),
-  render?: (value: any, row: R) => any,
+export type Column<R, Name extends string, Value> = {
+  name: Name,
+  getValue: string | ((row: R) => Value),
+  render?: (value: Value, row: R) => any,
   align?: 'right',
-  compareBy?: (value: any) => any,
+  compareBy?: (value: Value) => any,
 }
 
-export type TableViewProps<R extends Row> = {
+export type TableViewProps<R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, Column<R, any, any>>> = {
   rows: R[],
-  columns: Column<R>[],
+  columns: Array<{ [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]>,
   onRowClick?: (row: R) => void,
   selectable?: boolean,
   actions?: Array<Action<R>>,
+  emptyMessage?: JSX.Element | string,
 }
 
-const getColumnValue = <R extends Row>(column: Column<R>, row: R) => {
+const getColumnValue = <R extends Row, Value>(column: Column<R, any, Value>, row: R): Value => {
   if (typeof column.getValue === 'string') {
     return row[column.getValue];
   }
@@ -156,7 +157,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
   );
 };
 
-export const TableView = <R extends Row>({ rows, columns, selectable, actions, onRowClick }: TableViewProps<R>) => {
+export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
   const [sorting, setSorting] = useState(null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
@@ -397,6 +398,13 @@ export const TableView = <R extends Row>({ rows, columns, selectable, actions, o
             );
           })
         }
+        { rows.length === 0 && (
+          <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
+            <div className="w-[30em] text-gray-800 py-3">
+              { emptyMessage ?? 'No rows to display.' }
+            </div>
+          </div>
+        ) }
       </div>
     </div>
   );

@@ -1,10 +1,13 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useMemo } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useMemo, useReducer } from 'react';
+import { produce } from 'immer';
 import { Circle, Search, X } from 'react-feather';
+import { TableView } from '../../components/table-view';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { Stepper } from '../../components/stepper';
-import { Event } from '../../../common/types';
+import { ApiEvent, DebtComponent, euro, Event, Registration } from '../../../common/types';
 import { TextField } from '../../components/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
+import upstreamUsersApi from '../../api/upstream-users';
 import { addDays, format, isMatch, subYears } from 'date-fns';
 import { FilledDisc } from '../../components/filled-disc';
 import ReactModal from 'react-modal';
@@ -21,14 +24,16 @@ import { QueryArgFrom, ResultTypeFrom } from '@reduxjs/toolkit/dist/query/endpoi
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
 import { DateField } from '../../components/datetime-field';
 import { useLocation } from 'wouter';
+import { EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
 
-type WizardState = 'select-event' | 'confirmation' | 'settings'
+type WizardState = 'select-event' | 'confirmation' | 'settings' | 'participants'
 
 type EventSelectionViewProps = {
-  onSelect: (event: Event[]) => void
+  state: State
+  dispatch: (action: Action) => void
 }
 
-const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
+const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
   const starting = useMemo(() => subYears(new Date(), 1), []);
 
   const { data: events } = useGetEventsQuery({
@@ -36,7 +41,7 @@ const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
   });
 
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState(state.eventIds);
 
   const handleSelect = (event) => setSelected(prev => {
     const index = prev.indexOf(event.id);
@@ -65,7 +70,10 @@ const EventSelectionView = ({ onSelect }: EventSelectionViewProps) => {
             ? <DisabledButton className="h-[40px] mt-1">Continue</DisabledButton>
             : <Button
               className="h-[40px] mt-1"
-              onClick={() => onSelect(selected.map((id) => events.find(e => e.id === id)))}
+              onClick={() => dispatch({
+                type: 'SELECT_EVENTS',
+                payload: { eventIds: selected },
+              })}
             >Continue</Button>
         }
       </div>
@@ -130,6 +138,7 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E)
 
 const useFetchEventCustomFields = createMultiFetchHook(eventsApi.endpoints.getEventCustomFields);
 const useFetchEventRegistrations = createMultiFetchHook(eventsApi.endpoints.getEventRegistrations);
+const useFetchUsers = createMultiFetchHook(upstreamUsersApi.endpoints.getUpstreamUser);
 
 const Modal = ({ open, onClose, children }) => {
   return (
@@ -207,9 +216,22 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
     <Modal open={open} onClose={handleClose}>
       <Formik
         initialValues={{
-          event: null,
-          question: null,
-          answer: null,
+          eventId: null,
+          customFieldId: null,
+          value: null,
+        }}
+        validate={(values) => {
+          const errors: Record<string, string> = {};
+
+          if (values.eventId === null) {
+            errors.eventId = 'Required';
+          }
+
+          if (values.customFieldId === null) {
+            errors.customFieldId = 'Required';
+          }
+
+          return errors;
         }}
         onSubmit={handleSubmit}
       >
@@ -219,7 +241,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
             <div className="grid grid-cols-2 gap-x-8">
               <InputGroup
                 label="Event"
-                name="event"
+                name="eventId"
                 component={DropdownField}
                 options={events.map((event) => ({
                   value: event.id,
@@ -228,18 +250,18 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
               />
               <InputGroup
                 label="Question"
-                name="question"
+                name="customFieldId"
                 component={DropdownField}
-                options={(fields.get(values.event) ?? []).map((field) => ({
+                options={(fields.get(values.eventId) ?? []).map((field) => ({
                   value: field.id,
                   text: field.name,
                 }))}
               />
               <InputGroup
                 label="Answer"
-                name="answer"
+                name="value"
                 component={DropdownField}
-                options={((fields.get(values.event) ?? []).find(f => f.id === values.question)?.options ?? []).map((option) => ({
+                options={((fields.get(values.eventId) ?? []).find(f => f.id === values.customFieldId)?.options ?? []).map((option) => ({
                   value: option,
                   text: option,
                 }))}
@@ -284,9 +306,11 @@ type Settings = {
   }>,
 }
 
-const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (details: Settings) => void }) => {
-  const eventIds = useMemo(() => events.map(e => e.id), [events]);
-  const eventCustomFieldsArray = useFetchEventCustomFields(eventIds);
+const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Action) => void }) => {
+  const starting = useMemo(() => subYears(new Date(), 1), []);
+  const { data: allEvents } = useGetEventsQuery({ starting });
+  const events = useMemo(() => (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1), [state.eventIds, allEvents])
+  const eventCustomFieldsArray = useFetchEventCustomFields(state.eventIds);
 
   const eventCustomFields = useMemo(() => {
     if (eventCustomFieldsArray === null) {
@@ -297,25 +321,28 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
 
     eventCustomFieldsArray
       .forEach((fields, i) => {
-        map.set(eventIds[i], fields);
+        map.set(state.eventIds[i], fields);
       });
 
     return map;
-  }, [eventCustomFieldsArray]);
+  }, [eventCustomFieldsArray, state.eventIds]);
 
   const promptRef = useRef();
 
+  if (!events?.length) {
+    return null;
+  }
+
   return (
-    <div className="grid gap-x-5 gap-y-2 grid-cols-2">
+    <div className="grid gap-x-5 gap-y-2 grid-cols-4">
       {eventCustomFields && <PricingRuleModal ref={promptRef} events={events} fields={eventCustomFields} />}
       <Formik
         initialValues={{
-          name: events[0].name,
-          basePrice: events[0].price ? events[0].price.value / 100 : 0,
-          description: `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
-          dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
-          componentMappings: [],
-        } as Settings}
+          name: state.basicSettings.name ?? events[0].name,
+          basePrice: state.basicSettings.basePrice.value ? state.basicSettings.basePrice.value / 100 : (events[0].price ? events[0].price.value / 100 : 0),
+          description: state.basicSettings.description ?? `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
+          dueDate: state.basicSettings.dueDate ?? format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+        }}
         validate={(values) => {
           const errors: Partial<Record<keyof Settings, string>> = {};
 
@@ -327,7 +354,16 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
 
           return errors;
         }}
-        onSubmit={onFinished}
+        onSubmit={(values) => dispatch({
+          type: 'SET_BASIC_SETTINGS',
+          payload: {
+            values: {
+              name: values.name,
+              basePrice: euro(values.basePrice),
+              dueDate: values.dueDate,
+            },
+          },
+        })}
       >
         {({ values, submitForm }) => (
           <>
@@ -359,77 +395,97 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
               Answer specific pricing
             </div>
             <div className="col-span-full">
-              <FieldArray
-                name="componentMappings"
-              >
-                {(tools) => {
-                  return (
-                    <>
-                      {values.componentMappings.map((mapping, i) => (
-                        <div className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex" key={i}>
-                          <StandaloneInputGroup
-                            label="Name"
-                            component={TextField}
-                            value={mapping.name}
-                            onChange={(evt) => {
-                              tools.replace(i, {
-                                ...mapping,
-                                name: evt.target.value,
-                              });
-                            }}
-                          />
-                          <StandaloneInputGroup
-                            label="Price"
-                            component={EuroField}
-                            value={mapping.price}
-                            onChange={(event) => {
-                              tools.replace(i, {
-                                ...mapping,
-                                price: event.target.value,
-                              });
-                            }}
-                          />
-                          <div className="col-span-full">
-                            <FieldArray name={`componentMappings.${i}.rules`}>
-                              {(tools) => <>
-                                {mapping.rules.length > 0 && (
-                                  <div className="border mb-3 rounded-md shadow-sm">
-                                    {mapping.rules.map((rule, i) => (
-                                      <div className="flex items-center border-b last:border-0 py-2 px-3" key={i}>
-                                        <Breadcrumbs
-                                          segments={[
-                                            '' + events.find(e => e.id === rule.event)?.name,
-                                            '' + eventCustomFields.get(rule.event).find(f => f.id === rule.question).name,
-                                            '' + rule.answer,
-                                          ]}
-                                        />
-                                        <div className="flex-grow" />
-                                        <button onClick={() => tools.remove(i)} className="text-gray-500">
-                                          <X />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                <Button
-                                  onClick={() => promptRef.current?.prompt?.().then((values) => tools.push(values))}
-                                  className="mb-3"
-                                >
-                                  Add rule
-                                </Button>
-                              </>}
-                            </FieldArray>
+              {state.components.map(({ id: componentId, name, amount, rules }) => (
+                <div className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex" key={componentId}>
+                  <StandaloneInputGroup
+                    label="Name"
+                    component={TextField}
+                    value={name}
+                    onChange={(evt) => dispatch({
+                      type: 'UPDATE_COMPONENT',
+                      payload: {
+                        id: componentId,
+                        values: {
+                          name: evt.target.value,
+                        },
+                      },
+                    })}
+                  />
+                  <StandaloneInputGroup
+                    label="Price"
+                    component={EuroField}
+                    value={amount.value / 100}
+                    onChange={(evt) => dispatch({
+                      type: 'UPDATE_COMPONENT',
+                      payload: {
+                        id: componentId,
+                        values: {
+                          amount: euro(evt.target.value),
+                        },
+                      },
+                    })}
+                  />
+                  <div className="col-span-full">
+                    {rules.map(({ id: ruleId, type, eventId, customFieldId, value }) => {
+                      if (type === 'CUSTOM_FIELD') {
+                        return (
+                          <div className="flex items-center border-b last:border-0 py-2 px-3" key={ruleId}>
+                            <Breadcrumbs
+                              segments={[
+                                '' + events.find(e => e.id === eventId)?.name,
+                                '' + eventCustomFields.get(eventId).find(f => f.id === customFieldId).name,
+                                '' + value,
+                              ]}
+                            />
+                            <div className="flex-grow" />
+                            <button
+                              onClick={() => dispatch({
+                                type: 'REMOVE_COMPONENT_RULE',
+                                payload: {
+                                  componentId,
+                                  ruleId,
+                                },
+                              })}
+                              className="text-gray-500"
+                            >
+                              <X />
+                            </button>
                           </div>
-                        </div>
-                      ))}
-                      <Button
-                        onClick={() => tools.push({ name: '', price: 0, rules: [] })}
-                      >Create component mapping</Button>
-                    </>
-                  );
-                }}
-              </FieldArray>
-              <div className="flex justify-end">
+                        );
+                      }
+                    })}
+                    <Button
+                      onClick={() => promptRef.current?.prompt?.().then((rule) => dispatch({ type: 'ADD_COMPONENT_RULE', payload: { componentId, rule: { ...rule, type: 'CUSTOM_FIELD' } } }))}
+                      className="mb-3"
+                    >
+                      Add rule
+                    </Button>
+                    {/*<FieldArray name={`componentMappings.${i}.rules`}>
+                      {(tools) => <>
+                        {mapping.rules.length > 0 && (
+                          <div className="border mb-3 rounded-md shadow-sm">
+                            {mapping.rules.map((rule, i) => (
+                            ))}
+                          </div>
+                        )}
+                        <Button
+                          onClick={() => promptRef.current?.prompt?.().then((values) => tools.push(values))}
+                          className="mb-3"
+                        >
+                          Add rule
+                        </Button>
+                      </>}
+                    </FieldArray>*/}
+                  </div>
+                </div>
+              ))}
+              <Button
+                onClick={() => dispatch({ type: 'ADD_COMPONENT', payload: { name: '', amount: euro(0) } })}
+              >
+                Create component mapping
+              </Button>
+              <div className="flex justify-end gap-3">
+                <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
                 <Button onClick={submitForm}>Continue</Button>
               </div>
             </div>
@@ -440,42 +496,531 @@ const SettingsView = ({ events, onFinished }: { events: Event[], onFinished: (de
   );
 };
 
-const ConfirmationView = ({ events, settings, onConfirm }) => {
-  const eventIds = useMemo(() => events.map(e => e.id), [events]);
-  const registrations = useFetchEventRegistrations(eventIds);
+const evaluateRules = (state: State, event: Event, registration: Registration): Array<EvaluatedDebtComponent> => {
+  const components = [{ name: 'Base Price', id: -1, amount: state.basicSettings.basePrice }];
 
-  const total = useMemo(() => {
-    if (!registrations) {
-      return 0;
+  for (const { id, name, amount, rules } of state.components) {
+    for (const rule of rules) {
+      if (rule.type === 'CUSTOM_FIELD') {
+        const { eventId, customFieldId, value: wanted } = rule;
+
+        if (event.id !== eventId) continue;
+
+        const answer = registration.answers.find(q => q.question_id === customFieldId);
+
+        if (!answer) continue;
+
+        if (answer.answer === wanted) {
+          components.push({
+            id,
+            name,
+            amount,
+          });
+        }
+      }
     }
+  }
 
-    return registrations.map(r => r.length).reduce((a, b) => a + b, 0);
-  }, [registrations]);
+  return components;
+}
+
+type EvaluatedDebtComponent = Pick<DebtComponent, 'name' | 'amount'> & { id: number };
+type EvaluatedRegistration = Registration & { components: Array<EvaluatedDebtComponent>, event: Event, queue: boolean } ;
+
+type RegistrationTableProps = {
+  registrations: Array<EvaluatedRegistration>,
+  onSwap: (registrations: Array<EvaluatedRegistration>) => void,
+  emptyMessage?: string | JSX.Element
+  actionLabel: string
+}
+
+type CustomFieldAnswer = Registration['answers'][0];
+
+const QuestionBadge = ({ question }: { question: CustomFieldAnswer }) => (
+  <div>
+    <span className="py-0.5 whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">{question.question}</span>
+    <span className="py-0.5 whitespace-nowrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{question.answer}</span>
+  </div>
+);
+
+const ComponentBadge = ({ component }: { component: EvaluatedDebtComponent }) => (
+  <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{component.name} ({formatEuro(component.amount)})</span>
+);
+
+const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, onSwap, emptyMessage, actionLabel }) => {
+  return (
+    <TableView
+      selectable
+      rows={registrations.map((r) => ({ ...r, key: r.id }))}
+      emptyMessage={emptyMessage}
+      actions={[
+        {
+          key: 'swap',
+          text: actionLabel,
+          onSelect: (r) => onSwap(r),
+        }
+      ]}
+      columns={[
+        {
+          name: 'Participant',
+          getValue: (registration): string => registration.name, 
+          render: (value) => value
+        },
+        {
+          name: 'Event',
+          getValue: (registration) => registration.event.name, 
+        },
+        {
+          name: 'Answers',
+          getValue: (r) => r.answers,
+          compareBy: (value) => `${value.question_id}:${value.answer}`,
+          render: (value) => (
+            <div className="flex flex-col gap-0.5">
+              {value.map((question) => <QuestionBadge key={question.question_id} question={question} />)}
+            </div>
+          ),
+        },
+        {
+          name: 'Components',
+          getValue: (r) => r.components,
+          compareBy: (value) => value.name,
+          render: (value) => value.map((component) => <ComponentBadge key={component.name} component={component} />),
+        },
+        {
+          name: 'Total',
+          getValue: (r) => r.components.map((c) => c.amount).reduce(sumEuroValues, euro(0)),
+          compareBy: (v) => v.value,
+          render: formatEuro,
+        },
+      ]}
+    />
+  );
+}
+
+type ParticipantsViewProps = {
+  state: State,
+  dispatch: React.Dispatch<Action>,
+  queue: EvaluatedRegistration[],
+  participants: EvaluatedRegistration[],
+}
+
+const ParticipantsView: React.FC<ParticipantsViewProps> = ({ state, dispatch, queue, participants }) => {
+  const swapRegistration = (selection: 'queue' | 'participant') => (registrations: EvaluatedRegistration[]) => {
+    registrations.forEach(({ id }) => dispatch({
+      type: 'SET_REGISTRATION_SELECTION',
+      payload: {
+        registrationId: id,
+        selection,
+      },
+    }));
+  };
+
+  console.log(state);
 
   return (
-    <div>
-      <p>
-        Creating debt center for <b>{events.length === 1 ? '1 event' : `${events.length} events`}</b>{' '}
-        with total of <b>{total} registrations</b>. Creating <b>{settings.componentMappings.length} debt components</b>{' '}
-        based on registration details. <br /><br />
-        All in all, up to <b>{(settings.componentMappings.map(m => m.price).reduce((a, b) => a + b, 0) + settings.basePrice) * total} euros</b> of debt can be created. Are you sure you want to continue? You can review the created debt instances afterwards.
+    <div className="pt-3">
+      <div className="flex items-center mt-10 mb-5">
+        <div className="h-[1px] w-3 bg-gray-300" />
+        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">Participants</div>
+        <div className="h-[1px] bg-gray-300 flex-grow" />
+      </div>
+      <p className="mt-5 mb-7 px-3">
+        Below are listed the registrations for the users who fit into the event's participant quota.
+        A debt will be created for each of these users. You can move participants from this list to the queue below
+        if they should not be charged for the event.
       </p>
-      <Button className="mt-7" onClick={() => onConfirm()}>Confirm</Button>
+      <RegistrationTable
+        registrations={participants}
+        onSwap={swapRegistration('queue')}
+        emptyMessage={<>
+          None of the selected events include any registrations! <br/> <br/>
+          If you want to import registrations from an external source, such as
+          Google Sheets, use the <strong>CSV import</strong> feature.
+        </>}
+        actionLabel="Move to queue"
+      />
+      <div className="flex items-center mt-10 mb-5">
+        <div className="h-[1px] w-3 bg-gray-300" />
+        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">Queue</div>
+        <div className="h-[1px] bg-gray-300 flex-grow" />
+      </div>
+      <p className="mt-5 mb-7 px-3">
+        Below is a list of users who have registered to the event but will not be charged.
+        Initially this list contains users in the registration queue.
+      </p>
+      <RegistrationTable
+        registrations={queue}
+        onSwap={swapRegistration('participant')}
+        emptyMessage={<>
+          There is nobody in the queue! You can move people here from the above
+          list by selecting rows and selecting the <strong>Move to queue</strong> action
+          from the context menu.
+        </>}
+        actionLabel="Move to participants"
+      />
+      <div className="flex gap-3 justify-end">
+        <Button secondary className="mt-5 inline-block" onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
+        <Button className="mt-5 inline-block" onClick={() => dispatch({ type: 'GO_TO_CONFIRMATION' })}>Continue</Button>
+      </div>
     </div>
   );
 };
 
+type ConfirmationViewProps = {
+  participants: EvaluatedRegistration[],
+  dispatch: React.Dispatch<Action>,
+  state: State,
+  onConfirm: () => void,
+};
+
+const ConfirmationView: React.FC<ConfirmationViewProps> = ({ participants, state, dispatch, onConfirm }) => {
+  const componentStats = participants
+    .flatMap(p => p.components)
+    .reduce((acc, { id, name, amount }) => {
+      const entry = acc.find(e => e.id === id);
+
+      if (entry) {
+        entry.amount = sumEuroValues(entry.amount, amount);
+        entry.count += 1;
+        entry.price = entry.amount;
+      } else {
+        acc.push({
+          id,
+          name,
+          count: 1,
+          amount,
+          price: amount,
+        });
+      }
+
+      return acc;
+    }, []);
+
+  return (
+    <div className="pt-3">
+      <p className="mb-5">
+        Creating {participants.length} debts named "{state.basicSettings.name}" with a total value of {formatEuro(participants.flatMap(p => p.components).map(c => c.amount).reduce(sumEuroValues, euro(0)))}. 
+        The debts will be due at {state.basicSettings.dueDate}.
+      </p>
+      <TableView
+        rows={componentStats}
+        columns={[
+          {
+            name: 'Component',
+            getValue: (row) => row.name,
+          },
+          {
+            name: 'Price',
+            getValue: (row) => row.price,
+            render: formatEuro,
+          },
+          {
+            name: 'Count',
+            getValue: (row) => row.count,
+          },
+          {
+            name: 'Total',
+            getValue: (row) => row.amount,
+            render: formatEuro,
+          },
+        ]}
+      />
+      <div className="flex justify-end gap-3 mt-5">
+        <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
+        <Button onClick={() => onConfirm()}>Create Debts</Button>
+      </div>
+    </div>
+  );
+};
+
+type State = {
+  step: 'select-events' | 'settings' | 'registrations' | 'confirm'
+  eventIds: number[]
+  basicSettings: {
+    name: string
+    dueDate: string
+    description: string
+    basePrice: EuroValue
+  }
+  components: {
+    id: number
+    name: string
+    amount: EuroValue
+    rules: ComponentRule[],
+  }[]
+  registrationSelections: {
+    registrationId: number,
+    selection: 'participant' | 'queue',
+  }[],
+};
+
+const INITIAL_STATE: State = {
+  step: 'select-events',
+  eventIds: [],
+  basicSettings: {
+    name: '',
+    dueDate: '',
+    description: '',
+    basePrice: euro(0),
+  },
+  components: [],
+  registrationSelections: [],
+};
+
+type SetRegistrationSelectionAction = {
+  type: 'SET_REGISTRATION_SELECTION',
+  payload: {
+    registrationId: number,
+    selection: 'queue' | 'participant',
+  },
+};
+
+type SelectEventsAction = {
+  type: 'SELECT_EVENTS',
+  payload: {
+    eventIds: number[],
+  },
+};
+
+type BasicSettings = {
+  name: string,
+  dueDate: string,
+  basePrice: EuroValue,
+};
+
+type SetBasicSettingsAction = {
+  type: 'SET_BASIC_SETTINGS',
+  payload: {
+    values: Partial<BasicSettings>,
+  },
+};
+
+type AddComponentAction = {
+  type: 'ADD_COMPONENT', 
+  payload: {
+    name: string,
+    amount: EuroValue,
+  },
+};
+
+type RemoveComponentAction = {
+  type: 'REMOVE_COMPONENT',
+  payload: {
+    id: number,
+  },
+};
+
+type CustomFieldRule = {
+  type: 'CUSTOM_FIELD',
+  id: number
+  eventId: number,
+  customFieldId: number,
+  value: string,
+};
+
+type ComponentRule = CustomFieldRule;
+
+type AddComponentRule = {
+  type: 'ADD_COMPONENT_RULE',
+  payload: {
+    componentId: number,
+    rule: Omit<ComponentRule, 'id'>,
+  },
+};
+
+type RemoveComponentRule = {
+  type: 'REMOVE_COMPONENT_RULE',
+  payload: {
+    componentId: number,
+    ruleId: number,
+  },
+};
+
+type PreviousStep = {
+  type: 'PREVIOUS_STEP',
+};
+
+type UpdateComponent = {
+  type: 'UPDATE_COMPONENT',
+  payload: {
+    id: number,
+    values: Partial<{ name: string, amount: EuroValue }>,
+  },
+};
+
+type GoToConfirmationAction = {
+  type: 'GO_TO_CONFIRMATION',
+};
+
+type Action = SelectEventsAction | SetBasicSettingsAction | AddComponentAction | RemoveComponentAction | AddComponentRule | RemoveComponentRule | PreviousStep | UpdateComponent | SetRegistrationSelectionAction | GoToConfirmationAction;
+
+type ActionPayload<K> = Action extends { type: K } ? Action : never;
+
+type Asd = Action & { type: 'REMOVE_COMPONENT_RULE' }
+
+type ActionMap = { [Key in Action['type']]: Action & { type: Key } }
+type ActionHandlers = { [Key in keyof ActionMap]: (payload: ActionMap[Key]['payload']) => void }
+
+const createReducer = () => {
+  let counter = 0;
+
+  return produce((state: State, action: Action) => {
+    console.log('ACTION', action);
+
+    const handlers: ActionHandlers = {
+      SELECT_EVENTS ({ eventIds }) {
+        state.eventIds = eventIds;
+        state.step = 'settings';
+      },
+
+      SET_BASIC_SETTINGS ({ values }) {
+        Object.assign(state.basicSettings, values);
+        state.step = 'registrations';
+      },
+
+      ADD_COMPONENT ({ name, amount }) {
+        state.components.push({
+          name,
+          id: counter++,
+          amount,
+          rules: [],
+        });
+      },
+
+      UPDATE_COMPONENT ({ id, values }) {
+        const component = state.components.find((component) => component.id === id);
+
+        if (component) {
+          Object.assign(component, values);
+        }
+      },
+
+      REMOVE_COMPONENT ({ id }) {
+        const index = state.components.findIndex(component => component.id === id);
+        state.components.splice(index, 1);
+      },
+
+      ADD_COMPONENT_RULE ({ componentId, rule }) {
+        const component = state.components.find(component => component.id === componentId);
+
+        if (component) {
+          component.rules.push({
+            ...rule,
+            id: counter++,
+          })
+        }
+      },
+
+      REMOVE_COMPONENT_RULE ({ componentId, ruleId }) {
+        const component = state.components.find(component => component.id === componentId);
+
+        if (!component) {
+          return;
+        }
+
+        const index = component.rules.findIndex(rule => rule.id === ruleId);
+
+        if (index > -1) {
+          component.rules.splice(index, 1);
+        }
+      },
+
+      PREVIOUS_STEP () {
+        const sequence: readonly State['step'][] = ['select-events', 'settings', 'registrations', 'confirm'] as const;
+        state.step = sequence[Math.max(0, sequence.indexOf(state.step) - 1)];
+      },
+
+      SET_REGISTRATION_SELECTION ({ registrationId, selection }) {
+        const existing = state.registrationSelections.find((selection) => selection.registrationId === registrationId);
+
+        if (existing) {
+          existing.selection = selection;
+        } else {
+          state.registrationSelections.push({
+            registrationId,
+            selection,
+          });
+        }
+      },
+
+      GO_TO_CONFIRMATION () {
+        state.step = 'confirm';
+      },
+    };
+
+    handlers[action.type](action.payload as any);
+  });
+};
+
+//}[action.type](action.payload));
+
 export const CreateDebtCenterFromEvent = () => {
-  const [wizardState, setWizardState] = useState<WizardState>('select-event');
-  const [events, setEvents] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const reducer = useMemo(createReducer, []);
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+
+  //const [wizardState, setWizardState] = useState<WizardState>('select-event');
+  //const [events, setEvents] = useState(null);
+  //const [settings, setSettings] = useState(null);
   const [createDebtCenterFromEvent] = useCreateDebtCenterFromEventMutation();
   const [, setLocation] = useLocation();
+
+  const registrations = useFetchEventRegistrations(state.eventIds);
+  const starting = useMemo(() => subYears(new Date(), 1), []);
+  const { data: allEvents } = useGetEventsQuery({ starting });
+  const events = useMemo(() => state.eventIds.map((id) => (allEvents ?? []).find(e => e.id === id)), [state.eventIds, allEvents]);
+
+  // console.log(state.eventIds, allEvents);
+
+  // const wizardSteps: Array<WizardState> = ['select-event', 'settings', 'participants', 'confirmation'];
+
+  const [participants, queue] = useMemo(() => {
+    if (!registrations || events.length !== registrations.length) {
+      return [[], []];
+    }
+
+    const evaluatedRegistrations = (registrations ?? [])
+      .flatMap((eventRegistrations, eventIndex) => {
+        const event = events[eventIndex];
+        console.log(eventIndex, event);
+
+        const registrations = eventRegistrations.map((registration) => {
+          const components = evaluateRules(state, event, registration);
+
+          return { ...registration, event, components, key: registration.id, queue: false } as EvaluatedRegistration;
+        });
+
+        const participants = registrations
+          .slice(0, event.maxParticipants)
+          .map((r) => ({ ...r, queue: false }));
+
+        const queue = registrations
+          .slice(event.maxParticipants)
+          .map((r) => ({ ...r, queue: true }));
+
+        const all = [...participants, ...queue];
+
+        return all.map((reg) => {
+          const override = state.registrationSelections.find(s => s.registrationId === reg.id);
+          const queue = override ? override.selection === 'queue' : reg.queue;
+
+          return { ...reg, queue };
+        });
+      });
+
+    const participants = evaluatedRegistrations.filter(r => !r.queue);
+    const queue = evaluatedRegistrations.filter(r => r.queue);
+
+    return [participants, queue];
+  }, [registrations, state]);
 
   const handleConfirm = () => {
     createDebtCenterFromEvent({
       events: events.map(e => e.id),
-      settings,
+      registrations: participants.map(r => r.id),
+      settings: {
+        ...state.basicSettings,
+        components: state.components,
+      },
     }).then(res => {
       if ('data' in res) {
         setLocation(`/admin/debt-centers/${res.data.id}`);
@@ -483,24 +1028,17 @@ export const CreateDebtCenterFromEvent = () => {
     });
   };
 
+
   let content = null;
 
-  if (wizardState === 'select-event') {
-    content = <EventSelectionView onSelect={(evt) => { setEvents(evt); setWizardState('settings'); }} />;
-  } else if (wizardState === 'settings') {
-    content = <SettingsView
-      events={events}
-      onFinished={(settings) => {
-        setSettings(settings);
-        setWizardState('confirmation');
-      }}
-    />;
-  } else if (wizardState === 'confirmation') {
-    content = <ConfirmationView
-      events={events}
-      settings={settings}
-      onConfirm={handleConfirm}
-    />;
+  if (state.step === 'select-events') {
+    content = <EventSelectionView state={state} dispatch={dispatch} />;
+  } else if (state.step === 'settings') {
+    content = <SettingsView state={state} dispatch={dispatch} />;
+  } else if (state.step === 'registrations') {
+    content = <ParticipantsView state={state} dispatch={dispatch} participants={participants} queue={queue} />;
+  } else if (state.step === 'confirm') {
+    content = <ConfirmationView participants={participants} state={state} dispatch={dispatch} onConfirm={handleConfirm} />;
   }
 
   return (
@@ -516,10 +1054,12 @@ export const CreateDebtCenterFromEvent = () => {
       <p className="mb-10">
         Create a new debt center and debts corresponding to a calendar event and it{'\''}s registrations.
       </p>
-      <Stepper
-        stages={['Select Events', 'Configure', 'Confirmation']}
-        currentStage={['select-event', 'settings', 'confirmation'].indexOf(wizardState)}
-      />
+      <div className="mx-auto w-[30em]">
+        <Stepper
+          stages={['Select Events', 'Settings', 'Participants', 'Confirm']}
+          currentStage={['select-events', 'settings', 'registrations', 'confirm'].indexOf(state.step)}
+        />
+      </div>
       {content}
     </>
   );

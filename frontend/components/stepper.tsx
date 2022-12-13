@@ -1,7 +1,7 @@
 export const Stepper = ({
   stages,
   currentStage,
-  loading,
+  loading = false,
 }) => {
   const getStepStyle = (i) => {
     if (i < currentStage)

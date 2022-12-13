@@ -79,6 +79,8 @@ export type Event = {
   registrationEnds: Date
   cancellationStarts: Date
   cancellationEnds: Date
+  registrationCount: number
+  maxParticipants: number | null
   location: string
   deleted: boolean
   price: EuroValue | null
@@ -92,6 +94,8 @@ export type ApiEvent = {
   registration_ends: string
   cancellation_starts: string
   cancellation_ends: string
+  max_participants: number | null
+  registration_count: number
   location: string
   deleted: 0 | 1
   price: string

@@ -34,6 +34,8 @@ const parseApiEvent = (apiEvent: ApiEvent): Event => ({
   registrationEnds: parseISO(apiEvent.registration_ends),
   cancellationStarts: parseISO(apiEvent.cancellation_starts),
   cancellationEnds: parseISO(apiEvent.cancellation_ends),
+  maxParticipants: apiEvent.max_participants,
+  registrationCount: apiEvent.registration_count,
   location: apiEvent.location,
   deleted: apiEvent.deleted === 1,
   price: apiEvent.price ? getEuro(apiEvent.price) : euro(0),
@@ -91,13 +93,11 @@ export class EventsService {
     try {
       const res = await this.client.get<ApiEvent[]>('/api/events', { params: { fromDate: starting } });
 
-      console.log(res);
-
       return res.data
         .map(parseApiEvent)
         .filter(event => !event.deleted);
     } catch (err) {
-      console.error(err);
+      console.error(err)
       throw new Error('Failed to fetch events');
     }
   }
