@@ -8,7 +8,7 @@ import { useMassCreateDebtsMutation, useMassCreateDebtsProgressQuery } from '../
 import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather';
 import { Button } from '../../components/button';
 import { parse } from 'papaparse';
-import { cents, euro, formatEuro, sumEuroValues } from '../../../common/currency';
+import { cents, euro, EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
 import { identity, omit } from 'remeda';
 import { tw } from '../../tailwind';
 import { addDays, format } from 'date-fns';
@@ -20,11 +20,15 @@ import { Progress } from '../../components/progress';
 type ParsedRow = {
   tkoalyUserId?: number
   dueDate?: string
+  title?: string
   date?: string
   email?: string
+  debtCenter?: string
   name?: string
+  paymentNumber?: string
   description?: string
-  amount?: number
+  amount?: EuroValue
+  tags?: Array<string>
   referenceNumber?: string
   components: Array<string>
 }
@@ -84,6 +88,8 @@ const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
   );
 };
 
+type ParsedRowMappings = { [Key in keyof ParsedRow]: [Key, (value: string) => NonNullable<ParsedRow[Key]>] };
+
 const parseCsv = (csv: string): Array<ParsedRow> => {
   const { data } = parse(csv);
   const [header, ...rows] = data as Array<Array<string>>;
@@ -92,9 +98,10 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
     return [];
   }
 
-  const columnMapping = {
+  const columnMapping: Record<string, keyof ParsedRow | ParsedRowMappings[keyof ParsedRow]> = {
     'member id': ['tkoalyUserId', parseInt],
     'due date': ['dueDate', parseDate],
+    'tags': ['tags', (value) => value.split(',').map(tag => tag)],
     'date': ['date', parseDate],
     'debt center': 'debtCenter',
     'email': 'email',
@@ -113,7 +120,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
 
     if (column) {
       const [key, parser] = typeof column === 'string'
-        ? [column, (i) => i]
+        ? [column, (i: string) => i]
         : column;
 
       return { type: 'standard', key, parser };
@@ -372,6 +379,14 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
             <TableCell>Optional</TableCell>
             <TableCell>
               {makeDefaultValueCell('paymentNumber', 'Payment Number')}
+            </TableCell>
+          </tr>
+          <tr>
+            <TableCell className="whitespace-nowrap">Tags</TableCell>
+            <TableCell>Comma spearated list of tags to be associated with the debt.</TableCell>
+            <TableCell>Optional</TableCell>
+            <TableCell>
+              {makeDefaultValueCell('tags', 'Tags', TextField, (tags) => tags.join(', '), (value: string) => value.split(',').map(tag => tag.trim()))}
             </TableCell>
           </tr>
           <tr>

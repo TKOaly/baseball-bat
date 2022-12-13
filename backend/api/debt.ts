@@ -547,6 +547,7 @@ export class DebtApi {
           amount: euroValue,
           dueDate: dateString,
           components: t.array(t.string),
+          tags: t.array(t.string),
           //paymentNumber: t.string,
           //referenceNumber: t.string,
         }),
@@ -564,6 +565,7 @@ export class DebtApi {
           components: t.array(t.string),
           paymentNumber: t.string,
           referenceNumber: t.string,
+          tags: t.array(t.string),
         })),
         components: t.array(t.type({
           name: t.string,
@@ -575,7 +577,10 @@ export class DebtApi {
         const { debts, defaults, dryRun, components } = ctx.body;
 
 
-        const tags = [{ name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true }];
+        const commonTags = [
+          { name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true },
+          ...(defaults.tags ?? []).map(name => ({ name, hidden: false })),
+        ];
 
         const progressId = uuidv4();
 
@@ -761,7 +766,7 @@ export class DebtApi {
                   publishedAt,
                   paymentCondition: paymentCondition ?? null,
                   components: debtComponents.map(c => c.id),
-                  tags,
+                  tags: [...commonTags, ...(details.tags ?? []).map(name => ({ name, hidden: false }))],
                 };
 
                 updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`);
@@ -786,7 +791,7 @@ export class DebtApi {
                   updatedAt: new Date(),
                   debtComponents,
                   credited: false,
-                  tags,
+                  tags: [...commonTags, ...(details.tags ?? []).map(name => ({ name, hidden: false }))],
                 };
 
                 if (details.components && details.components.length > 0) {
