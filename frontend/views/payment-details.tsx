@@ -4,7 +4,7 @@ import { Timeline } from '../components/timeline';
 import { useGetPaymentQuery } from '../api/payments';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
 import { formatEuro, euro, sumEuroValues, cents } from '../../common/currency';
-import { Payment } from '../../common/types';
+import { isPaymentInvoice, Payment } from '../../common/types';
 import { differenceInDays } from 'date-fns';
 
 const formatDate = (date: Date | string) => {
@@ -25,8 +25,11 @@ type InvoiceData = {
 }
 
 const InvoiceDetails = ({ payment }: { payment: Payment }) => {
-  const data = payment.data as InvoiceData;
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
+
+  if (!isPaymentInvoice(payment)) {
+    return null;
+  }
 
   return (
     <div className="p-3">
@@ -37,23 +40,23 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceNumberHeader')}</th>
-          <td>{payment.payment_number}</td>
+          <td>{payment.paymentNumber}</td>
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceCreatedAtHeader')}</th>
-          <td>{formatDate(payment.created_at)}</td>
+          <td>{formatDate(payment.createdAt)}</td>
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
-          <td>{data.due_date && formatDate(new Date(data.due_date))} ({data.due_date && formatDateRelative(data.due_date)})</td>
+          <td>{formatDate(new Date(payment.data.due_date))} ({formatDateRelative(payment.data.due_date)})</td>
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
-          <td>{formatEuro(cents(-payment.balance))}</td>
+          <td>{formatEuro(payment.balance)}</td>
         </tr>
         <tr>
           <th className="text-right pr-3 h-4">{t('invoiceReferenceNumberHeader')}</th>
-          <td>{data.reference_number}</td>
+          <td>{payment.data.reference_number}</td>
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceBeneficaryNameHeader')}</th>
@@ -84,17 +87,17 @@ export const PaymentDetails = ({ params }) => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">Payment: {payment.title} ({payment.payment_number})</h3>
+      <h3 className="text-xl text-gray-500 font-bold">Payment: {payment.title} ({payment.paymentNumber})</h3>
 
       <div className="my-3">
         <table>
           <tr>
             <th className="text-left pr-3">{t('createdAt')}</th>
-            <td>{formatDate(payment.created_at)}</td>
+            <td>{formatDate(payment.createdAt)}</td>
           </tr>
           <tr>
             <th className="text-left pr-3">{t('toBePaid')}</th>
-            <td>{formatEuro(cents(-payment.balance))}</td>
+            <td>{formatEuro(payment.balance)}</td>
           </tr>
           <tr>
             <th className="text-left pr-3">{t('paymentMethod')}</th>
@@ -155,7 +158,7 @@ export const PaymentDetails = ({ params }) => {
       <Timeline
         events={[
           {
-            time: new Date(payment.created_at),
+            time: new Date(payment.createdAt),
             title: t('paymentCreated'),
           },
         ]}

@@ -23,7 +23,7 @@ const paymentsApi = rtkApi.injectEndpoints({
       providesTags: ({ id }) => [{ type: 'Payment', id }],
     }),
 
-    getOwnPayments: builder.query<Payment[], never>({
+    getOwnPayments: builder.query<Payment[], void>({
       query: () => '/payments/my',
       providesTags: [
         { type: 'Payment', id: 'LIST' },

@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import { useState } from 'react';
 import { CheckCircle, ChevronRight, Circle, Info } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Trans, useTranslation } from 'react-i18next';
-import { euro } from '../../common/types';
+import { Debt, euro, isPaymentInvoice, Payment } from '../../common/types';
 import { TextField } from '../components/text-field';
 import { Dialog } from '../components/dialog';
 import paymentPoolSlice from '../state/payment-pool';
 import { useGetPayerDebtsQuery, useGetPayerEmailsQuery, useGetPayerQuery, useUpdatePayerPreferencesMutation } from '../api/payers';
-import { cents, formatEuro, sumEuroValues } from '../../common/currency';
+import { cents, EuroValue, formatEuro, sumEuroValues } from '../../common/currency';
 import { format, isPast } from 'date-fns';
 import { Button, SecondaryButton } from '../components/button';
 import { useGetUpstreamUserQuery } from '../api/upstream-users';
@@ -146,6 +146,84 @@ const WelcomeDialog = () => {
   );
 };
 
+type CardProps = {
+  selectable?: boolean
+  onChangeSelected?: (selected: boolean) => void
+  selected?: boolean
+  title: string
+  subtitle: string
+  amount: EuroValue
+  actions: JSX.Element
+  status?: { className: string, label: string } | null
+}
+
+const Card: React.FC<CardProps> = ({ selectable, onChangeSelected, selected, title, subtitle, amount, actions, status }) => {
+  return (
+    <div
+      className="rounded-md border group border-gray-300 hover:border-blue-300 mt-5 shadow-sm cursor-pointer"
+      onClick={() => selectable && onChangeSelected(!selected)}
+    >
+      <div className="flex items-center p-4">
+        {
+          selectable && (
+            selected
+              ? <FilledDisc className="text-blue-500 group-hover:text-blue-500 mr-4" style={{ width: '1em', strokeWidth: '2.5px' }} />
+              : <Circle className="text-gray-500 group-hover:text-blue-500 mr-4" style={{ width: '1em', strokeWidth: '2.5px' }} />
+          )
+        }
+        <div>
+          <h4 className="mb-0">{title}</h4>
+          <div className="text-gray-400 mr-2 text-sm">{subtitle}</div>
+        </div>
+        <div className="flex-grow" />
+        { status && (
+          <div className={`py-0.5 px-1 text-xs rounded-sm mx-2 font-bold ${status.className}`}>{status.label}</div>
+        ) }
+        <span className="font-bold text-gray-600">{formatEuro(amount)}</span>
+      </div>
+      <div className="border-t px-2.5 py-3 flex gap-1">
+        {actions}
+      </div>
+    </div>
+  );
+}
+
+const CardAction: React.FC<React.HTMLProps<HTMLButtonElement>> = ({ children, className, onClick, ...props }) => (
+  <button className={`uppercase text-xs font-bold py-1.5 px-2 rounded ${className}`} onClick={(evt) => { evt.stopPropagation(); onClick?.(evt); }} {...props}>{children}</button>
+)
+
+type DebtCardProps = {
+  debt: Debt
+}
+
+const DebtCard: React.FC<DebtCardProps> = ({ debt }) => {
+  const dispatch = useAppDispatch();
+  const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments);
+  const selected = selectedDebts.indexOf(debt.id) > -1;
+  const [, setLocation] = useLocation();
+  const { t } = useTranslation();
+
+  const handleToggleSelect = () => {
+    dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id));
+  };
+
+  return (
+    <Card
+      selectable
+      onChangeSelected={handleToggleSelect}
+      selected={selected}
+      title={debt.name}
+      subtitle={t('debtListInfoline', { dated: format(new Date(debt.publishedAt), 'dd.MM.yyyy'), dueDate: format(new Date(debt.dueDate), 'dd.MM.yyyy') })}
+      amount={debt.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))}
+      status={debt.dueDate && isPast(new Date(debt.dueDate)) ? { label: 'Myöhässä', className: 'bg-red-500 text-white' } : null}
+      actions={<>
+        <CardAction className="text-blue-500 hover:bg-gray-100" onClick={handleToggleSelect}>{ !selected ? 'Select' : 'Unselect' }</CardAction>
+        <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/debt/${debt.id}`)}>View Details</CardAction>
+      </>}
+    />
+  );
+};
+
 export const Main = () => {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
@@ -197,35 +275,7 @@ export const Main = () => {
         {t('unpaidDebts')}
       </h3>
 
-      {unpaidDepts.map((p) => (
-        <div
-          className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
-          onClick={() => toggleDebtSelection(p)}
-          key={p.id}
-        >
-          <div className="flex items-center">
-            {
-              selectedDebts.indexOf(p.id) >= 0
-                ? <FilledDisc className="text-blue-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                : <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-            }
-            <div>
-              <h4 className="mb-0">{p?.name}</h4>
-              <div className="text-gray-400 mr-2 text-sm -mt-1">
-                {t('debtListInfoline', { created: format(new Date(p.createdAt), 'dd.MM.yyyy'), dueDate: format(new Date(p?.dueDate), 'dd.MM.yyyy') })}
-              </div>
-            </div>
-            <div className="flex-grow" />
-            {
-              p.dueDate && isPast(new Date(p.dueDate)) && (
-                <div className="py-0.5 px-1 text-xs rounded-sm bg-red-500 mx-2 font-bold text-white">Myöhässä</div>
-              )
-            }
-            <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0)))}</span>
-            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/debt/${p.id}`)} />
-          </div>
-        </div>
-      ))}
+      {unpaidDepts.map((debt) => <DebtCard debt={debt} />)}
 
       {unpaidDepts.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
@@ -235,28 +285,27 @@ export const Main = () => {
       )}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
-        {t('openPayments')}
+        {t('openInvoices')}
       </h3>
 
-      {(payments ?? []).filter(p => !p.credited && p.status !== 'paid').map((p) => (
-        <div
-          className="rounded-md border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
-          key={p.id}
-        >
-          <div className="flex items-center">
-            <Circle className="text-gray-500 group-hover:text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-            <div>
-              <h4 className="mb-0">{p.title} <span className="text-gray-500">({p.payment_number})</span></h4>
-              <div className="text-gray-400 mr-2 text-sm -mt-1">
-                {t('paymentListInfoline', { created: format(new Date(p.created_at), 'dd.MM.yyyy') })}
-              </div>
-            </div>
-            <div className="flex-grow" />
-            <span className="font-bold text-gray-600">{formatEuro(cents(p.balance))}</span>
-            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" onClick={() => setLocation(`/payment/${p.id}`)} />
-          </div>
-        </div>
-      ))}
+      {(payments ?? [])
+        .flatMap(p => {
+          if (!(!p.credited && p.status !== 'paid' && isPaymentInvoice(p))) {
+            return [];
+          }
+
+          return [
+            <Card
+              title={p.title}
+              subtitle={t('openInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy'), due: format(new Date(p.data.due_date), 'dd.MM.yyyy') })}
+              amount={cents(-p.balance)}
+              actions={<>
+                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>View Details</CardAction>
+              </>}
+            />
+          ];
+        })
+      }
 
       {(payments ?? []).filter(p => !p.credited).length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
@@ -266,18 +315,55 @@ export const Main = () => {
       )}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+        {t('closedInvoices')}
+      </h3>
+
+      {(payments ?? [])
+        .flatMap(p => {
+          if (!((p.status === 'paid' || p.credited) && p.type === 'invoice' && isPaymentInvoice(p))) {
+            return [];
+          }
+
+          return [
+            <Card
+              title={p.title}
+              subtitle={
+                p.status === 'paid'
+                  ? t('paidInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy') })
+                  : t('creditedInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy') })
+              }
+              amount={cents(-p.balance)}
+              status={p.credited ? { className: 'text-white bg-blue-500', label: t('creditedStatus') } : { className: 'text-white bg-green-500', label: t('paidStatus') }}
+              actions={<>
+                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>View Details</CardAction>
+              </>}
+            />
+          ];
+        })
+      }
+
+      {(payments ?? []).filter(p => (p.status === 'paid' || p.credited) && p.type === 'invoice' && isPaymentInvoice(p)).length === 0 && (
+        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
+          <Info />
+          {t('noClosedInvoices')}
+        </div>
+      )}
+
+      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
         {t('paidDebts')}
       </h3>
 
       {paidDepts.map((p) => (
-        <div className="rounded-md border border-blue-400 mt-5 p-4 shadow-sm" key={p.id}>
-          <div className="flex items-center">
-            <CheckCircle className="text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-            <h4>{p?.name}</h4>
-            <div className="flex-grow" />
-            <span className="font-bold text-gray-600">{formatEuro(p.debtComponents.map(c => c.amount).reduce(sumEuroValues))}</span>
-          </div>
-        </div>
+        <Card
+          key={p.id}
+          title={p.name}
+          subtitle={t('paidDebtInfoline', { dated: format(new Date(p.date), 'dd.MM.yyyy') })}
+          amount={p.debtComponents.map(c => c.amount).reduce(sumEuroValues)}
+          status={{ className: 'text-white bg-green-500', label: t('paidStatus') }}
+          actions={[
+            <CardAction className="text-gray-600 hover:bg-gray-100">View Details</CardAction>
+          ]}
+        />
       ))}
 
       {paidDepts.length === 0 && (
