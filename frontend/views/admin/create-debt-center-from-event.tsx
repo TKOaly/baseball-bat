@@ -572,7 +572,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, on
         },
         {
           name: 'Answers',
-          getValue: (r) => r.answers,
+          getValue: (r) => r.answers.filter((answer) => answer.answer !== ''),
           compareBy: (value) => `${value.question_id}:${value.answer}`,
           render: (value) => (
             <div className="flex flex-col gap-0.5">
