@@ -1,9 +1,15 @@
 import rtkApi from './rtk-api';
-import { Debt, DebtComponentDetails, PayerEmail, PayerPreferences, PayerProfile } from '../../common/types';
+import { Debt, DebtComponentDetails, PayerEmail, PayerEmailPriority, PayerPreferences, PayerProfile } from '../../common/types';
 
 export type UpdatePayerEmailsQueryPayload = {
   payerId: string,
   emails: PayerEmail[],
+}
+
+export type UpdatePayerPayload = {
+  id: string
+  name?: string
+  emails?: { email: string, priority: PayerEmailPriority }[]
 }
 
 const payersApi = rtkApi.injectEndpoints({
@@ -18,6 +24,17 @@ const payersApi = rtkApi.injectEndpoints({
     getPayer: builder.query<PayerProfile, string>({
       query: (id) => `/payers/${id}`,
       providesTags: ({ id }) => [
+        { type: 'Payer', id: id.value },
+      ],
+    }),
+
+    updatePayer: builder.mutation<PayerProfile, UpdatePayerPayload>({
+      query: (body) => ({
+        url: `/payers/${body.id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ({ id }) => [
         { type: 'Payer', id: id.value },
       ],
     }),
@@ -127,6 +144,7 @@ export const {
   useGetPayersQuery,
   useSendPayerDebtReminderMutation,
   useMergeProfilesMutation,
+  useUpdatePayerMutation,
 } = payersApi;
 
 export default payersApi;

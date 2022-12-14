@@ -1,8 +1,8 @@
 import { Inject, Service } from 'typedi';
-import { route, router } from 'typera-express';
+import { Parser, route, router } from 'typera-express';
 import { notFound, ok, unauthorized } from 'typera-express/response';
 import * as t from 'io-ts';
-import { Debt, Email, emailIdentity, internalIdentity, tkoalyIdentity } from '../../common/types';
+import { Debt, Email, emailIdentity, internalIdentity, PayerEmailPriority, tkoalyIdentity } from '../../common/types';
 import { AuthService } from '../auth-middleware';
 import * as A from 'fp-ts/lib/Array';
 import * as E from 'fp-ts/lib/Either';
@@ -294,6 +294,77 @@ export class PayersApi {
       });
   }
 
+  private updatePayer() {
+    return route
+      .patch('/:id')
+      .use(Parser.body(t.partial({
+        name: t.string,
+        disabled: t.boolean,
+        emails: t.array(t.type({
+          email: t.string,
+          priority: t.union([
+            t.literal('primary'),
+            t.literal('default'),
+            t.literal('disabled'),
+          ]),
+        })),
+      })))
+      .handler(async (ctx) => {
+        const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.routeParams.id));
+
+        if (!payer) {
+          return notFound();
+        }
+
+        if (ctx.body.name) {
+          await this.payerService.updatePayerName(payer.id, ctx.body.name);
+        }
+
+        if (ctx.body.emails) {
+          const added: Array<{ email: string, priority: PayerEmailPriority }> = [];
+          const changed: Array<{ email: string, priority: PayerEmailPriority }> = [];
+
+          ctx.body.emails
+            .forEach((email) => {
+              const existing = payer.emails.find((entry) => entry.email === email.email);
+
+              if (!existing) {
+                added.push(email);
+              } else if (existing.priority !== email.priority) {
+                changed.push(email);
+              }
+            });
+
+          const removed = payer.emails.filter((email) => !(ctx.body.emails ?? []).some((entry) => entry.email === email.email));
+
+          for (const email of added) {
+            await this.payerService.addPayerEmail({
+              payerId: payer.id,
+              email: email.email,
+              source: 'other',
+              priority: email.priority,
+            });
+          }
+
+          for (const email of changed) {
+            await this.payerService.updatePayerEmailPriority(payer.id, email.email, email.priority);
+          }
+
+          for (const email of removed) {
+            await this.payerService.updatePayerEmailPriority(payer.id, email.email, 'disabled');
+          }
+        }
+
+        if (ctx.body.disabled !== undefined) {
+          await this.payerService.updatePayerDisabledStatus(payer.id, ctx.body.disabled);
+        }
+
+        const newPayer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.routeParams.id));
+
+        return ok(newPayer);
+      })
+  }
+
   router() {
     return router(
       this.getPayerByEmail(),
@@ -307,6 +378,7 @@ export class PayersApi {
       this.getPayers(),
       this.sendPaymentReminder(),
       this.mergeProfiles(),
+      this.updatePayer(),
     );
   }
 }

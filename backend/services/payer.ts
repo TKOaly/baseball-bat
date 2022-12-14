@@ -235,6 +235,24 @@ export class PayerService {
     };
   }
 
+  async updatePayerDisabledStatus(id: InternalIdentity, disabled: boolean) {
+    const updated = await this.pg.one<DbPayerProfileWithEmails>(sql`
+      UPDATE payer_profiles
+      SET disabled = ${disabled}
+      WHERE id = ${id.value}
+      RETURNING *
+    `);
+
+    if (!updated) {
+      throw 'Could not update payer profile disabled status';
+    }
+
+    return {
+      ...formatPayerProfile(updated),
+      emails: await this.getPayerEmails(id),
+    };
+  }
+
   async addPayerEmail(params: AddPayerEmailOptions) {
     const currentPrimary = await this.getPayerPrimaryEmail(params.payerId);
 

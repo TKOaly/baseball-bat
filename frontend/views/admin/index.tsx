@@ -12,6 +12,7 @@ import { MassCreateDebts } from './mass-create-debts';
 import { DebtDetails } from './debt-details';
 import { DebtListing } from './debt-listing';
 import { PayerDetails } from './payer-details';
+import { EditPayer } from './edit-payer';
 import { PaymentDetails } from './payment-details';
 import { BankStatement } from './bank-statement';
 import { PaymentsListing } from './payments-listing';
@@ -123,6 +124,7 @@ const Admin = () => {
             <Route path="/admin/debts" component={DebtListing} />
             <Route path="/admin/payers" component={PayerListing} />
             <Route path="/admin/payers/:id" component={PayerDetails} />
+            <Route path="/admin/payers/:id/edit" component={EditPayer} />
             <Route path="/admin/payments" component={PaymentsListing} />
             <Route path="/admin/payments/:id" component={PaymentDetails} />
             <Route path="/admin/emails" component={EmailsListing} />

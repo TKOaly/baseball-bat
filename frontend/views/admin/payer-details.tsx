@@ -78,6 +78,7 @@ export const PayerDetails = ({ params }) => {
           >
             Merge
           </ActionButton>
+          <ActionButton secondary onClick={() => setLocation(`/admin/payers/${payer.id.value}/edit`)}>Edit</ActionButton>
         </Actions>
       </Header>
       <Section title="Details" columns={2}>
