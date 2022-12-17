@@ -320,7 +320,7 @@ export class PayerService {
         pp.*,
         (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
       FROM payer_profiles pp
-      WHERE pp.id = (SELECT payer_id FROM payer_emails WHERE email = ${id.value})
+      WHERE pp.id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled
     `);
 
     if (dbProfile) {
