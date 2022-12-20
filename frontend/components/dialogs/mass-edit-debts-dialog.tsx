@@ -20,6 +20,7 @@ type FormValues = {
   name: string
   dueDate: string | null
   debtCenter: { id: string, type: 'debt_center' } | null
+  paymentCondition: string | null
 }
 
 export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
@@ -28,12 +29,14 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
     const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'));
+    const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
 
     return {
-      name: names.length === 1 ? names[0].name : '',
+      name: names.length === 1 ? names[0].name : null,
       dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
       debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
+      paymentCondition: paymentConditions.length === 1 ? '' + paymentConditions[0].paymentCondition : null,
     };
   }, [debts]);
 
@@ -41,9 +44,10 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
     const res = await updateMultipleDebtsMutation({
       debts: debts.map(d => d.id),
       values: {
-        ...values,
+        name: values.name ?? undefined,
         dueDate: values.dueDate === null ? null : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
         centerId: values.debtCenter?.id,
+        paymentCondition: values.paymentCondition ? parseInt(values.paymentCondition) : undefined,
       },
     });
 
@@ -61,31 +65,57 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
           return { debtCenter: 'Debt center is required' };
         }
 
+        try {
+          if (values.paymentCondition !== null) {
+            parseInt(values.paymentCondition);
+          }
+        } catch (err) {
+          return { paymentCondition: 'Must be an integer' };
+        }
+
         return {};
       }}
     >
-      {({ submitForm, isSubmitting, isValid }) => (
+      {({ submitForm, isSubmitting, values, isValid, setFieldValue }) => (
         <DialogBase onClose={() => onClose()}>
           <DialogHeader>Edit {debts.length} debts</DialogHeader>
           <DialogContent>
-            <InputGroup
-              label="Name"
-              name="name"
-              component={TextField}
-            />
+            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+              <InputGroup
+                fullWidth
+                label="Name"
+                name="name"
+                component={TextField}
+              />
 
-            <InputGroup
-              label="Due Date"
-              name="dueDate"
-              component={DateField}
-            />
+              <InputGroup
+                label="Due Date"
+                name="dueDate"
+                component={DateField}
+                onChange={(evt) => {
+                  setFieldValue('dueDate', evt.target.value);
+                  setFieldValue('paymentCondition', '');
+                }}
+              />
 
-            <InputGroup
-              label="Collection"
-              name="debtCenter"
-              component={ResourceSelectField}
-              type="debt_center"
-            />
+              <InputGroup
+                label="Payment Condition"
+                name="paymentCondition"
+                component={TextField}
+                onChange={(evt) => {
+                  setFieldValue('paymentCondition', evt.target.value);
+                  setFieldValue('dueDate', '');
+                }}
+              />
+
+              <InputGroup
+                label="Collection"
+                name="debtCenter"
+                fullWidth
+                component={ResourceSelectField}
+                type="debt_center"
+              />
+            </div>
           </DialogContent>
           <DialogFooter>
             <Button secondary onClick={() => onClose()}>Cancel</Button>

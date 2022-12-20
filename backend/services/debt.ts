@@ -240,9 +240,9 @@ export class DebtService {
           }
 
           query = query.append(column).append(sql` = ${value}`);
-        }
 
-        first = false;
+          first = false;
+        }
       }
 
       query = query.append(' WHERE ').append(condition).append(' RETURNING *');

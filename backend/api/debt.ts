@@ -8,7 +8,7 @@ import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, Debt, DebtComponent, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
+import { convertToDbDate, dateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
@@ -326,22 +326,39 @@ export class DebtApi {
           description: t.string,
           payerId: payerIdentity,
           centerId: t.string,
-          dueDate: t.string,
+          dueDate: t.union([t.null, t.string]),
+          paymentCondition: t.union([t.null, t.number]),
           components: t.array(t.string),
         }),
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const update = (id: string) => async () => {
-          return await this.debtService.updateDebt({
-            id: id,
-            name: ctx.body.values.name,
-            description: ctx.body.values.description,
-            centerId: ctx.body.values.centerId,
-            dueDate: ctx.body.values.dueDate === undefined ? undefined : parseISO(ctx.body.values.dueDate),
-            payerId: ctx.body.values.payerId,
-            components: ctx.body.values.components ?? [],
+        const { dueDate, paymentCondition } = ctx.body.values;
+
+        if (dueDate !== undefined && dueDate !== null && paymentCondition !== undefined && paymentCondition !== null) {
+          return badRequest({
+            message: 'Cannot define both due date and payment condition at the same time.',
           });
+        }
+
+        const values: Omit<DebtPatch, 'id'> = {
+          name: ctx.body.values.name,
+          description: ctx.body.values.description,
+          centerId: ctx.body.values.centerId,
+          payerId: ctx.body.values.payerId,
+          components: ctx.body.values.components ?? [],
+        };
+
+        if (dueDate) {
+          values.dueDate = parseISO(dueDate);
+          values.paymentCondition = null;
+        } else {
+          values.paymentCondition = paymentCondition;
+          values.dueDate = null;
+        }
+
+        const update = (id: string) => async () => {
+          return await this.debtService.updateDebt({ ...values, id });
         };
 
         return pipe(

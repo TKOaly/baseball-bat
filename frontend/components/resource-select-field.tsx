@@ -32,13 +32,13 @@ export const ResourceSelectField = (props: Props) => {
     <div>
       <div
         ref={setTriggerRef}
-        className="bg-white w-80 cursor-pointer flex items-center px-2 w-full border rounded-md shadow-sm inline-block border-gray-200"
+        className="bg-white mt-1 cursor-pointer flex items-center px-2 w-full border rounded-md shadow-sm inline-block border-gray-200"
         style={{ height: '42px' }}
         onClick={() => handleOpen()}
       >
         {selected && (
           <>
-            <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">{selected.type.replace(/_/g, ' ')}</span>
+            <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize whitespace-nowrap">{selected.type.replace(/_/g, ' ')}</span>
             <span>{resourceDetails?.name}</span>
           </>
         )}
