@@ -401,14 +401,13 @@ export class DebtService {
             JOIN debt_component dc ON dc.id = dcm.debt_component_id
             WHERE dcm.debt_id = debt.id
           ) AS total,
-          ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
+          (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
         FROM payment_debt_mappings pdm
         JOIN debt ON debt.id = pdm.debt_id
         JOIN payer_profiles ON payer_profiles.id = debt.payer_id
         JOIN debt_center ON debt_center.id = debt.debt_center_id
         LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
         LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        LEFT JOIN debt_tags ON debt_tags.debt_id = debt.id
         WHERE pdm.payment_id = ${paymentId}
         GROUP BY debt.id, payer_profiles.*, debt_center.*
       `)
@@ -425,13 +424,12 @@ export class DebtService {
         SUM(debt_component.amount) AS total,
         CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-        ARRAY_REMOVE(ARRAY_AGG(TO_JSONB(debt_tags.*)), NULL) AS tags
+        (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
       JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      LEFT JOIN debt_tags ON debt_tags.debt_id = debt.id
       WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);
