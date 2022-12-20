@@ -64,8 +64,9 @@ const Admin = () => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
 
   useEffect(() => {
-    const handler = (evt) => {
+    const handler = (evt: KeyboardEvent) => {
       if (evt.key === '/' && evt.target === document.body) {
+        evt.preventDefault();
         showSearchDialog({ openOnSelect: true });
       }
     };
