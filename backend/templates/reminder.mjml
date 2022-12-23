@@ -66,6 +66,10 @@
             <td><%- formatDate(dueDate) %></td>
           </tr>
           <tr>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Total amount</th>
+            <td><%- formatEuro(amount) %></td>
+          </tr>
+          <tr>
           	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Reference number</th>
             <td><%- referenceNumber %></td>
           </tr>
