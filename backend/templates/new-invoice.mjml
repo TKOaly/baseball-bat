@@ -71,15 +71,15 @@
             <td><%- referenceNumber %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saaja</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Beneficiary</th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan tilinumero</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Beneficiary bank account</th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan BIC</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">BIC</th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>

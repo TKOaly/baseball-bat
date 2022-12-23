@@ -10,7 +10,7 @@
     	<mj-column>
       	<mj-text font-size="20px">Hi, <%- receiverName %>!</mj-text>
         <mj-text>
-          Your invoice from TKO-äly ry was due at <%- formatDate(dueDate) %>.
+          Your invoice <%- number %> from TKO-äly ry was due at <%- formatDate(dueDate) %>.
           Please pay the amount below as soon as possible. The payment details as well as a breakdown of the invoice's contents can be found at the end of this message.
         </mj-text>
         <mj-text>
@@ -70,15 +70,15 @@
             <td><%- referenceNumber %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saaja</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Beneficiary</th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan tilinumero</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Beneficiary bank account</th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan BIC</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">BIC</th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>
