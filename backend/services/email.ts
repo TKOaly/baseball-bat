@@ -55,6 +55,7 @@ const formatEmail = (email: DbEmail): Email => ({
 
 type EmailTransportOptions = {
   from: string,
+  replyTo?: string,
   to: string,
   subject: string,
   text: string,
@@ -118,6 +119,7 @@ export const createSMTPTransport = (config: SMTPConfig) => {
       await transporter.sendMail({
         from: options.from,
         to: options.to,
+        replyTo: options.replyTo,
         subject: options.subject,
         text: options.text,
         html: options.html ?? undefined,
@@ -202,6 +204,7 @@ export class EmailService {
     return this.sendRawEmail({
       to: options.recipient,
       from: 'velat@tko-aly.fi',
+      replyTo: 'rahastonhoitaja@tko-aly.fi',
       subject: options.subject,
       text,
       html,
@@ -278,6 +281,7 @@ export class EmailService {
     await this.sendRawEmail({
       to: email.recipient,
       from: 'velat@tko-aly.fi',
+      replyTo: 'rahastonhoitaja@tko-aly.fi',
       subject: email.subject,
       text: email.text,
       html: email.html,
