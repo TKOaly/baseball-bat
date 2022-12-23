@@ -43,7 +43,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
     : [],
   payer: debt.payer && (Array.isArray(debt.payer) ? formatPayerProfile(debt.payer[0]) : formatPayerProfile(debt.payer)),
   status: debt.status,
-  tags: debt.tags.map(formatDebtTag),
+  tags: (debt.tags ?? []).map(formatDebtTag),
 });
 
 const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => ({
