@@ -62,6 +62,10 @@ export const DebtList = (props: Props) => {
               badges.push('Mispaid');
             }
 
+            if (isBefore(parseISO(row.dueDate), new Date())) {
+              badges.push('Overdue');
+            }
+
             return badges;
           },
           render: (value) => value.map((value) => {
@@ -69,6 +73,7 @@ export const DebtList = (props: Props) => {
               'Draft': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white mr-1">Draft</span>,
               'Unpaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-1">Unpaid</span>,
               'Mispaid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">Mispaid</span>,
+              'Overdue': <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">Overdue</span>,
               'Paid': <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">Paid</span>,
               'Credited': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">Credited</span>,
             }[value];
