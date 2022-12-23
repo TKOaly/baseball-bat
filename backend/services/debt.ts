@@ -100,7 +100,7 @@ export class DebtService {
       query = query.append(' WHERE ').append(where).append(' ');
     }
 
-    query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
+    query = query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
 
     return this.pg
       .any<DbDebt>(query)
