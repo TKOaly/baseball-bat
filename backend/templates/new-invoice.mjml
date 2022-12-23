@@ -10,8 +10,9 @@
     	<mj-column>
       	<mj-text font-size="20px">Hi, <%- receiverName %>!</mj-text>
         <mj-text>
-          Your invoice from TKO-äly ry was due at <%- formatDate(dueDate) %>.
-          Please pay the amount below as soon as possible. The payment details as well as a breakdown of the invoice's contents can be found at the end of this message.
+          You have received an invoice from TKO-äly ry.
+          Breakdown of the invoice's contents and the payment information can be found from the end of this message.
+        	<!-- Olet saanut laskun TKO-äly ry:ltä. Erittely laskun sisällöstä ja maksutiedot löydät viestin lopusta. -->
         </mj-text>
         <mj-text>
           Best regards,<br/><br/>

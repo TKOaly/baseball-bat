@@ -555,8 +555,9 @@ export class DebtService {
     }
 
     const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(debt.payerId);
 
-    if (!email) {
+    if (!email || !payer) {
       return E.left('No primary email for payer');
     }
 
@@ -585,6 +586,7 @@ export class DebtService {
         debts: [debt],
         referenceNumber: payment.data.reference_number,
         message: payment.message,
+        receiverName: payer.name,
       },
     });
 

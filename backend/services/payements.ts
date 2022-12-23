@@ -581,9 +581,10 @@ export class PaymentService {
 
     const debts = await this.debtService.getDebtsByPayment(id);
     const total = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(payment.payerId);
     const email = await this.payerService.getPayerPrimaryEmail(payment.payerId);
 
-    if (!email) {
+    if (!email || !payer) {
       return E.left('Could not determine email for payer');
     }
 
@@ -603,6 +604,7 @@ export class PaymentService {
         debts,
         referenceNumber: payment.data.reference_number,
         message: payment.message,
+        receiverName: payer.name,
       },
       subject: '[Lasku / Invoice] ' + payment.title,
     });
