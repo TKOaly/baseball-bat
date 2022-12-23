@@ -12,13 +12,25 @@ import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
 import * as T from 'fp-ts/lib/Task';
 import { flow, pipe } from 'fp-ts/lib/function';
-import { isPast, parseISO } from 'date-fns';
+import { addDays, isPast, parseISO } from 'date-fns';
 import { EmailService } from './email';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
   hidden: tag.hidden,
 });
+
+const resolveDueDate = (debt: DbDebt) => {
+  if (debt.due_date) {
+    return debt.due_date;
+  }
+
+  if (debt.published_at && debt.payment_condition !== null) {
+    return addDays(debt.published_at, debt.payment_condition);
+  }
+
+  return null;
+}
 
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
@@ -30,7 +42,7 @@ const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, 
   updatedAt: debt.updated_at,
   draft: debt.published_at === null,
   description: debt.description,
-  dueDate: debt.due_date,
+  dueDate: resolveDueDate(debt),
   publishedAt: debt.published_at,
   debtCenterId: debt.debt_center_id,
   defaultPayment: debt.default_payment,
