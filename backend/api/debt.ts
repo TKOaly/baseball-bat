@@ -13,7 +13,7 @@ import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
 import { EmailService } from '../services/email';
-import { format, parse, parseISO } from 'date-fns';
+import { format, isBefore, parse, parseISO, subDays } from 'date-fns';
 import { pipe } from 'fp-ts/lib/function';
 import * as E from 'fp-ts/lib/Either';
 import * as A from 'fp-ts/lib/Array';
@@ -207,8 +207,10 @@ export class DebtApi {
           if (!isPaymentInvoice(defaultPayment)) {
             return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
           }
+      
+          const isBackdated = isBefore(parseISO(defaultPayment.data.date), subDays(new Date(), 1));
 
-          if (debt.status === 'unpaid') {
+          if (debt.status === 'unpaid' && !isBackdated) {
             const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
 
             if (E.isRight(message)) {

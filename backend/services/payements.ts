@@ -390,15 +390,19 @@ export class PaymentService {
   }
 
   async onPaymentCreated(payment: Payment, options: PaymentCreationOptions) {
-    const isBackdated = isBefore(payment.createdAt, subDays(new Date(), 1));
+    if (isPaymentInvoice(payment)) {
+      const isBackdated = isBefore(parseISO(payment.data.date), subDays(new Date(), 1));
 
-    if (payment.type === 'invoice' && !isBackdated && options.sendNotification !== false) {
-      const email = await this.sendNewPaymentNotification(payment.id);
+      console.log(payment.data.date, isBackdated);
 
-      if (E.isRight(email)) {
-        await this.emailService.sendEmail(email.right.id);
-      } else {
-        throw email.left;
+      if (!isBackdated && options.sendNotification !== false) {
+        const email = await this.sendNewPaymentNotification(payment.id);
+
+        if (E.isRight(email)) {
+          await this.emailService.sendEmail(email.right.id);
+        } else {
+          throw email.left;
+        }
       }
     }
 
@@ -485,6 +489,7 @@ export class PaymentService {
           reason,
           debts,
           amount,
+          payer,
         },
       });
 
