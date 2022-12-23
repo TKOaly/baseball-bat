@@ -1,18 +1,14 @@
-Velkasi '<%- title %>' erääntyi <%- formatDate(dueDate) %>.
-Ole hyvä ja maksa velkasi mahdollisimman pian käyttäen alla olevia maksutietoja:
+Your invoice <%- number %> from TKO-äly ry was due at <%- formatDate(dueDate) %>.
+Please pay the amount below as soon as possible. The payment details as well as
+a breakdown of the invoice's contents can be found at the end of this message.
 
-----
+Best regards,
 
-Your debt '<%- title %>' was due on <%- formatDate(dueDate) %>.
-Please pay it as soon as possible using the payment details below:
+Mitja Karhusaari
+Treasurer // TKO-äly ry
 
-Invoice description / Laskun kuvaus
-===================================
-
-<%- message %>
-
-Breakdown / Erittely
-====================
+Invoice Breakdown
+=================
 <%
 
 function formatLine(padding, left, right) {
@@ -28,17 +24,16 @@ function formatLine(padding, left, right) {
 <% } -%>
 <%- formatLine(0, 'Total', formatEuro(amount)) %>
 
-Payment Details / Maksutiedot
-=============================
+Payment details
+===============
 
-Otsikko / Title:                    <%- title %>
-Laskun numero / invoice number:     <%- number %>
-Laskun päiväys / invoice date:      <%- formatDate(date) %>
-Eräpäivä / due date:                <%- formatDate(dueDate) %>
-Summa / total amount:               <%- formatEuro(amount) %>
-Viitenumero / reference number:     <%- referenceNumber %>
-Vastaanottaja / receiver name:      TKO-äly ry
-Tilinumero / receiver acccount:     FI89 7997 7995 1312 86
-Vastaanottajan BIC / receiver BIC:  HOLVFIHH
-
-
+Title:             <%- title %>
+Invoice number:    <%- number %>
+Invoice date:      <%- formatDate(date) %>
+Invoice recipient: <%- receiverName %>
+Due date:          <%- formatDate(dueDate) %>
+Total amount:      <%- formatEuro(amount) %>
+Reference number:  <%- referenceNumber %>
+Beneficiary:       TKO-äly ry
+Bnf. bank account: FI89 7997 7995 1312 86
+Bnf. BIC:          HOLVFIHH

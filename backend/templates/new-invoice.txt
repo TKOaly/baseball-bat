@@ -1,16 +1,13 @@
-You have new pending invoices from TKO-äly
+You have received an invoice from TKO-äly ry.
+Breakdown of the invoice's contents and the payment information can be found from the end of this message.
 
-This is an automated message regarding a new invoice assigned to you from
-TKO-äly. Below are the details of the invoice.
-<% if (message) { %>
-Invoice message
-===============
+Best regards,
 
-<%- message %>
-<% } %>
+Mitja Karhusaari
+Treasurer // TKO-äly ry
 
-Breakdown
-=========
+Invoice breakdown
+=================
 <%
 
 function formatLine(padding, left, right) {
@@ -32,9 +29,10 @@ Payment details
 Title:             <%- title %>
 Invoice number:    <%- number %>
 Invoice date:      <%- formatDate(date) %>
+Invoice recipient: <%- receiverName %>
 Due date:          <%- formatDate(dueDate) %>
 Total amount:      <%- formatEuro(amount) %>
 Reference number:  <%- referenceNumber %>
-Receiver name:     TKO-äly ry
-Receiver acccount: FI89 7997 7995 1312 86
-Receiver BIC:      HOLVFIHH
+Beneficiary:       TKO-äly ry
+Bnf. bank account: FI89 7997 7995 1312 86
+Bnf. BIC:          HOLVFIHH
