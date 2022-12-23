@@ -1,7 +1,7 @@
 import { TableView } from './table-view';
 import { Debt, DebtWithPayer, PayerProfile } from '../../common/types';
 import { Link, useLocation } from 'wouter';
-import { useDeleteDebtMutation, usePublishDebtsMutation } from '../api/debt';
+import { useDeleteDebtMutation, usePublishDebtsMutation, useSendReminderMutation, useSendReminderMutation } from '../api/debt';
 import { ExternalLink } from 'react-feather';
 import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';
@@ -15,6 +15,7 @@ export type Props = {
 export const DebtList = (props: Props) => {
   const [publishDebts] = usePublishDebtsMutation();
   const [deleteDebt] = useDeleteDebtMutation();
+  const [sendReminder] = useSendReminderMutation();
   const [, setLocation] = useLocation();
   const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog);
 
@@ -101,8 +102,22 @@ export const DebtList = (props: Props) => {
         {
           key: 'publish',
           text: 'Publish',
+          disabled: (row) => !row.draft,
           onSelect: async (rows) => {
             await publishDebts(rows.map(r => r.id));
+          },
+        },
+        {
+          key: 'send-reminder',
+          text: 'Send Reminder',
+          disabled: (row) => row.draft,
+          onSelect: async (rows) => {
+            await Promise.all(rows.map(async (row) => {
+              await sendReminder({
+                draft: false,
+                id: row.id,
+              });
+            }));
           },
         },
         {
