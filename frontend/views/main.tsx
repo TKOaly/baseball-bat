@@ -358,7 +358,7 @@ export const Main = () => {
           key={p.id}
           title={p.name}
           subtitle={t('paidDebtInfoline', { dated: format(new Date(p.date), 'dd.MM.yyyy') })}
-          amount={p.debtComponents.map(c => c.amount).reduce(sumEuroValues)}
+          amount={p.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))}
           status={{ className: 'text-white bg-green-500', label: t('paidStatus') }}
           actions={[
             <CardAction className="text-gray-600 hover:bg-gray-100">View Details</CardAction>

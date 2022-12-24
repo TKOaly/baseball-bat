@@ -13,7 +13,8 @@ type ColumnDef<T, C extends React.JSXElementConstructor<any>, V, K extends keyof
 type Props<T extends { key: string | number }, ColumnMap extends Record<string, unknown>> = {
   value: T[],
   columns: ColumnDef<T, any, any, keyof ColumnMap, ColumnMap>[], // eslint-disable-line
-  createNew: () => T,
+  createNew?: () => T,
+  disableRemove?: boolean,
   readOnly?: boolean,
   onChange: (value: T[]) => void,
   errors?: Record<string, unknown>,
@@ -42,6 +43,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
   columns,
   value,
   createNew,
+  disableRemove,
   readOnly,
   onChange,
   errors,
@@ -76,7 +78,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
         );
       });
 
-      if (!readOnly) {
+      if (!readOnly && !disableRemove) {
         fields.push(
           <div className="px-2 text-gray-600 flex items-center mt-1">
             <button onClick={() => tools.remove(rowIndex)}>
@@ -96,12 +98,12 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
             </div>
           );
         }),
-        !readOnly && <div />,
+        !(readOnly || disableRemove) && <div />,
       );
 
       return fields;
     }),
-    !readOnly && <div className="col-span-full flex justify-end pt-1 pr-2 text-gray-600">
+    !readOnly && createNew !== undefined && <div className="col-span-full flex justify-end pt-1 pr-2 text-gray-600">
       <button onClick={() => tools.push(createNew())} data-cy="tabular-field-list-add-button">
         <Plus />
       </button>
@@ -136,7 +138,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
     <div
       className="flex mt-1 col-span-full grid items-center"
       style={{
-        gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))${readOnly ? '' : ' min-content'}`,
+        gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))${(readOnly || disableRemove) ? '' : ' min-content'}`,
       }}
     >
       {
@@ -144,7 +146,7 @@ export const TabularFieldList = <T extends { key: string | number }, C extends R
           <div className="text-xs font-bold text-gray-500 pl-1.5" key={column.key}>{column.header}</div>
         ))
       }
-      {!readOnly && <div />}
+      {!(readOnly || disableRemove) && <div />}
       {render(tools)}
     </div>
   );

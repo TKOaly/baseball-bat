@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api';
-import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch, DebtComponentPatch } from '../../common/types';
+import { DebtComponent, NewDebtComponent, Debt, NewDebt, DebtWithPayer, Payment, Email, DebtPatch, DebtComponentPatch, MultipleDebtPatchValues } from '../../common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns';
 
@@ -184,7 +184,7 @@ const debtApi = rtkApi.injectEndpoints({
       ],
     }),
 
-    updateMultipleDebts: builder.mutation<Debt[], { debts: string[], values: Omit<DebtPatch, 'id'> }>({
+    updateMultipleDebts: builder.mutation<Debt[], { debts: string[], values: MultipleDebtPatchValues }>({
       query: (body) => ({
         method: 'POST',
         url: '/debt/update-multiple',

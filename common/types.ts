@@ -403,6 +403,20 @@ export type DebtPatch = {
   components?: string[]
 }
 
+export type MultipleDebtPatchValues = {
+  name?: string
+  description?: string
+  payerId?: PayerIdentity
+  dueDate?: Date | null
+  date?: DbDateString | null
+  paymentCondition?: number | null
+  centerId?: string
+  components?: {
+    id: string
+    operation: 'include' | 'exclude'
+  }[]
+}
+
 export type DebtCenterPatch = {
   id: string
   name: string

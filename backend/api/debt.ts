@@ -330,7 +330,10 @@ export class DebtApi {
           centerId: t.string,
           dueDate: t.union([t.null, t.string]),
           paymentCondition: t.union([t.null, t.number]),
-          components: t.array(t.string),
+          components: t.array(t.type({
+            operation: t.union([ t.literal('include'), t.literal('exclude') ]),
+            id: t.string,
+          })),
         }),
       })))
       .use(this.authService.createAuthMiddleware())
@@ -343,12 +346,11 @@ export class DebtApi {
           });
         }
 
-        const values: Omit<DebtPatch, 'id'> = {
+        const values: Partial<Omit<DebtPatch, 'id'>> = {
           name: ctx.body.values.name,
           description: ctx.body.values.description,
           centerId: ctx.body.values.centerId,
           payerId: ctx.body.values.payerId,
-          components: ctx.body.values.components ?? [],
         };
 
         if (dueDate) {
@@ -360,7 +362,33 @@ export class DebtApi {
         }
 
         const update = (id: string) => async () => {
-          return await this.debtService.updateDebt({ ...values, id });
+          const debt = await this.debtService.getDebt(id);
+
+          if (!debt) {
+            throw new Error(`Debt with ID '${id}' does not exist`);
+          }
+
+          let components = undefined;
+
+          if (ctx.body.values.components) {
+            const componentIds = new Set(debt.debtComponents.map(c => c.id));
+
+            for (const { operation, id } of ctx.body.values.components) {
+              if (operation === 'include') {
+                componentIds.add(id);
+              } else {
+                componentIds.delete(id);
+              }
+            }
+
+            components = [...componentIds];
+          }
+
+          return await this.debtService.updateDebt({
+            ...values,
+            id,
+            components,
+          });
         };
 
         return pipe(
