@@ -67,6 +67,7 @@
     "sql-template-strings": "^2.2.2",
     "stripe": "^8.202.0",
     "styled-components": "^5.3.3",
+    "tailwind-merge": "^1.8.1",
     "typedi": "^0.10.0",
     "typera-express": "^2.4.1",
     "uuid": "^8.3.2",

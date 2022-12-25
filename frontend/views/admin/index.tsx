@@ -2,6 +2,7 @@ import { Link, Redirect, Route, Switch, useLocation } from 'wouter';
 import { CreateDebtCenter } from './create-debt-center';
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event';
 import { DialogTarget, useDialog } from '../../components/dialog';
+import { twMerge } from 'tailwind-merge';
 import { PayerListing } from './payer-listing';
 import { Banking } from './banking';
 import { ImportXMLStatement } from './import-xml-statement';
@@ -30,22 +31,32 @@ import { EditDebtCenter } from './edit-debt-center';
 type MenuItemProps = {
   path?: string
   onClick?: () => void
+  className?: string
+  active?: boolean
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ path, onClick, children }) => {
+const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, className }) => {
   const [location, setLocation] = useLocation();
-  const matched = location.indexOf(path) === 0;
+  let matched = location.indexOf(path) === 0;
+
+  if (active !== undefined) {
+    matched = active;
+  }
 
   return (
     <li
-      className={`
+      className={twMerge(`
         px-4
-        py-2.5
-        hover:bg-gray-50
+        py-1
+        relative
         cursor-pointer
-        ${matched && 'border-l-8 border-blue-500 bg-gray-50 pl-2'}
-        my-1
-      `}
+        border-b-2
+        border-t-2
+        border-gray-50
+        group
+        hover:bg-gray-100
+        ${ matched && 'bg-gray-100' }
+      `, className)}
       onClick={() => {
         onClick?.();
 
@@ -54,6 +65,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, onClick, children }) => {
         }
       }}
     >
+      <div className={`absolute left-0 top-0 bottom-0 ${matched ? 'bg-blue-500 w-1.5' : 'bg-gray-300 w-0'} group-hover:w-1.5 duration-200`} />
       {children}
     </li>
   );
@@ -77,10 +89,10 @@ const Admin = () => {
   }, []);
 
   return (
-    <div className="flex flex-row h-screen bg-[#fbfbfb]">
-      <div className="flex-shrink flex flex-col w-80 bg-white border-r shadow-xl">
+    <div className="flex flex-row h-screen bg-white">
+      <div className="flex-shrink-0 flex flex-col w-80 bg-gray-50 border-r border-[#ececec]">
         <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
-        <TextField placeholder="Search..." className="mx-3 mb-3" onClick={() => showSearchDialog({ openOnSelect: true })} />
+        <TextField placeholder="Search..." className="mx-3 mb-5" onClick={() => showSearchDialog({ openOnSelect: true })} />
         <ul className="">
           <MenuItem path="/admin/debt-centers">Collections</MenuItem>
           <MenuItem path="/admin/debts">Debts</MenuItem>
@@ -88,11 +100,9 @@ const Admin = () => {
           <MenuItem path="/admin/payers">Payers</MenuItem>
           <MenuItem path="/admin/emails">Emails</MenuItem>
           <MenuItem path="/admin/banking">Banking</MenuItem>
+          <MenuItem path="/" active={false} className="mt-4">Back to public site</MenuItem>
+          <MenuItem path="#">Log out</MenuItem>
         </ul>
-        <div className="py-2.5 px-4 hover:border-l-8 border-blue-500 hover:pl-2 cursor-pointer hover:bg-gray-50">
-          Log out
-        </div>
-        <Link to='/' style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25em', margin: '1em', fontSize: '0.9em', color: 'gray' }}>Back to public site <CornerDownLeft style={{ height: '1em' }} className="text-blue-600" /></Link>
         <div className="flex-grow" />
         <ul className="flex justify-center">
           <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'narrow' && 'border-blue-500'}`} onClick={() => setWidth('narrow')}>Narrow</li>
