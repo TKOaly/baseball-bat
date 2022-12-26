@@ -1,4 +1,4 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import { DialogBase, DialogContent, DialogFooter, DialogHeader, useDialog } from '../../components/dialog';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { Button } from '../../components/button';
 import { TextField } from '../../components/text-field';
@@ -14,6 +14,8 @@ import { ResourceSelectField } from '../resource-select-field';
 import { TabularFieldListFormik } from '../tabular-field-list';
 import { EuroField } from '../euro-field';
 import { DropdownField } from '../dropdown-field';
+import { TableView } from '../table-view';
+import { AddTagDialog } from './add-tag-dialog';
 
 type Props = {
   onClose: () => void,
@@ -25,6 +27,10 @@ type FormValues = {
   dueDate: string | null
   debtCenter: { id: string, type: 'debt_center' } | null
   paymentCondition: string | null
+  tags: {
+    name: string,
+    operation: 'noop' | 'include' | 'exclude',
+  }[],
   components: {
     id: string,
     name: string,
@@ -34,6 +40,7 @@ type FormValues = {
 }
 
 export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
+  const showAddTagDialog = useDialog(AddTagDialog);
   const [updateMultipleDebtsMutation] = useUpdateMultipleDebtsMutation();
 
   const commonDebtCenterId = useMemo(() => {
@@ -65,6 +72,22 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       .map(([id, count]) => [commonDebtCenterComponents.find(dc => dc.id === id), count]);
   }, [commonDebtCenterComponents, debts]);
 
+  const tagsSummary = useMemo<Array<[string, number]>>(() => {
+    const summary = new Map();
+
+    for (const { name } of debts.flatMap((debt) => debt.tags)) {
+      const count = summary.get(name);
+
+      if (count === undefined) {
+        summary.set(name, 1);
+      } else {
+        summary.set(name, count + 1);
+      }
+    }
+
+    return [...summary.entries()];
+  }, [debts]);
+
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
     const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'));
@@ -91,12 +114,29 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       });
     }
 
+    let tags = tagsSummary
+      .map(([name, count]) => {
+        let operation = 'noop';
+
+        if (count === 0) {
+          operation = 'exclude';
+        } else if (count === debts.length) {
+           operation = 'include';
+        }
+
+        return {
+          name,
+          operation,
+        };
+      });
+
     return {
       name: names.length === 1 ? names[0].name : null,
       dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
       debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
       paymentCondition: paymentConditions.length === 1 ? '' + paymentConditions[0].paymentCondition : null,
       components,
+      tags,
     };
   }, [debts, componentSummary]);
 
@@ -111,6 +151,9 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         components: values.components
           .filter(({ operation }) => operation !== 'noop')
           .map(({ id, operation }) => ({ id, operation })) as any,
+        tags: values.tags
+          .filter(({ operation }) => operation !== 'noop')
+          .map(({ name, operation }) => ({ name, operation })) as any,
       },
     });
 
@@ -180,54 +223,288 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 type="debt_center"
               />
 
+              { values.tags.length > 0 && (
+                <>
+                  <div className="col-span-full">
+                    <span className="text-sm font-bold text-gray-800 mb-1 block">Tags</span>
+                    <TableView
+                      hideTools
+                      rows={values.tags.map((c) => ({ ...c, key: c.name }))}
+                      columns={[
+                        {
+                          name: 'Name',
+                          getValue: (row) => row.name,
+                        },
+                        {
+                          name: 'Presence',
+                          getValue: (row) => {
+                            const count = tagsSummary
+                              .find(([name]) => name === row.name)?.[1] ?? 0;
+
+                            let noopEq = 'noop';
+                            let originalPresence = 'Mixed';
+
+                            if (count === debts.length) {
+                              noopEq = 'include';
+                              originalPresence = 'All';
+                            } else if (count === 0) {
+                              noopEq = 'exclude';
+                              originalPresence = 'None';
+                            }
+
+                            let newPresence = null; 
+
+                            if (row.operation !== 'noop' && row.operation !== noopEq) {
+                              if (row.operation === 'include') {
+                                newPresence = 'All';
+                              } else if (row.operation === 'exclude') {
+                                newPresence = 'None';
+                              }
+                            }
+
+                            return [originalPresence, newPresence];
+                          },
+                          render: ([ originalPresence, newPresence ]) => (
+                            <>
+                              <span className={`${newPresence !== null ? 'line-through text-gray-500 bg-gray-200' : 'bg-gray-300'} px-1.5 text-sm rounded-sm`}>{originalPresence}</span>
+                              { newPresence !== null && (
+                                <span className={`ml-1.5 ${ newPresence === 'All' ? 'bg-green-500' : 'bg-red-500'} text-white px-1.5 text-sm rounded-sm`}>{newPresence}</span>
+                              ) }
+                            </>
+                          ),
+                        },
+                        {
+                          name: '',
+                          getValue: (row) => row,
+                          render: (row) => (
+                            <div className="flex gap-2">
+                              { (row.operation === 'noop' || row.operation === 'exclude') && (
+                                <Button
+                                  small
+                                  className="bg-green-500 hover:bg-green-400"
+                                  onClick={() => {
+                                    const i = values.tags.findIndex((t) => t.name === row.name);
+                                    setFieldValue(`tags.${i}.operation`, 'include');
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              )}
+                              { (row.operation === 'noop' || row.operation === 'include') && (
+                                <Button
+                                  small
+                                  className="bg-red-500 hover:bg-red-400"
+                                  onClick={() => {
+                                    const i = values.tags.findIndex((t) => t.name === row.name);
+                                    setFieldValue(`tags.${i}.operation`, 'exclude');
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                              { (row.operation !== 'noop') && (
+                                <Button
+                                  small
+                                  secondary
+                                  onClick={() => {
+                                    const i = values.tags.findIndex((t) => t.name === row.name);
+                                    setFieldValue(`tags.${i}.operation`, 'noop');
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              ) }
+                            </div>
+                          ),
+                        },
+                      ]}
+                      actions={undefined /*[
+                        {
+                          key: 'include',
+                          text: 'Include',
+                          disabled: (row) => row?.operation === 'include',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.tags.findIndex((t) => t.name === row.name);
+                              setFieldValue(`tags.${index}.operation`, 'include');
+                            }
+                          },
+                        },
+                        {
+                          key: 'exclude',
+                          text: 'Exclude',
+                          disabled: (row) => row?.operation === 'exclude',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.tags.findIndex((t) => t.name === row.name);
+                              setFieldValue(`tags.${index}.operation`, 'exclude');
+                            }
+                          },
+                        },
+                        {
+                          key: 'clear',
+                          text: 'Clear',
+                          disabled: (row) => row?.operation === 'noop',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.tags.findIndex((t) => t.name === row.name);
+                              setFieldValue(`name.${index}.operation`, 'noop');
+                            }
+                          },
+                        },
+                      ]*/}
+                      footer={
+                        <Button
+                          small
+                          onClick={async () => {
+                            const result = await showAddTagDialog({});
+
+                            if (result) {
+                              setFieldValue('tags', [...values.tags, { name: result.name, operation: 'include' }]);
+                            }
+                          }}
+                        >
+                          Add
+                        </Button>
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
               { values.components.length > 0 && (
-                <InputGroup
-                  label="Components"
-                  name="components"
-                  fullWidth
-                  component={TabularFieldListFormik}
-                  disableRemove
-                  columns={[
-                    {
-                      header: 'Component',
-                      key: 'name',
-                      component: TextField,
-                      props: {
-                        readOnly: true,
-                      },
-                    },
-                    /*{
-                      header: 'Amount',
-                      key: 'amount',
-                      component: EuroField,
-                      props: {
-                        readOnly: true,
-                      },
-                    },*/
-                    {
-                      header: 'Action',
-                      key: 'operation',
-                      component: DropdownField,
-                      props: {
-                        options: [
-                          {
-                            value: 'include',
-                            text: 'Include',
+                <>
+                  <div className="col-span-full mt-3">
+                    <span className="text-sm font-bold text-gray-800 mb-1 block">Components</span>
+                    <TableView
+                      hideTools
+                      footer={false}
+                      rows={values.components.map((c) => ({ ...c, key: c.id }))}
+                      columns={[
+                        {
+                          name: 'Name',
+                          getValue: (component) => component.name,
+                        },
+                        {
+                          name: 'Presence',
+                          getValue: (component) => {
+                            const count = componentSummary.find(([{ id }]) => id === component.id)[1];
+
+                            let noopEq = 'noop';
+                            let originalPresence = 'Mixed';
+
+                            if (count === debts.length) {
+                              noopEq = 'include';
+                              originalPresence = 'All';
+                            } else if (count === 0) {
+                              noopEq = 'exclude';
+                              originalPresence = 'None';
+                            }
+
+                            let newPresence = null; 
+
+                            if (component.operation !== 'noop' && component.operation !== noopEq) {
+                              if (component.operation === 'include') {
+                                newPresence = 'All';
+                              } else if (component.operation === 'exclude') {
+                                newPresence = 'None';
+                              }
+                            }
+
+                            return [originalPresence, newPresence];
                           },
-                          {
-                            value: 'exclude',
-                            text: 'Exclude',
+                          render: ([ originalPresence, newPresence ]) => (
+                            <>
+                              <span className={`${newPresence !== null ? 'line-through text-gray-500 bg-gray-200' : 'bg-gray-300'} px-1.5 text-sm rounded-sm`}>{originalPresence}</span>
+                              { newPresence !== null && (
+                                <span className={`ml-1.5 ${ newPresence === 'All' ? 'bg-green-500' : 'bg-red-500'} text-white px-1.5 text-sm rounded-sm`}>{newPresence}</span>
+                              ) }
+                            </>
+                          ),
+                        },
+                        {
+                          name: '',
+                          getValue: (row) => row,
+                          render: (row) => (
+                            <div className="flex gap-2">
+                              { (row.operation === 'noop' || row.operation === 'exclude') && (
+                                <Button
+                                  small
+                                  className="bg-green-500 hover:bg-green-400"
+                                  onClick={() => {
+                                    const i = values.components.findIndex((t) => t.id === row.id);
+                                    setFieldValue(`components.${i}.operation`, 'include');
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              )}
+                              { (row.operation === 'noop' || row.operation === 'include') && (
+                                <Button
+                                  small
+                                  className="bg-red-500 hover:bg-red-400"
+                                  onClick={() => {
+                                    const i = values.components.findIndex((t) => t.id === row.id);
+                                    setFieldValue(`components.${i}.operation`, 'exclude');
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                              { (row.operation !== 'noop') && (
+                                <Button
+                                  small
+                                  secondary
+                                  onClick={() => {
+                                    const i = values.components.findIndex((t) => t.id === row.id);
+                                    setFieldValue(`components.${i}.operation`, 'noop');
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              ) }
+                            </div>
+                          ),
+                        },
+                      ]}
+                      actions={undefined /*[
+                        {
+                          key: 'include',
+                          text: 'Include',
+                          disabled: (row) => row.operation === 'include',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.components.findIndex((c) => c.id === row.id);
+                              setFieldValue(`components.${index}.operation`, 'include');
+                            }
                           },
-                          {
-                            value: 'noop',
-                            text: 'Nothing',
+                        },
+                        {
+                          key: 'exclude',
+                          text: 'Exclude',
+                          disabled: (row) => row.operation === 'exclude',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.components.findIndex((c) => c.id === row.id);
+                              setFieldValue(`components.${index}.operation`, 'exclude');
+                            }
                           },
-                        ],
-                        allowCustom: false,
-                      },
-                    },
-                  ]}
-                />
+                        },
+                        {
+                          key: 'clear',
+                          text: 'Clear',
+                          disabled: (row) => row.operation === 'noop',
+                          onSelect: (rows) => {
+                            for (const row of rows) {
+                              const index = values.components.findIndex((c) => c.id === row.id);
+                              setFieldValue(`components.${index}.operation`, 'noop');
+                            }
+                          },
+                        },
+                      ]*/}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </DialogContent>

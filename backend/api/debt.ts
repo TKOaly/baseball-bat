@@ -334,6 +334,10 @@ export class DebtApi {
             operation: t.union([ t.literal('include'), t.literal('exclude') ]),
             id: t.string,
           })),
+          tags: t.array(t.type({
+            operation: t.union([ t.literal('include'), t.literal('exclude') ]),
+            name: t.string,
+          })),
         }),
       })))
       .use(this.authService.createAuthMiddleware())
@@ -384,10 +388,29 @@ export class DebtApi {
             components = [...componentIds];
           }
 
+          let tags = undefined;
+
+          if (ctx.body.values.tags) {
+            const tagNames = new Set(debt.tags.map(t => t.name));
+
+            for (const { operation, name } of ctx.body.values.tags) {
+              if (operation === 'include') {
+                tagNames.add(name);
+              } else {
+                tagNames.delete(name);
+              }
+            }
+
+            tags = [...tagNames];
+          }
+
+          console.log(tags);
+
           return await this.debtService.updateDebt({
             ...values,
             id,
             components,
+            tags,
           });
         };
 

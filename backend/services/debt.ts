@@ -320,6 +320,47 @@ export class DebtService {
       );
     }
 
+    let handleTags: TE.TaskEither<Error, null> = async () => E.right(null);
+
+    if (debt.tags) {
+      const tags = debt.tags;
+
+      const newTags = pipe(
+        debt.tags,
+        A.filter((name) => existingDebt.tags.findIndex(x => x.name === name) === -1),
+      );
+
+      const removedTags = pipe(
+        existingDebt.tags,
+        A.filter(({ name }) => tags.findIndex(x => x === name) === -1),
+        A.map(t => t.name),
+      );
+
+      console.log(newTags, removedTags);
+
+      const addTags =
+        A.traverse(TE.ApplicativePar)((name) => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(sql`
+            INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${debt.id}, ${name}, false)
+          `);
+
+          return E.right(null);
+        });
+
+      const removeTags =
+        A.traverse(TE.ApplicativePar)((name) => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(sql`DELETE FROM debt_tags WHERE debt_id = ${debt.id} AND name = ${name}`);
+
+          return E.right(null);
+        });
+
+      handleTags = pipe(
+        addTags(newTags),
+        TE.chain(() => removeTags(removedTags)),
+        TE.map(() => null),
+      );
+    }
+
     return pipe(
       this.pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
@@ -329,6 +370,7 @@ export class DebtService {
       })),
       TE.map(formatDebt),
       TE.chainFirst(() => handleComponents),
+      TE.chainFirst(() => handleTags),
     )();
   }
 

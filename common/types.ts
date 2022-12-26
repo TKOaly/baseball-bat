@@ -401,6 +401,7 @@ export type DebtPatch = {
   paymentCondition?: number | null
   centerId?: string
   components?: string[]
+  tags?: string[]
 }
 
 export type MultipleDebtPatchValues = {
@@ -413,6 +414,10 @@ export type MultipleDebtPatchValues = {
   centerId?: string
   components?: {
     id: string
+    operation: 'include' | 'exclude'
+  }[]
+  tags?: {
+    name: string
     operation: 'include' | 'exclude'
   }[]
 }
