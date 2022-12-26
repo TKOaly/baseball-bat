@@ -2,6 +2,7 @@ import { ComponentProps } from 'react';
 import { Loader } from 'react-feather';
 import styled from 'styled-components';
 import { Link } from 'wouter';
+import { twMerge } from 'tailwind-merge';
 
 const commonClasses = `
   inline-flex
@@ -16,21 +17,18 @@ const commonClasses = `
 
 const classNames = {
   default: `
-    ${commonClasses}
     bg-blue-500
     text-white
     hover:bg-blue-600
     active:ring-2
   `,
   secondary: `
-    ${commonClasses}
     bg-gray-200
     text-gray-600
     hover:bg-gray-300
     active:ring-2
   `,
   disabled: `
-    ${commonClasses}
     bg-gray-100
     cursor-not-allowed
     text-gray-400
@@ -41,7 +39,7 @@ const classNames = {
 
 const noop = () => { }; // eslint-disable-line
 
-export const Button = ({ secondary = false, disabled = false, children, loading = false, onClick = noop, ...rest }) => {
+export const Button = ({ secondary = false, small = false, disabled = false, children, loading = false, onClick = noop, ...rest }) => {
   let styleName = 'default';
 
   if (secondary) {
@@ -53,7 +51,16 @@ export const Button = ({ secondary = false, disabled = false, children, loading 
   }
 
   return (
-    <button {...rest} className={`${classNames[styleName]} ${rest.className}`} onClick={onClick}>
+    <button
+      {...rest}
+      className={twMerge(
+        commonClasses,
+        classNames[styleName],
+        small && 'rounded py-0.5 px-1.5 text-xs',
+        rest.className,
+      )}
+      onClick={onClick}
+    >
       <Loader className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${loading ? 'w-5' : 'w-0'} overflow-hidden`} />
       {children}
     </button>
