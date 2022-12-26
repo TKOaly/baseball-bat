@@ -4,6 +4,7 @@ import { identity } from 'fp-ts/lib/function';
 import { useMemo, useState } from 'react';
 import { Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
 import { difference, concat, uniq } from 'remeda';
+import { Button } from './button';
 import { Dropdown } from './dropdown';
 import { FilledDisc } from './filled-disc';
 
@@ -44,6 +45,8 @@ export type TableViewProps<R extends Row, ColumnNames extends string, ColumnType
   selectable?: boolean,
   actions?: Array<Action<R>>,
   emptyMessage?: JSX.Element | string,
+  hideTools?: boolean,
+  footer?: React.ReactNode,
 }
 
 const getColumnValue = <R extends Row, Value>(column: Column<R, any, Value>, row: R): Value => {
@@ -157,7 +160,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
   );
 };
 
-export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
+export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
   const [sorting, setSorting] = useState(null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
@@ -283,128 +286,171 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
   }, [selectedRows, actions]);
 
   return (
-    <div className="relative pt-5" data-cy="table-view" data-visible-rows={sortedRows.length} data-total-rows={rows.length}>
-      <div className="absolute left-full ml-2 w-60 flex flex-col gap-2 p-3">
-        <Dropdown
-          label="Sort"
-          options={columns.map((col) => ({
-            text: (
-              <div className={`flex ${sorting?.[0] === col.name && 'text-blue-500'} items-center`}>
-                <span className="flex-grow">{col.name}</span>
-                {sorting?.[0] === col.name && (
-                  sorting[1] === 'asc'
-                    ? <TrendingUp className="h-4" />
-                    : <TrendingDown className="h-4" />
-                )}
-              </div>
-            ),
-            value: col.name,
-          }))}
-          onSelect={(col) => {
-            if (!sorting || sorting[0] !== col) {
-              setSorting([col, 'desc']);
-            } else if (sorting[1] === 'desc') {
-              setSorting([col, 'asc']);
-            } else {
-              setSorting(null);
-            }
-          }}
-        />
-        <Dropdown
-          label="Filter"
-          options={[
-            ...columns.map((col) => ({
-              text: <FilterDropdownItem
-                column={col}
-                rows={rows}
-                options={filters[col.name] ?? { allowlist: [], blocklist: [] }}
-                onChange={(options) => setFilters((prev) => ({ ...prev, [col.name]: options }))}
-              />,
-              value: col.name,
-            })),
-            { divider: true },
-            { text: (<div className="flex items-center gap-1 -ml-2"><Square className="h-4 text-gray-500" /> TKO-äly member</div>) },
-          ]}
-        />
-        <Dropdown
-          label="Actions"
-          options={[
-            { text: 'Select all', onSelect: () => setSelectedRows(sortedRows.map(r => r.key)) },
-            { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
-            { text: 'Invert selection', onSelect: () => setSelectedRows(sortedRows.filter(r => !selectedRows.includes(r.key)).map(r => r.key)) },
-            ...(
-              availableActions.length > 0
-                ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => sortedRows.find(r => r.key === key)).filter(identity)) }))]
-                : []
-            ),
-          ]}
-        />
-      </div>
-      <div className="grid bg-white border rounded-md shadow-sm" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
-        {selectable && <div />}
-        {columns.map((column) => (
-          <div className="relative h-0" key={column.name}>
-            <div className={`absolute ${column.align === 'right' ? 'right-3' : 'left-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
-            <div className={`opacity-0 pointer-events-none ${column.align === 'right' ? 'pr-3' : 'pl-3'} pb-1 text-xs font-bold text-gray-500 bottom-full`}>{column.name}</div>
-          </div>
-        ))}
-        {actions && <div />}
-        {
-          sortedRows.flatMap((row, i) => {
-
-            return (
-              <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(row))}>
-                {selectable && (
-                  <div className={`${i > 0 && 'border-t'} relative pl-3 py-2 flex items-center justify-center`}>
-                    <button onClick={(evt) => {
-                      toggleSelection(row.key);
-                      evt.stopPropagation();
-                    }}>
-                      {
-                        selectedRows.includes(row.key)
-                          ? <FilledDisc className="text-blue-500" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                          : <Circle className="text-gray-400" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                      }
-                    </button>
+    <div className="relative" data-cy="table-view" data-visible-rows={sortedRows.length} data-total-rows={rows.length}>
+      { !hideTools && (
+        <div className="absolute top-0 bottom-0 right-0 w-0">
+          <div className="flex flex-col gap-2 ml-5 mt-12 sticky top-12">
+            <Dropdown
+              label="Sort"
+              options={columns.map((col) => ({
+                text: (
+                  <div className={`flex ${sorting?.[0] === col.name && 'text-blue-500'} items-center`}>
+                    <span className="flex-grow">{col.name}</span>
+                    {sorting?.[0] === col.name && (
+                      sorting[1] === 'asc'
+                        ? <TrendingUp className="h-4" />
+                        : <TrendingDown className="h-4" />
+                    )}
                   </div>
-                )}
-                {
-                  columns.map((column) => {
-                    const value = getRowColumnValue(column, row);
-                    let content = value;
-
-                    if (column.render) {
-                      content = column.render(value, row);
-                    }
-
-                    return (
-                      <div className={`${i > 0 && 'border-t'} whitespace-nowrap overflow-hidden ${onRowClick && 'cursor-pointer'} min-w-0 flex ${column.align === 'right' ? 'justify-end' : ''} items-center relative px-3 py-2`} key={column.name} data-row={i} data-column={column.name}>
-                        {content}
-                      </div>
-                    );
-                  })
+                ),
+                value: col.name,
+              }))}
+              onSelect={(col) => {
+                if (!sorting || sorting[0] !== col) {
+                  setSorting([col, 'desc']);
+                } else if (sorting[1] === 'desc') {
+                  setSorting([col, 'asc']);
+                } else {
+                  setSorting(null);
                 }
-                {actions && (
-                  <div className={`${i > 0 && 'border-t'} relative px-3 py-2 flex items-center justify-center`}>
-                    <Dropdown
-                      renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
-                      showArrow={false}
-                      className="h-[24px]"
-                      options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })
-        }
-        { rows.length === 0 && (
-          <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
-            <div className="w-[30em] text-gray-800 py-3">
-              { emptyMessage ?? 'No rows to display.' }
-            </div>
+              }}
+            />
+            <Dropdown
+              label="Filter"
+              options={[
+                ...columns.map((col) => ({
+                  text: <FilterDropdownItem
+                    column={col}
+                    rows={rows}
+                    options={filters[col.name] ?? { allowlist: [], blocklist: [] }}
+                    onChange={(options) => setFilters((prev) => ({ ...prev, [col.name]: options }))}
+                  />,
+                  value: col.name,
+                })),
+                { divider: true },
+                { text: (<div className="flex items-center gap-1 -ml-2"><Square className="h-4 text-gray-500" /> TKO-äly member</div>) },
+              ]}
+            />
+            <Dropdown
+              label="Actions"
+              options={[
+                { text: 'Select all', onSelect: () => setSelectedRows(sortedRows.map(r => r.key)) },
+                { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
+                { text: 'Invert selection', onSelect: () => setSelectedRows(sortedRows.filter(r => !selectedRows.includes(r.key)).map(r => r.key)) },
+                ...(
+                  availableActions.length > 0
+                    ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => sortedRows.find(r => r.key === key)).filter(identity)) }))]
+                    : []
+                ),
+              ]}
+            />
           </div>
-        ) }
+        </div>
+      )}
+      <div className="bg-white shadow-sm">
+        <div className="grid" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
+          {selectable && <div className="sticky top-0 z-10 rounded-tl-md border bg-gray-50" />}
+          {columns.map((column, i) => (
+            <div
+              key={column.name}
+              className={`
+                ${!selectable && i == 0 && 'rounded-tl-md'}
+                ${i > 0 && 'border-l'}
+                ${!actions && i == columns.length - 1 && 'rounded-tr-md'}
+                ${i === columns.length - 1 && 'border-r'}
+                border-t sticky top-0 z-10 text-gray-700 px-3 py-2
+                bg-gray-50 border-b text-sm font-bold
+              `}
+            >
+              {column.name}
+            </div>
+          ))}
+          {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-r" />}
+          {
+            sortedRows.flatMap((row, i) => {
+
+              return (
+                <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(row))}>
+                  {selectable && (
+                    <div className={`border-b border-l border-r border-r-gray-100 border-b-gray-100 relative px-3 py-2 flex items-center justify-center`}>
+                      <button onClick={(evt) => {
+                        toggleSelection(row.key);
+                        evt.stopPropagation();
+                      }}>
+                        {
+                          selectedRows.includes(row.key)
+                            ? <FilledDisc className="text-blue-500" style={{ width: '1em', strokeWidth: '2.5px' }} />
+                            : <Circle className="text-gray-400" style={{ width: '1em', strokeWidth: '2.5px' }} />
+                        }
+                      </button>
+                    </div>
+                  )}
+                  {
+                    columns.map((column, columnIndex) => {
+                      const value = getRowColumnValue(column, row);
+                      let content = value;
+
+                      if (column.render) {
+                        content = column.render(value, row);
+                      }
+
+                      return (
+                        <div
+                          key={column.name}
+                          data-row={i}
+                          data-column={column.name}
+                          className={`
+                            whitespace-nowrap
+                            overflow-hidden
+                            min-w-0
+                            flex
+                            items-center
+                            relative
+                            px-3
+                            py-2
+                            border-b-gray-100
+                            ${i < sortedRows.length - 1 && 'border-b'}
+                            ${(columnIndex > 0 || !selectable) && 'border-l-gray-100'}
+                            ${columnIndex > 0 && 'border-l'}
+                            ${onRowClick && 'cursor-pointer'}
+                            ${(!actions || columnIndex === columns.length - 1) && 'border-r border-r-gray-100'}
+                            ${column.align === 'right' && 'justify-end'}
+                          `}
+                        >
+                          {content}
+                        </div>
+                      );
+                    })
+                  }
+                  {actions && (
+                    <div className={`border-b-gray-100 border-b border-r relative px-2 py-2 flex items-center justify-center`}>
+                      <Dropdown
+                        renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
+                        showArrow={false}
+                        className="h-[24px]"
+                        options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          }
+          { rows.length === 0 && (
+            <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
+              <div className="w-[30em] text-gray-800 py-3">
+                { emptyMessage ?? 'No rows to display.' }
+              </div>
+            </div>
+          ) }
+        </div>
+        { footer !== false && (
+          <div className="sticky bottom-0 border rounded-b-md py-2 px-3 flex justify-end gap-3 bg-gray-50 border-t items-center">
+            { selectedRows.length > 0 && <span className="text-sm text-gray-700">Selected: {selectedRows.length}</span> }
+            <div className="flex-grow h-[1.5em]" />
+            { footer }
+          </div>
+        )}
       </div>
     </div>
   );
