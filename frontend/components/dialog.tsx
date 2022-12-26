@@ -124,8 +124,10 @@ export const DialogBase = ({ children, onClose, ...rest }) => {
 
 export const DialogContent = ({ children }) => {
   return (
-    <div className="flex-grow p-3">
-      {children}
+    <div className="flex-grow max-h-[80vh] overflow-y-auto">
+      <div className="p-3">
+        {children}
+      </div>
     </div>
   );
 };
