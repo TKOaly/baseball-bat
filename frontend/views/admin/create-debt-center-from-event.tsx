@@ -537,9 +537,9 @@ type RegistrationTableProps = {
 type CustomFieldAnswer = Registration['answers'][0];
 
 const QuestionBadge = ({ question }: { question: CustomFieldAnswer }) => (
-  <div>
-    <span className="py-0.5 whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">{question.question}</span>
-    <span className="py-0.5 whitespace-nowrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{question.answer}</span>
+  <div className="flex">
+    <span className="py-0.5 max-w-[7em] overflow-hidden text-ellipsis whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">{question.question}</span>
+    <span className="py-0.5 whitespace-wrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{question.answer}</span>
   </div>
 );
 
