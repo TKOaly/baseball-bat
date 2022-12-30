@@ -7,6 +7,11 @@ export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>
 }
 
+export type CreateDebtPayload = Omit<NewDebt, 'components' | 'center'> & {
+  components: (string | Omit<NewDebtComponent, 'debtCenterId'>)[],
+  center: string | { name: string, url: string, description: string },
+};
+
 const debtApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     createDebtComponent: builder.mutation<DebtComponent, NewDebtComponent>({
@@ -32,7 +37,7 @@ const debtApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    createDebt: builder.mutation<Debt, NewDebt & { components: NewDebtComponent[] }>({
+    createDebt: builder.mutation<Debt, CreateDebtPayload>({
       query: (debt) => ({
         method: 'POST',
         url: '/debt',

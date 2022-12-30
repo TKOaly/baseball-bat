@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { Calendar } from 'react-feather';
-import { format } from 'date-fns';
+import { parse, format } from 'date-fns';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 import 'react-day-picker/dist/style.css';
 
-export const DateField = ({ value, onChange, ...props }) => {
+export const DateField = ({ value, onChange, format: formatString = 'dd.MM.yyyy', ...props }) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const ref = useRef();
   useOutsideEventListener(ref, 'click', calendarOpen, () => setCalendarOpen(false));
@@ -28,7 +28,7 @@ export const DateField = ({ value, onChange, ...props }) => {
             px-3
             border
           `}
-          value={value}
+          value={value ? format(parse(value, formatString, new Date()), 'dd.MM.yyyy') : ''}
           onChange={onChange}
           {...props}
         />
@@ -42,8 +42,7 @@ export const DateField = ({ value, onChange, ...props }) => {
             mode="single"
             modifiersClassNames={{ selected: 'bg-blue-500' }}
             onSelect={(day) => {
-              onChange({ target: { id: props.id, name: props.name, value: format(day, 'dd.MM.yyyy') } });
-              console.log(format(day, 'dd.mm.yyyy'));
+              onChange({ target: { id: props.id, name: props.name, value: format(day, formatString) } });
             }}
           />
         </div>

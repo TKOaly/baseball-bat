@@ -4,7 +4,7 @@ import { Breadcrumbs } from '../../components/breadcrumbs';
 import { DropdownField } from '../../components/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { DateField } from '../../components/datetime-field';
-import { PayerIdentity } from '../../../common/types';
+import { DbDateString, dbDateString, euro, EuroValue, PayerIdentity } from '../../../common/types';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { TextareaField } from '../../components/textarea-field';
@@ -13,16 +13,17 @@ import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { useCreateDebtMutation, useGetDebtComponentsByCenterQuery } from '../../api/debt';
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
 import { useLocation } from 'wouter';
+import { isRight } from 'fp-ts/lib/Either';
 
 type DebtFormValues = {
   name: string,
   center: string | { name: string },
   description: string,
-  components: { component: string | { name: string }, amount: number }[],
-  amount: number,
+  components: { component: string | { name: string }, amount: EuroValue }[],
+  amount: EuroValue,
   payer: PayerIdentity | null
-  date: string | null
-  dueDate: string | null
+  date: DbDateString | null
+  dueDate: DbDateString | null
   paymentCondition: string | 'NOW' | null
 }
 
@@ -36,10 +37,13 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
 
   const submitDebtForm = async (values: DebtFormValues) => {
     const result = await createDebt({
-      ...values,
-      date: values.date ? values.date : undefined,
-      due_date: values.dueDate,
-      payment_condition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
+      name: values.name,
+      description: values.description,
+      tags: [],
+      payer: values.payer,
+      date: values.date ?? undefined,
+      dueDate: (values.dueDate === '' || !values.dueDate) ? undefined : values.dueDate,
+      paymentCondition: values.paymentCondition === 'NOW' ? 0 : parseInt(values.paymentCondition),
       center: typeof values.center === 'string'
         ? values.center
         : { ...values.center, url: '', description: '' },
@@ -106,7 +110,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
           date: null,
           components: [],
           paymentCondition: '14',
-          amount: 1234.31,
+          amount: euro(0),
         } as DebtFormValues}
         validate={(values) => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
@@ -157,10 +161,16 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 label="Due Date"
                 name="dueDate"
                 component={DateField}
+                format="yyyy-MM-dd"
                 onChange={(evt) => {
-                  console.log(evt);
-                  setFieldValue('dueDate', evt.target.value);
-                  setFieldValue('paymentCondition', '');
+                  const result = dbDateString.decode(evt.target.value);
+
+                  if (isRight(result)) {
+                    setFieldValue('dueDate', result.right);
+                    setFieldValue('paymentCondition', '');
+                  } else {
+                    setFieldError('dueDate', 'Invalid date value.');
+                  }
                 }}
               />
               <InputGroup

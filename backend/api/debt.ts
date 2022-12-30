@@ -8,7 +8,7 @@ import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
+import { convertToDbDate, dateString, dbDateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
@@ -57,9 +57,9 @@ const createDebtPayload = t.intersection([
     components: t.array(newOrExisting(debtComponent)),
   }),
   t.partial({
-    date: dateString,
-    due_date: dateString,
-    payment_condition: t.union([t.null, t.number]),
+    date: dbDateString,
+    dueDate: dbDateString,
+    paymentCondition: t.union([t.null, t.number]),
   }),
 ]);
 
@@ -276,27 +276,10 @@ export class DebtApi {
             }),
         );
 
-        let dueDate = null;
+        let dueDate = payload.dueDate ?? null;
+        let date = payload.date ?? null;
 
-        if (payload.due_date) {
-          dueDate = convertToDbDate(payload.due_date);
-
-          if (!dueDate) {
-            return internalServerError('Date conversion error');
-          }
-        }
-
-        let date = null;
-
-        if (payload.date) {
-          date = convertToDbDate(payload.date);
-
-          if (!date) {
-            return internalServerError('Date conversion error');
-          }
-        }
-
-        if ((payload.payment_condition || payload.payment_condition === 0) && payload.due_date) {
+        if ((payload.paymentCondition || payload.paymentCondition === 0) && payload.dueDate) {
           return badRequest({
             message: 'Payment condition and due date cannot be defined simultanously.',
           });
@@ -308,7 +291,7 @@ export class DebtApi {
           components: componentIds,
           centerId,
           payer: payer.id,
-          paymentCondition: payload.payment_condition ?? null,
+          paymentCondition: payload.paymentCondition ?? null,
           dueDate,
           date,
           tags: [],
