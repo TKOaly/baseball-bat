@@ -349,15 +349,14 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
       )}
       <div className="bg-white shadow-sm">
         <div className="grid" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
-          {selectable && <div className="sticky top-0 z-10 rounded-tl-md border bg-gray-50" />}
+          {selectable && <div className="sticky top-0 z-10 rounded-tl-md border-l border-t border-b bg-gray-50" />}
           {columns.map((column, i) => (
             <div
               key={column.name}
               className={`
-                ${!selectable && i == 0 && 'rounded-tl-md'}
-                ${i > 0 && 'border-l'}
-                ${!actions && i == columns.length - 1 && 'rounded-tr-md'}
-                ${i === columns.length - 1 && 'border-r'}
+                ${!selectable && i == 0 && 'rounded-tl-md border-l'}
+                ${!actions && i == columns.length - 1 && 'rounded-tr-md border-r'}
+                border-l
                 border-t sticky top-0 z-10 text-gray-700 px-3 py-2
                 bg-gray-50 border-b text-sm font-bold
               `}
@@ -365,14 +364,19 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
               {column.name}
             </div>
           ))}
-          {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-r" />}
+          {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />}
           {
             sortedRows.flatMap((row, i) => {
 
               return (
                 <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(row))}>
                   {selectable && (
-                    <div className={`border-b border-l border-r border-r-gray-100 border-b-gray-100 relative px-3 py-2 flex items-center justify-center`}>
+                    <div
+                      className={`
+                        border-l border-b-gray-100 relative px-3 py-2 flex items-center justify-center
+                        ${i < sortedRows.length - 1 && 'border-b'}
+                      `}
+                    >
                       <button onClick={(evt) => {
                         toggleSelection(row.key);
                         evt.stopPropagation();
@@ -409,11 +413,11 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
                             px-3
                             py-2
                             border-b-gray-100
+                            border-l
+                            ${(!actions && columnIndex === columns.length - 1) && 'border-r'}
                             ${i < sortedRows.length - 1 && 'border-b'}
-                            ${(columnIndex > 0 || !selectable) && 'border-l-gray-100'}
-                            ${columnIndex > 0 && 'border-l'}
+                            ${(columnIndex > 0 || selectable) && 'border-l-gray-100'}
                             ${onRowClick && 'cursor-pointer'}
-                            ${(!actions || columnIndex === columns.length - 1) && 'border-r border-r-gray-100'}
                             ${column.align === 'right' && 'justify-end'}
                           `}
                         >
@@ -423,7 +427,12 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
                     })
                   }
                   {actions && (
-                    <div className={`border-b-gray-100 border-b border-r relative px-2 py-2 flex items-center justify-center`}>
+                    <div
+                      className={`
+                        border-b-gray-100 border-l-gray-100 border-l border-r relative px-2 py-2 flex items-center justify-center
+                        ${i < sortedRows.length - 1 && 'border-b'}
+                      `}
+                    >
                       <Dropdown
                         renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
                         showArrow={false}
