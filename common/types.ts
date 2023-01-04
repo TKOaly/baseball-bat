@@ -636,3 +636,11 @@ export type DbPaymentEventTransactionMapping = {
   bank_transaction_id: string
   payment_event_id: string
 }
+
+export type DbReport = {
+  id: string
+  name: string
+  generated_at: Date
+}
+
+export type Report = FromDbType<DbReport>

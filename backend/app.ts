@@ -25,6 +25,8 @@ import { createEmailDispatcherTransport, createSMTPTransport, EmailService, IEma
 import { MagicLinksApi } from './api/magic-links';
 import { BankingApi } from './api/banking';
 import { SearchApi } from './api/search';
+import { ReportService } from './services/reports';
+import { ReportApi } from './api/report';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -122,6 +124,7 @@ const app = express()
     Container.get(EmailApi).router().handler(),
   )
   .use('/api/banking', Container.get(BankingApi).router().handler())
+  .use('/api/reports', Container.get(ReportApi).router().handler())
   .use(Container.get(AuthApi).router().handler())
   .use(
     router(

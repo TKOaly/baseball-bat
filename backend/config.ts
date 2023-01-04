@@ -11,6 +11,8 @@ interface IConfig {
   userServiceUrl: string
   userServiceApiUrl: string
   serviceId: string
+  assetPath: string
+  dataPath: string
   eventServiceUrl: string
   eventServiceToken: string
   jwtSecret: string
@@ -40,6 +42,8 @@ export class Config implements IConfig {
   serviceId = '';
   eventServiceUrl = '';
   eventServiceToken = '';
+  assetPath = '';
+  dataPath = '';
   jwtSecret = '';
   // stripeSecretKey: string = ''
   appUrl = '';
@@ -70,6 +74,8 @@ export class Config implements IConfig {
       JWT_SECRET,
       POSTGRES_CONNECTION_STRING,
       REDIS_URL,
+      ASSET_PATH,
+      DATA_PATH,
       // STRIPE_SECRET_KEY,
       // STRIPE_WEBHOOK_ENDPOINT_SECRET,
       USER_SERVICE_URL,
@@ -81,6 +87,8 @@ export class Config implements IConfig {
     assert(POSTGRES_CONNECTION_STRING, 'POSTGRES_CONNECTION_STRING must be set.');
     assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.');
     assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.');
+    assert(ASSET_PATH, 'ASSET_PATH must be set.');
+    assert(DATA_PATH, 'DATA_PATH must be set.');
     assert(
       SERVICE_IDENTIFIER,
       'SERVICE_IDENTIFIER must be set.',
@@ -111,6 +119,8 @@ export class Config implements IConfig {
       smtp,
       redisUrl: REDIS_URL!,
       magicLinkSecret: MAGIC_LINK_SECRET!,
+      assetPath: ASSET_PATH,
+      dataPath: DATA_PATH,
     });
   }
 

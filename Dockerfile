@@ -22,6 +22,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 FROM node:18-alpine AS production-backend
 
+RUN apk update && apk add chromium
+
 COPY --from=production-build /app/build /app/build
 COPY --from=production-build /app/backend /app/backend
 COPY --from=production-build /app/package.json /app/package.json
@@ -33,6 +35,8 @@ WORKDIR /app
 CMD ["yarn", "start"]
 
 FROM node:18 AS development
+
+RUN apt-get update && apt-get install -y chromium
 
 WORKDIR /app
 COPY . .

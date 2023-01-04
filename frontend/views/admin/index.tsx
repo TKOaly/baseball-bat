@@ -27,6 +27,7 @@ import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialo
 import { TextField } from '../../components/text-field';
 import { EditDebt } from '../edit-debt';
 import { EditDebtCenter } from './edit-debt-center';
+import { ReportsListing } from './reports-listing';
 
 type MenuItemProps = {
   path?: string
@@ -100,6 +101,7 @@ const Admin = () => {
           <MenuItem path="/admin/payers">Payers</MenuItem>
           <MenuItem path="/admin/emails">Emails</MenuItem>
           <MenuItem path="/admin/banking">Banking</MenuItem>
+          <MenuItem path="/admin/reports">Reports</MenuItem>
           <MenuItem path="/" active={false} className="mt-4">Back to public site</MenuItem>
           <MenuItem path="#">Log out</MenuItem>
         </ul>
@@ -150,6 +152,7 @@ const Admin = () => {
               {({ id }: { id: string }) => <BankStatement id={id} />}
             </Route>
             <Route path="/admin/banking/import-statement" component={ImportXMLStatement} />
+            <Route path="/admin/reports" component={ReportsListing} />
             <Route path="/admin/:rest*">
               <Redirect to="/admin/debt-centers" />
             </Route>
