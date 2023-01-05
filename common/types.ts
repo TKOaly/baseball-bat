@@ -644,3 +644,10 @@ export type DbReport = {
 }
 
 export type Report = FromDbType<DbReport>
+
+export type DebtLedgerOptions = {
+  startDate: DbDateString
+  endDate: DbDateString
+  includeDrafts: boolean
+  groupBy: null | 'center' | 'payer'
+}

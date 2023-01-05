@@ -9,6 +9,8 @@ import * as fs from 'fs';
 import * as uuid from 'uuid';
 import { DbReport, Report } from "../../common/types";
 import ejs from "ejs";
+import { formatEuro } from "../../common/currency";
+import * as datefns from 'date-fns';
 
 export type CreateReportOptions = {
   template: string
@@ -116,6 +118,10 @@ export class ReportService {
       metadata: {
         name: options.name,
         generatedAt,
+      },
+      utils: {
+        formatEuro,
+        formatDate: datefns.format,
       },
     });
 

@@ -1,16 +1,27 @@
 import rtkApi from './rtk-api';
-import { Report } from '../../common/types';
+import { DebtLedgerOptions, Report } from '../../common/types';
 
 const reportApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getReports: builder.query<Report[], void>({
       query: () => '/reports',
+      providesTags: [{ type: 'Report', id: 'LIST' }],
+    }),
+
+    generateDebtLedger: builder.mutation<Report, DebtLedgerOptions>({
+      query: (body) => ({
+        url: '/reports/generate/debt-ledger',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Report', id: 'LIST' }],
     }),
   }),
 });
 
 export const {
   useGetReportsQuery,
+  useGenerateDebtLedgerMutation,
 } = reportApi;
 
 export default reportApi;

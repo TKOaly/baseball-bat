@@ -29,5 +29,5 @@ export default createApi({
     sessionAwareBaseQuery,
   ),
   endpoints: () => ({}),
-  tagTypes: ['Debt', 'Email', 'Payment', 'Payer', 'PayerEmail', 'Session', 'BankAccount', 'BankTransaction', 'DebtCenter'],
+  tagTypes: ['Debt', 'Email', 'Payment', 'Payer', 'PayerEmail', 'Session', 'BankAccount', 'BankTransaction', 'DebtCenter', 'Report'],
 });

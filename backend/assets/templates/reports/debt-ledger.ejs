@@ -1,0 +1,72 @@
+<div class="p-10">
+  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
+
+  <div class="mt-5 mb-5 bg-gray-100 p-3">
+    <table>
+      <tr>
+        <th class="text-left pr-2">Generated at</th>
+        <td><%= metadata.generatedAt %></td>
+      </tr>
+      <tr>
+        <th class="text-left pr-2">Date Range</th>
+        <td><%= utils.formatDate(data.options.startDate, 'dd.MM.yyyy') %> - <%= utils.formatDate(data.options.endDate, 'dd.MM.yyyy') %></td>
+      </tr>
+      <tr>
+        <th class="text-left pr-2">Include drafts</th>
+        <td><%= data.options.includeDrafts ? 'Yes' : 'No' %></td>
+      </tr>
+    </table>
+  </div>
+
+  <table id="content">
+    <tr>
+      <th class="header-border">ID</th>
+      <th class="header-border">Title</th>
+      <th class="header-border">Payer</th>
+      <th class="header-border">Published</th>
+      <th class="header-border">Amount</th>
+    </tr>
+    <% for (const { name, debts } of data.groups) { %>
+      <% if (name) { %>
+      <tr>
+        <td colspan=5><%= name %></td>
+      </tr>
+      <% } %>
+      <% for (const debt of debts) { %>
+        <tr>
+          <td><%= debt.id %></td>
+          <td><%= debt.name %></td>
+          <td><%= debt.payer.name %></td>
+          <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
+          <td><%= utils.formatEuro(debt.total) %></td>
+        </tr>
+      <% } %>
+    <% } %>
+  </table>
+</div>
+
+<style type="postcss">
+  table#content {
+    width: 100%;
+  }
+
+  #content th {
+    @apply bg-gray-100 py-0.5 px-1 text-left whitespace-nowrap;
+  }
+
+  .header-border {
+    @apply border-b-4 border-b-gray-300;
+  }
+
+  #content td {
+    @apply px-1 py-0.5;
+
+    vertical-align: top;
+  }
+
+  #content tbody tr:nth-child(even) {
+    @apply bg-gray-100;
+  }
+</style>
+
+<script src="https://unpkg.com/tailwindcss-jit-cdn"></script>

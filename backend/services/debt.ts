@@ -1,9 +1,10 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
+import * as R from 'remeda';
 import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
-import { formatDebtCenter } from './debt_centers';
+import { DebtCentersService, formatDebtCenter } from './debt_centers';
 import { NewInvoice, PaymentService } from './payements';
 import { cents } from '../../common/currency';
 
@@ -11,9 +12,12 @@ import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
 import * as T from 'fp-ts/lib/Task';
+import { toArray } from 'fp-ts/Record';
 import { flow, pipe } from 'fp-ts/lib/function';
-import { addDays, isPast, parseISO } from 'date-fns';
+import { addDays, format, isPast, parseISO } from 'date-fns';
 import { EmailService } from './email';
+import { groupBy } from 'fp-ts/lib/NonEmptyArray';
+import { ReportService } from './reports';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -72,10 +76,23 @@ export type CreateDebtOptions = {
   defaultPayment?: Partial<NewInvoice>
 }
 
+export type DebtLedgerOptions = {
+  startDate: Date
+  endDate: Date
+  includeDrafts: boolean
+  groupBy: null | 'center' | 'payer'
+}
+
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
   pg: PgClient;
+
+  @Inject(() => DebtCentersService)
+  debtCentersService: DebtCentersService;
+
+  @Inject(() => ReportService)
+  reportService: ReportService;
 
   @Inject(() => PayerService)
   payerService: PayerService;
@@ -687,5 +704,58 @@ export class DebtService {
       });
 
     await Promise.all(promises);
+  }
+
+  async generateDebtLedger(options: DebtLedgerOptions) {
+    const criteria = options.includeDrafts
+      ? sql`debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`
+      : sql`debt.published_at IS NOT NULL AND debt.published_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+    
+    const debts = await this.queryDebts(criteria);
+    let groups;
+
+    if (options.groupBy) {
+      let getGroupKey;
+      let getGroupName;
+
+      if (options.groupBy === 'center') {
+        getGroupKey = (debt: Debt) => debt.debtCenterId;
+        getGroupName = async (id: string) => {
+          const center = await this.debtCentersService.getDebtCenter(id);
+          return center?.name ?? 'Unknown debt center';
+        };
+      } else {
+        getGroupKey = (debt: Debt) => debt.payerId.value;
+        getGroupName = async (id: string) => {
+          const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
+          return payer?.name ?? 'Unknown payer';
+        };
+      }
+
+      const createGroupUsing = (nameResolver: (id: string) => Promise<string>) => ([key, debts]: [string, Debt[]]) => async () => {
+        const name = await nameResolver(key);
+        return { name, debts }; 
+      };
+
+      groups = await pipe(
+        debts,
+        groupBy(getGroupKey),
+        toArray,
+        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupName)),
+      )();
+    } else {
+      groups = [{ debts }];
+    }
+
+    const report = await this.reportService.createReport({
+      name: `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`,
+      template: 'debt-ledger',
+      payload: {
+        options,
+        groups,
+      },
+    });
+
+    return report;
   }
 }
