@@ -709,40 +709,44 @@ export class DebtService {
 
   async generateDebtLedger(options: DebtLedgerOptions) {
     const criteria = options.includeDrafts
-      ? sql`debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`
-      : sql`debt.published_at IS NOT NULL AND debt.published_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+      ? sql`debt.date BETWEEN ${options.startDate} AND ${options.endDate}`
+      : sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
     
     const debts = await this.queryDebts(criteria);
     let groups;
 
     if (options.groupBy) {
       let getGroupKey;
-      let getGroupName;
+      let getGroupDetails;
 
       if (options.groupBy === 'center') {
         getGroupKey = (debt: Debt) => debt.debtCenterId;
-        getGroupName = async (id: string) => {
+        getGroupDetails = async (id: string) => {
           const center = await this.debtCentersService.getDebtCenter(id);
-          return center?.name ?? 'Unknown debt center';
+          const name = center?.name ?? 'Unknown debt center';
+          const displayId = center?.humanId ?? '???';
+          return { name, id: displayId };
         };
       } else {
         getGroupKey = (debt: Debt) => debt.payerId.value;
-        getGroupName = async (id: string) => {
+        getGroupDetails = async (id: string) => {
           const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
-          return payer?.name ?? 'Unknown payer';
+          const name = payer?.name ?? 'Unknown payer';
+          const displayId = payer?.id?.value ?? '???';
+          return { name, id: displayId };
         };
       }
 
-      const createGroupUsing = (nameResolver: (id: string) => Promise<string>) => ([key, debts]: [string, Debt[]]) => async () => {
-        const name = await nameResolver(key);
-        return { name, debts }; 
+      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, Debt[]]) => async () => {
+        const { name, id } = await nameResolver(key);
+        return { name, debts, id }; 
       };
 
       groups = await pipe(
         debts,
         groupBy(getGroupKey),
         toArray,
-        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupName)),
+        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
       )();
     } else {
       groups = [{ debts }];

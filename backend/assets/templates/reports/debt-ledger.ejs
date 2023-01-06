@@ -24,21 +24,24 @@
       <th class="header-border">Title</th>
       <th class="header-border">Payer</th>
       <th class="header-border">Published</th>
-      <th class="header-border">Amount</th>
+      <th class="header-border">Due Date</th>
+      <th class="header-border text-right">Amount</th>
     </tr>
-    <% for (const { name, debts } of data.groups) { %>
+    <% for (const { name, id, debts } of data.groups) { %>
       <% if (name) { %>
       <tr>
-        <td colspan=5><%= name %></td>
+        <td class="font-bold" colspan=5><%= name %> (<%= id %>)</td>
+        <td class="font-bold text-right"><%= utils.formatEuro(debts.map(debt => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
       </tr>
       <% } %>
       <% for (const debt of debts) { %>
         <tr>
-          <td><%= debt.id %></td>
+          <td class="!pl-4"><%= debt.humanId %></td>
           <td><%= debt.name %></td>
           <td><%= debt.payer.name %></td>
           <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
-          <td><%= utils.formatEuro(debt.total) %></td>
+          <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
+          <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
         </tr>
       <% } %>
     <% } %>

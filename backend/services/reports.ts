@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as uuid from 'uuid';
 import { DbReport, Report } from "../../common/types";
 import ejs from "ejs";
-import { formatEuro } from "../../common/currency";
+import { cents, euro, formatEuro, sumEuroValues } from "../../common/currency";
 import * as datefns from 'date-fns';
 
 export type CreateReportOptions = {
@@ -121,6 +121,9 @@ export class ReportService {
       utils: {
         formatEuro,
         formatDate: datefns.format,
+        sumEuroValues,
+        euro,
+        cents,
       },
     });
 
