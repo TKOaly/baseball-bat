@@ -23,6 +23,7 @@
       <th class="header-border">ID</th>
       <th class="header-border">Title</th>
       <th class="header-border">Payer</th>
+      <th class="header-border">Date</th>
       <th class="header-border">Published</th>
       <th class="header-border">Amount</th>
     </tr>
@@ -37,6 +38,7 @@
           <td><%= debt.id %></td>
           <td><%= debt.name %></td>
           <td><%= debt.payer.name %></td>
+          <td><%= debt.date ? utils.formatDate(debt.date, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
           <td><%= utils.formatEuro(debt.total) %></td>
         </tr>
