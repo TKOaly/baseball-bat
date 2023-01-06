@@ -5,10 +5,12 @@ import sql from 'sql-template-strings';
 import { cents } from '../../common/currency';
 import { DebtService } from './debt';
 import * as E from 'fp-ts/lib/Either';
+import { AccountingService } from './accounting';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
   humanId: debtCenter.human_id,
+  accountingPeriod: debtCenter.accounting_period,
   name: debtCenter.name,
   description: debtCenter.description,
   createdAt: debtCenter.created_at,
@@ -26,7 +28,10 @@ export class DebtCentersService {
     pg: PgClient;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
+
+  @Inject(() => AccountingService)
+  accountingService: AccountingService;
 
   getDebtCenters() {
     return this.pg
@@ -61,14 +66,21 @@ export class DebtCentersService {
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   }
 
-  createDebtCenter(center: NewDebtCenter) {
+  async createDebtCenter(center: NewDebtCenter) {
+    const isAccountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(center.accountingPeriod);
+
+    if (!isAccountingPeriodOpen) {
+      throw new Error(`Accounting period ${center.accountingPeriod} is not open.`);
+    }
+
     return this.pg
       .one<DbDebtCenter>(sql`
-        INSERT INTO debt_center (name, url, description)
+        INSERT INTO debt_center (name, url, description, accounting_period)
         VALUES (
           ${center.name},
           ${center.url},
-          ${center.description}
+          ${center.description},
+          ${center.accountingPeriod}
         )
         RETURNING *
       `)

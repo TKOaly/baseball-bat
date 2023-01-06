@@ -270,6 +270,7 @@ export type LineItem = Omit<FromDbType<DbLineItem>, 'amount'> & {
 export type DbDebtCenter = {
   paid_count?: number
   human_id: string
+  accounting_period: number
   unpaid_count?: number
   debt_count?: number
   id: string
@@ -382,6 +383,7 @@ export type NewDebtTag = { name: string, hidden: boolean }
 export type NewDebt = {
   centerId?: string
   description: string
+  accountingPeriod: number
   components: string[]
   publishedAt?: DbDateString | null
   name: string

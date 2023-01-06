@@ -185,7 +185,18 @@ export class DebtService {
     const created = await this.pg.tx(async (tx) => {
       const [created] = await tx 
         .do<DbDebt>(sql`
-          INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at, date)
+          INSERT INTO debt (
+            name,
+            description,
+            debt_center_id,
+            payer_id,
+            due_date,
+            created_at,
+            payment_condition,
+            published_at,
+            date,
+            accounting_period
+          )
           VALUES (
             ${debt.name},
             ${debt.description},
@@ -195,7 +206,8 @@ export class DebtService {
             COALESCE(${debt.createdAt}, NOW()),
             ${debt.paymentCondition},
             ${debt.publishedAt},
-            ${debt.date}
+            ${debt.date},
+            ${debt.accountingPeriod}
           )
           RETURNING *
         `);
@@ -709,7 +721,7 @@ export class DebtService {
 
   async generateDebtLedger(options: DebtLedgerOptions) {
     const criteria = options.includeDrafts
-      ? sql`debt.date BETWEEN ${options.startDate} AND ${options.endDate}`
+      ? sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`
       : sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
     
     const debts = await this.queryDebts(criteria);

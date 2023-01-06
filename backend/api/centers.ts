@@ -31,6 +31,7 @@ const createDebtCenterFromEventBody = t.type({
     name: t.string,
     description: t.string,
     basePrice: euroValue,
+    accountingPeriod: t.Int,
     dueDate: dateString,
     components: t.array(t.type({
       name: t.string,
@@ -229,6 +230,7 @@ export class DebtCentersApi {
         const center = await this.debtCentersService.createDebtCenter({
           name: body.settings.name,
           description: body.settings.description,
+          accountingPeriod: body.settings.accountingPeriod,
           url: '',
         });
 
@@ -301,6 +303,7 @@ export class DebtCentersApi {
                 name: body.settings.name,
                 description: body.settings.description,
                 centerId: center.id,
+                accountingPeriod: body.settings.accountingPeriod,
                 components: baseComponentId
                   ? [baseComponentId, ...componentIds]
                   : componentIds,

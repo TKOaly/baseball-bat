@@ -17,4 +17,12 @@ export class AccountingService {
     const periods = await this.pg.any<DbAccountingPeriod>(sql`SELECT * FROM accounting_periods`);
     return periods.map(formatAccountingPeriod);
   }
+
+  async isAccountingPeriodOpen(year: number) {
+    const result = await this.pg.one<{ exists: boolean }>(sql`
+      SELECT EXISTS(SELECT 1 FROM accounting_periods WHERE year = ${year} AND NOT closed) AS exists
+    `)
+
+    return result && result.exists;
+  }
 }

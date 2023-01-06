@@ -1,5 +1,5 @@
 import { Formik } from 'formik';
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { DropdownField } from '../../components/dropdown-field';
 import { EuroField } from '../../components/euro-field';
@@ -14,6 +14,8 @@ import { useCreateDebtMutation, useGetDebtComponentsByCenterQuery } from '../../
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
 import { useLocation } from 'wouter';
 import { isRight } from 'fp-ts/lib/Either';
+import { useAppSelector } from '../../store';
+import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 
 type DebtFormValues = {
   name: string,
@@ -25,6 +27,7 @@ type DebtFormValues = {
   date: DbDateString | null
   dueDate: DbDateString | null
   paymentCondition: string | 'NOW' | null
+  accountingPeriod: number
 }
 
 export const CreateDebt = (props: { debtCenterId?: string }) => {
@@ -34,11 +37,14 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
   const [createDebt] = useCreateDebtMutation();
   const [, setLocation] = useLocation();
+  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
 
   const submitDebtForm = async (values: DebtFormValues) => {
     const result = await createDebt({
       name: values.name,
       description: values.description,
+      accountingPeriod: values.accountingPeriod,
       tags: [],
       payer: values.payer,
       date: values.date ?? undefined,
@@ -88,6 +94,28 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     }));
   }, [users]);
 
+  const [initialValues, setInitialValues] = useState<DebtFormValues>({
+    name: '',
+    description: '',
+    center: debtCenterId,
+    payer: null,
+    date: null,
+    dueDate: null,
+    components: [],
+    paymentCondition: '14',
+    amount: euro(0),
+    accountingPeriod: activeAccountingPeriod,
+  });
+
+  useEffect(() => {
+    if (initialValues.accountingPeriod === null && activeAccountingPeriod !== null) {
+      setInitialValues((prev) => ({
+        ...prev,
+        accountingPeriod: activeAccountingPeriod,
+      }))
+    }
+  }, [activeAccountingPeriod, initialValues.accountingPeriod]);
+
   return (
     <div>
       <h1 className="text-2xl mt-10 mb-5">
@@ -102,16 +130,8 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
         />
       </h1>
       <Formik
-        initialValues={{
-          name: '',
-          description: '',
-          center: debtCenterId,
-          payer: null,
-          date: null,
-          components: [],
-          paymentCondition: '14',
-          amount: euro(0),
-        } as DebtFormValues}
+        initialValues={initialValues}
+        enableReinitialize
         validate={(values) => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
@@ -204,6 +224,22 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 name="date"
                 component={DateField}
               />
+              { accountingPeriods?.length > 1 && (
+                <InputGroup
+                  narrow
+                  label="Accounting Period"
+                  name="accountingPeriod"
+                  component={DropdownField}
+                  options={
+                    (accountingPeriods ?? [])
+                      .filter((period) => !period.closed)
+                      .map((period) => ({
+                        value: period.year,
+                        text: period.year,
+                      }))
+                  }
+                />
+              )}
               <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
               <InputGroup
                 label="Components"

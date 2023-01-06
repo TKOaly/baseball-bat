@@ -24,6 +24,7 @@ import { euroValue } from '../../common/currency';
 import { UsersService } from '../services/users';
 import * as EQ from 'fp-ts/lib/Eq';
 import { RedisClientType } from 'redis';
+import { AccountingService } from '../services/accounting';
 
 const debtCenter = t.type({
   name: t.string,
@@ -55,6 +56,7 @@ const createDebtPayload = t.intersection([
     payer: payerIdentity,
     description: t.string,
     components: t.array(newOrExisting(debtComponent)),
+    accountingPeriod: t.Int,
   }),
   t.partial({
     date: dbDateString,
@@ -91,6 +93,9 @@ export class DebtApi {
 
   @Inject(() => EmailService)
   emailService: EmailService;
+
+  @Inject(() => AccountingService)
+  accountingService: AccountingService;
 
   private createDebtComponent() {
     return route
@@ -243,6 +248,14 @@ export class DebtApi {
 
         let centerId: string;
 
+        const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(ctx.body.accountingPeriod);
+
+        if (!accountingPeriodOpen) {
+          return badRequest({
+            message: `Accounting period ${ctx.body.accountingPeriod} is not open.`,
+          })
+        }
+
         if (typeof payload.center === 'string') {
           centerId = payload.center;
         } else {
@@ -250,6 +263,7 @@ export class DebtApi {
             name: payload.center.name,
             description: payload.center.description,
             url: payload.center.url,
+            accountingPeriod: payload.accountingPeriod,
           });
 
           if (!center) {
@@ -292,6 +306,7 @@ export class DebtApi {
           centerId,
           payer: payer.id,
           paymentCondition: payload.paymentCondition ?? null,
+          accountingPeriod: ctx.body.accountingPeriod,
           dueDate,
           date,
           tags: [],
@@ -559,7 +574,7 @@ export class DebtApi {
       return null;
     };
 
-    const resolveDebtCenter = async (debtCenter: string, dryRun: boolean) => {
+    const resolveDebtCenter = async (debtCenter: string, dryRun: boolean, accountingPeriod: number) => {
       if (validate(debtCenter)) {
         const byId = await this.debtCentersService.getDebtCenter(debtCenter);
         return byId;
@@ -575,6 +590,7 @@ export class DebtApi {
         return {
           id: '',
           name: debtCenter,
+          accountingPeriod,
           description: '',
           url: '',
           createdAt: new Date(),
@@ -583,6 +599,7 @@ export class DebtApi {
       } else {
         return await this.debtCentersService.createDebtCenter({
           name: debtCenter,
+          accountingPeriod,
           description: '',
           url: '',
         });
@@ -603,6 +620,7 @@ export class DebtApi {
           dueDate: dateString,
           components: t.array(t.string),
           tags: t.array(t.string),
+          accountingPeriod: t.Int,
           //paymentNumber: t.string,
           //referenceNumber: t.string,
         }),
@@ -621,6 +639,7 @@ export class DebtApi {
           paymentNumber: t.string,
           referenceNumber: t.string,
           tags: t.array(t.string),
+          accountingPeriod: t.Int,
         })),
         components: t.array(t.type({
           name: t.string,
@@ -689,9 +708,28 @@ export class DebtApi {
                 return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'debtCenter' });
               }
 
+              if (!details.accountingPeriod) {
+                return Promise.reject({
+                  debtIndex: index,
+                  error: 'MISSING_FIELD',
+                  field: 'accountingPeriod',
+                });
+              }
+
+              const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(details.accountingPeriod);
+
+              if (!accountingPeriodOpen) {
+                return Promise.reject({
+                  debtIndex: index,
+                  error: 'ACCOUNTING_PERIOD_CLOSED',
+                  field: 'accountingPeriod',
+                });
+              }
+
+
               updateProgress(index + 1, `Debt ${index + 1}: Resolving debt center...`);
 
-              const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun);
+              const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun, details.accountingPeriod);
 
               if (!debtCenter) {
                 return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' });
@@ -813,6 +851,7 @@ export class DebtApi {
 
                 const newDebt: NewDebt = {
                   centerId: debtCenter.id,
+                  accountingPeriod: details.accountingPeriod,
                   description: details.description,
                   name: details.title,
                   payer: payer.id,
