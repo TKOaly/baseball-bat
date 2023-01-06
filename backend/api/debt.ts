@@ -312,6 +312,7 @@ export class DebtApi {
           payerId: payerIdentity,
           centerId: t.string,
           dueDate: t.union([t.null, t.string]),
+          date: dbDateString,
           paymentCondition: t.union([t.null, t.number]),
           components: t.array(t.type({
             operation: t.union([ t.literal('include'), t.literal('exclude') ]),
@@ -338,6 +339,7 @@ export class DebtApi {
           description: ctx.body.values.description,
           centerId: ctx.body.values.centerId,
           payerId: ctx.body.values.payerId,
+          date: ctx.body.values.date,
         };
 
         if (dueDate) {

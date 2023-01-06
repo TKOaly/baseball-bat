@@ -6,7 +6,7 @@ import { DateField } from '../../components/datetime-field';
 import { InputGroup } from '../input-group';
 import { Formik } from 'formik';
 import { uniqBy } from 'remeda';
-import { Debt, DebtComponent, EuroValue } from '../../../common/types';
+import { dbDateString, DbDateString, Debt, DebtComponent, EuroValue } from '../../../common/types';
 import { useMemo } from 'react';
 import * as dfns from 'date-fns';
 import { useGetDebtComponentsByCenterQuery, useUpdateMultipleDebtsMutation } from '../../api/debt';
@@ -16,6 +16,7 @@ import { EuroField } from '../euro-field';
 import { DropdownField } from '../dropdown-field';
 import { TableView } from '../table-view';
 import { AddTagDialog } from './add-tag-dialog';
+import { isRight, left } from 'fp-ts/lib/Either';
 
 type Props = {
   onClose: () => void,
@@ -24,6 +25,7 @@ type Props = {
 
 type FormValues = {
   name: string
+  date: DbDateString | null
   dueDate: string | null
   debtCenter: { id: string, type: 'debt_center' } | null
   paymentCondition: string | null
@@ -91,6 +93,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
     const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'));
+    const dates = uniqBy(debts, d => d.date === null ? null : dfns.format(new Date(d.date), 'dd.MM.yyyy'));
     const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
     let components = [];
@@ -116,7 +119,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
     let tags = tagsSummary
       .map(([name, count]) => {
-        let operation = 'noop';
+        let operation: 'noop' | 'exclude' | 'include' = 'noop';
 
         if (count === 0) {
           operation = 'exclude';
@@ -130,8 +133,11 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         };
       });
 
+    const date = dates.length === 1 && dates[0].date !== null ? dbDateString.decode(dfns.format(new Date(dates[0].date), 'yyyy-MM-dd')) : left(null)
+
     return {
       name: names.length === 1 ? names[0].name : null,
+      date: isRight(date) ? date.right : null,
       dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
       debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
       paymentCondition: paymentConditions.length === 1 ? '' + paymentConditions[0].paymentCondition : null,
@@ -141,11 +147,16 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   }, [debts, componentSummary]);
 
   const onSubmit = async (values: FormValues) => {
+    console.log(values);
+
+    const date = values.date !== null ? dbDateString.decode(values.date) : null;
+
     const res = await updateMultipleDebtsMutation({
       debts: debts.map(d => d.id),
       values: {
         name: values.name ?? undefined,
         dueDate: values.dueDate === null ? null : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
+        date: isRight(date) ? date.right : null,
         centerId: values.debtCenter?.id,
         paymentCondition: values.paymentCondition ? parseInt(values.paymentCondition) : undefined,
         components: values.components
@@ -193,6 +204,13 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 label="Name"
                 name="name"
                 component={TextField}
+              />
+
+              <InputGroup
+                label="Date"
+                name="date"
+                format="yyyy-MM-dd"
+                component={DateField}
               />
 
               <InputGroup
