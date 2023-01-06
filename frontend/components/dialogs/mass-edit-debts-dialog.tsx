@@ -165,9 +165,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   }, [debts, componentSummary]);
 
   const onSubmit = async (values: FormValues) => {
-    console.log(values);
-
-    const date = values.date !== null ? dbDateString.decode(values.date) : null;
+    const date = values.date !== null ? dbDateString.decode(values.date) : left(null);
 
     const res = await updateMultipleDebtsMutation({
       debts: debts.map(d => d.id),
