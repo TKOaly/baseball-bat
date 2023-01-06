@@ -4,6 +4,7 @@ import { useField } from 'formik';
 import { equals } from 'remeda';
 import { ChevronDown } from 'react-feather';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
+import { FloatingPortal, size, useClick, useDismiss, useFloating, useInteractions, useListNavigation } from '@floating-ui/react-dom-interactions';
 
 export type DropdownFieldProps<V> = {
   name: string
@@ -31,9 +32,8 @@ export const DropdownField = memo(<V extends unknown>({
 }: DropdownFieldProps<V>) => {
   const [, meta] = useField(name);
   const inputRef = useRef<HTMLInputElement>();
-  const ref = useRef();
   const [search, setSearch] = useState(null);
-  const [focused, setFocused] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(null);
 
   const itemRefs = useRef([]);
 
@@ -42,26 +42,36 @@ export const DropdownField = memo(<V extends unknown>({
     [search, options],
   );
 
-  useEffect(() => {
-    if (visibleOptions.find(option => equals(option, focused)) === undefined) {
-      setFocused(visibleOptions[0]?.value);
-    }
-  }, [focused, visibleOptions]);
-
-  useLayoutEffect(() => {
-    if (focused) {
-      const index = visibleOptions.findIndex((o) => equals(o.value, focused));
-
-      if (index > -1) {
-        itemRefs.current[index].focus();
-      }
-    }
-  }, [focused, itemRefs]);
-
   const [open, setOpen] = useState(false);
   const selectedOption = options.find(opt => equals(opt.value, value));
 
-  useOutsideEventListener(ref, 'click', open, () => setOpen(false));
+  const { x, y, reference, floating, strategy, context } = useFloating({
+    open,
+    onOpenChange: setOpen,
+    placement: 'bottom',
+    middleware: [
+      size({
+        apply({ elements, rects }) {
+          elements.floating.style.width = `${rects.reference.width}px`;
+        },
+      }),
+    ],
+  });
+
+  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
+    useClick(context),
+    useDismiss(context),
+    useListNavigation(context, {
+      listRef: itemRefs,
+      activeIndex,
+      onNavigate: (index) => {
+        setActiveIndex(index);
+        itemRefs.current[index]?.scrollIntoView?.({
+          block: 'nearest',
+        });
+      },
+    }),
+  ]);
 
   let selectedLabel = '';
 
@@ -84,58 +94,9 @@ export const DropdownField = memo(<V extends unknown>({
   }
 
   return (
-    <div
-      className="relative"
-      ref={ref}
-      onKeyDown={(evt) => {
-        if (evt.key === 'ArrowDown') {
-          if (focused === null) {
-            setFocused(visibleOptions[0].value);
-            setOpen(true);
-          } else {
-            const index = visibleOptions.findIndex((o) => equals(o.value, focused));
-
-            if (index < visibleOptions.length - 1) {
-              setOpen(true);
-              setFocused(visibleOptions[index + 1].value);
-            } else if (index === visibleOptions.length - 1) {
-              setOpen(true);
-              setFocused(visibleOptions[0].value);
-            } else {
-              setFocused(null);
-              setOpen(false);
-            }
-          }
-        } else if (evt.key === 'ArrowUp') {
-          if (focused === null) {
-            setFocused(visibleOptions[visibleOptions.length - 1].value);
-            setOpen(true);
-          } else {
-            const index = visibleOptions.findIndex((o) => equals(o.value, focused));
-
-            if (index === 0) {
-              setFocused(null);
-              setOpen(false);
-              inputRef.current.focus();
-            } else {
-              setFocused(visibleOptions[index - 1].value);
-            }
-          }
-        } else {
-          inputRef.current.focus();
-          inputRef.current.dispatchEvent(new KeyboardEvent('keydown', { ...evt.nativeEvent }));
-          setOpen(true);
-        }
-      }}
-    >
+    <div className="relative">
       <div
         tabIndex={allowCustom ? -2 : 0}
-        onClick={() => {
-          setOpen(!open);
-          if (allowCustom && inputRef.current) {
-            inputRef.current.focus();
-          }
-        }}
         className={`
           relative
           bg-white
@@ -154,6 +115,14 @@ export const DropdownField = memo(<V extends unknown>({
           items-center
           overflow-hidden
         `}
+        ref={reference}
+        {...getReferenceProps({
+          onClick: () => {
+            if (allowCustom && inputRef.current) {
+              inputRef.current.focus();
+            }
+          }
+        })}
       >
         {
           allowCustom
@@ -181,93 +150,93 @@ export const DropdownField = memo(<V extends unknown>({
           />
         </div>
       </div>
-      <div
-        className={`
-          absolute
-          z-50
-          w-full
-          bg-white
-          border
-          rounded-md
-          mt-1
-          overflow-hidden
-          shadow-lg
-        `}
-        style={{
-          display: open ? 'block' : 'none',
-        }}
-      >
-        <ul
-          className={`
-            flex
-            flex-col
-            gap-y-1
-            max-h-[10em]
-            overflow-y-auto
-            overflow-x-hidden
-            p-1
-          `}
-          style={{ scrollbarWidth: 'thin' }}
-        >
-          {visibleOptions
-            .map((option, optionIndex) => (
-              <li
-                key={JSON.stringify(option.value)}
-                className={`
-                  py-1
-                  px-2
-                  hover:bg-gray-50
-                  rounded-sm
-                  cursor-pointer
-                  flex
-                  items-center
-                  ${value === option.value && 'bg-gray-50'}
-                `}
-                tabIndex={-1}
-                onClick={() => {
-                  setSearch(null);
-                  onChange({ target: { name, value: option.value } });
-                  setOpen(false);
-                }}
-                onKeyDown={(evt) => {
-                  if (evt.key === 'Enter') {
-                    setSearch('');
-                    onChange({ target: { name, value: option.value } });
-                    setOpen(false);
-                    evt.stopPropagation();
-                  }
-                }}
-                ref={(el) => {
-                  itemRefs.current[optionIndex] = el;
-                }}
-              >
-                <span className="flex-grow">{option.text}</span>
-                {
-                  option.label && <span className="text-gray-500 text-sm">{option.label}</span>
-                }
-              </li>
-            ))}
-          {search && allowCustom && (
-            <li
+      <FloatingPortal>
+        { open && (
+          <div
+            className={`
+              bg-white
+              border
+              rounded-md
+              mt-1
+              overflow-hidden
+              shadow-lg
+              z-50
+            `}
+            style={{
+              position: strategy,
+              top: y ?? 0,
+              left: x ?? 0,
+            }}
+            ref={floating}
+            {...getFloatingProps()}
+          >
+            <ul
               className={`
-                  py-1
-                  px-2
-                  hover:bg-gray-50
-                  rounded-sm
-                  cursor-pointer
-                  text-gray-700
-                `}
-              tabIndex={-1}
-              onClick={() => {
-                const option = createCustomOption(search);
-                setSearch(null);
-                onChange({ target: { name, value: option } });
-                setOpen(false);
-              }}
-            >Create {'"'}{search}{'"'}</li>
-          )}
-        </ul>
-      </div>
+                flex
+                flex-col
+                gap-y-1
+                max-h-[10em]
+                overflow-y-auto
+                overflow-x-hidden
+                p-1
+              `}
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {visibleOptions
+                .map((option, optionIndex) => (
+                  <li
+                    key={JSON.stringify(option.value)}
+                    className={`
+                      py-1
+                      px-2
+                      hover:bg-gray-50
+                      rounded-sm
+                      cursor-pointer
+                      flex
+                      items-center
+                      ${value === option.value && 'bg-gray-50'}
+                    `}
+                    tabIndex={-1}
+                    {...getItemProps({
+                      ref (node) {
+                        itemRefs.current[optionIndex] = node;
+                      },
+                      onClick () {
+                        setSearch(null);
+                        onChange({ target: { name, value: option.value } });
+                        setOpen(false);
+                      },
+                    })}
+                  >
+                    <span className="flex-grow">{option.text}</span>
+                    {
+                      option.label && <span className="text-gray-500 text-sm">{option.label}</span>
+                    }
+                  </li>
+                ))}
+              {search && allowCustom && (
+                <li
+                  className={`
+                      py-1
+                      px-2
+                      hover:bg-gray-50
+                      rounded-sm
+                      cursor-pointer
+                      text-gray-700
+                    `}
+                  tabIndex={-1}
+                  onClick={() => {
+                    const option = createCustomOption(search);
+                    setSearch(null);
+                    onChange({ target: { name, value: option } });
+                    setOpen(false);
+                  }}
+                >Create {'"'}{search}{'"'}</li>
+              )}
+            </ul>
+          </div>
+        )}
+      </FloatingPortal>
     </div>
   );
 });
