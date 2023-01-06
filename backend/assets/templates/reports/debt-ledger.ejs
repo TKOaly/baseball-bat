@@ -1,21 +1,43 @@
 <div class="p-10">
   <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
 
-  <div class="mt-5 mb-5 bg-gray-100 p-3">
-    <table>
-      <tr>
-        <th class="text-left pr-2">Generated at</th>
-        <td><%= metadata.generatedAt %></td>
-      </tr>
-      <tr>
-        <th class="text-left pr-2">Date Range</th>
-        <td><%= utils.formatDate(data.options.startDate, 'dd.MM.yyyy') %> - <%= utils.formatDate(data.options.endDate, 'dd.MM.yyyy') %></td>
-      </tr>
-      <tr>
-        <th class="text-left pr-2">Include drafts</th>
-        <td><%= data.options.includeDrafts ? 'Yes' : 'No' %></td>
-      </tr>
-    </table>
+  <div class="mt-5 mb-5 gap-3 grid grid-cols-2">
+    <div class="p-3 bg-gray-100">
+      <table>
+        <tr>
+          <th class="text-left pr-2">Generated at</th>
+          <td><%= utils.formatDate(metadata.generatedAt, 'dd.MM.yyyy HH:mm') %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Date Range</th>
+          <td><%= utils.formatDate(data.options.startDate, 'dd.MM.yyyy') %> - <%= utils.formatDate(data.options.endDate, 'dd.MM.yyyy') %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Include drafts</th>
+          <td><%= data.options.includeDrafts ? 'Yes' : 'No' %></td>
+        </tr>
+      </table>
+    </div>
+    <div class="p-3 bg-gray-100">
+      <table>
+        <tr>
+          <th class="text-left pr-2">Total amount</th>
+          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Group count</th>
+          <td><%= data.groups.length %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Debt count</th>
+          <td><%= data.groups.map(({ debts }) => debts.length).reduce((a, b) => a + b, 0) %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Unique payer count</th>
+          <td><%= (new Set(data.groups.flatMap(({ debts }) => debts.map((debt) => debt.payerId.value)))).size %></td>
+        </tr>
+      </table>
+    </div>
   </div>
 
   <table id="content">
