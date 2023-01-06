@@ -27,6 +27,10 @@ export const ReportsListing = () => {
         rows={(reports ?? []).map((r) => ({ ...r, key: r.id }))}
         columns={[
           {
+            name: 'Identifier',
+            getValue: 'humanId',
+          },
+          {
             name: 'Name',
             getValue: 'name',
           },

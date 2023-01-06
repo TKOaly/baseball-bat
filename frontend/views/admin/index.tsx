@@ -28,6 +28,10 @@ import { TextField } from '../../components/text-field';
 import { EditDebt } from '../edit-debt';
 import { EditDebtCenter } from './edit-debt-center';
 import { ReportsListing } from './reports-listing';
+import { Dropdown } from '../../components/dropdown';
+import { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import { useAppDispatch, useAppSelector } from '../../store';
+import accountingPeriodSlice from '../../state/accounting-period';
 
 type MenuItemProps = {
   path?: string
@@ -72,9 +76,39 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, cl
   );
 };
 
+const AccountingPeriodSelector = () => {
+  const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
+  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const dispatch = useAppDispatch();
+
+  return (
+    <div className="flex gap-2 items-center px-4 mt-3">
+      <span className="text-sm">Accounting Period: </span>
+      <Dropdown
+        label={activeAccountingPeriod ? `${activeAccountingPeriod}` : 'Loading...'}
+        options={
+          (accountingPeriods ?? [])
+            .filter((period) => !period.closed)
+            .map((period) => ({ value: period.year, text: `${period.year}` }))
+        }
+        onSelect={(period) => dispatch(accountingPeriodSlice.actions.setActiveAccountingPeriod({ period }))}
+      />
+    </div>
+  );
+};
+
 const Admin = () => {
   const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow');
   const showSearchDialog = useDialog(GlobalSearchDialog);
+  const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
+  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (activeAccountingPeriod === null && accountingPeriods) {
+      dispatch(accountingPeriodSlice.actions.bootstrap(accountingPeriods));
+    }
+  }, [accountingPeriods, activeAccountingPeriod, dispatch]);
 
   useEffect(() => {
     const handler = (evt: KeyboardEvent) => {
@@ -88,6 +122,8 @@ const Admin = () => {
 
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+
 
   return (
     <div className="flex flex-row h-screen bg-white">
@@ -105,6 +141,7 @@ const Admin = () => {
           <MenuItem path="/" active={false} className="mt-4">Back to public site</MenuItem>
           <MenuItem path="#">Log out</MenuItem>
         </ul>
+        <AccountingPeriodSelector />
         <div className="flex-grow" />
         <ul className="flex justify-center">
           <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'narrow' && 'border-blue-500'}`} onClick={() => setWidth('narrow')}>Narrow</li>

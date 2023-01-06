@@ -39,6 +39,7 @@ const resolveDueDate = (debt: DbDebt) => {
 const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
   id: debt.id,
+  humanId: debt.human_id,
   date: debt.date,
   lastReminded: debt.last_reminded,
   payerId: internalIdentity(debt.payer_id),
@@ -184,7 +185,18 @@ export class DebtService {
     const created = await this.pg.tx(async (tx) => {
       const [created] = await tx 
         .do<DbDebt>(sql`
-          INSERT INTO debt (name, description, debt_center_id, payer_id, due_date, created_at, payment_condition, published_at, date)
+          INSERT INTO debt (
+            name,
+            description,
+            debt_center_id,
+            payer_id,
+            due_date,
+            created_at,
+            payment_condition,
+            published_at,
+            date,
+            accounting_period
+          )
           VALUES (
             ${debt.name},
             ${debt.description},
@@ -194,7 +206,8 @@ export class DebtService {
             COALESCE(${debt.createdAt}, NOW()),
             ${debt.paymentCondition},
             ${debt.publishedAt},
-            ${debt.date}
+            ${debt.date},
+            ${debt.accountingPeriod}
           )
           RETURNING *
         `);
@@ -708,40 +721,44 @@ export class DebtService {
 
   async generateDebtLedger(options: DebtLedgerOptions) {
     const criteria = options.includeDrafts
-      ? sql`debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`
-      : sql`debt.published_at IS NOT NULL AND debt.published_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+      ? sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`
+      : sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
     
     const debts = await this.queryDebts(criteria);
     let groups;
 
     if (options.groupBy) {
       let getGroupKey;
-      let getGroupName;
+      let getGroupDetails;
 
       if (options.groupBy === 'center') {
         getGroupKey = (debt: Debt) => debt.debtCenterId;
-        getGroupName = async (id: string) => {
+        getGroupDetails = async (id: string) => {
           const center = await this.debtCentersService.getDebtCenter(id);
-          return center?.name ?? 'Unknown debt center';
+          const name = center?.name ?? 'Unknown debt center';
+          const displayId = center?.humanId ?? '???';
+          return { name, id: displayId };
         };
       } else {
         getGroupKey = (debt: Debt) => debt.payerId.value;
-        getGroupName = async (id: string) => {
+        getGroupDetails = async (id: string) => {
           const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
-          return payer?.name ?? 'Unknown payer';
+          const name = payer?.name ?? 'Unknown payer';
+          const displayId = payer?.id?.value ?? '???';
+          return { name, id: displayId };
         };
       }
 
-      const createGroupUsing = (nameResolver: (id: string) => Promise<string>) => ([key, debts]: [string, Debt[]]) => async () => {
-        const name = await nameResolver(key);
-        return { name, debts }; 
+      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, Debt[]]) => async () => {
+        const { name, id } = await nameResolver(key);
+        return { name, debts, id }; 
       };
 
       groups = await pipe(
         debts,
         groupBy(getGroupKey),
         toArray,
-        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupName)),
+        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
       )();
     } else {
       groups = [{ debts }];

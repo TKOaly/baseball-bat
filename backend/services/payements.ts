@@ -338,17 +338,16 @@ export class PaymentService {
   }
 
   async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {
-    const paymentNumber = payment.paymentNumber ?? formatPaymentNumber(await this.createPaymentNumber());
+    // const paymentNumber = payment.paymentNumber ?? formatPaymentNumber(await this.createPaymentNumber());
 
     const created = await this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
-        INSERT INTO payments (type, data, message, title, payment_number, created_at)
+        INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
           ${payment.data},
           ${payment.message},
           ${payment.title},
-          ${paymentNumber},
           COALESCE(${payment.createdAt}, NOW())
         )
         RETURNING *

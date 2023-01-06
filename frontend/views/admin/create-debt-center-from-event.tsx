@@ -25,6 +25,7 @@ import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
 import { DateField } from '../../components/datetime-field';
 import { useLocation } from 'wouter';
 import { EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
+import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 
 type WizardState = 'select-event' | 'confirmation' | 'settings' | 'participants'
 
@@ -311,6 +312,30 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
   const { data: allEvents } = useGetEventsQuery({ starting });
   const events = useMemo(() => (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1), [state.eventIds, allEvents])
   const eventCustomFieldsArray = useFetchEventCustomFields(state.eventIds);
+  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
+
+  let [initialAccountingPeriod, setInitialAccountingPeriod] = useState<null | number>(null);
+
+  useEffect(() => {
+    if (initialAccountingPeriod === null && activeAccountingPeriod !== null) {
+      setInitialAccountingPeriod(activeAccountingPeriod);
+    }
+  }, [activeAccountingPeriod]);
+
+  const initialValues = useMemo(() => {
+    if (!events?.length) {
+      return {};
+    }
+
+    return {
+      name: state.basicSettings.name ?? events[0].name,
+      basePrice: state.basicSettings.basePrice.value ? state.basicSettings.basePrice.value / 100 : (events[0].price ? events[0].price.value / 100 : 0),
+      description: state.basicSettings.description ?? `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
+      dueDate: state.basicSettings.dueDate ?? format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+      accountingPeriod: initialAccountingPeriod,
+    };
+  }, [initialAccountingPeriod, state, events]);
 
   const eventCustomFields = useMemo(() => {
     if (eventCustomFieldsArray === null) {
@@ -337,12 +362,8 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
     <div className="grid gap-x-5 gap-y-2 grid-cols-4">
       {eventCustomFields && <PricingRuleModal ref={promptRef} events={events} fields={eventCustomFields} />}
       <Formik
-        initialValues={{
-          name: state.basicSettings.name ?? events[0].name,
-          basePrice: state.basicSettings.basePrice.value ? state.basicSettings.basePrice.value / 100 : (events[0].price ? events[0].price.value / 100 : 0),
-          description: state.basicSettings.description ?? `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
-          dueDate: state.basicSettings.dueDate ?? format(addDays(new Date(), 31), 'dd.MM.yyyy'),
-        }}
+        initialValues={initialValues}
+        enableReinitialize
         validate={(values) => {
           const errors: Partial<Record<keyof Settings, string>> = {};
 
@@ -361,6 +382,7 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
               name: values.name,
               basePrice: euro(values.basePrice),
               dueDate: values.dueDate,
+              accountingPeriod: values.accountingPeriod,
             },
           },
         })}
@@ -385,6 +407,21 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
               name="dueDate"
               component={DateField}
             />
+            { accountingPeriods?.length > 1 && (
+              <InputGroup
+                label="Accounting Period"
+                name="accountingPeriod"
+                component={DropdownField}
+                options={
+                  (accountingPeriods ?? [])
+                    .filter((period) => !period.closed)
+                    .map((period) => ({
+                      value: period.year,
+                      text: period.year,
+                    }))
+                }
+              />
+            )}
             <InputGroup
               label="Description"
               name="description"
@@ -786,6 +823,7 @@ type BasicSettings = {
   name: string,
   dueDate: string,
   basePrice: EuroValue,
+  accountingPeriod: number,
 };
 
 type SetBasicSettingsAction = {
