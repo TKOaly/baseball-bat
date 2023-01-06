@@ -654,3 +654,10 @@ export type DebtLedgerOptions = {
   includeDrafts: boolean
   groupBy: null | 'center' | 'payer'
 }
+
+export type DbAccountingPeriod = {
+  year: number
+  closed: boolean
+}
+
+export type AccountingPeriod = FromDbType<DbAccountingPeriod>
