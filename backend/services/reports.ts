@@ -42,6 +42,7 @@ export class ReportService {
   private async getBrowser() {
     if (this._browser === null) {
       this._browser = await puppeteer.launch({
+        executablePath: this.config.chromiumBinaryPath ?? undefined,
         headless: true,
         args: ['--no-sandbox'],
       });

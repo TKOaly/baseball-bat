@@ -13,6 +13,7 @@ interface IConfig {
   serviceId: string
   assetPath: string
   dataPath: string
+  chromiumBinaryPath: string | null
   eventServiceUrl: string
   eventServiceToken: string
   jwtSecret: string
@@ -39,6 +40,7 @@ export class Config implements IConfig {
   dbUrl = '';
   userServiceUrl = '';
   userServiceApiUrl = '';
+  chromiumBinaryPath = null;
   serviceId = '';
   eventServiceUrl = '';
   eventServiceToken = '';
@@ -74,6 +76,7 @@ export class Config implements IConfig {
       JWT_SECRET,
       POSTGRES_CONNECTION_STRING,
       REDIS_URL,
+      CHROMIUM_BINARY_PATH,
       ASSET_PATH,
       DATA_PATH,
       // STRIPE_SECRET_KEY,
@@ -112,6 +115,7 @@ export class Config implements IConfig {
       eventServiceUrl: EVENT_SERVICE_URL ?? '',
       eventServiceToken: EVENT_SERVICE_TOKEN ?? '',
       jwtSecret: JWT_SECRET,
+      chromiumBinaryPath: CHROMIUM_BINARY_PATH ?? null,
       // stripeSecretKey: STRIPE_SECRET_KEY,
       appUrl: APP_URL,
       // stripeWebhookEndpointSecret: STRIPE_WEBHOOK_ENDPOINT_SECRET,
