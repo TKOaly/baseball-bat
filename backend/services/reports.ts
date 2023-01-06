@@ -68,11 +68,17 @@ export class ReportService {
       `,
     });
 
-    return page.pdf({
+    const pdf = await page.pdf({
       format: 'A4',
       scale: 0.8,
       landscape: true,
     });
+
+    await page.close();
+    await browser.close();
+    this._browser = null;
+
+    return pdf;
   }
 
   private async loadTemplate(name: string): Promise<string> {
