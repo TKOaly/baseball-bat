@@ -8,6 +8,7 @@ import * as E from 'fp-ts/lib/Either';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
+  humanId: debtCenter.human_id,
   name: debtCenter.name,
   description: debtCenter.description,
   createdAt: debtCenter.created_at,

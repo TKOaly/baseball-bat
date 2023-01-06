@@ -28,6 +28,7 @@ export const DebtCentersListing = () => {
         rows={rows}
         onRowClick={(item) => setLocation(`/admin/debt-centers/${item.id}`)}
         columns={[
+          { name: 'Identifier', getValue: 'humanId' },
           { name: 'Title', getValue: 'name' },
           {
             name: 'Created',

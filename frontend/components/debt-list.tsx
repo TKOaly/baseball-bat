@@ -29,6 +29,7 @@ export const DebtList = (props: Props) => {
       selectable
       rows={rows}
       columns={[
+        { name: 'Identifier', getValue: 'humanId' },
         { name: 'Name', getValue: 'name' },
         {
           name: 'Payer',

@@ -828,6 +828,7 @@ export class DebtApi {
               } else {
                 createdDebt = {
                   id: '',
+                  humanId: '',
                   payerId: payer?.id ?? internalIdentity(''),
                   date: null,
                   name: details.title,

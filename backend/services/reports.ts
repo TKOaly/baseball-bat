@@ -19,6 +19,7 @@ export type CreateReportOptions = {
 };
 
 export type SaveReportOptions = {
+  generatedAt?: Date,
   name: string,
   content: Buffer,
 };
@@ -27,6 +28,7 @@ const formatReport = (db: DbReport): Report => ({
   id: db.id,
   name: db.name,
   generatedAt: db.generated_at,
+  humanId: db.human_id,
 });
 
 @Service()
@@ -82,7 +84,7 @@ export class ReportService {
     return content;
   }
 
-  async saveReport(options: SaveReportOptions): Promise<Omit<Report, 'generatedAt'>> {
+  async saveReport(options: SaveReportOptions): Promise<Report | null> {
     const id = uuid.v4();
 
     const reportDir = path.join(this.config.dataPath, 'reports');
@@ -99,17 +101,14 @@ export class ReportService {
       flag: 'w',
     });
 
-    await this.pg.one(sql`
-      INSERT INTO reports (id, name) VALUES (${id}, ${options.name});
+    const report = await this.pg.one<DbReport>(sql`
+      INSERT INTO reports (id, name, generated_at) VALUES (${id}, ${options.name}, COALESCE(${options.generatedAt}, NOW())) RETURNING *;
     `);
 
-    return {
-      id,
-      name: options.name,
-    };
+    return report && formatReport(report);
   }
 
-  async createReport(options: CreateReportOptions): Promise<Report> {
+  async createReport(options: CreateReportOptions): Promise<Report | null> {
     const template = await this.loadTemplate(options.template);
     const generatedAt = new Date();
 
@@ -128,11 +127,12 @@ export class ReportService {
     const pdf = await this.render(source);
 
     const report = await this.saveReport({
+      generatedAt,
       content: pdf,
       name: options.name,
     });
 
-    return { ...report, generatedAt };
+    return report;
   }
 
   async getReport(id: string): Promise<Report | null> {
@@ -148,7 +148,7 @@ export class ReportService {
 
   async getReports() {
     const reports = await this.pg.any<DbReport>(sql`
-      SELECT id, name, generated_at FROM reports
+      SELECT id, name, generated_at, human_id FROM reports
     `);
 
     return reports.map(formatReport);
