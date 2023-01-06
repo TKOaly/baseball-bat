@@ -55,14 +55,32 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
   const { data: commonDebtCenterComponents } = useGetDebtComponentsByCenterQuery(commonDebtCenterId ?? skipToken);
 
+  const allDebtComponents = useMemo(() => {
+    if (!commonDebtCenterComponents || !debts) {
+      return null;
+    }
+
+    const components = new Map();
+
+    for (const centerComponent of commonDebtCenterComponents) {
+      components.set(centerComponent.id, centerComponent);
+    }
+
+    for (const debtComponent of debts.flatMap(d => d.debtComponents)) {
+      components.set(debtComponent.id, debtComponent);
+    }
+
+    return [...components.values()];
+  }, [commonDebtCenterComponents, debts]);
+
   const componentSummary = useMemo<Array<[DebtComponent, number]>>(() => {
-    if (!commonDebtCenterComponents) {
+    if (!allDebtComponents) {
       return null;
     }
 
     const components: Record<string, number> = {};
 
-    for (const { id } of commonDebtCenterComponents) {
+    for (const { id } of allDebtComponents) {
       components[id] = 0;
     }
 
@@ -71,8 +89,8 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
     }
 
     return Object.entries(components)
-      .map(([id, count]) => [commonDebtCenterComponents.find(dc => dc.id === id), count]);
-  }, [commonDebtCenterComponents, debts]);
+      .map(([id, count]) => [allDebtComponents.find(dc => dc.id === id), count]);
+  }, [allDebtComponents, debts]);
 
   const tagsSummary = useMemo<Array<[string, number]>>(() => {
     const summary = new Map();
