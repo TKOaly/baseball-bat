@@ -27,6 +27,13 @@ const transactionsApi = rtkApi.injectEndpoints({
         { type: 'BankTransaction', id: 'LIST' },
       ],
     }),
+
+    autoregister: builder.mutation<void, void>({
+      query: () => ({
+        url: '/banking/autoregister',
+        method: 'POST',
+      }),
+    })
   }),
 });
 
@@ -34,6 +41,7 @@ export const {
   useImportBankTransactionsMutation,
   useGetAccountTransactionsQuery,
   useGetStatementTransactionsQuery,
+  useAutoregisterMutation,
 } = transactionsApi;
 
 export default transactionsApi;

@@ -7,11 +7,15 @@ import { parseCamtStatement } from '../camt-parser';
 import { BankingService } from '../services/banking';
 import { validateBody } from '../validate-middleware';
 import multer from 'multer';
+import { PaymentService } from '../services/payements';
 
 @Service()
 export class BankingApi {
   @Inject(() => BankingService)
   bankingService: BankingService;
+
+  @Inject(() => PaymentService)
+  paymentService: PaymentService;
 
   @Inject(() => AuthService)
   authService: AuthService;
@@ -130,6 +134,21 @@ export class BankingApi {
       });
   }
 
+  private autoregisterTransactions() {
+    return route
+      .post('/autoregister')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const transactions = await this.bankingService.getTransactionsWithoutRegistration();
+
+        for (const tx of transactions) {
+          await this.paymentService.createPaymentEventFromTransaction(tx);
+        }
+
+        return ok();
+      })
+  }
+
   router() {
     return router(
       this.getBankAccounts(),
@@ -140,6 +159,7 @@ export class BankingApi {
       this.getBankAccountStatements(),
       this.getBankStatement(),
       this.getBankStatementTransactions(),
+      this.autoregisterTransactions(),
     );
   }
 }

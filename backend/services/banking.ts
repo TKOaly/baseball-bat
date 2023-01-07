@@ -154,6 +154,17 @@ export class BankingService {
     );
   }
 
+  async getTransactionsWithoutRegistration() {
+    const transactions = await this.pg.any<DbBankTransaction>(sql`
+      SELECT t.*
+      FROM bank_transactions t
+      LEFT JOIN payment_event_transaction_mapping petm ON t.id = petm.bank_transaction_id
+      WHERE petm.bank_transaction_id IS NULL
+    `);
+
+    return transactions.map(formatBankTransaction);
+  }
+
   async getAccountTransactions(iban: string) {
     const transactions = await this.pg.any<DbBankTransaction>(sql`
       SELECT
