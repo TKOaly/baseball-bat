@@ -30,7 +30,6 @@ export const DropdownField = memo(<V extends unknown>({
   formatCustomOption,
   allowCustom,
 }: DropdownFieldProps<V>) => {
-  const [, meta] = useField(name);
   const inputRef = useRef<HTMLInputElement>();
   const [search, setSearch] = useState(null);
   const [activeIndex, setActiveIndex] = useState(null);
@@ -106,7 +105,6 @@ export const DropdownField = memo(<V extends unknown>({
           border
           py-2
           px-3
-          ${!meta.error ? 'border-gray-200' : 'border-red-400'}
           mt-1
           shadow-sm
           active:ring-2
