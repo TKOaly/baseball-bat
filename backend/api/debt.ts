@@ -882,6 +882,7 @@ export class DebtApi {
                   dueDate: dueDate ? parseISO(dueDate) : null,
                   paymentCondition: paymentCondition ?? null,
                   defaultPayment: null,
+                  accountingPeriod: details.accountingPeriod,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                   debtComponents,

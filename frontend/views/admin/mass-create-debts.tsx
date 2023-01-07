@@ -16,6 +16,9 @@ import { useDialog } from '../../components/dialog';
 import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog';
 import { skipToken } from '@reduxjs/toolkit/dist/query/react';
 import { Progress } from '../../components/progress';
+import { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import { useAppSelector } from '../../store';
+import { DropdownField } from '../../components/dropdown-field';
 
 type ParsedRow = {
   tkoalyUserId?: number
@@ -31,6 +34,7 @@ type ParsedRow = {
   tags?: Array<string>
   referenceNumber?: string
   components: Array<string>
+  accountingPeriod?: number
 }
 
 const parseDate = (v: string) => v;
@@ -101,6 +105,7 @@ const parseCsv = (csv: string): Array<ParsedRow> => {
   const columnMapping: Record<string, keyof ParsedRow | ParsedRowMappings[keyof ParsedRow]> = {
     'member id': ['tkoalyUserId', parseInt],
     'due date': ['dueDate', parseDate],
+    'accounting period': ['accountingPeriod', parseInt],
     'tags': ['tags', (value) => value.split(',').map(tag => tag)],
     'date': ['date', parseDate],
     'debt center': 'debtCenter',
@@ -172,6 +177,8 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: state !== 'idle' ? 200 : undefined });
   const [csvData, setCsvData] = useState('');
   const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog);
+  const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
+  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
 
   useEffect(() => {
     if (!progress)
@@ -195,12 +202,24 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
   const [defaultOverrides, setDefaultOverrides] = useState({});
 
   const defaults = useMemo(() => {
+    let accountingPeriod = undefined;
+
+    let openAccPeriods = (accountingPeriods ?? [])
+      .filter((period) => !period.closed);
+
+    if (openAccPeriods.length === 1) {
+      accountingPeriod = openAccPeriods[0].year;
+    } else if (activeAccountingPeriod !== null) {
+      accountingPeriod = activeAccountingPeriod;
+    }
+
     return {
       dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+      accountingPeriod,
       ...pDefaults,
       ...defaultOverrides,
     };
-  }, [pDefaults, defaultOverrides]);
+  }, [pDefaults, defaultOverrides, accountingPeriods, activeAccountingPeriod]);
 
   useEffect(() => {
     const newComponents = [...components]
@@ -347,6 +366,29 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
             <TableCell>Optional</TableCell>
             <TableCell>
               {makeDefaultValueCell('date', 'Date')}
+            </TableCell>
+          </tr>
+          <tr>
+            <TableCell className="whitespace-nowrap">Accounting Period</TableCell>
+            <TableCell>Accounting period of which the debt will be part of.</TableCell>
+            <TableCell>Required</TableCell>
+            <TableCell>
+              {
+                makeDefaultValueCell(
+                  'accountingPeriod',
+                  'Accounting Period',
+                  (props) => (
+                    <DropdownField
+                      {...props}
+                      options={
+                        (accountingPeriods ?? [])
+                          .filter((period) => !period.closed)
+                          .map((period) => ({ value: period.year, text: period.year }))
+                      }
+                    />
+                  ),
+                )
+              }
             </TableCell>
           </tr>
           <tr>

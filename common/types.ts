@@ -325,6 +325,7 @@ export type DebtTag = Omit<DbDebtTag, 'debt_id'>;
 export type DbDebt = {
   id: string
   human_id: string
+  accounting_period: number
   name: string
   tags: DbDebtTag[],
   date: Date | null
