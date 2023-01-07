@@ -73,7 +73,7 @@
           </tr>
           <tr>
           	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Reference number</th>
-            <td><%- payment.data.reference_number %></td>
+            <td><%- formatReferenceNumber(payment.data.reference_number) %></td>
           </tr>
           <tr>
           	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saaja</th>

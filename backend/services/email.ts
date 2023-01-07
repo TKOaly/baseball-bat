@@ -15,6 +15,7 @@ import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '../../common/types';
 import { formatEuro, sumEuroValues, euro, cents } from '../../common/currency';
+import { formatReferenceNumber } from './payements';
 
 type SendEmailOptions = {
   recipient: string
@@ -222,6 +223,7 @@ export class EmailService {
       ...payload,
       dateFns,
       formatEuro,
+      formatReferenceNumber,
       sumEuroValues,
       euro,
       cents,

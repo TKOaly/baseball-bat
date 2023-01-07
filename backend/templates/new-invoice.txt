@@ -32,7 +32,7 @@ Invoice date:      <%- formatDate(date) %>
 Invoice recipient: <%- receiverName %>
 Due date:          <%- formatDate(dueDate) %>
 Total amount:      <%- formatEuro(amount) %>
-Reference number:  <%- referenceNumber %>
+Reference number:  <%- formatReferenceNumber(referenceNumber) %>
 Beneficiary:       TKO-äly ry
 Bnf. bank account: FI89 7997 7995 1312 86
 Bnf. BIC:          HOLVFIHH

@@ -241,6 +241,9 @@ export type Session = {
 
 export type DbPayment = {
   id: string
+  human_id: string
+  human_id_nonce?: number
+  accounting_period: number
   payer_id: string
   payment_status: PaymentStatus
   stripe_payment_intent_id: string
@@ -478,6 +481,9 @@ export type PaymentStatus = 'paid' | 'canceled' | 'mispaid' | 'unpaid';
 
 export type Payment = {
   id: string,
+  humanId: string,
+  humanIdNonce?: number,
+  accountingPeriod: number
   paymentNumber: number,
   type: 'invoice',
   data: object | null,

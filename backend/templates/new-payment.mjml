@@ -86,7 +86,7 @@
               Viitenumero <br/>
               <span>Reference Number</span>
             </th>
-            <td><%= referenceNumber %></td>
+            <td><%= formatReferenceNumber(referenceNumber) %></td>
           </tr>
           <tr>
             <th>

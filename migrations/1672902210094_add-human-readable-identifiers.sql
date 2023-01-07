@@ -21,6 +21,19 @@ CREATE TABLE human_sequences (
     REFERENCES accounting_periods (year)
 );
 
+INSERT INTO accounting_periods
+SELECT payment_numbers.year
+FROM payment_numbers;
+
+INSERT INTO human_sequences
+SELECT
+  payment_numbers.year AS accounting_period,
+  'PAYM'::human_id_sequence_type AS label,
+  payment_numbers.number AS counter
+FROM payment_numbers;
+
+DROP TABLE payment_numbers;
+
 CREATE FUNCTION upsert_accounting_period(year INT)
 RETURNS INT
 AS $$
@@ -159,6 +172,7 @@ UPDATE reports SET human_id_nonce = generate_human_id_nonce('RPRT'::human_id_seq
 
 ALTER TABLE payments
   ADD COLUMN accounting_period INT,
+  ADD COLUMN human_id_nonce INT,
   ADD COLUMN human_id TEXT UNIQUE
     GENERATED ALWAYS AS ('PAYM-' || payment_number) STORED;
 
@@ -174,8 +188,8 @@ LANGUAGE PLPGSQL
 AS $$
   DECLARE nonce INT;
   BEGIN
-    nonce := generate_human_id_nonce('PAYM'::human_id_sequence_type, NEW.accounting_period);
-    NEW.payment_number := NEW.accounting_period || '-' || LPAD(nonce::text, 4, '0');
+    NEW.human_id_nonce := generate_human_id_nonce('PAYM'::human_id_sequence_type, NEW.accounting_period);
+    NEW.payment_number := NEW.accounting_period || '-' || LPAD(NEW.human_id_nonce::text, 4, '0');
     RETURN NEW;
   END;
 $$;
@@ -183,7 +197,7 @@ $$;
 CREATE TRIGGER payment_number_generation_trigger
 BEFORE INSERT ON payments
 FOR EACH ROW
-WHEN (NEW.payment_number IS NULL)
+WHEN (NEW.payment_number IS NULL AND NEW.human_id_nonce IS NULL)
 EXECUTE FUNCTION payment_number_generation_trigger_func();
 
 DROP VIEW resource_ts;
@@ -299,6 +313,17 @@ CREATE VIEW resource_ts AS (
     dc.id::text AS id
    FROM debt_center dc
 );
+
+CREATE TABLE payment_numbers (
+  year INT NOT NULL,
+  number INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (year)
+);
+
+INSERT INTO payment_numbers
+SELECT s.accounting_period AS year, s.counter AS number
+FROM human_sequences s
+WHERE s.label = 'PAYM';
 
 DROP TRIGGER debt_default_human_id ON debt;
 DROP TRIGGER report_default_human_id ON reports;

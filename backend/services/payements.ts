@@ -26,6 +26,14 @@ type PaymentWithEvents = Payment & {
   }>,
 }
 
+function normalizeReferenceNumber(reference: string) {
+  return reference.replace(/^0+/, '0').replace(/[^A-Z0-9]/ig, '').toUpperCase();
+}
+
+export function formatReferenceNumber(reference: string) {
+  return reference.match(/.{1,4}/g)?.join?.(' ') ?? reference;
+}
+
 function finnishReferenceChecksum(num: bigint): bigint {
   const factors = [7n, 3n, 1n];
   let acc = 0n;
@@ -45,7 +53,7 @@ function createReferenceNumber(series: number, year: number, number: number) {
   const tmp = content * (10n ** 6n) + 271500n;
   const checksum = 98n - (tmp % 97n);
   const numbers: Record<string, string> = { Y: `${checksum}`, X: `${content}` };
-  const template = 'RFYY XXXX XXXX XXXX XXXX';
+  const template = 'RFYYXXXXXXXXXXXXXXXX';
   const acc = new Array(template.length);
 
   for (let i = template.length - 1; i >= 0; i--) {
@@ -116,6 +124,9 @@ type CashPayment = {
 
 type DbPayment = {
   id: string
+  human_id: string
+  human_id_nonce?: number
+  accounting_period: number
   type: 'invoice'
   title: string
   payer_id: string
@@ -134,7 +145,7 @@ type NewPayment<T extends PaymentType, D = null> = {
   type: T['type'],
   title: string,
   message: string,
-  data: D,
+  data: D | ((p: Payment) => D),
   debts: Array<string>,
   paymentNumber?: string,
   createdAt?: Date
@@ -142,6 +153,9 @@ type NewPayment<T extends PaymentType, D = null> = {
 
 const formatPayment = (db: DbPayment): Payment => ({
   id: db.id,
+  humanId: db.human_id,
+  humanIdNonce: db.human_id_nonce,
+  accountingPeriod: db.accounting_period,
   type: db.type,
   title: db.title,
   paymentNumber: db.payment_number,
@@ -281,33 +295,7 @@ export class PaymentService {
     return result;
   }
 
-  async createPaymentNumber(): Promise<[number, number]> {
-    return await this.pg.tx(async (tx) => {
-      const [result] = await tx.do<{ year: number, number: number }>(sql`
-        UPDATE payment_numbers
-        SET number = number + 1
-        WHERE year = DATE_PART('year', NOW())
-        RETURNING year, number
-      `);
-
-      if (result) {
-        const { year, number } = result;
-        return [year, number];
-      }
-
-      const [{ year, number }] = await tx.do<{ year: number, number: number }>(sql`INSERT INTO payment_numbers (year, number) VALUES (DATE_PART('year', NOW()), 0) RETURNING *`);
-
-      return [year, number];
-    });
-  }
-
   async createInvoice(invoice: NewInvoice, options: PaymentCreationOptions = {}): Promise<Payment & { data: { due_date: string, reference_number: string } }> {
-    const [year, number] = await this.createPaymentNumber();
-
-    const reference_number = invoice.referenceNumber ?? createReferenceNumber(invoice.series ?? 0, year, number);
-
-    const paymentNumber = invoice.paymentNumber ?? formatPaymentNumber([year, number]);
-
     const results = await Promise.all(invoice.debts.map(id => this.debtService.getDebt(id)));
 
     if (results.some(d => d === null)) {
@@ -325,27 +313,33 @@ export class PaymentService {
 
     return this.createPayment({
       type: 'invoice',
-      data: {
-        reference_number,
-        due_date: formatISO(due_date),
-        date: invoice.date ?? new Date(),
+      data: (payment) => {
+        if (!payment.humanIdNonce) {
+          throw new Error('Generated payment does not have automatically assigned id');
+        }
+
+        return {
+          reference_number: invoice.referenceNumber
+            ? normalizeReferenceNumber(invoice.referenceNumber)
+            : createReferenceNumber(invoice.series ?? 0, payment.accountingPeriod, payment.humanIdNonce),
+          due_date: formatISO(due_date),
+          date: invoice.date ?? new Date(),
+        };
       },
       message: invoice.message,
       debts: invoice.debts,
-      paymentNumber,
+      paymentNumber: invoice.paymentNumber,
       title: invoice.title,
     }, options);
   }
 
   async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {
-    // const paymentNumber = payment.paymentNumber ?? formatPaymentNumber(await this.createPaymentNumber());
-
     const created = await this.pg.tx(async (tx) => {
       const [createdPayment] = await tx.do<DbPayment>(sql`
         INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
-          ${payment.data},
+          ${typeof payment.data !== 'function' ? payment.data : {}},
           ${payment.message},
           ${payment.title},
           COALESCE(${payment.createdAt}, NOW())
@@ -357,6 +351,14 @@ export class PaymentService {
 
       if (!createdPayment) {
         throw new Error('Could not create payment');
+      }
+
+      if (typeof payment.data === 'function') {
+        const callback = payment.data as any as ((p: Payment) => D);
+        const data = callback(formatPayment(createdPayment));
+        await tx.do(sql`
+          UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id}
+        `);
       }
 
       await Promise.all(

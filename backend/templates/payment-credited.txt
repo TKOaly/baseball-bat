@@ -31,7 +31,7 @@ Invoice number:    <%- payment.paymentNumber %>
 Invoice date:      <%- formatDate(new Date(payment.data.date)) %>
 Due date:          <%- formatDate(new Date(payment.data.due_date)) %>
 Total amount:      <%- formatEuro(amount) %>
-Reference number:  <%- payment.data.reference_number %>
+Reference number:  <%- formatReferenceNumber(payment.data.reference_number) %>
 Receiver name:     TKO-äly ry
 Receiver acccount: FI89 7997 7995 1312 86
 Receiver BIC:      HOLVFIHH

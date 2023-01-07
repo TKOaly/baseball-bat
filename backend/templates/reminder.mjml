@@ -71,7 +71,7 @@
           </tr>
           <tr>
           	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Reference number</th>
-            <td><%- referenceNumber %></td>
+            <td><%- formatReferenceNumber(referenceNumber) %></td>
           </tr>
           <tr>
           	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Beneficiary</th>
