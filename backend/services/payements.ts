@@ -1,15 +1,17 @@
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
-import { BankTransaction, DbEmail, DbPaymentEvent, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentEvent, PaymentStatus } from '../../common/types';
+import { BankTransaction, DbDebt, DbEmail, DbPayerProfile, DbPaymentEvent, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentEvent, PaymentLedgerOptions, PaymentStatus } from '../../common/types';
+import * as R from 'remeda';
 import { FromDbType, PgClient, TxClient } from '../db';
-import { DebtService } from './debt';
+import { DebtService, formatDebt } from './debt';
 import { Either } from 'fp-ts/lib/Either';
 import * as E from 'fp-ts/lib/Either';
 import { EmailService } from './email';
 import { BankingService } from './banking';
-import { PayerService } from './payer';
+import { formatPayerProfile, PayerService } from './payer';
 import { cents, euro, sumEuroValues } from '../../common/currency';
-import { formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
+import { format, formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
+import { ReportService } from './reports';
 
 export type PaymentCreditReason = 'manual' | 'paid';
 
@@ -186,6 +188,9 @@ export class PaymentService {
 
   @Inject(() => BankingService)
   bankingService: BankingService;
+
+  @Inject(() => ReportService)
+  reportService: ReportService;
 
   async getPayments() {
     return this.pg
@@ -616,5 +621,46 @@ export class PaymentService {
     });
 
     return E.fromNullable('Could not create email')(created);
+  }
+
+  async generatePaymentLedger(options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> & Record<'startDate' | 'endDate', Date>) {
+    const results = await this.pg.any<{ event: DbPaymentEvent, debt: DbDebt, payment: DbPayment, payer: DbPayerProfile }>(sql`
+      SELECT DISTINCT ON (event.id, debt.id)
+        TO_JSONB(event.*) AS event,
+        TO_JSONB(debt.*) AS debt,
+        TO_JSONB(payment.*) AS payment,
+        TO_JSONB(payer.*) AS payer
+      FROM payment_events event
+      JOIN payments payment ON payment.id = event.payment_id
+      JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
+      JOIN debt ON debt.id = pdm.debt_id
+      JOIN payer_profiles payer ON payer.id = debt.payer_id
+    `.append(
+      options.paymentType === null
+        ? ''
+        : sql`WHERE payment.type = ${options.paymentType}`
+    ));
+
+    const events = R.sortBy(results
+      .map(({ payment, payer, event, debt }) => ({
+        ...formatPaymentEvent({ ...event, time: parseISO(event.time as any) }),
+        debt: formatDebt(debt),
+        payer: formatPayerProfile(payer),
+        payment: formatPayment({ ...payment, events: [] }),
+      })),
+      (item) => item.time,
+    );
+
+    let name = `Payment Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+
+    if (options.paymentType) {
+      name = options.paymentType[0].toUpperCase() + options.paymentType.substring(1) + ' ' + name;
+    }
+
+    return this.reportService.createReport({
+      template: 'payment-ledger',
+      name,
+      payload: { options, events },
+    });
   }
 }

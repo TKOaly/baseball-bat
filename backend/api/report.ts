@@ -8,6 +8,7 @@ import { ReportService } from '../services/reports';
 import { validateBody } from '../validate-middleware';
 import * as t from 'io-ts';
 import { parse } from 'date-fns';
+import { PaymentService } from '../services/payements';
 
 @Service()
 export class ReportApi {
@@ -19,6 +20,9 @@ export class ReportApi {
 
   @Inject(() => DebtService)
   debtService: DebtService
+
+  @Inject(() => PaymentService)
+  paymentService: PaymentService
 
   private getReport() {
     return route
@@ -86,12 +90,33 @@ export class ReportApi {
       })
   }
 
+  private generatePaymentLedgerReport() {
+    return route
+      .post('/generate/payment-ledger')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.type({
+        startDate: dbDateString,
+        endDate: dbDateString,
+        paymentType: t.union([ t.null, t.literal('cash'), t.literal('invoice') ]),
+      })))
+      .handler(async (ctx) => {
+        const report = await this.paymentService.generatePaymentLedger({
+          startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
+          endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
+          paymentType: ctx.body.paymentType,
+        });
+
+        return ok(report);
+      });
+  }
+
   router() {
     return router(
       this.getReport(),
       this.getReports(),
       this.getReportContent(),
       this.generateDebtLedgerReport(),
+      this.generatePaymentLedgerReport(),
     );
   }
 }

@@ -670,3 +670,9 @@ export type DbAccountingPeriod = {
 }
 
 export type AccountingPeriod = FromDbType<DbAccountingPeriod>
+
+export type PaymentLedgerOptions = {
+  startDate: DbDateString
+  endDate: DbDateString
+  paymentType: null | 'invoice' | 'cash'
+}
