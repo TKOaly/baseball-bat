@@ -25,6 +25,7 @@ import { UsersService } from '../services/users';
 import * as EQ from 'fp-ts/lib/Eq';
 import { RedisClientType } from 'redis';
 import { AccountingService } from '../services/accounting';
+import { JobService } from '../services/jobs';
 
 const debtCenter = t.type({
   name: t.string,
@@ -81,6 +82,9 @@ export class DebtApi {
 
   @Inject(() => UsersService)
   usersService: UsersService;
+
+  @Inject(() => JobService)
+  jobService: JobService;
 
   @Inject(() => PaymentService)
   paymentService: PaymentService;
@@ -648,313 +652,23 @@ export class DebtApi {
         dryRun: t.boolean,
       })))
       .handler(async (ctx) => {
-        const { debts, defaults, dryRun, components } = ctx.body;
+        let { debts, defaults, dryRun, components } = ctx.body;
 
-
-        const commonTags = [
-          { name: `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`, hidden: true },
-          ...(defaults.tags ?? []).map(name => ({ name, hidden: false })),
+        defaults.tags = [
+          `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`,
+          ...(defaults.tags ?? []),
         ];
 
-        const progressId = uuidv4();
+        const res = await this.debtService.batchCreateDebts(
+          debts.map((debt) => ({ ...defaults, ...debt })),
+          components,
+          ctx.req.cookies.token,
+          dryRun,
+        );
 
-        const updateProgress = (current: number, message: string, result?: any) => {
-          this.redis.set(`mass-import-progress:${progressId}`, JSON.stringify({
-            current,
-            total: debts.length,
-            message,
-            result,
-          }));
-        };
-
-        updateProgress(0, 'Starting...');
-
-        (async () => {
-          try {
-            const handleDebt = async (debt: typeof debts[0], index: number) => {
-              const details = { ...defaults, ...debt };
-
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving payer...`);
-
-              const payer = await resolvePayer(details, ctx.req.cookies.token, dryRun);
-
-              if (!payer && !details.email) {
-                return Promise.reject({ debtIndex: index, error: 'NO_PAYER_OR_EXPLICIT_EMAIL' });
-              }
-
-              let email = details.email;
-              let emailSource = 'explicit';
-
-              if (!email && payer) {
-                const primary = await this.payerService.getPayerPrimaryEmail(payer.id);
-
-                if (!primary) {
-                  return Promise.reject({ debtIndex: index, error: 'PAYER_HAS_NO_EMAIL' });
-                }
-
-                email = primary.email;
-                emailSource = 'profile';
-              }
-
-              if (!details.title) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'title' });
-              }
-
-              if (!details.description) {
-                details.description = '';
-              }
-
-              if (!details.debtCenter) {
-                return Promise.reject({ debtIndex: index, error: 'MISSING_FIELD', field: 'debtCenter' });
-              }
-
-              if (!details.accountingPeriod) {
-                return Promise.reject({
-                  debtIndex: index,
-                  error: 'MISSING_FIELD',
-                  field: 'accountingPeriod',
-                });
-              }
-
-              const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(details.accountingPeriod);
-
-              if (!accountingPeriodOpen) {
-                return Promise.reject({
-                  debtIndex: index,
-                  error: 'ACCOUNTING_PERIOD_CLOSED',
-                  field: 'accountingPeriod',
-                });
-              }
-
-
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt center...`);
-
-              const debtCenter = await resolveDebtCenter(details.debtCenter, dryRun, details.accountingPeriod);
-
-              if (!debtCenter) {
-                return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'debtCenter' });
-              }
-
-              let dueDate = null;
-
-              if (details.dueDate) {
-                dueDate = convertToDbDate(details.dueDate);
-
-                if (!dueDate) {
-                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'dueDate' });
-                }
-              }
-
-              let date = null;
-
-              if (details.date) {
-                date = convertToDbDate(details.date);
-
-                if (!date) {
-                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'date' });
-                }
-              }
-
-              let publishedAt = null;
-
-              if (details.publishedAt) {
-                publishedAt = convertToDbDate(details.publishedAt);
-
-                if (!publishedAt) {
-                  return Promise.reject({ debtIndex: index, error: 'COULD_NOT_RESOLVE', field: 'publishedAt' });
-                }
-              }
-
-              let paymentCondition = details.paymentCondition;
-
-              if (dueDate && paymentCondition) {
-                return Promise.reject({
-                  debtIndex: index,
-                  error: 'BOTH_DUE_DATE_AND_CONDITION',
-                });
-              } else if (!dueDate && !paymentCondition) {
-                const zero = t.Int.decode(0);
-
-                if (E.isRight(zero)) {
-                  paymentCondition = zero.right;
-                } else {
-                  throw Error('Unreachable.');
-                }
-              }
-
-              let createdDebt: Debt | null = null;
-              let debtComponents: Array<DebtComponent> = [];
-
-              updateProgress(index + 1, `Debt ${index + 1}: Resolving debt components...`);
-
-              if (!dryRun) {
-                if (!payer) {
-                  return Promise.reject({
-                    debtIndex: index,
-                    error: 'NO_PAYER',
-                  });
-                }
-
-                const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any);
-
-                debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
-                  const match = existingDebtComponents.find(ec => ec.name === c);
-
-                  if (match) {
-                    return match;
-                  }
-
-                  const componentDetails = components.find(({ name }) => name === c);
-
-                  if (componentDetails) {
-                    return await this.debtService.createDebtComponent({
-                      name: c,
-                      amount: componentDetails.amount,
-                      debtCenterId: debtCenter.id,
-                      description: c,
-                    });
-                  }
-
-                  return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' });
-                }));
-
-                if (details.amount) {
-                  const existingBasePrice = existingDebtComponents.find((dc) => {
-                    return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
-                  });
-
-                  if (existingBasePrice) {
-                    debtComponents.push(existingBasePrice);
-                  } else {
-                    debtComponents.push(await this.debtService.createDebtComponent({
-                      name: 'Base Price',
-                      amount: details.amount,
-                      debtCenterId: debtCenter.id,
-                      description: 'Base Price',
-                    }));
-                  }
-                }
-
-                const options: CreateDebtOptions = {};
-
-                if (details.paymentNumber || details.referenceNumber) {
-                  options.defaultPayment = {};
-
-                  if (details.paymentNumber) {
-                    options.defaultPayment.paymentNumber = details.paymentNumber;
-                  }
-
-                  if (details.referenceNumber) {
-                    options.defaultPayment.referenceNumber = details.referenceNumber;
-                  }
-                }
-
-                const newDebt: NewDebt = {
-                  centerId: debtCenter.id,
-                  accountingPeriod: details.accountingPeriod,
-                  description: details.description,
-                  name: details.title,
-                  payer: payer.id,
-                  dueDate,
-                  date,
-                  publishedAt,
-                  paymentCondition: paymentCondition ?? null,
-                  components: debtComponents.map(c => c.id),
-                  tags: [...commonTags, ...(details.tags ?? []).map(name => ({ name, hidden: false }))],
-                };
-
-                updateProgress(index + 1, `Debt ${index + 1}: Creating debt...`);
-
-                createdDebt = await this.debtService.createDebt(newDebt, options);
-              } else {
-                createdDebt = {
-                  id: '',
-                  humanId: '',
-                  payerId: payer?.id ?? internalIdentity(''),
-                  date: null,
-                  name: details.title,
-                  description: details.description,
-                  draft: true,
-                  publishedAt: null,
-                  debtCenterId: debtCenter.id,
-                  status: 'unpaid',
-                  lastReminded: null,
-                  dueDate: dueDate ? parseISO(dueDate) : null,
-                  paymentCondition: paymentCondition ?? null,
-                  defaultPayment: null,
-                  accountingPeriod: details.accountingPeriod,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  debtComponents,
-                  credited: false,
-                  tags: [...commonTags, ...(details.tags ?? []).map(name => ({ name, hidden: false }))],
-                };
-
-                if (details.components && details.components.length > 0) {
-                  debtComponents = await Promise.all(details.components.map(async (c) => {
-                    const componentDetails = components.find(({ name }) => name === c);
-
-                    if (componentDetails) {
-                      return {
-                        id: '',
-                        name: c,
-                        amount: componentDetails.amount,
-                        description: '',
-                        debtCenterId: debtCenter.id,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                      } as DebtComponent;
-                    }
-
-                    const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id);
-                    const match = existing.find(ec => ec.name === c);
-
-                    if (match) {
-                      return match;
-                    }
-
-                    return Promise.reject({ debtIndex: index, error: 'NO_SUCH_COMPONENT' });
-                  }));
-                }
-
-                if (details.amount) {
-                  debtComponents.push({
-                    id: '8d12e7ef-51db-465e-a5fa-b01cf01db5a8',
-                    name: 'Base Price',
-                    amount: details.amount,
-                    description: 'Base Price',
-                    debtCenterId: debtCenter.id,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                  });
-                }
-              }
-
-              return {
-                payer,
-                email,
-                emailSource,
-                debt: createdDebt,
-                components: debtComponents,
-                debtCenter,
-              };
-            };
-
-            // Run handleDebt sequentically over debts
-            const results = await debts.reduce(
-              (prev, debt, index) => prev.then(async (results) => [...results, await handleDebt(debt, index)]),
-              Promise.resolve([] as Array<Awaited<ReturnType<typeof handleDebt>>>),
-            );
-
-            updateProgress(debts.length, 'Finished!', results);
-
-          } catch (e) {
-            console.error(e);
-            updateProgress(debts.length, 'Error!', []);
-          }
-        })();
-
-        return ok({ progress: progressId });
+        return ok({
+          progress: res.job.id,
+        });
       });
   }
 
@@ -963,13 +677,37 @@ export class DebtApi {
       .get('/mass-create/poll/:id')
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const progress = await this.redis.get(`mass-import-progress:${ctx.routeParams.id}`);
+        const flow = await this.jobService
+          .getFlowProducer()
+          .getFlow({
+            id: ctx.routeParams.id,
+            queueName: 'debts',
+            prefix: 'bbat-jobs',
+          });
 
-        if (progress === null) {
-          return notFound();
+        if (!flow?.children) {
+          return internalServerError();
         }
 
-        return ok(JSON.parse(progress));
+        const total = await flow.job.getDependenciesCount();
+
+        if (!total) {
+          return internalServerError();
+        }
+
+        const states = await Promise.all(flow.children.map((child) => child.job.getState()));
+
+        console.log(flow.job, flow.job.stacktrace);
+
+        const result = flow.job.returnvalue?.result === 'success'
+          ? flow.job.returnvalue?.data?.debts
+          : undefined;
+
+        return ok({
+          current: total.processed ?? 0,
+          total: (total.unprocessed ?? 0) + (total.processed ?? 0),
+          result,
+        });
       });
   }
 

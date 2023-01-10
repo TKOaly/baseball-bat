@@ -1,0 +1,70 @@
+import { endOfMonth, format, startOfMonth } from "date-fns";
+import { Formik } from "formik";
+import { DbDateString } from "../../../common/types";
+import { useGeneratePaymentLedgerMutation } from "../../api/report";
+import { Button } from "../button";
+import { DateField } from "../datetime-field";
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from "../dialog";
+import { DropdownField } from "../dropdown-field";
+import { InputGroup } from "../input-group";
+
+type FormValues = {
+  startDate: DbDateString,
+  endDate: DbDateString,
+  paymentType: null | 'cash' | 'invoice'
+}
+
+export const NewPaymentLedgerDialog = ({ onClose }) => {
+  const [generatePaymentLedgerReport] = useGeneratePaymentLedgerMutation();
+
+  const handleSubmit = async (values: FormValues) => {
+    await generatePaymentLedgerReport(values);
+  };
+
+  return (
+    <Formik
+      initialValues={{
+        startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+        endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+        paymentType: null,
+      } as FormValues}
+      onSubmit={handleSubmit}
+    >
+      {({ submitForm, isSubmitting }) => (
+        <DialogBase onClose={() => onClose(null)}>
+          <DialogHeader>Generate a new payment ledger</DialogHeader>
+          <DialogContent>
+            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+              <InputGroup
+                label="Start Date"
+                name="startDate"
+                format="yyyy-MM-dd"
+                component={DateField}
+              />
+              <InputGroup
+                label="End Date"
+                name="endDate"
+                format="yyyy-MM-dd"
+                component={DateField}
+              />
+              <InputGroup
+                label="Payment Type"
+                name="paymentType"
+                component={DropdownField}
+                options={[
+                  { value: null, text: 'All' },
+                  { value: 'invoice', text: 'Invoice' },
+                  { value: 'cash', text: 'Cash' },
+                ]}
+              />
+            </div>
+          </DialogContent>
+          <DialogFooter>
+            <Button secondary onClick={() => onClose(null)}>Cancel</Button>
+            <Button onClick={submitForm} loading={isSubmitting}>Generate</Button>
+          </DialogFooter>
+        </DialogBase>
+      )}
+    </Formik>
+  );
+};

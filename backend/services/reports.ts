@@ -61,7 +61,9 @@ export class ReportService {
       waitUntil: 'domcontentloaded',
     });
 
-    await page.waitForSelector('style');
+    // await page.waitForSelector('head style');
+
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     await page.addStyleTag({
       content: `

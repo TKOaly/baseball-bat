@@ -1,7 +1,8 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString, tkoalyIdentity, emailIdentity, DateString, convertToDbDate } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as R from 'remeda';
+import * as t from 'io-ts';
 import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
 import { DebtCentersService, formatDebtCenter } from './debt_centers';
@@ -18,6 +19,11 @@ import { addDays, format, isPast, parseISO } from 'date-fns';
 import { EmailService } from './email';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { ReportService } from './reports';
+import { JobService } from './jobs';
+import { Job, Queue } from 'bullmq';
+import { validate } from 'uuid';
+import { AccountingService } from './accounting';
+import { UsersService } from './users';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -36,7 +42,7 @@ const resolveDueDate = (debt: DbDebt) => {
   return null;
 }
 
-const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
+export const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
   id: debt.id,
   humanId: debt.human_id,
@@ -85,6 +91,35 @@ export type DebtLedgerOptions = {
   groupBy: null | 'center' | 'payer'
 }
 
+type DebtCreationDetails = Partial<{
+  tkoalyUserId: number,
+  debtCenter: string,
+  title: string,
+  description: string,
+  email: string,
+  date: DateString,
+  amount: EuroValue,
+  dueDate: DateString,
+  publishedAt: DateString,
+  paymentCondition: number,
+  components: string[],
+  paymentNumber: string,
+  referenceNumber: string,
+  tags: string[],
+  accountingPeriod: number,
+}>;
+type DebtJobResult = { result: 'success', data: any } | { result: 'error', soft: boolean, message: string, code: string, stack?: string };
+type DebtJobName = 'create' | 'batch';
+type DebtJobDefinition = {
+  details: DebtCreationDetails,
+  token: string,
+  dryRun: boolean,
+  components: {
+    name: string,
+    amount: EuroValue,
+  }[],
+};
+
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
@@ -92,6 +127,12 @@ export class DebtService {
 
   @Inject(() => DebtCentersService)
   debtCentersService: DebtCentersService;
+
+  @Inject(() => DebtService)
+  debtService: DebtService;
+
+  @Inject(() => AccountingService)
+  accountingService: AccountingService;
 
   @Inject(() => ReportService)
   reportService: ReportService;
@@ -104,6 +145,467 @@ export class DebtService {
 
   @Inject(() => EmailService)
   emailService: EmailService;
+
+  @Inject(() => UsersService)
+  usersService: UsersService;
+
+  jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName>;
+
+  constructor(@Inject() public jobService: JobService) {
+    this.jobService.createWorker('debts', this.handleDebtJob.bind(this));
+    this.jobQueue = this.jobService.getQueue('debts');
+  }
+
+  private async resolvePayer(
+    { email, name, tkoalyUserId }: { email?: string, name?: string, tkoalyUserId?: number },
+    token: string,
+    dryRun: boolean,
+  ): Promise<PayerProfile | null> {
+    if (tkoalyUserId) {
+      const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(tkoalyUserId));
+
+      if (payer) {
+        return payer;
+      }
+    }
+
+    if (email) {
+      const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email));
+
+      if (payer) {
+        return payer;
+      }
+
+      const user = await this.usersService.getUpstreamUserByEmail(email, token);
+
+      if (user) {
+        if (dryRun) {
+          return {
+            id: internalIdentity(''),
+            email: user.email,
+            emails: [],
+            name: user.screenName,
+            tkoalyUserId: tkoalyIdentity(user.id),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            stripeCustomerId: '',
+            disabled: false,
+          };
+        } else {
+          return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token);
+        }
+      }
+
+      if (name) {
+        if (dryRun) {
+          return {
+            id: internalIdentity(''),
+            email,
+            name,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            emails: [],
+            stripeCustomerId: '',
+            disabled: false,
+          };
+        } else {
+          const payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name });
+          return payer;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private async resolveDebtCenter(debtCenter: string, dryRun: boolean, accountingPeriod: number) {
+    if (validate(debtCenter)) {
+      const byId = await this.debtCentersService.getDebtCenter(debtCenter);
+      return byId;
+    }
+
+    const byName = await this.debtCentersService.getDebtCenterByName(debtCenter);
+
+    if (byName) {
+      return byName;
+    }
+
+    if (dryRun) {
+      return {
+        id: '',
+        name: debtCenter,
+        accountingPeriod,
+        description: '',
+        url: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    } else {
+      return await this.debtCentersService.createDebtCenter({
+        name: debtCenter,
+        accountingPeriod,
+        description: '',
+        url: '',
+      });
+    }
+  };
+
+  private async handleDebtJob(job: Job<DebtJobDefinition,  DebtJobResult, string>): Promise<DebtJobResult> {
+    if (job.name === 'create') {
+      const missingField = (field: string): DebtJobResult & { result: 'error' } => ({
+        result: 'error',
+        soft: true,
+        code: 'MISSING_FIELD',
+        message: `Required field "${field}" not specified.`,
+      });
+
+      try {
+        const { details, token, components, dryRun } = job.data;
+
+        const payer = await this.resolvePayer(details, token, dryRun);
+
+        if (!payer && !details.email) {
+          return {
+            result: 'error',
+            soft: true,
+            code: 'NO_PAYER_OR_EXPLICIT_EMAIL',
+            message: `Cannot create debt without sufficient payer information.`,
+          };
+        }
+
+        let email = details.email;
+        let emailSource = 'explicit';
+
+        if (!email && payer) {
+          const primary = await this.payerService.getPayerPrimaryEmail(payer.id);
+
+          if (!primary) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'PAYER_HAS_NO_EMAIL',
+              message: `Could not resolve an email address for the payer.`,
+            }
+          }
+
+          email = primary.email;
+          emailSource = 'profile';
+        }
+
+        if (!details.title) {
+          return missingField('title');
+        }
+
+        if (!details.description) {
+          details.description = '';
+        }
+
+        if (!details.debtCenter) {
+          return missingField('debtCenter');
+        }
+
+        if (!details.accountingPeriod) {
+          return missingField('accountingPeriod');
+        }
+
+        const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(details.accountingPeriod);
+
+        if (!accountingPeriodOpen) {
+          return {
+            result: 'error',
+            soft: true,
+            code: 'ACCOUNTING_PERIOD_CLOSED',
+            message: `The specified accounting period (${details.accountingPeriod}) is not open.`,
+          };
+        }
+
+        const debtCenter = await this.resolveDebtCenter(details.debtCenter, dryRun, details.accountingPeriod);
+
+        if (!debtCenter) {
+          return {
+            result: 'error',
+            soft: true,
+            code: 'COULD_NOT_RESOLVE_DEBT_CENTER',
+            message: `Could not resolve debt center for the debt.`,
+          }
+        }
+
+        let dueDate = null;
+
+        if (details.dueDate) {
+          dueDate = convertToDbDate(details.dueDate);
+
+          if (!dueDate) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'INVALID_VALUE',
+              message: `Invalid value provided for the field "dueDate".`,
+            };
+          }
+        }
+
+        let date = null;
+
+        if (details.date) {
+          date = convertToDbDate(details.date);
+
+          if (!date) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'INVALID_VALUE',
+              message: `Invalid value provided for the field "date".`,
+            };
+          }
+        }
+
+        let publishedAt = null;
+
+        if (details.publishedAt) {
+          publishedAt = convertToDbDate(details.publishedAt);
+
+          if (!publishedAt) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'INVALID_VALUE',
+              message: `Invalid value provided for the field "publishedAt".`,
+            };
+          }
+        }
+
+        let paymentCondition = details.paymentCondition;
+
+        if (dueDate && paymentCondition) {
+          return {
+            result: 'error',
+            soft: true,
+            code: 'BOTH_DUE_DATE_AND_CONDITION',
+            message: `Both a due date and a payment condition were specified for the same debt.`,
+          };
+        } else if (!dueDate && !paymentCondition) {
+          const zero = t.Int.decode(0);
+
+          if (E.isRight(zero)) {
+            paymentCondition = zero.right;
+          } else {
+            throw Error('Unreachable.');
+          }
+        }
+
+        let createdDebt: Debt | null = null;
+        let debtComponents: Array<DebtComponent> = [];
+
+        if (!dryRun) {
+          if (!payer) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'NO_PAYER',
+              message: `No payer could be resolved for the debt.`,
+            };
+          }
+
+          const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any);
+
+          debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
+            const match = existingDebtComponents.find(ec => ec.name === c);
+
+            if (match) {
+              return match;
+            }
+
+            const componentDetails = components.find(({ name }) => name === c);
+
+            if (componentDetails) {
+              return await this.debtService.createDebtComponent({
+                name: c,
+                amount: componentDetails.amount,
+                debtCenterId: debtCenter.id,
+                description: c,
+              });
+            }
+
+            return Promise.reject({
+              result: 'error',
+              soft: true,
+              code: 'NO_COMPONENT',
+              message: `Component "${c}" present on a debt but not defined.`,
+            });
+          }));
+
+          if (details.amount) {
+            const existingBasePrice = existingDebtComponents.find((dc) => {
+              return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
+            });
+
+            if (existingBasePrice) {
+              debtComponents.push(existingBasePrice);
+            } else {
+              debtComponents.push(await this.debtService.createDebtComponent({
+                name: 'Base Price',
+                amount: details.amount,
+                debtCenterId: debtCenter.id,
+                description: 'Base Price',
+              }));
+            }
+          }
+
+          const options: CreateDebtOptions = {};
+
+          if (details.paymentNumber || details.referenceNumber) {
+            options.defaultPayment = {};
+
+            if (details.paymentNumber) {
+              options.defaultPayment.paymentNumber = details.paymentNumber;
+            }
+
+            if (details.referenceNumber) {
+              options.defaultPayment.referenceNumber = details.referenceNumber;
+            }
+          }
+
+          const newDebt: NewDebt = {
+            centerId: debtCenter.id,
+            accountingPeriod: details.accountingPeriod,
+            description: details.description,
+            name: details.title,
+            payer: payer.id,
+            dueDate,
+            date,
+            publishedAt,
+            paymentCondition: paymentCondition ?? null,
+            components: debtComponents.map(c => c.id),
+            tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
+          };
+
+          createdDebt = await this.debtService.createDebt(newDebt, options);
+        } else {
+          createdDebt = {
+            id: '',
+            humanId: '',
+            payerId: payer?.id ?? internalIdentity(''),
+            date: null,
+            name: details.title,
+            description: details.description,
+            draft: true,
+            publishedAt: null,
+            debtCenterId: debtCenter.id,
+            status: 'unpaid',
+            lastReminded: null,
+            dueDate: dueDate ? parseISO(dueDate) : null,
+            paymentCondition: paymentCondition ?? null,
+            defaultPayment: null,
+            accountingPeriod: details.accountingPeriod,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            debtComponents,
+            credited: false,
+            tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
+          };
+
+          if (details.components && details.components.length > 0) {
+            debtComponents = await Promise.all(details.components.map(async (c) => {
+              const componentDetails = components.find(({ name }) => name === c);
+
+              if (componentDetails) {
+                return {
+                  id: '',
+                  name: c,
+                  amount: componentDetails.amount,
+                  description: '',
+                  debtCenterId: debtCenter.id,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                } as DebtComponent;
+              }
+
+              const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id);
+              const match = existing.find(ec => ec.name === c);
+
+              if (match) {
+                return match;
+              }
+
+              return Promise.reject({
+                result: 'error',
+                soft: true,
+                code: 'NO_SUCH_COMPONENT',
+                message: `Component "${c}" present on a debt but is no defined.`,
+              });
+            }));
+          }
+
+          if (details.amount) {
+            debtComponents.push({
+              id: '8d12e7ef-51db-465e-a5fa-b01cf01db5a8',
+              name: 'Base Price',
+              amount: details.amount,
+              description: 'Base Price',
+              debtCenterId: debtCenter.id,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+
+        return {
+          result: 'success',
+          data: {
+            payer,
+            email,
+            emailSource,
+            debt: createdDebt,
+            components: debtComponents,
+            debtCenter,
+          },
+        };
+      } catch (err) {
+        return {
+          result: 'error',
+          soft: false,
+          code: 'UNKNOWN',
+          message: `Unknown error: ${err}`,
+          stack: err instanceof Error ? err.stack : undefined,
+        }
+      }
+    } else if (job.name === 'batch') {
+      const values = await job.getChildrenValues<DebtJobResult>();
+
+      const debts = [];
+
+      for (const value of Object.values(values)) {
+        if (value.result === 'error') {
+          return value;
+        } else {
+          debts.push(value.data);
+        }
+      }
+
+      return { result: 'success', data: { debts } };
+    } else {
+      return { result: 'error', soft: false, code: 'UNKNOWN_JOB_TYPE', message: `Unknown job type "${job.name}".` };
+    }
+  }
+
+  async batchCreateDebts(debts: DebtCreationDetails[], components: { name: string, amount: EuroValue }[], token: string, dryRun: boolean) {
+    return await this.jobService.getFlowProducer()
+      .add({
+        name: 'batch',
+        queueName: 'debts',
+        children: debts.map((details) => ({
+          name: 'create',
+          queueName: 'debts',
+          data: {
+            details,
+            token,
+            dryRun,
+            components,
+          },
+        })),
+      });
+  }
 
   private async queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
     let query = sql`

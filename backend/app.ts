@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import { router } from 'typera-express';
 import healthCheck from './api/health-check';
@@ -17,7 +18,6 @@ import cors from 'cors';
 import helmet, { HelmetOptions } from 'helmet';
 // import { StripeEventsApi } from './api/stripe-events'
 import { Container } from 'typedi';
-import 'reflect-metadata';
 import { PayersApi } from './api/payers';
 import { EmailApi } from './api/email';
 import * as redis from 'redis';
