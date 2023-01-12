@@ -1,6 +1,6 @@
 import { Service, Inject } from 'typedi';
 import { RedisClientType } from 'redis';
-import { ConnectionOptions, FlowProducer, Job, Processor, Queue, QueueEvents, Worker } from 'bullmq';
+import { ConnectionOptions, FlowJob, FlowProducer, Job, Processor, Queue, QueueEvents, Worker } from 'bullmq';
 import { Config } from '../config';
 
 @Service()
@@ -11,11 +11,11 @@ export class JobService {
   queues: Record<string, Queue> = {};
 
   constructor(public config: Config) {
-    const events = new QueueEvents('debts', { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+    const events = new QueueEvents('main', { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
     events.on('added', (job) => console.log('added', job.name, job.jobId));
     events.on('completed', (job) => console.log('completed', job.jobId));
     events.on('failed', (job) => {
-      this.getQueue('debts')
+      this.getQueue('main')
         .getJob(job.jobId)
         .then((job) => {
           if (job) {
@@ -52,7 +52,43 @@ export class JobService {
     return this.flowProducer;
   }
 
+  async createJob(definition: FlowJob) {
+    const flow = await this.getFlowProducer()
+      .add({
+        name: 'finish',
+        queueName: 'main',
+        children: [definition],
+      });
+
+    if (!flow.children) {
+      throw new Error('Created job does not have children');
+    }
+
+    return flow.children[0];
+  }
+
   createWorker(queue: string, callback: Processor) {
     return new Worker(queue, callback, { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+  }
+
+  async getJob(queueName: string, id: string) {
+    const producer = this.getFlowProducer();
+    const flow = await producer.getFlow({
+      id,
+      queueName,
+      prefix: 'bbat-jobs',
+      maxChildren: 1000,
+    });
+
+    return flow;
+  }
+
+  async getJobs() {
+    const producer = this.getFlowProducer();
+    const queue = this.getQueue('main');
+    const jobs = await queue.getJobs(undefined, 0, 10);
+    const flows = await Promise.all(jobs.flatMap((job) => job.id ? [job.id] : []).map(id => producer.getFlow({ id, queueName: 'main', prefix: 'bbat-jobs', maxChildren: 10000 })));
+
+    return flows.flatMap((flow) => flow.children ? [flow.children[0]] : []);
   }
 }

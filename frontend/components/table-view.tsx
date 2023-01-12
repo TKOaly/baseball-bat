@@ -20,7 +20,7 @@ const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string },
   }
 };
 
-export type Row = { key: string | number }
+export type Row<C = any> = { key: string | number, children?: Array<C> }
 
 export type Action<R> = {
   key: string,
@@ -38,7 +38,7 @@ export type Column<R, Name extends string, Value> = {
   compareBy?: (value: Value) => any,
 }
 
-export type TableViewProps<R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, Column<R, any, any>>> = {
+export type TableViewProps<R extends Row<R>, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, Column<R, any, any>>> = {
   rows: R[],
   columns: Array<{ [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]>,
   onRowClick?: (row: R) => void,
@@ -160,91 +160,204 @@ const FilterDropdownItem = ({ column, rows, options, onChange }) => {
   );
 };
 
+const TableRow = ({
+  data,
+  selectable,
+  depth = 0,
+  selectedRows,
+  onRowClick,
+  rowIndex,
+  rowCount,
+  toggleSelection,
+  columns,
+  actions,
+  expandedRows,
+  toggleRowExpanded,
+  filters,
+  sorting,
+}) => {
+  const selected = selectedRows.includes(data.key);
+
+  const children = useMemo(() => data?.children ?? [], [data]);
+
+  const sortedChildren = useMemo(() => sortRows(children, columns.find(c => c.name === sorting?.[0]), sorting?.[1], columns, filters), [children, sorting, columns, filters]);
+
+  return (
+    <>
+      <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(data), toggleRowExpanded(data.key))}>
+        {selectable && (
+          <div
+            className={`
+              border-l border-b-gray-100 relative px-3 py-2 flex items-center justify-center
+              ${rowIndex < rowCount - 1 && 'border-b'}
+            `}
+          >
+            <button onClick={(evt) => {
+              toggleSelection(data.key);
+              evt.stopPropagation();
+            }}>
+              {
+                selected
+                  ? <FilledDisc className="text-blue-500" style={{ width: '1em', strokeWidth: '2.5px' }} />
+                  : <Circle className="text-gray-400" style={{ width: '1em', strokeWidth: '2.5px' }} />
+              }
+            </button>
+          </div>
+        )}
+        {
+          columns.map((column, columnIndex) => {
+            const value = getRowColumnValue(column, data);
+            let content = value;
+
+            if (column.render) {
+              content = column.render(value, data, depth);
+            }
+
+            return (
+              <div
+                key={column.name}
+                data-row={rowIndex}
+                data-column={column.name}
+                className={`
+                  whitespace-nowrap
+                  overflow-hidden
+                  min-w-0
+                  flex
+                  items-center
+                  relative
+                  px-3
+                  py-2
+                  border-b-gray-100
+                  border-l
+                  ${(!actions && columnIndex === columns.length - 1) && 'border-r'}
+                  ${rowIndex < rowCount - 1 && 'border-b'}
+                  ${(columnIndex > 0 || selectable) && 'border-l-gray-100'}
+                  ${onRowClick && 'cursor-pointer'}
+                  ${column.align === 'right' && 'justify-end'}
+                `}
+              >
+                {content}
+              </div>
+            );
+          })
+        }
+        {actions && (
+          <div
+            className={`
+              border-b-gray-100 border-l-gray-100 border-l border-r relative px-2 py-2 flex items-center justify-center
+              ${rowIndex < rowCount - 1 && 'border-b'}
+            `}
+          >
+            <Dropdown
+              renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
+              showArrow={false}
+              className="h-[24px]"
+              options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(data) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([data]) }))}
+            />
+          </div>
+        )}
+      </div>
+      { expandedRows.includes(data.key) && sortedChildren.map((childData) => (
+        <TableRow
+          data={childData}
+          depth={depth + 1}
+          rowIndex={1}
+          rowCount={3}
+          actions={actions}
+          selectable={selectable}
+          selectedRows={selectedRows}
+          toggleSelection={toggleSelection}
+          onRowClick={onRowClick}
+          columns={columns}
+          expandedRows={expandedRows}
+          toggleRowExpanded={toggleRowExpanded}
+          filters={filters}
+          sorting={sorting}
+        />
+      )) }
+    </>
+  );
+};
+
+const sortRows = <R extends Row<R>>(rows, column, direction, columns, filters: Record<string, FilterState>) => {
+  let tmpRows = [...rows];
+
+  if (column) {
+    const comparator = (a: R, b: R) => {
+      const compareBy = column.compareBy ?? identity;
+
+      let va = compareBy(getColumnValue(column, a));
+      let vb = compareBy(getColumnValue(column, b));
+
+      if (direction === 'desc') {
+        [va, vb] = [vb, va];
+      }
+
+      if (va == vb) {
+        return 0;
+      }
+
+      if (va < vb) {
+        return 1;
+      }
+
+      return -1;
+    };
+
+    tmpRows = tmpRows.sort(comparator);
+  }
+
+  const filter = (row: R) => {
+    let modeStrict = false;
+
+    const matches = Object.entries(filters)
+      .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
+      .map(([colName, options]) => {
+        const column = columns.find(c => c.name === colName);
+
+        if (!column) {
+          return true;
+        }
+
+        const compareBy = column.compareBy ?? identity;
+        const value = getColumnValue(column, row);
+
+        if (options.allowlist.length > 0) {
+          modeStrict = true;
+        }
+
+        let values = [compareBy(value)];
+
+        if (Array.isArray(value)) {
+          values = value.map(compareBy);
+        }
+
+        if (values.some(v => options.allowlist.includes(v))) {
+          return true;
+        }
+
+        if (values.some(v => options.blocklist.includes(v))) {
+          return false;
+        }
+      });
+
+    if (modeStrict) {
+      return matches.every(v => v === true);
+    } else {
+      return matches.every(v => v !== false);
+    }
+  };
+
+  return tmpRows.filter(filter);
+};
+
 export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
   const [sorting, setSorting] = useState(null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
+  const [expandedRows, setExpandedRows] = useState([]);
 
-  const sortedRows = useMemo(() => {
-    let tmpRows = [...rows];
-
-    if (sorting) {
-      const [sortCol, sortDir] = sorting;
-
-      const column = columns.find(c => c.name === sortCol);
-
-      if (!column) {
-        setSorting(null);
-        return rows;
-      }
-
-      const comparator = (a: R, b: R) => {
-        const compareBy = column.compareBy ?? identity;
-
-        let va = compareBy(getColumnValue(column, a));
-        let vb = compareBy(getColumnValue(column, b));
-
-        if (sortDir === 'desc') {
-          [va, vb] = [vb, va];
-        }
-
-        if (va == vb) {
-          return 0;
-        }
-
-        if (va < vb) {
-          return 1;
-        }
-
-        return -1;
-      };
-
-      tmpRows = tmpRows.sort(comparator);
-    }
-
-    const filter = (row: R) => {
-      let modeStrict = false;
-
-      const matches = Object.entries(filters)
-        .filter(([, opts]) => opts.allowlist.length + opts.blocklist.length > 0)
-        .map(([colName, options]) => {
-          const column = columns.find(c => c.name === colName);
-
-          if (!column) {
-            return true;
-          }
-
-          const compareBy = column.compareBy ?? identity;
-          const value = getColumnValue(column, row);
-
-          if (options.allowlist.length > 0) {
-            modeStrict = true;
-          }
-
-          let values = [compareBy(value)];
-
-          if (Array.isArray(value)) {
-            values = value.map(compareBy);
-          }
-
-          if (values.some(v => options.allowlist.includes(v))) {
-            return true;
-          }
-
-          if (values.some(v => options.blocklist.includes(v))) {
-            return false;
-          }
-        });
-
-      if (modeStrict) {
-        return matches.every(v => v === true);
-      } else {
-        return matches.every(v => v !== false);
-      }
-    };
-
-    return tmpRows.filter(filter);
-  }, [rows, sorting, columns, filters]);
+  const sortedRows = useMemo(() => sortRows(rows, columns.find(c => c.name === sorting?.[0]), sorting?.[1], columns, filters), [rows, sorting, columns, filters]);
 
   const toggleSelection = (row: Row['key']) => {
     const newSet = [...selectedRows];
@@ -257,6 +370,19 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
     }
 
     setSelectedRows(newSet);
+  };
+
+  const toggleRowExpanded = (row: Row['key']) => {
+    const newSet = [...expandedRows];
+    const index = expandedRows.indexOf(row);
+
+    if (index > -1) {
+      newSet.splice(index, 1);
+    } else {
+      newSet.push(row);
+    }
+
+    setExpandedRows(newSet);
   };
 
   const columnCount = columns.length;
@@ -365,86 +491,23 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
             </div>
           ))}
           {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />}
-          {
-            sortedRows.flatMap((row, i) => {
-
-              return (
-                <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(row))}>
-                  {selectable && (
-                    <div
-                      className={`
-                        border-l border-b-gray-100 relative px-3 py-2 flex items-center justify-center
-                        ${i < sortedRows.length - 1 && 'border-b'}
-                      `}
-                    >
-                      <button onClick={(evt) => {
-                        toggleSelection(row.key);
-                        evt.stopPropagation();
-                      }}>
-                        {
-                          selectedRows.includes(row.key)
-                            ? <FilledDisc className="text-blue-500" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                            : <Circle className="text-gray-400" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                        }
-                      </button>
-                    </div>
-                  )}
-                  {
-                    columns.map((column, columnIndex) => {
-                      const value = getRowColumnValue(column, row);
-                      let content = value;
-
-                      if (column.render) {
-                        content = column.render(value, row);
-                      }
-
-                      return (
-                        <div
-                          key={column.name}
-                          data-row={i}
-                          data-column={column.name}
-                          className={`
-                            whitespace-nowrap
-                            overflow-hidden
-                            min-w-0
-                            flex
-                            items-center
-                            relative
-                            px-3
-                            py-2
-                            border-b-gray-100
-                            border-l
-                            ${(!actions && columnIndex === columns.length - 1) && 'border-r'}
-                            ${i < sortedRows.length - 1 && 'border-b'}
-                            ${(columnIndex > 0 || selectable) && 'border-l-gray-100'}
-                            ${onRowClick && 'cursor-pointer'}
-                            ${column.align === 'right' && 'justify-end'}
-                          `}
-                        >
-                          {content}
-                        </div>
-                      );
-                    })
-                  }
-                  {actions && (
-                    <div
-                      className={`
-                        border-b-gray-100 border-l-gray-100 border-l border-r relative px-2 py-2 flex items-center justify-center
-                        ${i < sortedRows.length - 1 && 'border-b'}
-                      `}
-                    >
-                      <Dropdown
-                        renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
-                        showArrow={false}
-                        className="h-[24px]"
-                        options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(row) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([row]) }))}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          }
+          {sortedRows.flatMap((row, i) => (
+            <TableRow
+              data={row}
+              rowIndex={i}
+              rowCount={sortedRows.length}
+              actions={actions}
+              selectable={selectable}
+              selectedRows={selectedRows}
+              toggleSelection={toggleSelection}
+              onRowClick={onRowClick}
+              columns={columns}
+              expandedRows={expandedRows}
+              toggleRowExpanded={toggleRowExpanded}
+              filters={filters}
+              sorting={sorting}
+            />
+          ))}
           { rows.length === 0 && (
             <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
               <div className="w-[30em] text-gray-800 py-3">

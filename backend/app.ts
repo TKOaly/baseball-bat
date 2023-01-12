@@ -28,6 +28,7 @@ import { SearchApi } from './api/search';
 import { ReportService } from './services/reports';
 import { ReportApi } from './api/report';
 import { AccountingApi } from './api/accounting';
+import { JobsApi } from './api/jobs';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -127,6 +128,7 @@ const app = express()
   .use('/api/banking', Container.get(BankingApi).router().handler())
   .use('/api/reports', Container.get(ReportApi).router().handler())
   .use('/api/accounting', Container.get(AccountingApi).router().handler())
+  .use('/api/jobs', Container.get(JobsApi).router().handler())
   .use(Container.get(AuthApi).router().handler())
   .use(
     router(

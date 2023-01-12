@@ -697,8 +697,6 @@ export class DebtApi {
 
         const states = await Promise.all(flow.children.map((child) => child.job.getState()));
 
-        console.log(flow.job, flow.job.stacktrace);
-
         const result = flow.job.returnvalue?.result === 'success'
           ? flow.job.returnvalue?.data?.debts
           : undefined;
@@ -707,6 +705,7 @@ export class DebtApi {
           current: total.processed ?? 0,
           total: (total.unprocessed ?? 0) + (total.processed ?? 0),
           result,
+          return: flow.job.returnvalue,
         });
       });
   }

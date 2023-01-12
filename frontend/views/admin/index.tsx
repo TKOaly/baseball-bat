@@ -28,6 +28,8 @@ import { TextField } from '../../components/text-field';
 import { EditDebt } from '../edit-debt';
 import { EditDebtCenter } from './edit-debt-center';
 import { ReportsListing } from './reports-listing';
+import { JobsListing } from './jobs-listing';
+import { JobDetails } from './job-details';
 import { Dropdown } from '../../components/dropdown';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -138,6 +140,7 @@ const Admin = () => {
           <MenuItem path="/admin/emails">Emails</MenuItem>
           <MenuItem path="/admin/banking">Banking</MenuItem>
           <MenuItem path="/admin/reports">Reports</MenuItem>
+          <MenuItem path="/admin/jobs">Jobs</MenuItem>
           <MenuItem path="/" active={false} className="mt-4">Back to public site</MenuItem>
           <MenuItem path="#">Log out</MenuItem>
         </ul>
@@ -190,6 +193,10 @@ const Admin = () => {
             </Route>
             <Route path="/admin/banking/import-statement" component={ImportXMLStatement} />
             <Route path="/admin/reports" component={ReportsListing} />
+            <Route path="/admin/jobs" component={JobsListing} />
+            <Route path="/admin/jobs/:queue/:id">
+              {({ id, queue }) => <JobDetails id={id} queue={queue} />}
+            </Route>
             <Route path="/admin/:rest*">
               <Redirect to="/admin/debt-centers" />
             </Route>

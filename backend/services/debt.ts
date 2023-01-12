@@ -252,6 +252,8 @@ export class DebtService {
 
   private async handleDebtJob(job: Job<DebtJobDefinition,  DebtJobResult, string>): Promise<DebtJobResult> {
     if (job.name === 'create') {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const missingField = (field: string): DebtJobResult & { result: 'error' } => ({
         result: 'error',
         soft: true,
@@ -590,21 +592,22 @@ export class DebtService {
   }
 
   async batchCreateDebts(debts: DebtCreationDetails[], components: { name: string, amount: EuroValue }[], token: string, dryRun: boolean) {
-    return await this.jobService.getFlowProducer()
-      .add({
-        name: 'batch',
+    return await this.jobService.createJob({
+      queueName: 'debts',
+      name: 'batch',
+      data: { name: 'Create debts from CSV' },
+      children: debts.map((details) => ({
+        name: 'create',
         queueName: 'debts',
-        children: debts.map((details) => ({
-          name: 'create',
-          queueName: 'debts',
-          data: {
-            details,
-            token,
-            dryRun,
-            components,
-          },
-        })),
-      });
+        data: {
+          name: `Create debt for ${(details as any).name}`,
+          details,
+          token,
+          dryRun,
+          components,
+        },
+      })),
+    });
   }
 
   private async queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
