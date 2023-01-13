@@ -1,6 +1,6 @@
 import { Service, Inject } from 'typedi';
 import { RedisClientType } from 'redis';
-import { ConnectionOptions, FlowJob, FlowProducer, Job, Processor, Queue, QueueEvents, Worker } from 'bullmq';
+import { ConnectionOptions, FlowJob, FlowProducer, Job, Processor, Queue, QueueEvents, Worker, WorkerOptions } from 'bullmq';
 import { Config } from '../config';
 
 @Service()
@@ -67,8 +67,8 @@ export class JobService {
     return flow.children[0];
   }
 
-  createWorker(queue: string, callback: Processor) {
-    return new Worker(queue, callback, { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+  createWorker(queue: string, callback: Processor, options?: Omit<WorkerOptions, 'connection' | 'prefix'>) {
+    return new Worker(queue, callback, { ...options, connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
   }
 
   async getJob(queueName: string, id: string) {
@@ -86,7 +86,7 @@ export class JobService {
   async getJobs() {
     const producer = this.getFlowProducer();
     const queue = this.getQueue('main');
-    const jobs = await queue.getJobs(undefined, 0, 10);
+    const jobs = await queue.getJobs(undefined);
     const flows = await Promise.all(jobs.flatMap((job) => job.id ? [job.id] : []).map(id => producer.getFlow({ id, queueName: 'main', prefix: 'bbat-jobs', maxChildren: 10000 })));
 
     return flows.flatMap((flow) => flow.children ? [flow.children[0]] : []);

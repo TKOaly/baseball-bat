@@ -166,7 +166,7 @@ const debtApi = rtkApi.injectEndpoints({
       ],
     }),
 
-    sendAllReminders: builder.mutation<{ messageCount: number, payerCount: number }, { ignoreCooldown: boolean, send: boolean }>({
+    sendAllReminders: builder.mutation<{ messageCount: number, payerCount: number }, { ignoreCooldown: boolean, send: boolean, debts: null | Array<string> }>({
       query: (body) => ({
         method: 'POST',
         url: '/debt/send-reminders',

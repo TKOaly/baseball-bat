@@ -29,6 +29,7 @@ import { ReportService } from './services/reports';
 import { ReportApi } from './api/report';
 import { AccountingApi } from './api/accounting';
 import { JobsApi } from './api/jobs';
+import { JobService } from './services/jobs';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -75,7 +76,7 @@ Container.set(Config, config);
 // Container.set('stripe', stripeClient)
 Container.set(PgClient, pg);
 Container.set('redis', redisClient);
-Container.set(EmailService, new EmailService(emailTransport, pg));
+Container.set(EmailService, new EmailService(emailTransport, pg, Container.get(JobService)));
 
 if (process.env.NODE_ENV === 'development') {
   //Container.set(EventsService, EventsService.createMock())

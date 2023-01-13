@@ -16,6 +16,8 @@ import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '../../common/types';
 import { formatEuro, sumEuroValues, euro, cents } from '../../common/currency';
 import { formatReferenceNumber } from './payements';
+import { JobService } from './jobs';
+import { Job } from 'bullmq';
 
 type SendEmailOptions = {
   recipient: string
@@ -129,6 +131,18 @@ export const createSMTPTransport = (config: SMTPConfig) => {
   };
 };
 
+type EmailSendJobData = {
+  emailId: string,
+};
+
+type EmailSendJobResult = { result: 'error' } | { result: 'success' };
+type EmailBatchSendJobResult = { result: 'error' } | { result: 'success' };
+
+type EmailSendJob = Job<EmailSendJobData, EmailSendJobResult, 'send'>;
+type EmailBatchSendJob = Job<void, EmailBatchSendJobResult, 'batch'>;
+
+type EmailJob = EmailSendJob | EmailBatchSendJob;
+
 @Service()
 export class EmailService {
   @Inject(() => Config)
@@ -141,10 +155,26 @@ export class EmailService {
 
   private templates: Record<string, EmailTemplate>;
 
-  constructor(transport: IEmailTransport, pg: PgClient) {
+  constructor(transport: IEmailTransport, pg: PgClient, @Inject() public jobService: JobService) {
     this.transport = transport;
     this.pg = pg;
     this.loadTemplates();
+    this.jobService.createWorker('emails', this.handleEmailJob.bind(this) as any, {
+      limiter: {
+        max: 1,
+        duration: 1000,
+      },
+    });
+  }
+
+  private async handleEmailJob(job: EmailJob) {
+    if (job.name === 'send') {
+      await this._sendEmail(job.data.emailId);
+
+      return { result: 'success' };
+    } else {
+      return { result: 'success' };
+    }
   }
 
   loadTemplates() {
@@ -158,7 +188,7 @@ export class EmailService {
       files,
       map((filename): Template => {
         const parts = filename.split('.');
-        const filetype = parts.pop() ?? '';
+        const filetype = parts.pop() ?? ''
         const name = parts.join('.');
         const filepath = path.join(templatesDir, filename);
         const content = fs.readFileSync(filepath, { encoding: 'utf8' });
@@ -273,7 +303,7 @@ export class EmailService {
     return result && formatEmail(result);
   }
 
-  async sendEmail(id: string) {
+  async _sendEmail(id: string) {
     const email = await this.getEmail(id);
 
     if (!email) {
@@ -290,6 +320,50 @@ export class EmailService {
     });
 
     await this.pg.any(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
+  }
+
+  async batchSendEmails(ids: string[], { jobName }: { jobName?: string } = {}) {
+    const jobs = await Promise.all(ids.map(async (id) => {
+      const email = await this.getEmail(id);
+
+      return {
+        queueName: 'emails',
+        name: 'send',
+        data: {
+          name: `Send email to ${email?.recipient}`,
+          emailId: id,
+        },
+      };
+    }));
+
+    await this.jobService
+      .createJob({
+        queueName: 'emails',
+        name: 'batch',
+        data: { name: jobName ?? `Send ${ids.length} emails` },
+        children: jobs,
+      });
+  }
+
+  async sendEmail(id: string) {
+    const email = await this.getEmail(id);
+
+    await this.jobService
+      .createJob({
+        queueName: 'emails',
+        name: 'send',
+        data: {
+          name: `Send email to ${email?.recipient}`,
+          emailId: id,
+        },
+        opts: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60 * 2000,
+          },
+        },
+      });
   }
 
   async getEmails() {

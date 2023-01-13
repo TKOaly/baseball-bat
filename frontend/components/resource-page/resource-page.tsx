@@ -105,9 +105,14 @@ export const CurrencyField: React.FC<FieldProps & { value: EuroValue }> = ({ val
   <Field {...props}>{formatEuro(value)}</Field>;
 
 export const DateField: React.FC<FieldProps & { value: Date | string, time?: boolean }> = ({ time, value, ...props }) => {
-  const date = typeof value === 'string' ? new Date(value) : value;
+  try {
+    const date = typeof value === 'string' ? new Date(value) : value;
+    const text = time ? format(date, 'dd.MM.yyyy HH:mm') : format(date, 'dd.MM.yyyy');
 
-  return <Field {...props}>{time ? format(date, 'dd.MM.yyyy HH:mm') : format(date, 'dd.MM.yyyy')}</Field>;
+    return <Field {...props}>{text}</Field>;
+  } catch (e) {
+    return <Field {...props}>Invalid value</Field>;
+  }
 };
 
 const badgeColorClasses = {

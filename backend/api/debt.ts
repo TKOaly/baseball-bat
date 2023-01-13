@@ -186,7 +186,7 @@ export class DebtApi {
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(t.type({ ids: t.array(t.string) })))
       .handler(async ({ body }) => {
-        await Promise.all(body.ids.map(async (id) => {
+        const emails = await Promise.all(body.ids.map(async (id): Promise<Email | null> => {
           const debt = await this.debtService.getDebt(id);
 
           if (!debt) {
@@ -214,6 +214,7 @@ export class DebtApi {
           }
 
           if (!isPaymentInvoice(defaultPayment)) {
+            console.log('Not invoice', defaultPayment);
             return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
           }
       
@@ -223,14 +224,18 @@ export class DebtApi {
             const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
 
             if (E.isRight(message)) {
-              await this.emailService.sendEmail(message.right.id);
+              return message.right;
             } else {
               return Promise.reject('Could not send invoice notification.');
             }
           }
 
-          return Promise.resolve();
+          return Promise.resolve(null);
         }));
+
+        const emailIds = emails.flatMap((message) => message ? [message.id] : []);
+
+        await this.emailService.batchSendEmails(emailIds, { jobName: `Publish ${body.ids.length} debts` });
 
         return ok();
       });
@@ -779,6 +784,7 @@ export class DebtApi {
     return route
       .post('/send-reminders')
       .use(validateBody(t.type({
+        debts: t.union([t.null, t.array(t.string)]),
         send: t.boolean,
         ignoreCooldown: t.boolean,
       })))
@@ -786,9 +792,22 @@ export class DebtApi {
       .handler(async (ctx) => {
         const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
         const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
+        let debts: null | Debt[] = null;
+
+        if (ctx.body.debts !== null) {
+          let results = await Promise.all(ctx.body.debts.map(async (d) => this.debtService.getDebt(d)));
+
+          if (results.some((d) => d === null)) {
+            return notFound({
+              message: 'Debt not found.',
+            });
+          }
+
+          debts = results as Debt[];
+        }
 
         return pipe(
-          () => this.debtService.sendAllReminders(!ctx.body.send, ctx.body.ignoreCooldown),
+          () => this.debtService.sendAllReminders(!ctx.body.send, ctx.body.ignoreCooldown, debts),
           T.map(({ left, right }) => ok({
             messageCount: right.length,
             payerCount: A.uniq(EmailPayerEq)(right).length,

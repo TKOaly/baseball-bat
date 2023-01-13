@@ -20,7 +20,7 @@ export const DebtListing = () => {
       return;
     }
 
-    const result = await sendAllReminders(options);
+    const result = await sendAllReminders({ ...options, debts: null });
 
     if ('data' in result) {
       showRemindersSentDialog({

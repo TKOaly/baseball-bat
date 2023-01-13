@@ -50,7 +50,7 @@ export class JobsApi {
       .handler(async (_ctx) => {
         const jobs = await this.jobService.getJobs();
 
-        return ok(await Promise.all(jobs.filter((j: JobNode) => j.job.name === 'batch').map(formatJob)));
+        return ok(await Promise.all(jobs.map(formatJob)));
       })
   }
 

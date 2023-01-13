@@ -46,11 +46,17 @@ export const JobsListing = () => {
                 return 'Waiting';
               }
 
+              const color = {
+                'failed': 'bg-red-400',
+                'completed': 'bg-green-400',
+                'delayed': 'bg-yellow-400',
+              }[job.status] ?? 'bg-green-400';
+
               return (
                 <div className="w-full">
                   <div className="text-xs">{(value * 100).toFixed(0)}%</div>
                   <div className="h-1.5 bg-gray-200 w-full rounded-full overflow-hidden">
-                    <div className={`h-full ${job.status === 'failed' ? 'bg-red-400' : 'bg-green-400'}`} style={{ width: `${(value * 100).toFixed()}%` }} />
+                    <div className={`h-full ${color}`} style={{ width: `${(value * 100).toFixed()}%` }} />
                   </div>
                 </div>
               );

@@ -147,7 +147,7 @@ type NewPayment<T extends PaymentType, D = null> = {
   type: T['type'],
   title: string,
   message: string,
-  data: D | ((p: Payment) => D),
+  data: D | ((p: Omit<Payment, 'data'>) => D),
   debts: Array<string>,
   paymentNumber?: string,
   createdAt?: Date
@@ -340,7 +340,7 @@ export class PaymentService {
 
   async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {
     const created = await this.pg.tx(async (tx) => {
-      const [createdPayment] = await tx.do<DbPayment>(sql`
+      const [createdPayment] = await tx.do<Omit<DbPayment, 'data'> & { data: Record<string, never> | D }>(sql`
         INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
@@ -360,10 +360,12 @@ export class PaymentService {
 
       if (typeof payment.data === 'function') {
         const callback = payment.data as any as ((p: Payment) => D);
-        const data = callback(formatPayment(createdPayment));
+        const data = callback(formatPayment({ ...createdPayment, data: {} }));
+        console.log('CALLBACK!', createdPayment, data);
         await tx.do(sql`
           UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id}
         `);
+        createdPayment.data = data;
       }
 
       await Promise.all(
@@ -385,7 +387,7 @@ export class PaymentService {
         VALUES (${createdPayment.id}, 'created', ${-total})
       `);
 
-      const formated = formatPayment(createdPayment) as any;
+      const formated = formatPayment(createdPayment as any) as any;
 
       return formated;
     });

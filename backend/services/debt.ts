@@ -1196,19 +1196,25 @@ export class DebtService {
     return E.right(createdEmail);
   }
 
-  async sendAllReminders(draft = true, ignoreReminderCooldown = false) {
-    const debts = ignoreReminderCooldown
-      ? await this.getOverdueDebts()
-      : await this.getDebtsPendingReminder();
+  async sendAllReminders(draft = true, ignoreReminderCooldown = false, _debts: null | Debt[] = null) {
+    let debts = _debts;
 
-    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.sendReminder(debt, draft));
+    if (debts === null) {
+      debts = ignoreReminderCooldown
+        ? await this.getOverdueDebts()
+        : await this.getDebtsPendingReminder();
+    }
+
+    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.sendReminder(debt, true));
 
     const result = await flow(
       A.traverse(T.ApplicativePar)(sendReminder),
       T.map(A.separate),
     )(debts)();
 
-    return result;
+    await this.emailService.batchSendEmails(result.right.map(([email]) => email.id));
+
+    return { right: [], left: [] };
   }
 
   async onDebtPaid(debt: Debt, payment: Payment, _event: PaymentEvent) {
