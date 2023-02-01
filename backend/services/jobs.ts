@@ -31,6 +31,8 @@ export class JobService {
     return {
       host: url.host.split(':')[0],
       port: parseInt(url.port ?? '6379'),
+      username: url.username,
+      password: url.password,
     };
   }
 
