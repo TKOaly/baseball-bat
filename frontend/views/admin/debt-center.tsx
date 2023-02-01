@@ -9,6 +9,7 @@ import { formatEuro } from '../../../common/currency';
 import { Button, SecondaryButton } from '../../components/button';
 import { useDialog } from '../../components/dialog';
 import { InfoDialog } from '../../components/dialogs/info-dialog';
+import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';
 
 export const DebtCenterDetails = ({ id }) => {
   const [, setLocation] = useLocation();
@@ -17,6 +18,7 @@ export const DebtCenterDetails = ({ id }) => {
   const { data: debts } = useGetDebtsByCenterQuery(id);
   const [deleteDebtCenter] = useDeleteDebtCenterMutation();
   const showInfoDialog = useDialog(InfoDialog);
+  const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
 
   const handleDelete = async () => {
     const result = await deleteDebtCenter(id);
@@ -54,6 +56,7 @@ export const DebtCenterDetails = ({ id }) => {
           {debts?.length === 0 && (
             <ActionButton secondary onClick={handleDelete}>Delete</ActionButton>
           )}
+          <ActionButton secondary onClick={() => showNewDebtLedgerDialog({ defaults: { center: id } })}>Generate Report</ActionButton>
           <ActionButton secondary onClick={() => setLocation(`/admin/debt-centers/${id}/edit`)}>Edit</ActionButton>
         </Actions>
       </Header>

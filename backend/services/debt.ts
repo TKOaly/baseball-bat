@@ -89,6 +89,7 @@ export type DebtLedgerOptions = {
   endDate: Date
   includeDrafts: 'include' | 'exclude' | 'only-drafts'
   groupBy: null | 'center' | 'payer'
+  centers: null | Array<string>
 }
 
 type DebtCreationDetails = Partial<{
@@ -1241,6 +1242,12 @@ export class DebtService {
     } else {
       criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
     }
+
+    if (options.centers !== null) {
+      console.log(options.centers);
+      criteria = sql`(`.append(criteria).append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
+      console.log(criteria.sql, criteria.values);
+    }
     
     const debts = await this.queryDebts(criteria);
     let groups;
@@ -1282,8 +1289,10 @@ export class DebtService {
       groups = [{ debts }];
     }
 
+    let name = `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+
     const report = await this.reportService.createReport({
-      name: `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`,
+      name,
       template: 'debt-ledger',
       payload: {
         options,

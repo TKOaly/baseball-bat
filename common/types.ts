@@ -662,6 +662,7 @@ export type DebtLedgerOptions = {
   endDate: DbDateString
   includeDrafts: 'include' | 'exclude' | 'only-drafts'
   groupBy: null | 'center' | 'payer'
+  centers: null | Array<string>
 }
 
 export type DbAccountingPeriod = {

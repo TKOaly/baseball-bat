@@ -81,6 +81,7 @@ export class ReportApi {
           t.literal('only-drafts'),
         ]),
         groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
+        centers: t.union([ t.null, t.array(t.string) ]),
       })))
       .handler(async (ctx) => {
         const report = await this.debtService.generateDebtLedger({
@@ -88,6 +89,7 @@ export class ReportApi {
           endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
           includeDrafts: ctx.body.includeDrafts,
           groupBy: ctx.body.groupBy,
+          centers: ctx.body.centers,
         });
 
         return ok(report);

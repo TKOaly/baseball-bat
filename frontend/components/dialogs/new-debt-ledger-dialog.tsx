@@ -1,11 +1,12 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { Formik } from "formik";
-import { DbDateString } from "../../../common/types";
+import { DbDateString, Report } from "../../../common/types";
 import { useGenerateDebtLedgerMutation } from "../../api/report";
 import { Button } from "../button";
 import { DateField } from "../datetime-field";
 import { DialogBase, DialogContent, DialogFooter, DialogHeader } from "../dialog";
 import { DropdownField } from "../dropdown-field";
+import { ResourceSelectField } from '../resource-select-field';
 import { InputGroup, StandaloneInputGroup } from "../input-group";
 
 type FormValues = {
@@ -13,13 +14,24 @@ type FormValues = {
   endDate: DbDateString,
   includeDrafts: 'exclude' | 'include' | 'only-drafts',
   groupBy: null | 'payer' | 'center',
+  center: null | { id: string }
 }
 
-export const NewDebtLedgerDialog = ({ onClose }) => {
+export const NewDebtLedgerDialog = ({ onClose, defaults }: { onClose: (result: Report) => void, defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string } }) => {
   const [generateDebtLedgerReport] = useGenerateDebtLedgerMutation();
 
   const handleSubmit = async (values: FormValues) => {
-    const result = await generateDebtLedgerReport(values);
+    const result = await generateDebtLedgerReport({
+      startDate: values.startDate,
+      endDate: values.endDate,
+      includeDrafts: values.includeDrafts,
+      groupBy: values.groupBy,
+      centers: values.center ? [values.center.id] : null,
+    });
+
+    if ('data' in result) {
+      onClose(result.data);
+    }
   };
 
   return (
@@ -29,6 +41,8 @@ export const NewDebtLedgerDialog = ({ onClose }) => {
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
         includeDrafts: 'exclude',
         groupBy: 'center',
+        ...defaults,
+        center: defaults.center ? { type: 'debt_center', id: defaults.center } : null,
       } as FormValues}
       onSubmit={handleSubmit}
     >
@@ -68,6 +82,12 @@ export const NewDebtLedgerDialog = ({ onClose }) => {
                   { value: 'include', text: 'Include' },
                   { value: 'only-drafts', text: 'Only drafts' },
                 ]}
+              />
+              <InputGroup
+                label="Debt Center"
+                name="center"
+                component={ResourceSelectField}
+                type="debt_center"
               />
             </div>
           </DialogContent>
