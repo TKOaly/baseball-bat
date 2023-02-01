@@ -11,7 +11,7 @@ import { InputGroup, StandaloneInputGroup } from "../input-group";
 type FormValues = {
   startDate: DbDateString,
   endDate: DbDateString,
-  includeDrafts: boolean,
+  includeDrafts: 'exclude' | 'include' | 'only-drafts',
   groupBy: null | 'payer' | 'center',
 }
 
@@ -27,7 +27,7 @@ export const NewDebtLedgerDialog = ({ onClose }) => {
       initialValues={{
         startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
-        includeDrafts: false,
+        includeDrafts: 'exclude',
         groupBy: 'center',
       } as FormValues}
       onSubmit={handleSubmit}
@@ -64,8 +64,9 @@ export const NewDebtLedgerDialog = ({ onClose }) => {
                 name="includeDrafts"
                 component={DropdownField}
                 options={[
-                  { value: false, text: 'Exclude' },
-                  { value: true, text: 'Include' },
+                  { value: 'exclude', text: 'Exclude' },
+                  { value: 'include', text: 'Include' },
+                  { value: 'only-drafts', text: 'Only drafts' },
                 ]}
               />
             </div>

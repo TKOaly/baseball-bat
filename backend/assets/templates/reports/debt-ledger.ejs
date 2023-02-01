@@ -14,7 +14,7 @@
         </tr>
         <tr>
           <th class="text-left pr-2">Include drafts</th>
-          <td><%= data.options.includeDrafts ? 'Yes' : 'No' %></td>
+          <td><%= { include: 'Yes', exclude: 'No', 'only-drafts': 'Only drafts' }[data.options.includeDrafts] %></td>
         </tr>
       </table>
     </div>

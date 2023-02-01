@@ -660,7 +660,7 @@ export type Report = FromDbType<DbReport>
 export type DebtLedgerOptions = {
   startDate: DbDateString
   endDate: DbDateString
-  includeDrafts: boolean
+  includeDrafts: 'include' | 'exclude' | 'only-drafts'
   groupBy: null | 'center' | 'payer'
 }
 

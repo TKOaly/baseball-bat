@@ -87,7 +87,7 @@ export type CreateDebtOptions = {
 export type DebtLedgerOptions = {
   startDate: Date
   endDate: Date
-  includeDrafts: boolean
+  includeDrafts: 'include' | 'exclude' | 'only-drafts'
   groupBy: null | 'center' | 'payer'
 }
 
@@ -1232,9 +1232,15 @@ export class DebtService {
   }
 
   async generateDebtLedger(options: DebtLedgerOptions) {
-    const criteria = options.includeDrafts
-      ? sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`
-      : sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+    let criteria;
+
+    if (options.includeDrafts === 'include') {
+      criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+    } else if (options.includeDrafts === 'exclude') {
+      criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+    } else {
+      criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+    }
     
     const debts = await this.queryDebts(criteria);
     let groups;

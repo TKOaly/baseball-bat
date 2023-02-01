@@ -75,7 +75,11 @@ export class ReportApi {
       .use(validateBody(t.type({
         startDate: dbDateString,
         endDate: dbDateString,
-        includeDrafts: t.boolean,
+        includeDrafts: t.union([
+          t.literal('include'),
+          t.literal('exclude'),
+          t.literal('only-drafts'),
+        ]),
         groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
       })))
       .handler(async (ctx) => {
