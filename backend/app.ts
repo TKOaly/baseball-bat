@@ -169,7 +169,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use('/', Container.get(MagicLinksApi).router().handler());
 
-cron.schedule('0 12 * * *', () => Container.get(DebtService).sendAllReminders(true));
+// cron.schedule('0 12 * * *', () => Container.get(DebtService).sendAllReminders(true));
 
 app.listen(PORT, () => console.log(`backend istening on port ${PORT} 🚀`));
 
