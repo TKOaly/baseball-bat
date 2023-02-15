@@ -17,7 +17,7 @@ type FormValues = {
   center: null | { id: string }
 }
 
-export const NewDebtLedgerDialog = ({ onClose, defaults }: { onClose: (result: Report) => void, defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string } }) => {
+export const NewDebtLedgerDialog = ({ onClose, defaults = {} }: { onClose: (result: Report) => void, defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string } }) => {
   const [generateDebtLedgerReport] = useGenerateDebtLedgerMutation();
 
   const handleSubmit = async (values: FormValues) => {
