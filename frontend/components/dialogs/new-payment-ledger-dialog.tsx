@@ -1,24 +1,36 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { Formik } from "formik";
-import { DbDateString } from "../../../common/types";
+import { DbDateString, Report } from "../../../common/types";
 import { useGeneratePaymentLedgerMutation } from "../../api/report";
 import { Button } from "../button";
 import { DateField } from "../datetime-field";
 import { DialogBase, DialogContent, DialogFooter, DialogHeader } from "../dialog";
 import { DropdownField } from "../dropdown-field";
+import { ResourceSelectField } from '../resource-select-field';
 import { InputGroup } from "../input-group";
 
 type FormValues = {
   startDate: DbDateString,
   endDate: DbDateString,
   paymentType: null | 'cash' | 'invoice'
+  center: null | { id: string, type: 'debt_center' }
 }
 
-export const NewPaymentLedgerDialog = ({ onClose }) => {
+type Props = {
+  onClose: (_: Report) => void
+  defaults?: Partial<Omit<FormValues, 'center'> & { center: string }>
+}
+
+export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
   const [generatePaymentLedgerReport] = useGeneratePaymentLedgerMutation();
 
   const handleSubmit = async (values: FormValues) => {
-    await generatePaymentLedgerReport(values);
+    await generatePaymentLedgerReport({
+      startDate: values.startDate,
+      endDate: values.endDate,
+      paymentType: values.paymentType,
+      centers: values.center ? [values.center.id] : null,
+    });
   };
 
   return (
@@ -27,6 +39,8 @@ export const NewPaymentLedgerDialog = ({ onClose }) => {
         startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
         paymentType: null,
+        ...defaults,
+        center: defaults.center ? { type: 'debt_center', id: defaults.center } : null,
       } as FormValues}
       onSubmit={handleSubmit}
     >
@@ -56,6 +70,12 @@ export const NewPaymentLedgerDialog = ({ onClose }) => {
                   { value: 'invoice', text: 'Invoice' },
                   { value: 'cash', text: 'Cash' },
                 ]}
+              />
+              <InputGroup
+                label="Debt Center"
+                name="center"
+                component={ResourceSelectField}
+                type="debt_center"
               />
             </div>
           </DialogContent>
