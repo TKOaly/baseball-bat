@@ -40,6 +40,14 @@
           <th class="text-left pr-2">Unique payer count</th>
           <td><%= (new Set(data.groups.flatMap(({ debts }) => debts.map((debt) => debt.payerId.value)))).size %></td>
         </tr>
+        <tr>
+          <th class="text-left pr-2">Total published value</th>
+          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.filter((debt) => !debt.draft).map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total draft value</th>
+          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.filter((debt) => debt.draft).map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+        </tr>
       </table>
     </div>
   </div>
