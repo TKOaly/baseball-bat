@@ -169,7 +169,14 @@ export class EmailService {
 
   private async handleEmailJob(job: EmailJob) {
     if (job.name === 'send') {
-      await this._sendEmail(job.data.emailId);
+      try {
+        await this._sendEmail(job.data.emailId);
+      } catch (err) {
+        return {
+          result: 'error',
+          message: `Sending email failed: ${err}`,
+        };
+      }
 
       return { result: 'success' };
     } else {
