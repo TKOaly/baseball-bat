@@ -217,9 +217,14 @@ export class BankingService {
 
   async getBankStatementTransactions(id: string) {
     const transactions = await this.pg.any<DbBankTransaction>(sql`
-      SELECT bt.*
+      SELECT
+        bt.*,
+        TO_JSON(p.*) AS payment
       FROM bank_statement_transaction_mapping bstm
       JOIN bank_transactions bt ON bt.id = bstm.bank_transaction_id
+      LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
+      LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
+      LEFT JOIN payments p ON p.id = pe.payment_id
       WHERE bstm.bank_statement_id = ${id}
     `);
 
