@@ -30,21 +30,21 @@
         <mj-table>
           <% for (const debt of debts) { %>
             <tr>
-              <th style="width: 0; white-space: nowrap; text-align: left; padding-right: 1em"><%- debt.name %></th>
-              <td style="text-align: right; width: 0; white-space: nowrap"><%- formatEuro(debt.total) %></td>
+              <th style="width: 0; white-space: nowrap !important; text-align: left; padding-right: 1em"><%- debt.name %></th>
+              <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(debt.total) %></td>
               <td></td>
             </tr>
             <% for (const component of debt.debtComponents) { %>
               <tr>
-                <th style="width: 0; white-space: nowrap; text-align: left; padding-left: 1.5em; padding-right: 5em"><%- component.name %></th>
-                <td style="text-align: right; width: 0; white-space: nowrap"><%- formatEuro(component.amount) %></td>
+                <th style="width: 0; white-space: nowrap !important; text-align: left; padding-left: 1.5em; padding-right: 5em"><%- component.name %></th>
+                <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(component.amount) %></td>
                 <td></td>
               </tr>
             <% } %>
           <% } %>
           <tr>
-          	<th style="width: 0; white-space: nowrap; text-align: left; padding-top: 1em; padding-right: 1em">Total</th>
-            <td style="text-align: right; width: 0; white-space: nowrap"><%- formatEuro(amount) %></td>
+          	<th style="width: 0; white-space: nowrap !important; text-align: left; padding-top: 1em; padding-right: 1em">Total</th>
+            <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(amount) %></td>
             <td></td>
           </tr>
         </mj-table>
@@ -52,39 +52,39 @@
         <mj-text font-size="20px">Payment information</mj-text>
         <mj-table>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Title</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Title</th>
             <td><%- payment.title %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Invoice number</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice number</th>
             <td><%- payment.paymentNumber %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Invoice recipient</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice recipient</th>
             <td><%- payer.name %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Invoice date</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice date</th>
             <td><%- formatDate(new Date(payment.data.date)) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Due date</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Due date</th>
             <td><%- formatDate(new Date(payment.data.due_date)) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Reference number</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Reference number</th>
             <td><%- formatReferenceNumber(payment.data.reference_number) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saaja</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saaja</th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan tilinumero</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saajan tilinumero</th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap; padding-right: 1em">Saajan BIC</th>
+          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saajan BIC</th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>
