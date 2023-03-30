@@ -646,7 +646,9 @@ export class PaymentService {
       JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
       JOIN debt ON debt.id = pdm.debt_id
       JOIN payer_profiles payer ON payer.id = debt.payer_id
-      WHERE `
+      WHERE
+        event.time BETWEEN ${options.startDate} AND ${options.endDate} AND
+      `
       .append(
         options.paymentType
           ? sql` payment.type = ${options.paymentType} `
