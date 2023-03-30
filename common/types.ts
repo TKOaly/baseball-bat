@@ -677,4 +677,6 @@ export type PaymentLedgerOptions = {
   endDate: DbDateString
   paymentType: null | 'invoice' | 'cash'
   centers: null | Array<string>
+  eventTypes: null | Array<'created' | 'payment' | 'credited'>
+  groupBy: null | 'center' | 'payer'
 }

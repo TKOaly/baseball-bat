@@ -104,14 +104,18 @@ export class ReportApi {
         startDate: dbDateString,
         endDate: dbDateString,
         paymentType: t.union([ t.null, t.literal('cash'), t.literal('invoice') ]),
-        center: t.union([ t.null, t.string ]),
+        centers: t.union([ t.null, t.array(t.string) ]),
+        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
+        eventTypes: t.union([ t.null, t.array(t.union([ t.literal('payment'), t.literal('created'), t.literal('credited') ])) ]),
       })))
       .handler(async (ctx) => {
         const report = await this.paymentService.generatePaymentLedger({
           startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
           endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
           paymentType: ctx.body.paymentType,
-          centers: ctx.body.center ? [ ctx.body.center ] : null,
+          centers: ctx.body.centers,
+          groupBy: ctx.body.groupBy,
+          eventTypes: ctx.body.eventTypes,
         });
 
         return ok(report);

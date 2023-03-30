@@ -14,6 +14,8 @@ type FormValues = {
   endDate: DbDateString,
   paymentType: null | 'cash' | 'invoice'
   center: null | { id: string, type: 'debt_center' }
+  groupBy: null | 'payer' | 'center',
+  eventTypes: null | Array<'payment' | 'created' | 'credited'>,
 }
 
 type Props = {
@@ -29,7 +31,9 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
       startDate: values.startDate,
       endDate: values.endDate,
       paymentType: values.paymentType,
+      groupBy: values.groupBy,
       centers: values.center ? [values.center.id] : null,
+      eventTypes: values.eventTypes,
     });
   };
 
@@ -39,6 +43,8 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
         startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
         paymentType: null,
+        groupBy: null,
+        eventTypes: null,
         ...defaults,
         center: defaults.center ? { type: 'debt_center', id: defaults.center } : null,
       } as FormValues}
@@ -69,6 +75,25 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
                   { value: null, text: 'All' },
                   { value: 'invoice', text: 'Invoice' },
                   { value: 'cash', text: 'Cash' },
+                ]}
+              />
+              <InputGroup
+                label="Group By"
+                name="groupBy"
+                component={DropdownField}
+                options={[
+                  { value: null, text: 'No grouping' },
+                  { value: 'payer', text: 'Payer' },
+                  { value: 'center', text: 'Debt Center' },
+                ]}
+              />
+              <InputGroup
+                label="Event Types"
+                name="eventTypes"
+                component={DropdownField}
+                options={[
+                  { value: null, text: 'All events' },
+                  { value: ['payment'], text: 'Only payments' },
                 ]}
               />
               <InputGroup

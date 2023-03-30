@@ -16,17 +16,33 @@
           <th class="text-left pr-2">Payment type</th>
           <td><%= data.options.paymentType ? { 'invoice': 'Invoice', 'cash': 'Cash' }[data.options.paymentType] ?? 'Unknown' : 'All' %></td>
         </tr>
+        <tr>
+          <th class="text-left pr-2">Included event types</th>
+          <td><%= data.options.eventTypes ? data.options.eventTypes.join(', ') : 'All' %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Group by</th>
+          <td><%= data.options.groupBy ? { center: 'Debt center', payer: 'Payer' }[data.options.groupBy] : 'Nothing' %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Included debt centers</th>
+          <td><%= data.options.centers ? 'Selected' : 'All' %></td>
+        </tr>
       </table>
     </div>
     <div class="p-3 bg-gray-100">
       <table>
         <tr>
           <th class="text-left pr-2">Event count</th>
-          <td><%= data.events.length %></td>
+          <td><%= data.groups.map(({ events }) => events.length).reduce((a, b) => a + b, 0) %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Unique payer count</th>
-          <td><%= (new Set(data.events.map(({ payer }) => payer.id.value))).size %></td>
+          <td><%= (new Set(data.groups.flatMap(({ events }) => events.map((event) => event.payer.id.value)))).size %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total amount</th>
+          <td><%= utils.formatEuro(data.groups.flatMap(({ events }) => events).map((event) => event.amount).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
         </tr>
       </table>
     </div>
@@ -43,12 +59,22 @@
       <th class="header-border text-right">Amount</th>
     </tr>
     <%
-      let lastPayment = null;
-      for (const event of data.events) {
+      for (const { name, id, events } of data.groups) {
+        if (name) {
     %>
       <tr>
-        <td><%= lastPayment !== event.payment.id && utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
-        <td><%= lastPayment !== event.payment.id && event.payment.humanId %></td>
+        <td class="font-bold"><%= id %></td>
+        <td class="font-bold" colspan=5><%= name %></td>
+        <td class="font-bold text-right"><%= utils.formatEuro(events.map(event => event.amount).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+      </tr>
+    <%
+        }
+
+        for (const event of events) {
+    %>
+      <tr>
+        <td><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
+        <td><%= event.payment.humanId %></td>
         <td><%= event.debt.humanId %></td>
         <td><%= event.payment.title %></td>
         <td><%= event.payer.name %></td>
@@ -56,7 +82,7 @@
         <td class="text-right"><%= utils.formatEuro(event.amount) %></td>
       </tr>
     <%
-      lastPayment = event.payment.id;
+        }
       }
     %>
   </table>

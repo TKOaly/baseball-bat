@@ -12,6 +12,12 @@ import { formatPayerProfile, PayerService } from './payer';
 import { cents, euro, sumEuroValues } from '../../common/currency';
 import { format, formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
 import { ReportService } from './reports';
+import { pipe } from 'fp-ts/lib/function';
+import { groupBy } from 'fp-ts/lib/NonEmptyArray';
+import { toArray } from 'fp-ts/Record';
+import * as T from 'fp-ts/lib/Task';
+import * as A from 'fp-ts/lib/Array';
+import { DebtCentersService } from './debt_centers';
 
 export type PaymentCreditReason = 'manual' | 'paid';
 
@@ -179,6 +185,9 @@ export class PaymentService {
 
   @Inject(() => DebtService)
   debtService: DebtService;
+
+  @Inject(() => DebtCentersService)
+  debtCentersService: DebtCentersService;
 
   @Inject(() => PayerService)
   payerService: PayerService;
@@ -637,11 +646,19 @@ export class PaymentService {
       JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
       JOIN debt ON debt.id = pdm.debt_id
       JOIN payer_profiles payer ON payer.id = debt.payer_id
-    `.append(
-      options.paymentType === null
-        ? ''
-        : sql`WHERE payment.type = ${options.paymentType}`
-    ));
+      WHERE `
+      .append(
+        options.paymentType
+          ? sql` payment.type = ${options.paymentType} `
+          : sql` TRUE `
+      )
+      .append(sql`AND`)
+      .append(
+        options.eventTypes
+          ? sql` event.type = ANY (${options.eventTypes}) `
+          : sql` TRUE `
+      )
+    );
 
     const events = R.sortBy(results
       .map(({ payment, payer, event, debt }) => ({
@@ -653,6 +670,46 @@ export class PaymentService {
       (item) => item.time,
     );
 
+    type EventDetails = (typeof events)[0];
+
+    let groups;
+
+    if (options.groupBy) {
+      let getGroupKey;
+      let getGroupDetails;
+
+      if (options.groupBy === 'center') {
+        getGroupKey = (event: EventDetails) => event.debt.debtCenterId;
+        getGroupDetails = async (id: string) => {
+          const center = await this.debtCentersService.getDebtCenter(id);
+          return {
+            id: center?.humanId ?? 'Unknown',
+            name: center?.name ?? 'Unknown',
+          };
+        };
+      } else {
+        getGroupKey = (event: EventDetails) => event.payer.id.value;
+        getGroupDetails = async (id: string, [row]: EventDetails[]) => ({
+          id,
+          name: row.payer.name,
+        });
+      }
+
+      const createGroupUsing = (nameResolver: (id: string, rows: EventDetails[]) => Promise<{ name: string, id: string }>) => ([key, events]: [string, EventDetails[]]) => async () => {
+        const { name, id } = await nameResolver(key, events);
+        return { name, events, id }; 
+      };
+
+      groups = await pipe(
+        events,
+        groupBy(getGroupKey),
+        toArray,
+        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+      )();
+    } else {
+      groups = [{ events }];
+    }
+
     let name = `Payment Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
     if (options.paymentType) {
@@ -662,7 +719,7 @@ export class PaymentService {
     return this.reportService.createReport({
       template: 'payment-ledger',
       name,
-      payload: { options, events },
+      payload: { options, groups },
     });
   }
 }
