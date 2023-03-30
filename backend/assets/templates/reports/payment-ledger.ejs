@@ -73,7 +73,7 @@
         for (const event of events) {
     %>
       <tr>
-        <td><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
+        <td <%- name ? 'class="!pl-4"' : '' %>><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
         <td><%= event.payment.humanId %></td>
         <td><%= event.debt.humanId %></td>
         <td><%= event.payment.title %></td>
