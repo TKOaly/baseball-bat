@@ -122,6 +122,26 @@ export class ReportApi {
       });
   }
 
+  private generateDebtStatusReport() {
+    return route
+      .post('/generate/debt-status-report')
+      .use(this.authService.createAuthMiddleware())
+      .use(validateBody(t.type({
+        date: dbDateString,
+        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
+        centers: t.union([ t.null, t.array(t.string) ]),
+      })))
+      .handler(async (ctx) => {
+        const report = await this.debtService.generateDebtStatusReport({
+          date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
+          centers: ctx.body.centers,
+          groupBy: ctx.body.groupBy,
+        });
+
+        return ok(report);
+      });
+  }
+
   router() {
     return router(
       this.getReport(),
@@ -129,6 +149,7 @@ export class ReportApi {
       this.getReportContent(),
       this.generateDebtLedgerReport(),
       this.generatePaymentLedgerReport(),
+      this.generateDebtStatusReport(),
     );
   }
 }

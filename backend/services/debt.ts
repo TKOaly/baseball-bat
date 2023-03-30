@@ -1,4 +1,4 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString, tkoalyIdentity, emailIdentity, DateString, convertToDbDate } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString, tkoalyIdentity, emailIdentity, DateString, convertToDbDate, DebtStatusReportOptions } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as R from 'remeda';
@@ -1298,6 +1298,138 @@ export class DebtService {
         options,
         groups,
       },
+    });
+
+    return report;
+  }
+
+  async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }) {
+    type ResultRow = Debt & { status: 'paid' | 'open' };
+
+    const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null })>(sql`
+      SELECT
+        debt.*,
+        TO_JSON(payer_profiles.*) AS payer,
+        TO_JSON(debt_center.*) AS debt_center,
+        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+        (
+          SELECT SUM(dc.amount) AS total
+          FROM debt_component_mapping dcm
+          JOIN debt_component dc ON dc.id = dcm.debt_component_id
+          WHERE dcm.debt_id = debt.id
+        ) AS total,
+        (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
+        (
+          CASE
+            WHEN sum(
+              CASE
+                WHEN p.status = 'paid'::payment_status THEN 1
+                ELSE 0
+              END
+            ) > 0 THEN 'paid'
+            ELSE 'open'
+          END
+        ) status,
+        MIN(p.paid_at) paid_at
+      FROM (
+        SELECT
+          d.id,
+          (SELECT time FROM payment_events e2 WHERE e2.payment_id = p.id AND e2.type = 'payment' ORDER BY e2.time DESC LIMIT 1) AS paid_at, 
+          CASE
+              WHEN s.has_cancel_event THEN 'canceled'::payment_status
+              WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
+              WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
+              ELSE 'paid'::payment_status
+          END AS status
+        FROM payments p
+        LEFT JOIN (
+          SELECT
+            e.payment_id,
+            sum(e.amount) AS balance,
+            (sum(
+                CASE
+                    WHEN (e.type = 'payment'::text) THEN 1
+                    ELSE 0
+                END) > 0) AS has_payment_event,
+            (sum(
+                CASE
+                    WHEN (e.type = 'canceled'::text) THEN 1
+                    ELSE 0
+                END) > 0) AS has_cancel_event,
+            max(e."time") AS updated_at
+          FROM payment_events e
+          WHERE (e.type = 'created' OR e.time < ${options.date})
+          GROUP BY e.payment_id
+        ) s ON s.payment_id = p.id
+        LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
+        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at < ${options.date}
+        LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
+      ) p
+      JOIN debt ON debt.id = p.id
+      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+      JOIN debt_center ON debt_center.id = debt.debt_center_id
+      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+    `
+      .append(
+        options.centers
+          ? sql`WHERE debt_center.id = ANY (${options.centers})`
+          : sql``
+      )
+      .append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+    );
+
+    const results = dbResults.map((row) => ([ formatDebt(row), row.status, row.paid_at ] as [Debt, 'open' | 'paid', Date]));
+
+    let groups;
+
+    if (options.groupBy) {
+      let getGroupKey: (debt: Debt) => string;
+      let getGroupDetails;
+
+      if (options.groupBy === 'center') {
+        getGroupKey = (debt: Debt) => debt.debtCenterId;
+        getGroupDetails = async (id: string) => {
+          const center = await this.debtCentersService.getDebtCenter(id);
+          const name = center?.name ?? 'Unknown debt center';
+          const displayId = center?.humanId ?? '???';
+          return { name, id: displayId };
+        };
+      } else {
+        getGroupKey = (debt: Debt) => debt.payerId.value;
+        getGroupDetails = async (id: string) => {
+          const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
+          const name = payer?.name ?? 'Unknown payer';
+          const displayId = payer?.id?.value ?? '???';
+          return { name, id: displayId };
+        };
+      }
+
+      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, [Debt, 'open' | 'paid', Date | null][]]) => async () => {
+        const { name, id } = await nameResolver(key);
+        return { name, debts, id }; 
+      };
+
+      groups = await pipe(
+        results,
+        groupBy(([debt]) => getGroupKey(debt)),
+        toArray,
+        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+      )();
+    } else {
+      groups = [{ debts: results }];
+    }
+
+    const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
+
+    const report = await this.reportService.createReport({
+      name,
+      template: 'debt-status-report',
+      payload: {
+        options,
+        groups,
+      }
     });
 
     return report;

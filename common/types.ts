@@ -680,3 +680,9 @@ export type PaymentLedgerOptions = {
   eventTypes: null | Array<'created' | 'payment' | 'credited'>
   groupBy: null | 'center' | 'payer'
 }
+
+export type DebtStatusReportOptions = {
+  date: DbDateString
+  groupBy: null | 'center' | 'payer'
+  centers: null | Array<string>
+}

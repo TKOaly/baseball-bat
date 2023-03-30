@@ -1,0 +1,103 @@
+<div class="p-10">
+  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
+
+  <div class="mt-5 mb-5 gap-3 grid grid-cols-2">
+    <div class="p-3 bg-gray-100">
+      <table>
+        <tr>
+          <th class="text-left pr-2">Generated at</th>
+          <td><%= utils.formatDate(metadata.generatedAt, 'dd.MM.yyyy HH:mm') %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Date</th>
+          <td><%= utils.formatDate(data.options.date, 'dd.MM.yyyy') %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Included debt centers</th>
+          <td><%= data.options.centers ? 'Selected' : 'All' %></td>
+        </tr>
+      </table>
+    </div>
+    <div class="p-3 bg-gray-100">
+      <table>
+        <tr>
+          <th class="text-left pr-2">Total amount</th>
+          <td class="w-0 text-right"><%= utils.formatEuro(data.groups.flatMap((group) => group.debts).map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+          <td></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total open amount</th>
+          <td class="w-0 text-right"><%= utils.formatEuro(data.groups.flatMap((group) => group.debts).filter(([,status]) => status === 'open').map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+          <td></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total paid amount</th>
+          <td class="w-0 text-right"><%= utils.formatEuro(data.groups.flatMap((group) => group.debts).filter(([,status]) => status === 'paid').map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+          <td></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <table id="content">
+    <tr>
+      <th class="header-border">ID</th>
+      <th class="header-border">Title</th>
+      <th class="header-border">Payer</th>
+      <th class="header-border">Date</th>
+      <th class="header-border">Published</th>
+      <th class="header-border">Due Date</th>
+      <th class="header-border">Paid at</th>
+      <th class="header-border text-right">Status</th>
+      <th class="header-border text-right">Amount</th>
+    </tr>
+    <% for (const { name, id, debts } of data.groups) { %>
+      <% if (name) { %>
+      <tr>
+        <td class="font-bold"><%= id %></td>
+        <td class="font-bold" colspan=7><%= name %></td>
+        <td class="font-bold text-right"><%= utils.formatEuro(debts.map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+      </tr>
+      <% } %>
+      <% for (const [debt, status, paidAt] of debts) { %>
+        <tr>
+          <td class="!pl-4"><%= debt.humanId %></td>
+          <td><%= debt.name %></td>
+          <td><%= debt.payer.name %></td>
+          <td><%= debt.date ? utils.formatDate(debt.date, 'dd.MM.yyyy') : '' %></td>
+          <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
+          <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
+          <td><%= paidAt ? utils.formatDate(paidAt, 'dd.MM.yyyy') : '' %></td>
+          <td><%= status %></td>
+          <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
+        </tr>
+      <% } %>
+    <% } %>
+  </table>
+</div>
+
+<style type="postcss">
+  table#content {
+    width: 100%;
+  }
+
+  #content th {
+    @apply bg-gray-100 py-0.5 px-1 text-left whitespace-nowrap;
+  }
+
+  .header-border {
+    @apply border-b-4 border-b-gray-300;
+  }
+
+  #content td {
+    @apply px-1 py-0.5;
+
+    vertical-align: top;
+  }
+
+  #content tbody tr:nth-child(even) {
+    @apply bg-gray-100;
+  }
+</style>
+
+<script src="https://unpkg.com/tailwindcss-jit-cdn"></script>
