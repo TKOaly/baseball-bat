@@ -62,14 +62,14 @@
       <% } %>
       <% for (const [debt, status, paidAt, payment] of debts) { %>
         <tr>
-          <td class="!pl-4"><%= debt.humanId %></td>
+          <td class="!pl-4 whitespace-nowrap"><%= debt.humanId %></td>
           <td><%= debt.name %></td>
           <td><%= debt.payer.name %></td>
           <td><%= debt.date ? utils.formatDate(debt.date, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
           <td><%= paidAt ? utils.formatDate(paidAt, 'dd.MM.yyyy') : '' %></td>
-          <td><%= payment ? payment.humanId : '' %></td>
+          <td class="whitespace-nowrap"><%= payment ? payment.humanId : '' %></td>
           <td><%= status %></td>
           <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
         </tr>
