@@ -1324,7 +1324,7 @@ export class DebtService {
           (
             SELECT time
             FROM payment_events e2
-            WHERE e2.payment_id = p.id AND e2.type = 'payment'
+            WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${options.date}
             ORDER BY e2.time DESC
             LIMIT 1
           ) AS paid_at, 
