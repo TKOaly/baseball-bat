@@ -16,6 +16,7 @@ export type CreateReportOptions = {
   template: string
   name: string
   payload: unknown
+  scale?: number
 };
 
 export type SaveReportOptions = {
@@ -53,7 +54,7 @@ export class ReportService {
     return this._browser;
   }
 
-  private async render(source: string) {
+  private async render(source: string, scale: number = 0.8) {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
 
@@ -75,7 +76,7 @@ export class ReportService {
 
     const pdf = await page.pdf({
       format: 'A4',
-      scale: 0.8,
+      scale,
       landscape: true,
     });
 
@@ -136,7 +137,7 @@ export class ReportService {
       },
     });
 
-    const pdf = await this.render(source);
+    const pdf = await this.render(source, options.scale ?? 0.8);
 
     const report = await this.saveReport({
       generatedAt,

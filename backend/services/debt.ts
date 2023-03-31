@@ -1428,7 +1428,8 @@ export class DebtService {
       payload: {
         options,
         groups,
-      }
+      },
+      scale: 0.7,
     });
 
     return report;
