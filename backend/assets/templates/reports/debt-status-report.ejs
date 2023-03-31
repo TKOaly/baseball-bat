@@ -55,7 +55,7 @@
     <% for (const { name, id, debts } of data.groups) { %>
       <% if (name) { %>
       <tr>
-        <td class="font-bold"><%= id %></td>
+        <td class="font-bold whitespace-nowrap"><%= id %></td>
         <td class="font-bold" colspan=8><%= name %></td>
         <td class="font-bold text-right"><%= utils.formatEuro(debts.map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
       </tr>
