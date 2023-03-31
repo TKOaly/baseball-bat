@@ -1374,7 +1374,10 @@ export class DebtService {
           ? sql`WHERE debt_center.id = ANY (${options.centers})`
           : sql``
       )
-      .append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+      .append(sql`
+        GROUP BY debt.id, payer_profiles.*, debt_center.*
+        ORDER BY MIN(ps.paid_at)
+      `)
     );
 
     const results = await Promise.all(dbResults.map(async (row) => ([
