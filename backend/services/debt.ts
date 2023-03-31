@@ -1353,11 +1353,14 @@ export class DebtService {
         ) AS total,
         (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
         (CASE
+          WHEN debt.credited THEN 'credited'
           WHEN bool_or(ps.status = 'paid') THEN 'paid'
           ELSE 'open'
         END) status,
         MIN(ps.paid_at) paid_at,
-        (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1] payment_id
+        (CASE
+          WHEN NOT debt.credited THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
+        END) payment_id
       FROM debt
       LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
       LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
