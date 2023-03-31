@@ -130,7 +130,7 @@ type CashPayment = {
   data: Record<string, never>
 }
 
-type DbPayment = {
+export type DbPayment = {
   id: string
   human_id: string
   human_id_nonce?: number
@@ -159,7 +159,7 @@ type NewPayment<T extends PaymentType, D = null> = {
   createdAt?: Date
 }
 
-const formatPayment = (db: DbPayment): Payment => ({
+export const formatPayment = (db: DbPayment): Payment => ({
   id: db.id,
   humanId: db.human_id,
   humanIdNonce: db.human_id_nonce,

@@ -6,7 +6,7 @@ import * as t from 'io-ts';
 import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
 import { DebtCentersService, formatDebtCenter } from './debt_centers';
-import { NewInvoice, PaymentService } from './payements';
+import { DbPayment, formatPayment, NewInvoice, PaymentService } from './payements';
 import { cents } from '../../common/currency';
 
 import * as E from 'fp-ts/lib/Either';
@@ -1306,12 +1306,44 @@ export class DebtService {
   async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }) {
     type ResultRow = Debt & { status: 'paid' | 'open' };
 
-    const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null })>(sql`
+    const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null }) & { payment_id: string }>(sql`
+      WITH payment_agg AS (
+        SELECT
+          payment_id,
+          SUM(amount) AS balance,
+          (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
+          (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
+          MAX(time) AS updated_at
+        FROM payment_events e
+        WHERE time < ${options.date}
+        GROUP BY payment_id
+      ),
+      payment_statuses AS (
+        SELECT
+          p.id AS payment_id,
+          (
+            SELECT time
+            FROM payment_events e2
+            WHERE e2.payment_id = p.id AND e2.type = 'payment'
+            ORDER BY e2.time DESC
+            LIMIT 1
+          ) AS paid_at, 
+          CASE
+              WHEN s.has_cancel_event THEN 'canceled'::payment_status
+              WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
+              WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
+              ELSE 'paid'::payment_status
+          END AS status
+        FROM payments p
+        LEFT JOIN payment_agg s ON s.payment_id = p.id
+        LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
+        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at < ${options.date} 
+        LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
+      )
       SELECT
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
         TO_JSON(debt_center.*) AS debt_center,
-        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
         (
           SELECT SUM(dc.amount) AS total
@@ -1320,55 +1352,17 @@ export class DebtService {
           WHERE dcm.debt_id = debt.id
         ) AS total,
         (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
-        (
-          CASE
-            WHEN sum(
-              CASE
-                WHEN p.status = 'paid'::payment_status THEN 1
-                ELSE 0
-              END
-            ) > 0 THEN 'paid'
-            ELSE 'open'
-          END
-        ) status,
-        MIN(p.paid_at) paid_at
-      FROM (
-        SELECT
-          d.id,
-          (SELECT time FROM payment_events e2 WHERE e2.payment_id = p.id AND e2.type = 'payment' ORDER BY e2.time DESC LIMIT 1) AS paid_at, 
-          CASE
-              WHEN s.has_cancel_event THEN 'canceled'::payment_status
-              WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
-              WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
-              ELSE 'paid'::payment_status
-          END AS status
-        FROM payments p
-        LEFT JOIN (
-          SELECT
-            e.payment_id,
-            sum(e.amount) AS balance,
-            (sum(
-                CASE
-                    WHEN (e.type = 'payment'::text) THEN 1
-                    ELSE 0
-                END) > 0) AS has_payment_event,
-            (sum(
-                CASE
-                    WHEN (e.type = 'canceled'::text) THEN 1
-                    ELSE 0
-                END) > 0) AS has_cancel_event,
-            max(e."time") AS updated_at
-          FROM payment_events e
-          WHERE (e.type = 'created' OR e.time < ${options.date})
-          GROUP BY e.payment_id
-        ) s ON s.payment_id = p.id
-        LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at < ${options.date}
-        LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
-      ) p
-      JOIN debt ON debt.id = p.id
-      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-      JOIN debt_center ON debt_center.id = debt.debt_center_id
+        (CASE
+          WHEN bool_or(ps.status = 'paid') THEN 'paid'
+          ELSE 'open'
+        END) status,
+        MIN(ps.paid_at) paid_at,
+        (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1] payment_id
+      FROM debt
+      LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
+      LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
+      LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+      LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
     `
@@ -1380,7 +1374,12 @@ export class DebtService {
       .append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`)
     );
 
-    const results = dbResults.map((row) => ([ formatDebt(row), row.status, row.paid_at ] as [Debt, 'open' | 'paid', Date]));
+    const results = await Promise.all(dbResults.map(async (row) => ([
+      formatDebt(row),
+      row.status,
+      row.paid_at,
+      row.payment_id ? await this.paymentService.getPayment(row.payment_id) : null,
+    ] as [Debt, 'open' | 'paid', Date, Payment | null])));
 
     let groups;
 
@@ -1406,7 +1405,7 @@ export class DebtService {
         };
       }
 
-      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, [Debt, 'open' | 'paid', Date | null][]]) => async () => {
+      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, [Debt, 'open' | 'paid', Date | null, Payment | null][]]) => async () => {
         const { name, id } = await nameResolver(key);
         return { name, debts, id }; 
       };

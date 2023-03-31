@@ -48,6 +48,7 @@
       <th class="header-border">Published</th>
       <th class="header-border">Due Date</th>
       <th class="header-border">Paid at</th>
+      <th class="header-border">Payment</th>
       <th class="header-border text-right">Status</th>
       <th class="header-border text-right">Amount</th>
     </tr>
@@ -55,11 +56,11 @@
       <% if (name) { %>
       <tr>
         <td class="font-bold"><%= id %></td>
-        <td class="font-bold" colspan=7><%= name %></td>
+        <td class="font-bold" colspan=8><%= name %></td>
         <td class="font-bold text-right"><%= utils.formatEuro(debts.map(([debt]) => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
       </tr>
       <% } %>
-      <% for (const [debt, status, paidAt] of debts) { %>
+      <% for (const [debt, status, paidAt, payment] of debts) { %>
         <tr>
           <td class="!pl-4"><%= debt.humanId %></td>
           <td><%= debt.name %></td>
@@ -68,6 +69,7 @@
           <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
           <td><%= paidAt ? utils.formatDate(paidAt, 'dd.MM.yyyy') : '' %></td>
+          <td><%= payment ? payment.humanId : '' %></td>
           <td><%= status %></td>
           <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
         </tr>
