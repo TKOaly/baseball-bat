@@ -1334,8 +1334,8 @@ export class DebtService {
               WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
               ELSE 'paid'::payment_status
           END AS status
-        FROM payments p
-        LEFT JOIN payment_agg s ON s.payment_id = p.id
+        FROM payment_agg s
+        LEFT JOIN payments p ON p.id = s.payment_id
         LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
         INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at < ${options.date} 
         LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
