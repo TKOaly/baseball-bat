@@ -1359,7 +1359,7 @@ export class DebtService {
         END) status,
         MIN(ps.paid_at) paid_at,
         (CASE
-          WHEN NOT debt.credited THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
+          WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
         END) payment_id
       FROM debt
       LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
