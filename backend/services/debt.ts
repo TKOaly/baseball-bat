@@ -1337,7 +1337,7 @@ export class DebtService {
         FROM payment_agg s
         LEFT JOIN payments p ON p.id = s.payment_id
         LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at < ${options.date} 
+        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${options.date} 
         LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
       )
       SELECT
@@ -1368,10 +1368,11 @@ export class DebtService {
       LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
       LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+      WHERE debt.published_at IS NOT NULL
     `
       .append(
         options.centers
-          ? sql`WHERE debt_center.id = ANY (${options.centers})`
+          ? sql` AND debt_center.id = ANY (${options.centers})`
           : sql``
       )
       .append(sql`
