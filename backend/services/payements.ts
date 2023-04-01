@@ -721,6 +721,7 @@ export class PaymentService {
     return this.reportService.createReport({
       template: 'payment-ledger',
       name,
+      options,
       payload: { options, groups },
     });
   }

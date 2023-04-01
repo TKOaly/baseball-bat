@@ -1294,10 +1294,8 @@ export class DebtService {
     const report = await this.reportService.createReport({
       name,
       template: 'debt-ledger',
-      payload: {
-        options,
-        groups,
-      },
+      options,
+      payload: { options, groups },
     });
 
     return report;
@@ -1432,10 +1430,8 @@ export class DebtService {
     const report = await this.reportService.createReport({
       name,
       template: 'debt-status-report',
-      payload: {
-        options,
-        groups,
-      },
+      options,
+      payload: { options, groups },
       scale: 0.7,
     });
 

@@ -16,6 +16,7 @@ export type CreateReportOptions = {
   template: string
   name: string
   payload: unknown
+  options: unknown
   scale?: number
 };
 
@@ -23,6 +24,7 @@ export type SaveReportOptions = {
   generatedAt?: Date,
   name: string,
   content: Buffer,
+  options: unknown
 };
 
 const formatReport = (db: DbReport): Report => ({
@@ -112,7 +114,7 @@ export class ReportService {
     });
 
     const report = await this.pg.one<DbReport>(sql`
-      INSERT INTO reports (id, name, generated_at) VALUES (${id}, ${options.name}, COALESCE(${options.generatedAt}, NOW())) RETURNING *;
+      INSERT INTO reports (id, name, generated_at, options) VALUES (${id}, ${options.name}, COALESCE(${options.generatedAt}, NOW()), ${options.options}) RETURNING *;
     `);
 
     return report && formatReport(report);
@@ -143,6 +145,7 @@ export class ReportService {
       generatedAt,
       content: pdf,
       name: options.name,
+      options: options.options,
     });
 
     return report;
