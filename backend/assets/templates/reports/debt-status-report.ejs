@@ -70,7 +70,13 @@
           <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
           <td><%= paidAt ? utils.formatDate(paidAt, 'dd.MM.yyyy') : '' %></td>
           <td class="whitespace-nowrap"><%= payment ? payment.humanId : '' %></td>
-          <td><%= status %></td>
+          <td><div class="flex gap-0.5 items-center">
+            <i
+              data-feather="<%= { 'open': 'circle', 'paid': 'check-circle', 'credited': 'x-circle' }[status] %>"
+              class="h-4 <%= { 'paid': 'text-green-600', 'credited': 'text-blue-600', 'open': 'text-gray-600' }[status] %>"
+            ></i>
+            <%= status[0].toUpperCase() + status.substring(1) %>
+          </div></td>
           <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
         </tr>
       <% } %>
@@ -102,4 +108,6 @@
   }
 </style>
 
+<script src="https://unpkg.com/feather-icons"></script>
+<script>feather.replace()</script>
 <script src="https://unpkg.com/tailwindcss-jit-cdn"></script>
