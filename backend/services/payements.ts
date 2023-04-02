@@ -634,7 +634,7 @@ export class PaymentService {
     return E.fromNullable('Could not create email')(created);
   }
 
-  async generatePaymentLedger(options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> & Record<'startDate' | 'endDate', Date>) {
+  async generatePaymentLedger(options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> & Record<'startDate' | 'endDate', Date>, generatedBy: InternalIdentity, parent?: string) {
     const results = await this.pg.any<{ event: DbPaymentEvent, debt: DbDebt, payment: DbPayment, payer: DbPayerProfile }>(sql`
       SELECT DISTINCT ON (event.id, debt.id)
         TO_JSONB(event.*) AS event,
@@ -723,6 +723,8 @@ export class PaymentService {
       name,
       options,
       payload: { options, groups },
+      parent,
+      generatedBy,
     });
   }
 }

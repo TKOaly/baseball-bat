@@ -34,6 +34,14 @@ const reportApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Report', id: 'LIST' }],
     }),
+
+    refreshReport: builder.mutation<Report, string>({
+      query: (id) => ({
+        url: `/reports/${id}/refresh`,
+        method: 'POST',
+      }),
+      invalidatesTags: [{ type: 'Report', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -42,6 +50,7 @@ export const {
   useGenerateDebtLedgerMutation,
   useGeneratePaymentLedgerMutation,
   useGenerateDebtStatusReportMutation,
+  useRefreshReportMutation,
 } = reportApi;
 
 export default reportApi;

@@ -1232,7 +1232,7 @@ export class DebtService {
     await Promise.all(promises);
   }
 
-  async generateDebtLedger(options: DebtLedgerOptions) {
+  async generateDebtLedger(options: DebtLedgerOptions, generatedBy: InternalIdentity, parent?: string) {
     let criteria;
 
     if (options.includeDrafts === 'include') {
@@ -1296,12 +1296,14 @@ export class DebtService {
       template: 'debt-ledger',
       options,
       payload: { options, groups },
+      parent,
+      generatedBy,
     });
 
     return report;
   }
 
-  async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }) {
+  async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }, generatedBy: InternalIdentity, parent?: string) {
     type ResultRow = Debt & { status: 'paid' | 'open' };
 
     const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null }) & { payment_id: string }>(sql`
@@ -1433,6 +1435,8 @@ export class DebtService {
       options,
       payload: { options, groups },
       scale: 0.7,
+      parent,
+      generatedBy,
     });
 
     return report;

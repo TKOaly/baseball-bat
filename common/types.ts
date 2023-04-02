@@ -650,12 +650,18 @@ export type DbPaymentEventTransactionMapping = {
 
 export type DbReport = {
   id: string
+  status: 'generating' | 'failed' | 'finished'
   name: string
   generated_at: Date
   human_id: string
+  options: unknown
+  revision: number
+  type: string
+  history: Array<Omit<DbReport, 'history'>>
+  generated_by: string
 }
 
-export type Report = FromDbType<DbReport>
+export type Report = Omit<FromDbType<DbReport>, 'history' | 'generatedBy'> & { history: Array<Omit<Report, 'history'>>, generatedBy: InternalIdentity | null }
 
 export type DebtLedgerOptions = {
   startDate: DbDateString

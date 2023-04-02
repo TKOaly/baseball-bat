@@ -1,9 +1,13 @@
 <div class="p-10">
-  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
+  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %> (</h1>
 
   <div class="mt-5 mb-5 gap-3 grid grid-cols-2">
     <div class="p-3 bg-gray-100">
       <table>
+        <tr>
+          <th class="text-left pr-2">ID</th>
+          <td><%= metadata.humanId %> <%= metadata.revision > 1 ? `Rev. ${metadata.revision}` : '' %></td>
+        </tr>
         <tr>
           <th class="text-left pr-2">Generated at</th>
           <td><%= utils.formatDate(metadata.generatedAt, 'dd.MM.yyyy HH:mm') %></td>

@@ -47,6 +47,10 @@ export type TableViewProps<R extends Row<R>, ColumnNames extends string, ColumnT
   emptyMessage?: JSX.Element | string,
   hideTools?: boolean,
   footer?: React.ReactNode,
+  initialSort?: {
+    column: string,
+    direction: 'asc' | 'desc',
+  },
 }
 
 const getColumnValue = <R extends Row, Value>(column: Column<R, any, Value>, row: R): Value => {
@@ -351,9 +355,9 @@ const sortRows = <R extends Row<R>>(rows, column, direction, columns, filters: R
   return tmpRows.filter(filter);
 };
 
-export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
+export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer, initialSort = null }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
-  const [sorting, setSorting] = useState(null);
+  const [sorting, setSorting] = useState(initialSort ? [initialSort.column, initialSort.direction] : null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
   const [expandedRows, setExpandedRows] = useState([]);
 

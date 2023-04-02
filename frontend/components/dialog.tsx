@@ -112,10 +112,10 @@ export const Portal = ({ children, containerId }) => {
   return createPortal(children, element);
 };
 
-export const DialogBase = ({ children, onClose, ...rest }) => {
+export const DialogBase = ({ children, onClose, wide = false, ...rest }) => {
   return (
     <div {...rest} className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10" onClick={onClose}>
-      <div className="rounded-lg flex flex-col bg-white border shadow-lg w-[30em]" onClick={(e) => e.stopPropagation()}>
+      <div className={`rounded-lg flex flex-col bg-white border shadow-lg ${wide ? '' : 'w-[30em]'}`} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Inject, Service } from 'typedi';
 import { route, router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
-import { dbDateString } from '../../common/types';
+import { dbDateString, internalIdentity } from '../../common/types';
 import { AuthService } from '../auth-middleware';
 import { DebtService } from '../services/debt';
 import { ReportService } from '../services/reports';
@@ -84,15 +84,16 @@ export class ReportApi {
         centers: t.union([ t.null, t.array(t.string) ]),
       })))
       .handler(async (ctx) => {
-        const report = await this.debtService.generateDebtLedger({
+        /*const report = await */this.debtService.generateDebtLedger({
           startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
           endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
           includeDrafts: ctx.body.includeDrafts,
           groupBy: ctx.body.groupBy,
           centers: ctx.body.centers,
-        });
+        }, internalIdentity(ctx.session.payerId));
 
-        return ok(report);
+        return ok();
+        //return ok(report);
       })
   }
 
@@ -109,16 +110,17 @@ export class ReportApi {
         eventTypes: t.union([ t.null, t.array(t.union([ t.literal('payment'), t.literal('created'), t.literal('credited') ])) ]),
       })))
       .handler(async (ctx) => {
-        const report = await this.paymentService.generatePaymentLedger({
+        /*const report = await */this.paymentService.generatePaymentLedger({
           startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
           endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
           paymentType: ctx.body.paymentType,
           centers: ctx.body.centers,
           groupBy: ctx.body.groupBy,
           eventTypes: ctx.body.eventTypes,
-        });
+        }, internalIdentity(ctx.session.payerId));
 
-        return ok(report);
+        return ok();
+        // return ok(report);
       });
   }
 
@@ -132,11 +134,29 @@ export class ReportApi {
         centers: t.union([ t.null, t.array(t.string) ]),
       })))
       .handler(async (ctx) => {
-        const report = await this.debtService.generateDebtStatusReport({
+        /*const report = await */this.debtService.generateDebtStatusReport({
           date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
           centers: ctx.body.centers,
           groupBy: ctx.body.groupBy,
-        });
+        }, internalIdentity(ctx.session.payerId));
+
+        return ok();
+        //return ok(report);
+      });
+  }
+
+  private refreshReport() {
+    return route
+      .post('/:id/refresh')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const report = await this.reportService.refreshReport(ctx.routeParams.id, internalIdentity(ctx.session.payerId));
+
+        if (!report) {
+          return notFound({
+            message: 'Report could not be refreshed.',
+          });
+        }
 
         return ok(report);
       });
@@ -150,6 +170,7 @@ export class ReportApi {
       this.generateDebtLedgerReport(),
       this.generatePaymentLedgerReport(),
       this.generateDebtStatusReport(),
+      this.refreshReport(),
     );
   }
 }
