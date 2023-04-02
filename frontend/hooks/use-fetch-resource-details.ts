@@ -72,10 +72,11 @@ const selectResourceDetails = createSelector(
       details.push(['Number', payment.data.paymentNumber]);
 
       if (isPaymentInvoice(payment.data)) {
-        details.push(
-          ['Date', format(parseISO(payment.data.data.date), 'dd.MM.yyyy')],
-          ['Reference', payment.data.data.reference_number],
-        );
+        if (payment.data.data.date) {
+          details.push(['Date', format(parseISO(payment.data.data.date), 'dd.MM.yyyy')]);
+        }
+
+        details.push(['Reference', payment.data.data.reference_number]);
       }
     } else {
       return null;
