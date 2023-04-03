@@ -45,7 +45,7 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
     >
       {({ submitForm, isSubmitting }) => (
         <DialogBase onClose={() => onClose(null)}>
-          <DialogHeader>Generate a new debt ledger</DialogHeader>
+          <DialogHeader>Generate a new debt status report</DialogHeader>
           <DialogContent>
             <div className="grid gap grid-cols-4 gap-x-8 px-4">
               <InputGroup
