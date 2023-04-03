@@ -30,7 +30,7 @@ export const TransactionRegistrationDialog = ({ transactions, onClose }: Props) 
       <DialogHeader>Register transactions manually</DialogHeader>
       <DialogContent>
         <p className="mb-2">Select a payment against which to register this transaction:</p>
-        <ResourceSelectField type='payment' onChange={(_, { id }) => setSelected(id)} />
+        <ResourceSelectField type='payment' value={selected ? { type: 'payment', id: selected } : null} onChange={(_, { id }) => setSelected(id)} />
       </DialogContent>
       <DialogFooter>
         <SecondaryButton onClick={() => onClose()}>Cancel</SecondaryButton>

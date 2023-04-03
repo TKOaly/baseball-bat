@@ -3,6 +3,8 @@ import { GlobalSearchDialog } from './dialogs/global-search-dialog';
 import 'react-popper-tooltip/dist/styles.css';
 import { usePopperTooltip } from 'react-popper-tooltip';
 import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
+import { ExternalLink } from 'react-feather';
+import { ResourceLink } from './resource-link';
 
 export type Props = {
   type?: string,
@@ -59,12 +61,22 @@ export const ResourceSelectField = (props: Props) => {
                 </td>
               </tr>
               {
-                (resourceDetails.details ?? []).map(([label, value]) => (
-                  <tr key={label}>
-                    <th className="text-left text-gray-700 pr-2">{label}</th>
-                    <td>{value}</td>
-                  </tr>
-                ))
+                (resourceDetails.details ?? []).map(([label, details]) => {
+                  let value = null;
+
+                  if (details.type === 'text') {
+                    value = details.value;
+                  } else if (details.type === 'resource') {
+                    value = <ResourceLink type={details.resourceType} id={details.id} />
+                  }
+
+                  return (
+                    <tr key={label}>
+                      <th className="text-left text-gray-700 pr-2">{label}</th>
+                      <td>{value}</td>
+                    </tr>
+                  );
+                })
               }
             </table>
           </div>

@@ -2,10 +2,11 @@ import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../com
 import { Button } from '../../components/button';
 import { TextField } from '../text-field';
 import { useSearchQuery } from '../../api/search';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Dropdown } from '../dropdown';
 import { useFetchResourceDetails } from '../../hooks/use-fetch-resource-details';
+import { ResourceLink } from '../resource-link';
 
 export type Props = {
   onClose: (_: { id: string, type: string } | null) => void,
@@ -31,12 +32,22 @@ const SearchResultItem = ({ type, id, name, onSelect }) => {
       </h1>
       <table className="text-sm">
         {
-          details && details.details.map(([label, value]) => (
-            <tr key={label}>
-              <th className="text-left text-gray-700 pr-2">{label}</th>
-              <td>{value}</td>
-            </tr>
-          ))
+          (details?.details ?? []).map(([label, details]) => {
+            let value = null;
+
+            if (details.type === 'text') {
+              value = details.value;
+            } else if (details.type === 'resource') {
+              value = <ResourceLink type={details.resourceType} id={details.id} />
+            }
+
+            return (
+              <tr key={label}>
+                <th className="text-left text-gray-700 pr-2">{label}</th>
+                <td>{value}</td>
+              </tr>
+            );
+          })
         }
       </table>
     </div>
@@ -47,9 +58,10 @@ export const GlobalSearchDialog = ({ onClose, type: pType, title, prompt, openOn
   const [term, setTerm] = useState('');
   const [type, setType] = useState(pType);
   const isTypeLocked = pType !== undefined;
-  const { data: results } = useSearchQuery({ term, type }, { skip: term === '' });
+  const { data: fullResults } = useSearchQuery({ term, type }, { skip: term === '' });
   const [, setLocation] = useLocation();
   const inputRef = useRef<HTMLInputElement>();
+  const results = useMemo(() => fullResults ? [...fullResults].splice(0, 10) : null, [fullResults]);
 
   useEffect(() => {
     if (inputRef.current) {
