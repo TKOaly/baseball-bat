@@ -1325,7 +1325,7 @@ export class DebtService {
           (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
           MAX(time) AS updated_at
         FROM payment_events e
-        WHERE time < ${options.date}
+        WHERE time < ${options.date} OR type = 'created'
         GROUP BY payment_id
       ),
       payment_statuses AS (
