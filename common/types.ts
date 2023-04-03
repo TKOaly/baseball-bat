@@ -691,4 +691,5 @@ export type DebtStatusReportOptions = {
   date: DbDateString
   groupBy: null | 'center' | 'payer'
   centers: null | Array<string>
+  includeOnly: null | 'paid' | 'credited' | 'open'
 }

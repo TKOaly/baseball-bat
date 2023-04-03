@@ -132,12 +132,14 @@ export class ReportApi {
         date: dbDateString,
         groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
         centers: t.union([ t.null, t.array(t.string) ]),
+        includeOnly: t.union([ t.null, t.literal('paid'), t.literal('credited'), t.literal('open') ]),
       })))
       .handler(async (ctx) => {
         /*const report = await */this.debtService.generateDebtStatusReport({
           date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
           centers: ctx.body.centers,
           groupBy: ctx.body.groupBy,
+          includeOnly: ctx.body.includeOnly,
         }, internalIdentity(ctx.session.payerId));
 
         return ok();

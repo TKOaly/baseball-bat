@@ -1304,7 +1304,17 @@ export class DebtService {
   }
 
   async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }, generatedBy: InternalIdentity, parent?: string) {
-    type ResultRow = Debt & { status: 'paid' | 'open' };
+    type ResultRow = Debt & { status: 'paid' | 'open' | 'credited' };
+
+    let statusFilter = sql``;
+
+    if (options.includeOnly === 'paid') {
+      statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
+    } else if (options.includeOnly === 'credited') {
+      statusFilter = sql` HAVING debt.credited `;
+    } else if (options.includeOnly === 'open') {
+      statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
+    }
 
     const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null }) & { payment_id: string }>(sql`
       WITH payment_agg AS (
@@ -1375,10 +1385,9 @@ export class DebtService {
           ? sql` AND debt_center.id = ANY (${options.centers})`
           : sql``
       )
-      .append(sql`
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-        ORDER BY MIN(ps.paid_at)
-      `)
+      .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+      .append(statusFilter)
+      .append(sql` ORDER BY MIN(ps.paid_at)`)
     );
 
     const results = await Promise.all(dbResults.map(async (row) => ([

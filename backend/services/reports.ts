@@ -328,11 +328,16 @@ export class ReportService {
         return;
       }
     } else if (report.type === 'debt-status-report') {
-      const optionsType = t.type({
-        date: t.string,
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
-      });
+      const optionsType = t.intersection([
+        t.type({
+          date: t.string,
+          groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
+          centers: t.union([ t.null, t.array(t.string) ]),
+        }),
+        t.partial({
+          includeOnly: t.union([ t.null, t.literal('open'), t.literal('paid'), t.literal('credited') ]),
+        }),
+      ]);
 
       const result = optionsType.decode(report.options);
 
@@ -343,6 +348,7 @@ export class ReportService {
           date: new Date(options.date),
           centers: options.centers,
           groupBy: options.groupBy,
+          includeOnly: options.includeOnly ?? null,
         }, generatedBy, report.id);
       } else {
         console.log('Upps');

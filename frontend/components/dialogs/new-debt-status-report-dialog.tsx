@@ -13,6 +13,7 @@ type FormValues = {
   date: DbDateString,
   groupBy: null | 'payer' | 'center',
   center: null | { id: string }
+  includeOnly: null | 'open' | 'paid' | 'credited'
 }
 
 export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose: (result: Report) => void, defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string } }) => {
@@ -23,6 +24,7 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
       date: values.date,
       groupBy: values.groupBy,
       centers: values.center ? [values.center.id] : null,
+      includeOnly: values.includeOnly,
     });
 
     if ('data' in result) {
@@ -35,6 +37,7 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
       initialValues={{
         date: format(new Date(), 'yyyy-MM-dd'),
         groupBy: 'center',
+        includeOnly: null,
         ...defaults,
         center: defaults.center ? { type: 'debt_center', id: defaults.center } : null,
       } as FormValues}
@@ -59,6 +62,17 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
                   { value: null, text: 'No grouping' },
                   { value: 'payer', text: 'Payer' },
                   { value: 'center', text: 'Debt Center' },
+                ]}
+              />
+              <InputGroup
+                label="Include only"
+                name="includeOnly"
+                component={DropdownField}
+                options={[
+                  { value: null, text: 'All' },
+                  { value: 'open', text: 'Open' },
+                  { value: 'paid', text: 'Paid' },
+                  { value: 'credited', text: 'Credited' },
                 ]}
               />
               <InputGroup

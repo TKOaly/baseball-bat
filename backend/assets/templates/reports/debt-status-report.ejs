@@ -16,6 +16,10 @@
           <th class="text-left pr-2">Included debt centers</th>
           <td><%= data.options.centers ? 'Selected' : 'All' %></td>
         </tr>
+        <tr>
+          <th class="text-left pr-2">Included statuses</th>
+          <td><%= data.options.includeOnly ? data.options.includeOnly : 'All' %></td>
+        </tr>
       </table>
     </div>
     <div class="p-3 bg-gray-100">
