@@ -112,7 +112,7 @@ export const parseCamtStatement = async (content: string): Promise<CamtStatement
       }
 
       return {
-        id: findOrThrow('//NtryDtls/TxDtls/Refs/MsgId', ntry),
+        id: findOrThrow('//NtryDtls/TxDtls/Refs/AcctSvcrRef', ntry),
         amount: parseEuroValue(findOrThrow('//NtryDtls/TxDtls/AmtDtls/TxAmt/Amt', ntry)),
         type,
         bookingDate: parseISO(findOrThrow('//BookgDt/Dt', ntry)),
