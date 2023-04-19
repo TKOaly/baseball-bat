@@ -3,7 +3,7 @@ import { Middleware, route, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount } from '../../common/types';
 import { AuthService } from '../auth-middleware';
-import { parseCamtStatement } from '../camt-parser';
+import { parseCamtStatement } from '../../common/camt-parser';
 import { BankingService } from '../services/banking';
 import { validateBody } from '../validate-middleware';
 import multer from 'multer';

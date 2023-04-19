@@ -1,3 +1,4 @@
+import { BankAccount } from '../../../common/types';
 import rtkApi from '../rtk-api';
 
 const accountsApi = rtkApi.injectEndpoints({

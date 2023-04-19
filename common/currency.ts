@@ -17,6 +17,14 @@ export const cents = (value: number): EuroValue => ({
   value,
 });
 
+export const subEuroValues = (acc: undefined | EuroValue, value: EuroValue): EuroValue => {
+  if (acc === undefined) {
+    return euro(0);
+  } else {
+    return { currency: 'eur', value: acc.value - value.value };
+  }
+};
+
 export const sumEuroValues = (acc: undefined | EuroValue, value: EuroValue): EuroValue => {
   if (acc === undefined) {
     return euro(0);
