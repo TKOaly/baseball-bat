@@ -27,12 +27,12 @@ export const EmailList = (props: Props) => {
         {
           name: 'Created',
           getValue: 'createdAt',
-          render: (value) => value && format(new Date(value), 'dd.MM.yyyy'),
+          render: (value) => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Sent',
           getValue: 'sentAt',
-          render: (value) => value && format(new Date(value), 'dd.MM.yyyy'),
+          render: (value) => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Status',
