@@ -12,10 +12,13 @@ import { euro, sumEuroValues } from '../../../common/currency';
 import React from 'react';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
+import { useGetEmailsByDebtQuery } from '../../api/email';
+import { EmailList } from '../../components/email-list';
 
 export const DebtDetails = ({ params }) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
   const { data: payments } = useGetPaymentsByDebtQuery(params.id);
+  const { data: emails } = useGetEmailsByDebtQuery(params.id);
   const [deleteDebt] = useDeleteDebtMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const [creditDebt] = useCreditDebtMutation();
@@ -175,6 +178,14 @@ export const DebtDetails = ({ params }) => {
         </SectionDescription>
         <SectionContent>
           <PaymentList payments={payments ?? []} />
+        </SectionContent>
+      </Section>
+      <Section title="Emails">
+        <SectionDescription>
+          List of email communication regarding this debt.
+        </SectionDescription>
+        <SectionContent>
+          <EmailList emails={emails ?? []} />
         </SectionContent>
       </Section>
     </Page>
