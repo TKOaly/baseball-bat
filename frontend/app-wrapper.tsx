@@ -16,7 +16,7 @@ import { Landing } from './views/landing';
 import { Main } from './views/main';
 import { UpdatePaymentMethod } from './views/update-payment-method';
 import './style.css';
-import { authenticateSession, bootstrapSession, createSession, destroySession } from './session';
+import { authenticateSession, bootstrapSession, createSession, destroySession, heartbeat } from './session';
 import { Button } from './components/button';
 import { DialogContextProvider } from './components/dialog';
 
@@ -118,6 +118,16 @@ const useManageSession = () => {
   const dispatch = useAppDispatch();
 
   const [allowUnauthenticated] = useRoute('/magic/invalid');
+
+  useEffect(() => {
+    if (token) {
+      const id = setInterval(() => {
+        dispatch(heartbeat());
+      }, 60 * 1000);
+
+      return () => clearInterval(id);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (bootstrapping === 'pending') {

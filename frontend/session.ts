@@ -101,6 +101,30 @@ export const bootstrapSession = createAsyncThunk(
   },
 );
 
+export const heartbeat = createAsyncThunk(
+  'session/heartbeat',
+  async () => {
+    const token = window.localStorage.getItem('session-token');
+
+    if (!token) {
+      return Promise.reject();
+    }
+
+    const res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (res.ok) {
+      return Promise.resolve();
+    } else {
+      return Promise.reject();
+    }
+  },
+);
+
 type SessionState = {
   token: string | null
   authenticated: boolean
@@ -177,6 +201,11 @@ const sessionSlice = createSlice({
       state.authenticated = false;
       state.token = null;
       window.localStorage.removeItem('session-token');
+    });
+
+    builder.addCase(heartbeat.rejected, (state) => {
+      state.authenticated = false;
+      state.token = null;
     });
   },
 });

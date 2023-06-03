@@ -2,7 +2,7 @@ import { route, router } from 'typera-express';
 import { AuthService } from '../auth-middleware';
 import { PayerService } from '../services/payer';
 import { internalIdentity } from '../../common/types';
-import { ok, redirect } from 'typera-express/response';
+import { ok, redirect, unauthorized } from 'typera-express/response';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
 import base64url from 'base64url';
@@ -22,7 +22,7 @@ export class SessionApi {
     return route
       .use(this.authService.createAuthMiddleware({ unauthenticated: true }))
       .get('/')
-      .handler(async ({ session }) => {
+      .handler(async ({ session, req }) => {
         if (session.authLevel === 'unauthenticated') {
           return ok({
             authLevel: 'unauthenticated',
@@ -34,6 +34,16 @@ export class SessionApi {
         const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id);
         const paymentMethod = await this.payerService.getPaymentMethod(id);
         const preferences = await this.payerService.getPayerPreferences(id);
+
+        if (!req.cookies.token) {
+          return unauthorized();
+        }
+
+        const tokenPayload = JSON.parse(Buffer.from(req.cookies.token.split('.')[1], 'base64').toString());
+
+        if (tokenPayload.authenticatedTo.split(',').indexOf(this.config.serviceId) === -1) {
+          return unauthorized();
+        }
 
         return ok({
           authLevel: session.authLevel,
