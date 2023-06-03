@@ -1,14 +1,31 @@
 import { ExternalLink } from "react-feather";
 import { usePopperTooltip } from "react-popper-tooltip";
+import { useLocation } from "wouter";
 import { useFetchResourceDetails } from "../hooks/use-fetch-resource-details";
+
+const RESOURCE_URL_FORMATS = {
+  debt: '/admin/debts/%',
+  email: '/admin/emails/%',
+  payment: '/admin/payments/%',
+  payer: '/admin/payers/%',
+};
 
 export const ResourceLink = (props: { type: string, id: string }) => {
   const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'top', delayShow: 300, offset: [0, 0] });
   const resourceDetails = useFetchResourceDetails(props.type, props.id);
+  const [, setLocation] = useLocation();
+
+  const handleClick = () => {
+    const format = RESOURCE_URL_FORMATS[props.type];
+
+    if (format) {
+      setLocation(format.replace('%', props.id));
+    }
+  };
 
   return (
     <div>
-      <div ref={setTriggerRef} className="inline-flex items-center">
+      <div ref={setTriggerRef} className="inline-flex items-center cursor-pointer" onClick={handleClick}>
         {resourceDetails?.name}
         <ExternalLink className="h-4 text-blue-500 relative" />
       </div>
