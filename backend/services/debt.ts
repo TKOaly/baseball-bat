@@ -1214,9 +1214,11 @@ export class DebtService {
       T.map(A.separate),
     )(debts)();
 
-    await this.emailService.batchSendEmails(result.right.map(([email]) => email.id));
+    if (!draft) {
+      await this.emailService.batchSendEmails(result.right.map(([email]) => email.id));
+    }
 
-    return { right: [], left: [] };
+    return result;
   }
 
   async onDebtPaid(debt: Debt, payment: Payment, _event: PaymentEvent) {
