@@ -2,7 +2,7 @@
 
 import { identity } from 'fp-ts/lib/function';
 import { useMemo, useState } from 'react';
-import { Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
+import { ChevronDown, ChevronUp, Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
 import { difference, concat, uniq } from 'remeda';
 import { Button } from './button';
 import { Dropdown } from './dropdown';
@@ -48,7 +48,7 @@ export type TableViewProps<R extends Row<R>, ColumnNames extends string, ColumnT
   hideTools?: boolean,
   footer?: React.ReactNode,
   initialSort?: {
-    column: string,
+    column: ColumnNames,
     direction: 'asc' | 'desc',
   },
 }
@@ -357,7 +357,7 @@ const sortRows = <R extends Row<R>>(rows, column, direction, columns, filters: R
 
 export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer, initialSort = null }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
-  const [sorting, setSorting] = useState(initialSort ? [initialSort.column, initialSort.direction] : null);
+  const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(initialSort ? [initialSort.column, initialSort.direction] : null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
   const [expandedRows, setExpandedRows] = useState([]);
 
@@ -415,6 +415,16 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
     return matches.flatMap((matches, i) => matches ? [actions[i]] : []);
   }, [selectedRows, actions]);
 
+  const handleColumnHeaderClick = (column: Column<any, any, any>) => {
+    if (!sorting || sorting[0] !== column.name) {
+      setSorting([column.name, 'desc']);
+    } else if (sorting[1] === 'desc') {
+      setSorting([column.name, 'asc']);
+    } else {
+      setSorting(null);
+    }
+  };
+
   return (
     <div className="relative" data-cy="table-view" data-visible-rows={sortedRows.length} data-total-rows={rows.length}>
       { !hideTools && (
@@ -435,7 +445,7 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
                 ),
                 value: col.name,
               }))}
-              onSelect={(col) => {
+              onSelect={(col: ColumnNames) => {
                 if (!sorting || sorting[0] !== col) {
                   setSorting([col, 'desc']);
                 } else if (sorting[1] === 'desc') {
@@ -483,15 +493,21 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
           {columns.map((column, i) => (
             <div
               key={column.name}
+              onClick={() => handleColumnHeaderClick(column)}
               className={`
                 ${!selectable && i == 0 && 'rounded-tl-md border-l'}
                 ${!actions && i == columns.length - 1 && 'rounded-tr-md border-r'}
                 border-l
                 border-t sticky top-0 z-10 text-gray-700 px-3 py-2
                 bg-gray-50 border-b text-sm font-bold
+                cursor-pointer
+                flex items-center
+                justify-between
               `}
             >
               {column.name}
+              {sorting !== null && sorting[0] === column.name && sorting[1] === 'asc' && <ChevronUp className="h-5 text-gray-400" /> }
+              {sorting !== null && sorting[0] === column.name && sorting[1] === 'desc' && <ChevronDown className="h-5 text-gray-400" /> }
             </div>
           ))}
           {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />}
