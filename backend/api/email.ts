@@ -24,6 +24,16 @@ export class EmailApi {
       });
   }
 
+  private getEmailsByDebt() {
+    return route
+      .get('/by-debt/:debt')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const emails = await this.emailService.getEmailsByDebt(ctx.routeParams.debt);
+        return ok(emails);
+      });
+  }
+
   private getEmail() {
     return route
       .get('/:id')
@@ -70,6 +80,7 @@ export class EmailApi {
       this.getEmail(),
       this.renderEmail(),
       this.sendEmails(),
+      this.getEmailsByDebt(),
     );
   }
 }

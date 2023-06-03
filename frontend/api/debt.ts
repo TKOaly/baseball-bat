@@ -197,6 +197,14 @@ const debtApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: (result) => result.map(({ id }) => ({ type: 'Debt' as const, id })),
     }),
+
+    getDebtsByEmail: builder.query<Debt[], string>({
+      query: (id) => ({
+        method: 'GET',
+        url: `/debt/by-email/${id}`,
+      }),
+      providesTags: (result) => result.map(({ id }) => ({ type: 'Debt' as const, id })),
+    }),
   }),
 });
 
@@ -221,6 +229,7 @@ export const {
   useUpdateMultipleDebtsMutation,
   useMassCreateDebtsProgressQuery,
   useUpdateDebtComponentMutation,
+  useGetDebtsByEmailQuery,
 } = debtApi;
 
 export default debtApi;

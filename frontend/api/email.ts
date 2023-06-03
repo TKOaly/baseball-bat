@@ -11,6 +11,14 @@ const emailApi = rtkApi.injectEndpoints({
       ],
     }),
 
+    getEmailsByDebt: builder.query<Email[], string>({
+      query: (id) => `/emails/by-debt/${id}`,
+      providesTags: (result) => [
+        { type: 'Email' as const, id: 'LIST' },
+        ...result.map((email) => ({ type: 'Email' as const, id: email.id })),
+      ],
+    }),
+
     getEmail: builder.query<Email, string>({
       query: (id) => `/emails/${id}`,
       providesTags: (result) => [{ type: 'Email', id: result.id }],
@@ -34,4 +42,5 @@ export const {
   useGetEmailsQuery,
   useGetEmailQuery,
   useSendEmailsMutation,
+  useGetEmailsByDebtQuery,
 } = emailApi;

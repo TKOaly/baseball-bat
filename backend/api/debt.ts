@@ -844,6 +844,17 @@ export class DebtApi {
       });
   }
 
+  private getDebtsByEmail() {
+    return route
+      .get('/by-email/:email')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const debts = await this.debtService.getDebtsByEmail(ctx.routeParams.email);
+
+        return ok(debts);
+      });
+  }
+
   public router(): Router {
     return router(
       this.sendAllReminders(),
@@ -862,6 +873,7 @@ export class DebtApi {
       this.sendReminder(),
       this.updateDebt(),
       this.updateMultipleDebts(),
+      this.getDebtsByEmail(),
     );
   }
 }

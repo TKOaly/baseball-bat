@@ -1179,6 +1179,7 @@ export class DebtService {
         message: payment.message,
         receiverName: payer.name,
       },
+      debts: [debt.id],
     });
 
     if (!createdEmail) {
@@ -1449,5 +1450,11 @@ export class DebtService {
     });
 
     return report;
+  }
+
+  async getDebtsByEmail(emailId: string) {
+    const debts = await this.queryDebts(sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`);
+
+    return debts;
   }
 }

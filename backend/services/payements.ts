@@ -328,7 +328,7 @@ export class PaymentService {
     return this.createPayment({
       type: 'invoice',
       data: (payment) => {
-        if (!payment.humanIdNonce) {
+        if (payment.humanIdNonce === undefined) {
           throw new Error('Generated payment does not have automatically assigned id');
         }
 
@@ -508,6 +508,7 @@ export class PaymentService {
           amount,
           payer,
         },
+        debts: debts.map((debt) => debt.id),
       });
 
       if (!message) {
@@ -628,6 +629,7 @@ export class PaymentService {
         message: payment.message,
         receiverName: payer.name,
       },
+      debts: debts.map((debt) => debt.id),
       subject: '[Lasku / Invoice] ' + payment.title,
     });
 

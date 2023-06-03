@@ -42,6 +42,7 @@ type NewEmail = {
   subject: string
   template: string
   payload: object
+  debts?: string[],
 }
 
 const formatEmail = (email: DbEmail): Email => ({
@@ -307,7 +308,18 @@ export class EmailService {
         RETURNING *
      `);
 
-    return result && formatEmail(result);
+    if (!result) {
+      return null;
+    }
+
+    if (email.debts) {
+      await Promise.all(email.debts.map((debt) => this.pg.any(sql`
+        INSERT INTO email_debt_mapping (email_id, debt_id)
+        VALUES (${result.id}, ${debt})
+      `)));
+    }
+
+    return formatEmail(result);
   }
 
   async _sendEmail(id: string) {
@@ -401,6 +413,18 @@ export class EmailService {
         FROM payer_emails
         JOIN emails ON emails.recipient = payer_emails.email
         WHERE payer_emails.payer_id = ${payer.value}
+      `);
+
+    return emails.map(formatEmail);
+  }
+
+  async getEmailsByDebt(debt: string) {
+    const emails = await this.pg
+      .any<DbEmail>(sql`
+        SELECT emails.*
+        FROM email_debt_mapping edm
+        JOIN emails ON emails.id = edm.email_id
+        WHERE edm.debt_id = ${debt}
       `);
 
     return emails.map(formatEmail);
