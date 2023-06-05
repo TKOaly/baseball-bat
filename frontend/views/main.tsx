@@ -255,6 +255,9 @@ export const Main = () => {
     .flatMap(debt => debt.debtComponents.map(dc => dc.amount))
     .reduce(sumEuroValues, euro(0));
 
+  const openInvoices = (payments ?? [])
+    .filter((p) => !p.credited && p.status !== 'paid' && isPaymentInvoice(p));
+
   return (
     <>
       <h3 className="text-xl text-gray-500 font-bold">
@@ -294,13 +297,8 @@ export const Main = () => {
         {t('openInvoices')}
       </h3>
 
-      {(payments ?? [])
-        .flatMap(p => {
-          if (!(!p.credited && p.status !== 'paid' && isPaymentInvoice(p))) {
-            return [];
-          }
-
-          return [
+      {openInvoices
+        .map(p => (
             <Card
               title={p.title}
               subtitle={t('openInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy'), due: format(new Date(p.data.due_date), 'dd.MM.yyyy') })}
@@ -309,11 +307,10 @@ export const Main = () => {
                 <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
               </>}
             />
-          ];
-        })
+        ))
       }
 
-      {(payments ?? []).filter(p => !p.credited).length === 0 && (
+      {openInvoices.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
           {t('noOpenInvoices')}
