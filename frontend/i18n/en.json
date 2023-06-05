@@ -13,8 +13,11 @@
     "paymentListInfoline": "Created at {{ created }}",
     "unpaidDebts": "Unpaid debts",
     "openPayments": "Open payments",
+    "openInvoices": "Open invoices",
     "noOpenPayments": "No open payments",
+    "noOpenInvoices": "No open invoices",
     "noUnpaidDebts": "No unpaid debts",
+    "noClosedInvoices": "No closed invoices",
     "paidDebts": "Paid debts",
     "noPaidDebts": "No paid debts",
     "settings": {

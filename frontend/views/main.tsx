@@ -217,8 +217,9 @@ const DebtCard: React.FC<DebtCardProps> = ({ debt }) => {
       amount={debt.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))}
       status={debt.dueDate && isPast(new Date(debt.dueDate)) ? { label: 'Myöhässä', className: 'bg-red-500 text-white' } : null}
       actions={<>
-        <CardAction className="text-blue-500 hover:bg-gray-100" onClick={handleToggleSelect}>{ !selected ? 'Select' : 'Unselect' }</CardAction>
-        <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/debt/${debt.id}`)}>View Details</CardAction>
+        <CardAction className="text-blue-500 hover:bg-gray-100" onClick={handlePay}>{t('pay')}</CardAction>
+        <CardAction className="text-gray-600 hover:bg-gray-100" onClick={handleToggleSelect}>{ !selected ? t('select') : t('unselect') }</CardAction>
+        <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/debt/${debt.id}`)}>{t('viewDetails')}</CardAction>
       </>}
     />
   );
@@ -300,7 +301,7 @@ export const Main = () => {
               subtitle={t('openInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy'), due: format(new Date(p.data.due_date), 'dd.MM.yyyy') })}
               amount={cents(-p.balance)}
               actions={<>
-                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>View Details</CardAction>
+                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
               </>}
             />
           ];
@@ -310,7 +311,7 @@ export const Main = () => {
       {(payments ?? []).filter(p => !p.credited).length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
           <Info />
-          {t('noOpenPayments')}
+          {t('noOpenInvoices')}
         </div>
       )}
 
@@ -335,7 +336,7 @@ export const Main = () => {
               amount={cents(-p.balance)}
               status={p.credited ? { className: 'text-white bg-blue-500', label: t('creditedStatus') } : { className: 'text-white bg-green-500', label: t('paidStatus') }}
               actions={<>
-                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>View Details</CardAction>
+                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
               </>}
             />
           ];
@@ -361,7 +362,7 @@ export const Main = () => {
           amount={p.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))}
           status={{ className: 'text-white bg-green-500', label: t('paidStatus') }}
           actions={[
-            <CardAction className="text-gray-600 hover:bg-gray-100">View Details</CardAction>
+            <CardAction className="text-gray-600 hover:bg-gray-100">{t('viewDetails')}</CardAction>
           ]}
         />
       ))}

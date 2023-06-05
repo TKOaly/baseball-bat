@@ -14,7 +14,7 @@
     "paidStatus": "Maksettu",
     "creditedStatus": "Hyvitetty",
     "openPayments": "Avoimet maksut",
-    "noOpenPayments": "Ei avoimia maksuja",
+    "noOpenInvoices": "Ei avoimia laskuja",
     "noUnpaidDebts": "Ei maksamattomia velkoja",
     "paidDebts": "Maksetut velat",
     "noPaidDebts": "Ei maksettuja velkoja",
@@ -92,6 +92,10 @@
     "stripeReturnPageCancel": "Peruuta",
     "stripeReturnPageContinue": "Jatka",
     "stripePaymentSucceededHeader": "Maksu suoritettu",
-    "stripePaymentSucceededMessage": "Maksu käsiteltiin onnistuneesti."
+    "stripePaymentSucceededMessage": "Maksu käsiteltiin onnistuneesti.",
+    "pay": "Maksa",
+    "select": "Valitse",
+    "unselect": "Poista valinta",
+    "viewDetails": "Tiedot"
   }
 }
