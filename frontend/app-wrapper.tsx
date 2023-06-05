@@ -19,6 +19,8 @@ import './style.css';
 import { authenticateSession, bootstrapSession, createSession, destroySession, heartbeat } from './session';
 import { Button } from './components/button';
 import { DialogContextProvider } from './components/dialog';
+import { StripePaymentFlow } from './views/stripe-payment-flow';
+import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
 
 const Navigation = () => {
   const [, setLocation] = useLocation();
@@ -201,6 +203,8 @@ const Routes = () => {
             <Route path="/debt/:id" component={DebtDetails} />
             <Route path="/payment/new" component={NewPayment} />
             <Route path="/payment/:id" component={PaymentDetails} />
+            <Route path="/payment/:id/stripe/:secret" component={StripePaymentFlow} />
+            <Route path="/payment/:id/stripe/:secret/return" component={StripePaymentReturnPage} />
             <Route path="/update-payment-method">
               <UpdatePaymentMethod />
             </Route>

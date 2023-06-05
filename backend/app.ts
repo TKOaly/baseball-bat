@@ -11,7 +11,7 @@ import { DebtCentersApi } from './api/centers';
 import { PaymentsApi } from './api/payments';
 import cookieParser from 'cookie-parser';
 import { DebtService } from './services/debt';
-// import Stripe from 'stripe'
+import Stripe from 'stripe'
 import { PgClient } from './db';
 import { SessionApi } from './api/session';
 import cors from 'cors';
@@ -52,9 +52,9 @@ const helmetConfig: HelmetOptions = {
   crossOriginEmbedderPolicy: false,
 };
 
-/*const stripeClient = new Stripe(config.stripeSecretKey, {
+const stripeClient = new Stripe(config.stripeSecretKey, {
   apiVersion: '2020-08-27',
-})*/
+});
 
 const pg = PgClient.create(config.dbUrl);
 
@@ -73,7 +73,7 @@ if (config.emailDispatcher) {
 }
 
 Container.set(Config, config);
-// Container.set('stripe', stripeClient)
+Container.set('stripe', stripeClient)
 Container.set(PgClient, pg);
 Container.set('redis', redisClient);
 Container.set(EmailService, new EmailService(emailTransport, pg, Container.get(JobService)));
@@ -90,11 +90,11 @@ const app = express()
       origin: [config.appUrl],
     }),
   )
-  /*.use(
-    '/api/stripe-events',
+  .use(
+    '/api/payments/stripe-webhook',
     express.raw({ type: 'application/json' }),
-    Container.get(StripeEventsApi).router().handler()
-  )*/
+    router(Container.get(PaymentsApi).stripeWebhook()).handler(),
+  )
   .use(express.json())
   .use(cookieParser())
   .use(
@@ -153,6 +153,14 @@ if (process.env.NODE_ENV !== 'production') {
   );
   app.use(
     '/payment/new',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/payment/:id/stripe/:secret',
+    express.static('web-dist/index.html'),
+  );
+  app.use(
+    '/payment/:id/stripe/:secret/return',
     express.static('web-dist/index.html'),
   );
   app.use(

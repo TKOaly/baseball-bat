@@ -5,8 +5,9 @@ import debtApi from '../api/debt';
 import { createMultiFetchHook } from '../hooks/create-multi-fetch-hook';
 import { useAppSelector } from '../store';
 import { ChevronRight } from 'react-feather';
-import { useCreateInvoiceMutation } from '../api/payments';
+import { useCreateInvoiceMutation, useCreateStripePaymentMutation } from '../api/payments';
 import { useLocation } from 'wouter';
+import { PaymentBreakdown } from '../components/payment-breakdown';
 
 const useFetchDebts = createMultiFetchHook(debtApi.endpoints.getDebt);
 
@@ -26,6 +27,7 @@ export const NewPayment = () => {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [createInvoice] = useCreateInvoiceMutation();
+  const [createStripePayment] = useCreateStripePaymentMutation();
   const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments);
   const { data: debts } = useFetchDebts(selectedDebts);
 
@@ -40,47 +42,35 @@ export const NewPayment = () => {
     }
   };
 
+  const handleCreateStripePayment = async () => {
+    const result = await createStripePayment({
+      debts: selectedDebts,
+    });
+
+    if ('data' in result) {
+      setLocation(`/payment/${result.data.payment.id}/stripe/${result.data.clientSecret}`);
+    }
+  };
+
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">
+      <h3 className="text-2xl">
         {t('newPaymentHeader')}
       </h3>
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
-        {t('selectedDebtsSummary')}
-      </h3>
+      <p className="text-sm mt-3 text-gray-600 mb-5">
+        {t('newPaymentDescription')}
+      </p>
 
-      <ul>
-        {(debts ?? []).map((debt) => (
-          <li className="mb-2 tabular-nums" key={debt.id}>
-            <h4 className="font-bold flex">
-              <span className="flex-grow">{debt.name}</span>
-              <span>{formatEuro(debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
-            </h4>
-            <div className="pl-3">
-              <p>{debt.description}</p>
-              <ul>
-                {debt.debtComponents.map(dc => (
-                  <li className="flex" key={dc.id}>
-                    <span className="flex-grow">{dc.name}</span>
-                    <span>{formatEuro(dc.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </li>
-        ))}
-        <li>
-          <h4 className="font-bold flex">
-            <span className="flex-grow">{t('total')}</span>
-            <span>{formatEuro((debts ?? []).flatMap(d => d.debtComponents).map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
-          </h4>
-        </li>
-      </ul>
+      { debts && <PaymentBreakdown debts={debts} /> }
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="text-lg font-normal border-b border-gray-300 pb-1 mt-5">
         {t('selectPaymentMethod')}
       </h3>
+
+      <p className="text-sm mt-3 text-gray-600">
+        {t('selectPaymentMethodInstruction')}
+      </p>
 
       <div>
         <div className="rounded-md flex items-center border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => handleCreateInvoice()}>
@@ -92,14 +82,16 @@ export const NewPayment = () => {
           <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" />
         </div>
 
-        <div className="rounded-md flex items-center border group border-gray-300 opacity-50 mt-5 p-4 shadow-sm cursor-not-allowed" onClick={() => toggleDebtSelection(p)}>
-          <StripeIcon className="w-5 h-5 mr-3 text-gray-300" />
-          <div className="flex-grow">
-            <h3 className="font-bold">{t('stripe')} <span className="font-normal text-gray-600">({t('stripeDisclaimer')})</span></h3>
-            <p className="text-sm text-gray-700">{t('stripeDescription')}</p>
+        { process.env.NODE_ENV === 'development' && (
+          <div className="rounded-md flex items-center border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer" onClick={() => handleCreateStripePayment()}>
+            <StripeIcon className="w-5 h-5 mr-3 text-gray-300" />
+            <div className="flex-grow">
+              <h3 className="font-bold">{t('stripe')}</h3>
+              <p className="text-sm text-gray-700">{t('stripeDescription')}</p>
+            </div>
+            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 rounded-full" />
           </div>
-          <ChevronRight className="h-8 w-8 text-gray-400 ml-3 rounded-full" />
-        </div>
+        )}
       </div>
     </>
   );

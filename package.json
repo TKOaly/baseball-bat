@@ -14,8 +14,8 @@
     "@floating-ui/react-dom-interactions": "^0.11.0",
     "@parcel/transformer-react-refresh-wrap": "^2.8.1",
     "@reduxjs/toolkit": "^1.8.1",
-    "@stripe/react-stripe-js": "^1.7.0",
-    "@stripe/stripe-js": "^1.23.0",
+    "@stripe/react-stripe-js": "^2.1.0",
+    "@stripe/stripe-js": "^1.54.0",
     "@types/ejs": "^3.1.0",
     "@types/mjml": "^4.7.0",
     "@types/multer": "^1.4.7",
@@ -105,8 +105,9 @@
   },
   "@parcel/transformer-js": {
     "inlineEnvironment": [
-      "STRIPE_PUB_KEY",
+      "STRIPE_PUBLIC_KEY",
       "BACKEND_URL",
+      "APP_URL",
       "NODE_ENV"
     ]
   },

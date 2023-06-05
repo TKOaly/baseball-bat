@@ -78,6 +78,20 @@
     "createdAt": "Luotu",
     "toBePaid": "Maksettavana",
     "paymentMethod": "Maksutapa",
-    "paymentMessage": "Maksun viesti"
+    "paymentMessage": "Maksun viesti",
+    "newPaymentDescription": "Maksun erittelyn näet tämän tekstin alta.",
+    "selectPaymentMethodInstruction": "Valitse haluamasi maksutapa alla olevasta listasta ja siirry maksamaan.",
+    "stripeFlowHeading": "Maksa käyttäen Stripeä",
+    "stripeLongDescription": "Stripe on maailmanlaajuinen maksunvälittäjä, joka tukee useimpia luotto- ja maksukortteja, sekä valikoimaa muita kansainvälisiä ja paikallisia maksutapoja.",
+    "stripeInstructions": "Valitse haluamasi maksutapa alta. Tuetut maksutavat voivat vaihdella alueesi ja käyttämäsi päätelaitteen mukaan.",
+    "payNow": "Maksa nyt",
+    "stripeErrorHeader": "Maksu epäonnistui",
+    "stripePaymentFailedHeader": "Maksu epäonnistui",
+    "stripePaymentFailedMessage": "Maksun käsittely epäonnistui. Yritä hetken kuluttua uudelleen tai kokeile eri maksutapaa.",
+    "stripeReturnPageRetry": "Yritä uudelleen",
+    "stripeReturnPageCancel": "Peruuta",
+    "stripeReturnPageContinue": "Jatka",
+    "stripePaymentSucceededHeader": "Maksu suoritettu",
+    "stripePaymentSucceededMessage": "Maksu käsiteltiin onnistuneesti."
   }
 }

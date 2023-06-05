@@ -18,6 +18,7 @@ import { toArray } from 'fp-ts/Record';
 import * as T from 'fp-ts/lib/Task';
 import * as A from 'fp-ts/lib/Array';
 import { DebtCentersService } from './debt_centers';
+import Stripe from 'stripe';
 
 export type PaymentCreditReason = 'manual' | 'paid';
 
@@ -103,6 +104,15 @@ export type NewInvoice = {
   paymentNumber?: string
 }
 
+export type NewStripePayment = {
+  debts: string[]
+}
+
+export type StripePaymentResult = {
+  payment: Payment
+  clientSecret: string
+}
+
 type BankTransactionDetails = {
   accountingId: string
   referenceNumber: string
@@ -112,13 +122,13 @@ type BankTransactionDetails = {
 
 type NewPaymentEvent = {
   amount: EuroValue,
-  type: 'created' | 'payment'
+  type: 'created' | 'payment' | 'stripe.intent-created' | 'failed' | 'canceled' | 'other'
   data?: Record<string, any>
   time?: Date
   transaction?: string
 }
 
-type PaymentType = Invoice | CashPayment
+type PaymentType = Invoice | CashPayment | StripePayment
 
 type Invoice = {
   type: 'invoice'
@@ -128,6 +138,10 @@ type Invoice = {
 type CashPayment = {
   type: 'cash'
   data: Record<string, never>
+}
+
+type StripePayment = {
+  type: 'stripe'
 }
 
 export type DbPayment = {
@@ -182,6 +196,9 @@ export const formatPayment = (db: DbPayment): Payment => ({
 export class PaymentService {
   @Inject(() => PgClient)
   pg: PgClient;
+
+  @Inject('stripe')
+  stripe: Stripe;
 
   @Inject(() => DebtService)
   debtService: DebtService;
@@ -345,6 +362,70 @@ export class PaymentService {
       paymentNumber: invoice.paymentNumber,
       title: invoice.title,
     }, options);
+  }
+
+  async createStripePayment(options: NewStripePayment): Promise<StripePaymentResult> {
+    const results = await Promise.all(options.debts.map(id => this.debtService.getDebt(id)));
+
+    if (results.some(d => d === null)) {
+      throw new Error('Debt does not exist');
+    }
+
+    const debts = results as Array<Debt>;
+
+    if (debts.some(debt => debt.dueDate === null && debt.publishedAt === null)) {
+      throw Error('Not all debts have due dates or are published!');
+    }
+
+    const { id } = await this.createPayment({
+      type: 'stripe',
+      message: '',
+      title: '',
+      debts: options.debts,
+      data: {},
+    });
+
+    let payment = await this.getPayment(id);
+
+    if (payment === null) {
+      throw new Error('Failed to create payment.');
+    }
+
+    console.log(payment);
+
+    const intent = await this.stripe.paymentIntents.create({
+      amount: -payment.balance.value,
+      currency: payment.balance.currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        paymentId: payment.id,
+      },
+    });
+
+    if (intent.client_secret === null) {
+      return Promise.reject();
+    }
+
+    await this.createPaymentEvent(payment.id, {
+      type: 'stripe.intent-created',
+      amount: cents(0),
+      data: {
+        intent: intent.id,
+      },
+    });
+
+    payment = await this.getPayment(id);
+
+    if (payment === null) {
+      throw new Error('Failed to create payment.');
+    }
+
+    return {
+      payment,
+      clientSecret: intent.client_secret,
+    };
   }
 
   async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {

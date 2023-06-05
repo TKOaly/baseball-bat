@@ -17,9 +17,9 @@ interface IConfig {
   eventServiceUrl: string
   eventServiceToken: string
   jwtSecret: string
-  // stripeSecretKey: string
+  stripeSecretKey: string
+  stripeWebhookSecret: string
   appUrl: string
-  // stripeWebhookEndpointSecret: string
   redisUrl: string
   emailDispatcher?: {
     url: string
@@ -47,9 +47,9 @@ export class Config implements IConfig {
   assetPath = '';
   dataPath = '';
   jwtSecret = '';
-  // stripeSecretKey: string = ''
+  stripeSecretKey: string = '';
+  stripeWebhookSecret: string = '';
   appUrl = '';
-  // stripeWebhookEndpointSecret: string = ''
   redisUrl: string;
   emailDispatcher?: {
     url: string
@@ -79,8 +79,8 @@ export class Config implements IConfig {
       CHROMIUM_BINARY_PATH,
       ASSET_PATH,
       DATA_PATH,
-      // STRIPE_SECRET_KEY,
-      // STRIPE_WEBHOOK_ENDPOINT_SECRET,
+      STRIPE_SECRET_KEY,
+      STRIPE_WEBHOOK_SECRET,
       USER_SERVICE_URL,
       USER_SERVICE_API_URL,
       SERVICE_IDENTIFIER,
@@ -97,12 +97,12 @@ export class Config implements IConfig {
       'SERVICE_IDENTIFIER must be set.',
     );
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
-    // assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
+    assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
     assert(APP_URL, 'APP_URL must be set.');
-    /*assert(
-      STRIPE_WEBHOOK_ENDPOINT_SECRET,
-      'STRIPE_WEBHOOK_ENDPOINT_SECRET must be set.'
-    )*/
+    assert(
+      STRIPE_WEBHOOK_SECRET,
+      'STRIPE_WEBHOOK_SECRET must be set.'
+    )
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();
@@ -116,9 +116,9 @@ export class Config implements IConfig {
       eventServiceToken: EVENT_SERVICE_TOKEN ?? '',
       jwtSecret: JWT_SECRET,
       chromiumBinaryPath: CHROMIUM_BINARY_PATH ?? null,
-      // stripeSecretKey: STRIPE_SECRET_KEY,
+      stripeSecretKey: STRIPE_SECRET_KEY,
+      stripeWebhookSecret: STRIPE_WEBHOOK_SECRET,
       appUrl: APP_URL,
-      // stripeWebhookEndpointSecret: STRIPE_WEBHOOK_ENDPOINT_SECRET,
       emailDispatcher,
       smtp,
       redisUrl: REDIS_URL!,

@@ -42,6 +42,8 @@ export const PaymentDetails = ({ params }) => {
       title: {
         'created': 'Payment created',
         'payment': `Payment of ${formatEuro(e.amount)} received`,
+        'stripe.intent-created': 'Stripe payment flow initiated',
+        'failed': 'Payment failed',
       }[e.type],
     }));
 

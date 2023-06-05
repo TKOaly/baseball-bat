@@ -1,6 +1,6 @@
 import { Inject, Service } from 'typedi';
 import { route, router } from 'typera-express';
-import { badRequest, notFound, ok, unauthorized } from 'typera-express/response';
+import { badRequest, forbidden, internalServerError, notFound, ok, unauthorized } from 'typera-express/response';
 import * as t from 'io-ts';
 import { internalIdentity } from '../../common/types';
 import { AuthService } from '../auth-middleware';
@@ -14,11 +14,16 @@ import { EmailService } from '../services/email';
 import { Config } from '../config';
 import { parseISO } from 'date-fns';
 import { BankingService } from '../services/banking';
+import { headers } from 'typera-express/parser';
+import Stripe from 'stripe';
 
 @Service()
 export class PaymentsApi {
   @Inject(() => Config)
   config: Config;
+
+  @Inject('stripe')
+  stripe: Stripe;
 
   @Inject(() => PaymentService)
   paymentService: PaymentService;
@@ -145,6 +150,46 @@ export class PaymentsApi {
       });
   }
 
+  private createStripePayment() {
+    return route
+      .post('/create-stripe-payment')
+      .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
+      .use(validateBody(t.type({
+        debts: t.array(t.string),
+      })))
+      .handler(async (ctx) => {
+        if (process.env.NODE_ENV !== 'development') {
+          console.log(process.env.NODE_ENV);
+          return forbidden();
+        }
+
+        const debts = await Promise.all(ctx.body.debts.map(async (id) => {
+          const debt = await this.debtService.getDebt(id);
+
+          if (!debt) {
+            return Promise.reject(badRequest());
+          }
+
+          if (ctx.session.accessLevel !== 'admin' && debt.payerId.value !== ctx.session.payerId) {
+            return Promise.reject(unauthorized());
+          }
+
+
+          return debt;
+        }));
+
+        if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
+          return badRequest('All debts do not have the same payer');
+        }
+
+        const result = await this.paymentService.createStripePayment({
+          debts: debts.map(d => d.id),
+        });
+
+        return ok(result);
+      });
+  }
+
   private getOwnPayments() {
     return route
       .get('/my')
@@ -167,6 +212,81 @@ export class PaymentsApi {
       });
   }
 
+  public stripeWebhook() {
+    return route
+      .post('/')
+      .use(headers(t.type({
+        'stripe-signature': t.string,
+      })))
+      .handler(async (ctx) => {
+        const secret = this.config.stripeWebhookSecret;
+
+        let event;
+
+        try {
+          event = this.stripe.webhooks.constructEvent(ctx.req.body, ctx.headers['stripe-signature'], secret);
+        } catch (err) {
+          console.log(err, typeof ctx.req.body, ctx.headers['stripe-signature']);
+          return badRequest({
+            error: `Webhook Error: ${err}`,
+          });
+        }
+
+        let intent;
+
+        switch (event.type) {
+          case 'payment_intent.succeeded':
+            intent = event.data.object as any as Stripe.PaymentIntent;
+
+            const paymentId = intent.metadata.paymentId;
+
+            if (intent.currency !== 'eur') {
+              return internalServerError('Currencies besides EUR are not supported!');
+            }
+
+            await this.paymentService.createPaymentEvent(paymentId, {
+              type: 'payment',
+              amount: {
+                currency: 'eur',
+                value: intent.amount,
+              },
+            });
+
+            break;
+
+          case 'payment_intent.payment_failed':
+            intent = event.data.object as any as Stripe.PaymentIntent;
+
+            await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
+              type: 'failed',
+              amount: euro(0),
+            });
+
+            break;
+
+          case 'payment_intent.processing':
+            intent = event.data.object as any as Stripe.PaymentIntent;
+
+            await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
+              type: 'other',
+              amount: euro(0),
+              data: {
+                stripe: {
+                  type: 'processing',
+                },
+              },
+            });
+
+            break;
+
+          default:
+            console.log('Other Stripe event: ' + event.type, event);
+        }
+
+        return ok();
+      });
+  }
+
   router() {
     return router(
       this.getPayments(),
@@ -175,6 +295,8 @@ export class PaymentsApi {
       this.getPayment(),
       this.creditPayment(),
       this.registerTransaction(),
+      this.createStripePayment(),
+      this.stripeWebhook(),
     );
   }
 }

@@ -68,7 +68,7 @@
     "invoiceDescription": "Pay using a bank transfer and an unique reference number.",
     "stripe": "Stripe",
     "stripeDisclaimer": "Coming maybe one day",
-    "stripeDescription": "Pay online using Stripe.",
+    "stripeDescription": "Pay online using Stripe. Supports most debit and credit cards.",
     "total": "Total",
     "paymentSummary": "Payment breakdown",
     "paymentDetailsHeader": "Payment details",
@@ -77,6 +77,20 @@
     "createdAt": "Created at",
     "toBePaid": "To be paid",
     "paymentMethod": "Payment method",
-    "paymentMessage": "Message"
+    "paymentMessage": "Message",
+    "newPaymentDescription": "Breakdown of the payment can be found below.",
+    "selectPaymentMethodInstruction": "Select suitable payment method from the list below and proceed to payment.",
+    "stripeFlowHeading": "Pay using Stripe",
+    "stripeLongDescription": "Stripe is a global payment processor which supports most debit and credit cards, as well as many other global and regional payment methods.",
+    "stripeInstructions": "Choose a payment method from the list below. Supported payment methods may differ based on your region and the device used.",
+    "payNow": "Pay now",
+    "stripeErrorHeader": "Payment failed",
+    "stripePaymentFailedHeader": "Payment failed",
+    "stripePaymentFailedMessage": "Processing of the following payment failed. Please try again after a while or use a different payment method.",
+    "stripeReturnPageRetry": "Retry",
+    "stripeReturnPageCancel": "Cancel",
+    "stripeReturnPageContinue": "Continue",
+    "stripePaymentSucceededHeader": "Payment complete",
+    "stripePaymentSucceededMessage": "The following payment was processed successfully."
   }
 }
