@@ -98,6 +98,7 @@ const payersApi = rtkApi.injectEndpoints({
         },
       }),
       providesTags: (debts) => debts.flatMap(({ id }) => [
+        { type: 'Debt', id: 'LIST' },
         { type: 'Debt', id },
       ]),
     }),
