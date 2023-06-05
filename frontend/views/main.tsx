@@ -207,6 +207,11 @@ const DebtCard: React.FC<DebtCardProps> = ({ debt }) => {
     dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id));
   };
 
+  const handlePay = () => {
+    dispatch(paymentPoolSlice.actions.setSelectedPayments([debt.id]));
+    setLocation('/payment/new');
+  };
+
   return (
     <Card
       selectable
