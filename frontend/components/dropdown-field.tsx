@@ -226,6 +226,7 @@ export const DropdownField = memo(<V extends unknown>({
                       text-gray-700
                     `}
                   tabIndex={-1}
+                  ref={(node) => itemRefs.current[visibleOptions.length] = node}
                   onClick={() => {
                     const option = createCustomOption(search);
                     setSearch(null);
