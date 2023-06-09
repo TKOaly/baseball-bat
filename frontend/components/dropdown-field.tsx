@@ -13,7 +13,7 @@ export type DropdownFieldProps<V> = {
   flushLeft?: boolean
   onChange: (evt: { target: { name: string, value: V } }) => void,
   options: { text: string, value: V }[],
-  createCustomOption: (search: string) => V,
+  createCustomOption: (search: string) => V | Promise<V>,
   formatCustomOption: (value: V) => string,
   allowCustom?: boolean
 }
@@ -227,8 +227,8 @@ export const DropdownField = memo(<V extends unknown>({
                     `}
                   tabIndex={-1}
                   ref={(node) => itemRefs.current[visibleOptions.length] = node}
-                  onClick={() => {
-                    const option = createCustomOption(search);
+                  onClick={async () => {
+                    const option = await Promise.resolve(createCustomOption(search));
                     setSearch(null);
                     onChange({ target: { name, value: option } });
                     setOpen(false);
