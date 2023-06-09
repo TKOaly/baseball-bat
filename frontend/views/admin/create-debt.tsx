@@ -5,6 +5,7 @@ import { DropdownField } from '../../components/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { DateField } from '../../components/datetime-field';
 import { DbDateString, dbDateString, euro, EuroValue, PayerIdentity } from '../../../common/types';
+import { groupBy } from 'remeda';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { TextareaField } from '../../components/textarea-field';
@@ -16,6 +17,9 @@ import { useLocation } from 'wouter';
 import { isRight } from 'fp-ts/lib/Either';
 import { useAppSelector } from '../../store';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import { CreatePayerDialog } from '../../components/dialogs/create-payer-dialog';
+import { useDialog } from '../../components/dialog';
+import { useGetPayersQuery } from '../../api/payers';
 
 type DebtFormValues = {
   name: string,
@@ -32,10 +36,12 @@ type DebtFormValues = {
 
 export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: users } = useGetUpstreamUsersQuery();
+  const { data: payers } = useGetPayersQuery();
   const { data: debtCenters } = useGetDebtCentersQuery();
   const [debtCenterId, setDebtCenterId] = useState(props.debtCenterId)
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
   const [createDebt] = useCreateDebtMutation();
+  const showCreatePayerDialog = useDialog(CreatePayerDialog);
   const [, setLocation] = useLocation();
   const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
@@ -72,10 +78,15 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   };
 
   const createCustomPayerOption = useCallback(
-    (input) => ({
-      type: 'email',
-      value: input,
-    }),
+    async (input) => {
+      const result = await showCreatePayerDialog({ name: input });
+
+      if (result) {
+        return result.id;
+      } else {
+        return null;
+      }
+    },
     [],
   );
 
@@ -85,14 +96,44 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   );
 
   const payerOptions = useMemo(() => {
-    if (!users) return [];
+    const combined = [
+      ...(users ?? []).map((value) => ({ type: 'tkoaly', key: value.id, id: value.id, value })),
+      ...(payers ?? []).map((value) => ({ type: 'internal', key: value.tkoalyUserId?.value, id: value.id.value, value })),
+    ];
 
-    return users.map(user => ({
-      value: { type: 'tkoaly', value: user.id },
-      text: user.screenName,
-      label: user.username,
+    const grouped = groupBy(combined, (s) => s.key);
+
+    const other = grouped['null'] ?? [];
+    console.log(grouped, other);
+    delete grouped['null'];
+
+    const result = Object.values(grouped)
+      .map((entries) => {
+        const tkoaly = entries.find((entry) => entry.type === 'tkoaly');
+        const internal = entries.find((entry) => entry.type === 'internal');
+
+        return {
+          value: internal
+            ? internal.value.id 
+            : { type: 'tkoaly', value: tkoaly.value.id },
+          text: internal?.value?.name ?? tkoaly.value.screenName,
+          label: tkoaly?.value?.username ?? '',
+        };
+      });
+
+    result.push(...other.flatMap((other) => {
+      if (other.type === 'internal') {
+        return [{
+          value: other.value.id,
+          text: other.value.name,
+        }];
+      } else {
+        return [];
+      }
     }));
-  }, [users]);
+
+    return result;
+  }, [users, payers]);
 
   const [initialValues, setInitialValues] = useState<DebtFormValues>({
     name: '',
