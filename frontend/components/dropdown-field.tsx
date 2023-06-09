@@ -4,7 +4,7 @@ import { useField } from 'formik';
 import { equals } from 'remeda';
 import { ChevronDown } from 'react-feather';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
-import { FloatingPortal, size, useClick, useDismiss, useFloating, useInteractions, useListNavigation } from '@floating-ui/react-dom-interactions';
+import { FloatingPortal, size, useClick, useDismiss, useFloating, useFocus, useInteractions, useListNavigation } from '@floating-ui/react-dom-interactions';
 
 export type DropdownFieldProps<V> = {
   name: string
@@ -59,6 +59,7 @@ export const DropdownField = memo(<V extends unknown>({
 
   const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
     useClick(context),
+    useFocus(context),
     useDismiss(context),
     useListNavigation(context, {
       listRef: itemRefs,
@@ -137,7 +138,7 @@ export const DropdownField = memo(<V extends unknown>({
             : <span className="flex-grow">{selectedLabel ?? 'Select'}</span>
         }
         <div className="flex items-center gap-1">
-          {allowCustom && !selectedOption && (
+          {allowCustom && !selectedOption && value && (
             <span className="rounded-sm py-0.5 px-1 text-white text-xs bg-blue-500">New</span>
           )}
           <ChevronDown
