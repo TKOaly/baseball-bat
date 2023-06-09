@@ -58,7 +58,9 @@ export const DropdownField = memo(<V extends unknown>({
   });
 
   const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
-    useClick(context),
+    useClick(context, {
+      keyboardHandlers: false,
+    }),
     useFocus(context),
     useDismiss(context),
     useListNavigation(context, {
