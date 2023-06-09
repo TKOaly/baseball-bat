@@ -131,6 +131,15 @@ const payersApi = rtkApi.injectEndpoints({
         ...affectedDebts.map(id => ({ type: 'Debt' as const, id })),
       ],
     }),
+
+    createPayer: builder.mutation<PayerProfile, { name: string, email: string }>({
+      query: (body) => ({
+        url: '/payers',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Payer', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -146,6 +155,7 @@ export const {
   useSendPayerDebtReminderMutation,
   useMergeProfilesMutation,
   useUpdatePayerMutation,
+  useCreatePayerMutation,
 } = payersApi;
 
 export default payersApi;

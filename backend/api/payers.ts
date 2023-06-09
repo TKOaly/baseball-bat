@@ -17,6 +17,7 @@ import { Config } from '../config';
 import { PaymentService } from '../services/payements';
 import { isBefore, isPast, subMonths } from 'date-fns';
 import { pipe } from 'fp-ts/lib/function';
+import { body } from 'typera-express/parser';
 
 @Service()
 export class PayersApi {
@@ -60,6 +61,24 @@ export class PayersApi {
         }
 
         return notFound();
+      });
+  }
+
+  private createPayer() {
+    return route
+      .post('/')
+      .use(this.authService.createAuthMiddleware())
+      .use(body(t.type({
+        name: t.string,
+        email: t.string,
+      })))
+      .handler(async (ctx) => {
+        const result = await this.payerService.createPayerProfileFromEmailIdentity(
+          emailIdentity(ctx.body.email),
+          { name: ctx.body.name },
+        );
+
+        return ok(result);
       });
   }
 
@@ -379,6 +398,7 @@ export class PayersApi {
       this.sendPaymentReminder(),
       this.mergeProfiles(),
       this.updatePayer(),
+      this.createPayer(),
     );
   }
 }
