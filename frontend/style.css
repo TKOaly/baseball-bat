@@ -19,6 +19,72 @@
   }
 }
 
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes back-and-forth {
+  0% {
+    width: 31%;
+  }
+
+  10% {
+    width: 71%;
+  }
+
+  20% {
+    width: 02%;
+  }
+
+  30% {
+    width: 54%;
+  }
+
+  40% {
+    width: 43%;
+  }
+
+  50% {
+    width: 11%;
+  }
+
+  60% {
+    width: 50%;
+  }
+
+  70% {
+    width: 72%;
+  }
+
+  80% {
+    width: 64%;
+  }
+
+  90% {
+    width: 79%;
+  }
+
+  50% {
+    width: 31%;
+  }
+}
+
 .animate-progress {
   animation: progress-waiting;
   animation-duration: 2s;

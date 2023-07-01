@@ -4,6 +4,7 @@ import api from './api/rtk-api';
 import sessionSlice from './session';
 import paymentPool from './state/payment-pool';
 import accountingPeriodSlice from './state/accounting-period';
+import notificationsSlice from './state/notifications';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     session: sessionSlice.reducer,
     paymentPool: paymentPool.reducer,
     accountingPeriod: accountingPeriodSlice.reducer,
+    notifications: notificationsSlice.reducer,
   },
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(api.middleware),
   devTools: process.env.NODE_ENV === 'development',

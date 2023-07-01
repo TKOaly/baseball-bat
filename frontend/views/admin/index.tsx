@@ -1,6 +1,7 @@
 import { Link, Redirect, Route, Switch, useLocation } from 'wouter';
 import { CreateDebtCenter } from './create-debt-center';
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event';
+import { Notification } from '../../components/notification';
 import { DialogTarget, useDialog } from '../../components/dialog';
 import { twMerge } from 'tailwind-merge';
 import { PayerListing } from './payer-listing';
@@ -21,7 +22,7 @@ import { EmailsListing } from './emails-listing';
 import { EmailDetails } from './email-details';
 import { BankAccount } from './bank-account';
 import { CreateBankAccount } from './create-bank-account';
-import { CornerDownLeft } from 'react-feather';
+import { X, AlertTriangle, CornerDownLeft, Info, CheckCircle, Loader } from 'react-feather';
 import { useEffect, useState } from 'react';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
 import { TextField } from '../../components/text-field';
@@ -34,6 +35,7 @@ import { Dropdown } from '../../components/dropdown';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppDispatch, useAppSelector } from '../../store';
 import accountingPeriodSlice from '../../state/accounting-period';
+import { selectActiveNotifications } from '../../state/notifications';
 
 type MenuItemProps = {
   path?: string
@@ -104,6 +106,7 @@ const Admin = () => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const notifications = useAppSelector((state) => selectActiveNotifications(state));
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -205,6 +208,11 @@ const Admin = () => {
       </div>
       <div onClick={(evt) => evt.stopPropagation()} data-cy="dialogs">
         <DialogTarget />
+      </div>
+      <div className="absolute right-0 top-0 h-[100vh] flex flex-col justify-end w-[25em] p-4 gap-3 pointer-events-none">
+        {notifications.map((notification) => (
+          <Notification key={notification.id} {...notification} />
+        ))}
       </div>
     </div>
   );
