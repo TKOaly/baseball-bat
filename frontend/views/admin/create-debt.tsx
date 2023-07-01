@@ -176,12 +176,32 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
         validate={(values) => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
+          if (!values.name) {
+            errors.name = 'Required field';
+          }
+
+          if (!values.center) {
+            errors.center = 'Required field';
+          }
+
+          if (!values.payer) {
+            errors.payer = 'Required field';
+          }
+
           try {
             if (values.paymentCondition !== 'NOW') {
               parseInt(values.paymentCondition);
             }
           } catch (e) {
             errors.paymentCondition = 'Must be an integer';
+          }
+
+          if (!values.paymentCondition && !values.dueDate) {
+            errors.paymentCondition = errors.dueDate = 'Either payment condition or due date must be specififed';
+          }
+
+          if (values.components.length === 0) {
+            errors.components = 'Must specify at least one component';
           }
 
           return errors;
