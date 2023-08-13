@@ -63,9 +63,9 @@ const payersApi = rtkApi.injectEndpoints({
 
     getPayerByEmail: builder.query<PayerProfile, string>({
       query: (email) => `/payers/by-email/${encodeURIComponent(email)}`,
-      providesTags: ({ id }) => [
-        { type: 'Payer', id: id.value },
-      ],
+      providesTags: (response) => response !== undefined
+        ? [ { type: 'Payer', id: response.id.value } ]
+        : [],
     }),
 
     getPayerEmails: builder.query<PayerEmail[], string>({

@@ -1,15 +1,17 @@
 import { useRef, useState } from 'react';
 import { ChevronDown } from 'react-feather';
-import { useInteractions, useFloating, useListNavigation, useDismiss, useClick, FloatingPortal } from '@floating-ui/react-dom-interactions';
+import { useInteractions, useFloating, useListNavigation, useDismiss, useClick, FloatingPortal, autoUpdate } from '@floating-ui/react-dom-interactions';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 type DropdownProps = {
-  label?: string
+  label?: string | React.ReactNode
   scroll?: boolean
-  renderTrigger?: (arg: any, arg2: { label: string | null, open: boolean }) => React.ReactNode // eslint-disable-line
+  renderTrigger?: (arg: any, arg2: { label: React.ReactNode | string | null, open: boolean }) => React.ReactNode // eslint-disable-line
   showArrow?: boolean
+  value?: string
   options: any[] // eslint-disable-line
   onSelect?: (value: string) => void
+  className?: string
 }
 
 export function Dropdown<P extends DropdownProps>({
@@ -29,6 +31,7 @@ export function Dropdown<P extends DropdownProps>({
     open,
     onOpenChange: setOpen,
     placement: 'bottom-end',
+    whileElementsMounted: autoUpdate,
   });
 
   const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([

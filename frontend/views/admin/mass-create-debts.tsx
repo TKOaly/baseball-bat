@@ -1,45 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { TabularFieldList } from '../../components/tabular-field-list';
+import uuid from 'uuid'; 
+import { ResourceLink } from '../../components/resource-link';
 import { EuroField } from '../../components/euro-field';
-import { TextField } from '../../components/text-field';
-import { useGetDebtCenterQuery } from '../../api/debt-centers';
-import { useMassCreateDebtsMutation, useMassCreateDebtsProgressQuery } from '../../api/debt';
-import { AlertTriangle, Edit, ExternalLink, Info } from 'react-feather';
+import debtCentersApi, { useGetDebtCenterQuery } from '../../api/debt-centers';
+import { useCreateDebtComponentMutation, useCreateDebtMutation, CreateDebtPayload } from '../../api/debt';
 import { Button } from '../../components/button';
-import { parse } from 'papaparse';
-import { cents, euro, EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
-import { identity, omit } from 'remeda';
-import { tw } from '../../tailwind';
-import { addDays, format } from 'date-fns';
-import { useDialog } from '../../components/dialog';
-import { SetColumnDefaultValueDialog } from '../../components/dialogs/set-column-default-value-dialog';
-import { skipToken } from '@reduxjs/toolkit/dist/query/react';
-import { Progress } from '../../components/progress';
-import { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import { cents, EuroValue } from '../../../common/currency';
+import { isMatch } from 'date-fns';
+import accountingApi, { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
-import { DropdownField } from '../../components/dropdown-field';
-
-type ParsedRow = {
-  tkoalyUserId?: number
-  dueDate?: string
-  title?: string
-  date?: string
-  email?: string
-  debtCenter?: string
-  name?: string
-  paymentNumber?: string
-  description?: string
-  amount?: EuroValue
-  tags?: Array<string>
-  referenceNumber?: string
-  components: Array<string>
-  accountingPeriod?: number
-}
+import { ColumnType, EditableTable, TableRef } from '../../components/editable-table';
+import payersApi from '../../api/payers';
+import { PayerIdentity } from '../../../common/types';
 
 const parseDate = (v: string) => v;
 
-const parseEuros = (v: string) => {
+const parseEuros = (v: string): EuroValue => {
   const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2);
 
   if (centsPart && centsPart.length > 2) {
@@ -49,235 +26,519 @@ const parseEuros = (v: string) => {
   return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0));
 };
 
-const parseReferenceNumber = (v: string) => v;
-
-// eslint-disable-next-line
-const DebtStatusItem = ({ result, index }: { result: any, index: number }) => {
-  return (
-    <div className="rounded bg-white border shadow mb-2 p-2">
-      <div className="flex">
-        <div className="flex-grow">
-          <div>
-            <span className="text-sm text-gray-600 mr-2">Line #{index}</span>
-            {result?.debt?.name}
-          </div>
-          <div className="text-sm">
-            <span className="font-bold text-gray-500">Payer:</span> {result.payer?.id?.value ? <span className="inline-flex results-center">{result.payer.name} <ExternalLink className="h-4 text-blue-500" /></span> : <span>{result.payer?.name ? `${result.payer.name} (Profile not found)` : 'Unknown Name'}</span>} <br />
-            <span className="font-bold text-gray-500">Email:</span> {result.email} ({result.emailSource}) <br />
-            <span className="font-bold text-gray-500">Center:</span> {result.debtCenter?.name} ({result.debtCenter?.id?.value === '' ? 'New' : 'Existing'})<br />
-          </div>
-          {result.components?.length > 0 && (
-            <ul>
-              {result.components.filter(({ id }) => id !== '8d12e7ef-51db-465e-a5fa-b01cf01db5a8').map(({ id, name, amount }) => <li key={id} className="inline-block mr-1 text-sm"><span className="text-white bg-gray-400 rounded px-1 inline-block">{name} ({formatEuro(amount)})</span></li>)}
-            </ul>
-          )}
-        </div>
-        <div>
-          {result?.components?.length > 0 ? formatEuro(result.components.map(c => c.amount).reduce(sumEuroValues)) : '0,00 €'}
-        </div>
-      </div>
-      {result.payer?.id?.value === '' && (
-        <div className="rounded border mt-1 flex items-center p-2 gap-2 text-yellow-800 text-sm shadow border-yellow-300 bg-yellow-100">
-          <Info className="text-yellow-400" />
-          Payer profile will be created based on {result.payer.tkoalyUserId === undefined ? 'provided e-mail and name' : 'membership details'}.
-        </div>
-      )}
-      {!result.payer && (
-        <div className="rounded border flex mt-1 items-center p-2 gap-2 text-red-800 text-sm shadow border-red-300 bg-red-100">
-          <AlertTriangle className="text-red-400" />
-          Payer profile not found and sufficient information for it{'\''}s creation is not available.
-        </div>
-      )}
-    </div>
-  );
-};
-
-type ParsedRowMappings = { [Key in keyof ParsedRow]: [Key, (value: string) => NonNullable<ParsedRow[Key]>] };
-
-const parseCsv = (csv: string): Array<ParsedRow> => {
-  const { data } = parse(csv);
-  const [header, ...rows] = data as Array<Array<string>>;
-
-  if (!header) {
-    return [];
-  }
-
-  const columnMapping: Record<string, keyof ParsedRow | ParsedRowMappings[keyof ParsedRow]> = {
-    'member id': ['tkoalyUserId', parseInt],
-    'due date': ['dueDate', parseDate],
-    'accounting period': ['accountingPeriod', parseInt],
-    'tags': ['tags', (value) => value.split(',').map(tag => tag)],
-    'date': ['date', parseDate],
-    'debt center': 'debtCenter',
-    'email': 'email',
-    'payment number': 'paymentNumber',
-    'name': 'name',
-    'payer name': 'name',
-    'title': 'title',
-    'description': 'description',
-    'amount': ['amount', parseEuros],
-    'reference number': ['referenceNumber', parseReferenceNumber],
-  };
-
-  const columns = header.map((title: string) => {
-    const normalized = title.toLowerCase().trim();
-    const column = columnMapping[normalized];
-
-    if (column) {
-      const [key, parser] = typeof column === 'string'
-        ? [column, (i: string) => i]
-        : column;
-
-      return { type: 'standard', key, parser };
-    } else {
-      return { type: 'component', name: title };
-    }
-  });
-
-  return rows.map(row => row.reduce((acc, value, i) => {
-    const column = columns[i];
-
-    if (column.type === 'standard') {
-      try {
-        acc[column.key] = column.parser(value.trim());
-      } catch {
-        acc[column.key] = null;
-      }
-    } else if (value.trim().toLowerCase() === 'true') {
-      acc.components.push(header[i]);
-    }
-
-    return acc;
-  }, { components: [] }));
-};
-
-const TableHeader = tw.th`
-  px-2
-  py-2
-  text-left
-`;
-
-const TableCell = tw.td`
-  px-2
-  py-2
-  text-left
-  border-t
-  border-r
-  last:border-r-none
-`;
-
-export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
+export const MassCreateDebts = ({ params }) => {
   const debtCenterId = params.id;
 
-  const [state, setState] = useState<'idle' | 'dry-run' | 'run'>('idle');
-  const [progressId, setProgressId] = useState(null);
-  const [poll, setPoll] = useState(false);
   const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId);
-  const [massCreateDebtsMutation] = useMassCreateDebtsMutation();
-  const { data: progress } = useMassCreateDebtsProgressQuery(progressId ?? skipToken, { pollingInterval: state !== 'idle' ? 200 : undefined });
-  const [csvData, setCsvData] = useState('');
-  const showSetColumnDefaultValueDialog = useDialog(SetColumnDefaultValueDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const [getPayerByEmail] = payersApi.endpoints.getPayerByEmail.useLazyQuery();
+  const [getDebtCenters] = debtCentersApi.endpoints.getDebtCenters.useLazyQuery();
+  const [createPayer] = payersApi.endpoints.createPayer.useMutation();
+  const [getAccountingPeriods] = accountingApi.endpoints.getAccountingPeriods.useLazyQuery();
+  const [createDebtMutation] = useCreateDebtMutation();
+  const [createDebtComponent] = useCreateDebtComponentMutation();
 
-  useEffect(() => {
-    if (!progress)
-      return;
+  const tableRef = useRef<TableRef>();
 
-    if (progress.result) {
-      setState('idle');
+  const validateEmail = useCallback(async (value: string) => {
+    if (value.indexOf('@') === -1) {
+      return 'Invalid email address.';
     }
-  }, [progress]);
-
-  const parsedCsv = useMemo(() => {
+    
     try {
-      return parseCsv(csvData);
-    } catch (e) {
-      return [];
+      const { isError } = await getPayerByEmail(value);
+
+      if (isError) {
+        return 'Email not found.';
+      } else {
+        return null;
+      }
+    } catch (err) {
+      return 'Email not found.';
     }
-  }, [csvData]);
+  }, [getPayerByEmail]);
 
-  const [components, setComponents] = useState([]);
+  const validateDebtCenter = useCallback(async (value: string) => {
+    const { data } = await getDebtCenters();
 
-  const [defaultOverrides, setDefaultOverrides] = useState({});
+    const match = data.find((c) => c.name === value || c.id === value);
 
-  const defaults = useMemo(() => {
-    let accountingPeriod = undefined;
+    if (!match) {
+      return 'Debt center will be created!';
+    }
 
-    let openAccPeriods = (accountingPeriods ?? [])
-      .filter((period) => !period.closed);
+    return null;
+  }, []);
 
-    if (openAccPeriods.length === 1) {
-      accountingPeriod = openAccPeriods[0].year;
-    } else if (activeAccountingPeriod !== null) {
+  const columnTypes = useMemo<Array<ColumnType>>(() => [
+    {
+      key: 'payment-condition',
+      label: 'Payment Condition',
+      validate: (value, row) => {
+        try {
+          parseInt(value, 10);
+        } catch (err) {
+          return 'Must be an integer.';
+        }
+
+        if (row.columns['due-date']) {
+          return 'Cannot specify both a due date and a payment condition!';
+        }
+
+        return null;
+      },
+    },
+    {
+      key: 'date',
+      label: 'Date',
+    },
+    {
+      key: 'payer-name',
+      label: 'Payer name',
+      validate: async (value, row) => {
+        const email = row.columns.email;
+
+        if (!email) {
+          return null;
+        }
+
+        const { data } = await getPayerByEmail(email);
+        
+        if (!data) {
+          return null;
+        }
+
+        if (data.name !== value) {
+          return { type: 'info', message: 'Name differs from the one on record: ' + data.name };
+        }
+
+        return null;
+      },
+    },
+    {
+      key: 'created-debt',
+      label: 'Created Debt',
+      readOnly: true,
+      allowSelection: false,
+      render: (value) => value ? <ResourceLink type="debt" id={value} /> : null,
+    },
+    {
+      key: 'created-payer',
+      label: 'Created Payer',
+      readOnly: true,
+      allowSelection: false,
+      render: (value) => value ? <ResourceLink type="payer" id={value} /> : null,
+    },
+    {
+      key: 'title',
+      label: 'Title',
+    },
+    {
+      key: 'description',
+      label: 'Description',
+    },
+    {
+      key: 'debt-center',
+      label: 'Debt Center',
+      aliases: ['Debt Center ID'],
+      validate: validateDebtCenter,
+    },
+    {
+      key: 'accounting-period',
+      label: 'Accounting Period',
+      align: 'right',
+    },
+    {
+      key: 'due-date',
+      label: 'Due date',
+      align: 'right',
+      validate: (value, row) => {
+        if (!isMatch(value, 'dd.MM.yyyy')) {
+          return 'Dates must be in the dd.MM.yyyy format';
+        }
+
+        if (row.columns['payment-condition']) {
+          return 'Cannot specify both a due date and a payment condition!';
+        }
+
+        return null;
+      },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      validate: validateEmail,
+    },
+    {
+      key: 'reference',
+      label: 'Reference number',
+      align: 'right',
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      align: 'right',
+      input: (props: any) => <EuroField {...props} plain style={{ lineHeight: '1em' }} />,
+    }
+  ], [validateEmail]);
+
+  const resolvePayer = useCallback(async (row): Promise<PayerIdentity | null> => {
+    const email = row.columns['email'];
+    const name = row.columns['payer-name'];
+
+    if (!email) {
+      row.setColumnAnnotation({
+        column: 'email',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Payer email is required!',
+        },
+      });
+
+      return null;
+    }
+
+    const { data, isError } = await getPayerByEmail(email);
+
+    if (!isError) {
+      return data.id;
+    }
+
+    const result = await createPayer({
+      name,
+      email,
+    });
+
+    if ('error' in result) {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Failed to create payer profile',
+      });
+
+      return null;
+    }
+
+    return result.data.id;
+  }, [createPayer, getPayerByEmail]);
+
+  const resolveDebtCenter = useCallback(async (row): Promise<string | null> => {
+    const debtCenter = row.columns['debt-center'];
+
+    if (!debtCenter) {
+      row.setColumnAnnotation({
+        column: 'debt-center',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Debt center is required!',
+        },
+      });
+
+      return null;
+    }
+
+    try {
+      uuid.parse(debtCenter);
+      return debtCenter;
+    } catch (err) {
+      if (err instanceof TypeError) {
+        const { data: debtCenters } = await getDebtCenters();
+
+        if (!debtCenters) {
+          row.setColumnAnnotation({
+            column: 'debt-center',
+            annotation: {
+              id: 'create-debt',
+              type: 'error',
+              message: 'Failed to fetch debt centers.',
+            },
+          });
+
+          return null;
+        }
+
+        const center = debtCenters.find((dc) => dc.name === debtCenter);
+
+        if (!center) {
+          row.setColumnAnnotation({
+            column: 'debt-center',
+            annotation: {
+              id: 'create-debt',
+              type: 'error',
+              message: 'No such debt center!',
+            },
+          });
+
+          return null;
+        }
+
+        return center.id;
+      } else {
+        throw err;
+      }
+    }
+  }, []);
+
+  const resolveDebtRow = useCallback(async (row): Promise<CreateDebtPayload | null> => {
+    let failed = false;
+    const debtCenterId = await resolveDebtCenter(row);
+
+    if (!debtCenterId) {
+      return null;
+    }
+
+    const payerId = await resolvePayer(row);
+
+    if (!payerId) {
+      return null;
+    }
+
+    const title = row.columns.title;
+
+    if (!title) {
+      row.setColumnAnnotation({
+        column: 'title',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Title is required!',
+        },
+      });
+
+      failed = true;
+    }
+
+    const description = row.columns.description;
+
+    if (!description) {
+      row.setColumnAnnotation({
+        column: 'description',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Description is required!',
+        },
+      });
+
+      failed = true;
+    }
+
+    if (!row.columns.amount) {
+      row.setColumnAnnotation({
+        column: 'amount',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Amount is required!',
+        },
+      });
+
+      failed = true;
+    }
+
+    if (failed) {
+      return null;
+    }
+
+    let accountingPeriod: null | number = null;
+
+    if (!row.columns['accounting-period']) {
       accountingPeriod = activeAccountingPeriod;
+    } else {
+      const accountingPeriodValue = row.columns['accounting-period'];
+
+      if (!accountingPeriodValue) {
+        row.setColumnAnnotation({
+          column: 'accounting-period',
+          annotations: {
+            type: 'error',
+            id: 'create-debt',
+            message: 'Accounting period is required.',
+          },
+        });
+
+        failed = true;
+      } else {
+        try {
+          accountingPeriod = parseInt(accountingPeriodValue, 10);
+        } catch (err) {
+          row.setColumnAnnotation({
+            column: 'accounting-period',
+            annotations: {
+              type: 'error',
+              id: 'create-debt',
+              message: 'Accounting period needs to be a valid year.',
+            },
+          });
+
+          failed = true;
+        }
+      }
+    }
+
+    const dueDateValue = row.columns['due-date'];
+    const paymentConditionValue = row.columns['payment-condition'];
+
+    if (!dueDateValue === !paymentConditionValue) {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Either due date or payment condition must be defined at a time, but not both!',
+      });
+
+      failed = true;
+    }
+
+    let dueDate = null;
+    let paymentCondition = null;
+
+    if (dueDateValue) {
+      dueDate = parseDate(dueDateValue);
+    } else if (paymentConditionValue) {
+      paymentCondition = parseInt(paymentConditionValue, 10);
+    } else {
+      console.error('Reached unreachable code!');
+      return null;
+    }
+
+    const amountValue = row.columns.amount;
+    let amount: EuroValue;
+
+    if (!amountValue) {
+      row.setColumnAnnotation({
+        column: 'amount',
+        annotation: {
+          id: 'create-debt',
+          type: 'error',
+          message: 'Amount is required!',
+        },
+      });
+
+      failed = true;
+    } else {
+      amount = parseEuros(amountValue);
+    }
+
+    const componentResult = await createDebtComponent({
+      debtCenterId,
+      name: 'Osallistumismaksu // Participation fee',
+      description: '',
+      amount,
+    });
+
+    if ('error' in componentResult) {
+      row.setRowAnnotation({
+        type: 'error',
+        id: 'create-debt',
+        message: 'Failed to create debt contents!',
+      });
+
+      return null;
+    }
+
+    if (failed) {
+      return null;
     }
 
     return {
-      dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+      payer: payerId,
+      center: debtCenterId,
+      name: title,
+      description,
       accountingPeriod,
-      ...pDefaults,
-      ...defaultOverrides,
+      dueDate: dueDate ?? undefined,
+      paymentCondition: paymentCondition ?? undefined,
+      tags: [],
+      components: [componentResult.data.id],
     };
-  }, [pDefaults, defaultOverrides, accountingPeriods, activeAccountingPeriod]);
+  }, [resolveDebtCenter, accountingPeriods, activeAccountingPeriod]);
 
-  useEffect(() => {
-    const newComponents = [...components]
-      .filter(({ name }) => parsedCsv.some(r => r.components.indexOf(name) > -1));
+  const createDebt = useCallback(async (row) => {
+    row.setLocked(true);
 
-    parsedCsv
-      .flatMap(r => r.components)
-      .forEach((c1) => {
-        if (newComponents.findIndex(c2 => c2.name === c1) === -1) {
-          newComponents.push({ name: c1, amount: 0, isNew: true });
-        }
-      });
-
-    setComponents(newComponents);
-  }, [parsedCsv]);
-
-  const submit = async (dryRun: boolean) => {
-    setState(dryRun ? 'dry-run' : 'run');
-
-    const result = await massCreateDebtsMutation({
-      defaults,
-      debts: parsedCsv,
-      dryRun,
-      components: components.filter(c => c.isNew).map(c => ({ ...omit(c, ['isNew', 'amount']), amount: euro(c.amount) })),
+    row.clearRowAnnotation({
+      annotationId: 'debt-center',
     });
 
-    if ('data' in result) {
-      setProgressId(result.data.progress);
-    } else {
-      setState('idle');
+    row.clearColumnAnnotation({
+      annotationId: 'debt-center',
+    });
+
+    const debtDetails = await resolveDebtRow(row);
+
+    if (!debtDetails) {
+      return;
     }
-  };
 
-  const makeDefaultValueCell = <K extends keyof typeof defaults, V>(
-    key: string,
-    title: string,
-    inputComponent: any = TextField, // eslint-disable-line
-    format: ((v: (typeof defaults)[K]) => string) = identity,
-    map: ((v: V) => (typeof defaults)[K]) = identity,
-  ) => {
-    return (
-      <div className="flex items-center">
-        {defaults[key] ? format(defaults[key]) : <span className="text-gray-500 italic">Empty</span>}
-        <Edit className="text-gray-500 ml-1.5 h-4 w-4 cursor-pointer" onClick={async () => {
-          const { changed, value } = await showSetColumnDefaultValueDialog({
-            columnKey: key,
-            columnTitle: title,
-            value: defaults[key],
-            inputComponent,
-          });
+    const result = await createDebtMutation(debtDetails);
 
-          if (changed) {
-            setDefaultOverrides((overrides) => Object.assign({}, overrides, { [key]: map(value as V) }));
-          }
-        }} />
-      </div>
-    );
-  };
+    if ('data' in result) {
+      row.columns['created-debt'] = result.data.id;
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'info',
+        message: `Debt ${result.data.humanId} created!`,
+      });
+    }
+  }, [createDebtMutation, resolveDebtRow]);
+
+  const validateRow = useCallback(async (row) => {
+    const payerEmail = row.columns.email;
+    const payerName = row.columns['payer-name'];
+
+    let errors = [];
+
+    const { data } = await getPayerByEmail(payerEmail);
+
+    if (!data && !payerName) {
+      errors.push('Payer name needed for profile creation');
+    }
+
+    if (!row.columns.title) {
+      errors.push('Debt title must be defined!');
+    }
+
+    if (!row.columns.description) {
+      errors.push('Debt description must be provided!');
+    }
+
+    if (!row.columns['debt-center']) {
+      errors.push('Debt center must be provided');
+    }
+
+    if (!row.columns['accounting-period']) {
+      errors.push('Accounting period must be specified');
+    } else {
+      const { data } = await getAccountingPeriods();
+
+      const match = data.find(({ year }) => year === parseInt(row.columns['accounting-period'], 10));
+
+      if (!match) {
+        errors.push({
+          column: 'accounting-period',
+          message: 'Accounting period not found',
+        });
+      } else if (match.closed) {
+        errors.push({
+          column: 'accounting-period',
+          message: 'Accounting period closed',
+        });
+      }
+    }
+
+    return errors;
+  }, [getPayerByEmail, getAccountingPeriods]);
+
+  const rowActions = useMemo(() => [
+    {
+      key: 'create-debt',
+      label: 'Create Debt',
+      execute: createDebt,
+    },
+  ], [createDebt]);
 
   return (
     <div>
@@ -297,199 +558,39 @@ export const MassCreateDebts = ({ params, defaults: pDefaults }) => {
         />
       </h1>
       <p>
-        Paste CSV to the text box below with the following columns:
-        <table className="rounded shadow border bg-white text-sm my-5">
-          <tr>
-            <TableHeader>Column Header</TableHeader>
-            <TableHeader>Description</TableHeader>
-            <TableHeader>Required?</TableHeader>
-            <TableHeader>Default</TableHeader>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Member ID</TableCell>
-            <TableCell>TKO-äly member account ID</TableCell>
-            <TableCell rowSpan={2}>At least one must be defined</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('tkoalyUserId', 'Member ID')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Email</TableCell>
-            <TableCell>Recipient email</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('email', 'Email')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Debt Center ID</TableCell>
-            <TableCell>Name or ID of the debt center which will contain the created debts. If a name is specified and no such debt center exists, a new one is created.</TableCell>
-            <TableCell>Required</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('debtCenter', 'Debt Center')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Payer Name</TableCell>
-            <TableCell>Name of the payer. Used in case no payer profile exists for the payer.</TableCell>
-            <TableCell>Required in case a payer profile must be created and no name for the payer is known. Eg. for non-member payers.</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('name', 'Payer Name')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Amount</TableCell>
-            <TableCell>Base amount of the debt in euros excluding any additional debt components</TableCell>
-            <TableCell>Required</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('amount', 'Amount', EuroField, formatEuro, euro)}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Title</TableCell>
-            <TableCell>Title for the debt</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('title', 'Title')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Description</TableCell>
-            <TableCell>Description for the debt</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('description', 'Description')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Date</TableCell>
-            <TableCell>Original publishing date of the debt</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('date', 'Date')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Accounting Period</TableCell>
-            <TableCell>Accounting period of which the debt will be part of.</TableCell>
-            <TableCell>Required</TableCell>
-            <TableCell>
-              {
-                makeDefaultValueCell(
-                  'accountingPeriod',
-                  'Accounting Period',
-                  (props) => (
-                    <DropdownField
-                      {...props}
-                      options={
-                        (accountingPeriods ?? [])
-                          .filter((period) => !period.closed)
-                          .map((period) => ({ value: period.year, text: period.year }))
-                      }
-                    />
-                  ),
-                )
-              }
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Due Date</TableCell>
-            <TableCell>Due date for the debt</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('dueDate', 'Due Date')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Date</TableCell>
-            <TableCell>Date of the debt</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('date', 'Date')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Reference Number</TableCell>
-            <TableCell>Reference number for the automatically created invoice</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('referenceNumber', 'Reference Number')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Payment Number</TableCell>
-            <TableCell>Identifier for the debt used in book-keeping.</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('paymentNumber', 'Payment Number')}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell className="whitespace-nowrap">Tags</TableCell>
-            <TableCell>Comma spearated list of tags to be associated with the debt.</TableCell>
-            <TableCell>Optional</TableCell>
-            <TableCell>
-              {makeDefaultValueCell('tags', 'Tags', TextField, (tags) => tags.join(', '), (value: string) => value.split(',').map(tag => tag.trim()))}
-            </TableCell>
-          </tr>
-          <tr>
-            <TableCell colSpan={4}>
-              Any other columns are interpreted to represent debt components. Rows which contain {'"True"'} in such columns will result in a debt with that debt component. Prices for the debt components can be specified in the table below.
-            </TableCell>
-          </tr>
-        </table>
-        <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
-          CSV
-        </div>
-        <textarea placeholder="Paste your CSV here" className="rounded border shadow w-full my-5 text-sm" onChange={(evt) => setCsvData(evt.target.value)}>{csvData}</textarea>
-        {components?.length > 0 && (
-          <>
-            <div className="border-b pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
-              Debt Components
-            </div>
-            <TabularFieldList
-              value={components}
-              columns={[
-                {
-                  key: 'name',
-                  header: 'Name',
-                  component: TextField,
-                  props: { readOnly: true },
-                },
-                {
-                  key: 'amount',
-                  header: 'Amount',
-                  component: EuroField,
-                },
-                {
-                  key: 'isNew',
-                  getValue: (row) => row.isNew ? 'New' : 'Existing',
-                  header: 'Status',
-                  component: TextField,
-                  props: { readOnly: true },
-                },
-              ]}
-              createNew={() => ({})}
-              onChange={setComponents}
-            />
-          </>
-        )}
         <div>
-          <Button secondary loading={state === 'dry-run'} className="mr-2" onClick={() => submit(true)}>Dry run</Button>
-          <Button loading={state === 'run'} onClick={() => submit(false)}>Create debts</Button>
+          <Button
+            onClick={async () => {
+              if (tableRef.current) {
+                const rows = [...tableRef.current.getRowIterator()];
+
+                rows.forEach(async (row) => {
+                  try {
+                    if (row.isLocked()) {
+                      return;
+                    }
+
+                    row.setLocked(true);
+                    await createDebt(row);
+                  } finally {
+                    row.setLocked(false);
+                  }
+                });
+              }
+            }}
+          >
+            Create Debts
+          </Button>
         </div>
-        <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
-          Progress
+
+        <div>
+          <EditableTable
+            ref={tableRef}
+            columnTypes={columnTypes}
+            validateRow={validateRow}
+            rowActions={rowActions}
+          />
         </div>
-        <p>
-          <Progress value={progress?.current ?? 0} max={progress?.total ?? 0} message={progress?.message} noText={!progress} />
-        </p>
-        <div className="border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1 mb-3">
-          Results
-        </div>
-        <ul>
-          {progress && !progress.result ? 'Loading...' : ''}
-          {progress?.result && progress.result.map((row, i) => <DebtStatusItem result={row} index={i} key={i} />)}
-        </ul>
       </p>
     </div>
   );
