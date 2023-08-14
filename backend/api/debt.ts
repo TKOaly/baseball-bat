@@ -8,7 +8,7 @@ import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, dbDateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
+import { convertToDbDate, dateString, dbDateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, NewDebtTag, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
@@ -63,6 +63,13 @@ const createDebtPayload = t.intersection([
     date: dbDateString,
     dueDate: dbDateString,
     paymentCondition: t.union([t.null, t.number]),
+    tags: t.array(t.union([
+      t.string,
+      t.type({
+        hidden: t.boolean,
+        name: t.string,
+      }),
+    ])),
   }),
 ]);
 
@@ -308,6 +315,18 @@ export class DebtApi {
           });
         }
 
+        let tags: NewDebtTag[] = [];
+
+        if (payload.tags) {
+          tags = payload.tags.map((tag) => {
+            if (typeof tag === 'string') {
+              return { name: tag, hidden: false };
+            } else {
+              return tag;
+            }
+          });
+        }
+
         const debt = await this.debtService.createDebt({
           name: payload.name,
           description: payload.description,
@@ -318,7 +337,7 @@ export class DebtApi {
           accountingPeriod: ctx.body.accountingPeriod,
           dueDate,
           date,
-          tags: [],
+          tags,
         });
 
         return ok(debt);
