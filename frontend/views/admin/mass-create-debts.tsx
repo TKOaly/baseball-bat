@@ -1,6 +1,7 @@
 import { useMemo, useRef, useCallback } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import uuid from 'uuid'; 
+import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
 import { EuroField } from '../../components/euro-field';
 import debtCentersApi, { useGetDebtCenterQuery } from '../../api/debt-centers';
@@ -12,7 +13,7 @@ import accountingApi, { useGetAccountingPeriodsQuery } from '../../api/accountin
 import { useAppSelector } from '../../store';
 import { ColumnType, EditableTable, TableRef } from '../../components/editable-table';
 import payersApi from '../../api/payers';
-import { PayerIdentity } from '../../../common/types';
+import { NewDebtTag, PayerIdentity } from '../../../common/types';
 
 const parseDate = (v: string) => v;
 
@@ -176,6 +177,17 @@ export const MassCreateDebts = ({ params }) => {
       align: 'right',
     },
     {
+      key: 'tags',
+      label: 'Tags',
+      render: (value) => (
+        <div className="flex gap-1">
+          {value.split(',').map((tag) => tag.trim()).map((tag) => (
+            <span className="rounded-md px-1 text-gray-800 bg-gray-200" key={tag}>{tag}</span>
+          ))}
+        </div>
+      ),
+    },
+    {
       key: 'amount',
       label: 'Amount',
       align: 'right',
@@ -281,6 +293,11 @@ export const MassCreateDebts = ({ params }) => {
       }
     }
   }, []);
+
+  const batchTag = useMemo<NewDebtTag>(() => ({
+    name: `mass-import-batch-${uid()}`,
+    hidden: true,
+  }), []);
 
   const resolveDebtRow = useCallback(async (row): Promise<CreateDebtPayload | null> => {
     let failed = false;
@@ -404,6 +421,17 @@ export const MassCreateDebts = ({ params }) => {
       return null;
     }
 
+    let tags: NewDebtTag[] = [batchTag];
+
+    if (row.columns.tags) {
+      tags.push(...(
+        row.columns.tags
+          .split(',')
+          .map((tag: string) => tag.trim())
+          .map((name: string) => ({ name, hidden: false }))
+      ));
+    }
+
     const amountValue = row.columns.amount;
     let amount: EuroValue;
 
@@ -451,10 +479,10 @@ export const MassCreateDebts = ({ params }) => {
       accountingPeriod,
       dueDate: dueDate ?? undefined,
       paymentCondition: paymentCondition ?? undefined,
-      tags: [],
+      tags,
       components: [componentResult.data.id],
     };
-  }, [resolveDebtCenter, accountingPeriods, activeAccountingPeriod]);
+  }, [resolveDebtCenter, accountingPeriods, activeAccountingPeriod, batchTag]);
 
   const createDebt = useCallback(async (row) => {
     row.setLocked(true);

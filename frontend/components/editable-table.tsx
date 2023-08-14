@@ -149,6 +149,10 @@ const EditableTableWrapper = styled.div`
       tr.locked td {
         background-color: rgba(0,0,0,0.025);
         cursor: not-allowed;
+
+        .cell-overlay-content {
+          background-color: #fafafa;
+        }
       }
 
       td > input {
@@ -220,6 +224,14 @@ const EditableTableWrapper = styled.div`
             border: none;
             box-shadow: none;
           }
+        }
+
+        .cell-overlay-content {
+          background: white;
+          padding: 3px 0.5em;
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
         }
       }
 
@@ -980,28 +992,26 @@ const CellContent = ({ columnKey, rowKey }) => {
 
   useEffect(() => { validate(); }, [cell.value ?? column.default, column.type]);
   useEffect(() => setInternalValue(cell.value), [cell.value]);
+  const inputRef = useRef();
 
   const Input = columnType?.input ?? 'input';
-  let content: ReactNode;
 
-  if (!columnType?.render || focus) {
-    content = (
+  return (
+    <td onClick={() => { setFocus(true); inputRef.current?.focus?.(); }} tabIndex={0}>
       <Input
+        ref={inputRef}
         value={internalValue}
         disabled={row.locked}
         onChange={(evt: any) => setInternalValue(evt.target.value)}
-        onBlur={(evt: any) => handleChange(evt)}
+        onBlur={(evt: any) => { handleChange(evt); setFocus(false); }}
         style={{ textAlign: columnType?.align ?? 'left' }}
         placeholder={column.default}
       />
-    );
-  } else {
-    content = columnType.render(cell.value);
-  }
-
-  return (
-    <td onClick={() => setFocus(true)} tabIndex={0}>
-      {content}
+      {columnType?.render && !focus && (
+        <div className="cell-overlay-content" style={{ pointerEvents: columnType?.readOnly ? 'all' : 'none' }}>
+          {columnType.render(cell.value)}
+        </div>
+      )}
       {
         cell.annotations.size > 0 && (
           <div className="icon" style={ columnType?.align === 'right' ? { left: '-0.2em' } : { right: '-0.2em' }}>
