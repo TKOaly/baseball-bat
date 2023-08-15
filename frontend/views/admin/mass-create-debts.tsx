@@ -1,6 +1,6 @@
 import { useMemo, useRef, useCallback } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import uuid from 'uuid'; 
+import * as uuid from 'uuid';
 import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
 import { useLocation } from 'wouter';
