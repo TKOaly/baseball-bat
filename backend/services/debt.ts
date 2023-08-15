@@ -653,6 +653,10 @@ export class DebtService {
     return this.queryDebts(sql`debt.debt_center_id = ${id}`);
   }
 
+  async getDebtsByTag(tagName: string): Promise<Debt[]> {
+    return this.queryDebts(sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`);
+  }
+
   async getDebts(): Promise<Debt[]> {
     return this.queryDebts();
   }

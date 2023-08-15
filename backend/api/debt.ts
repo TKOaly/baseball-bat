@@ -147,6 +147,16 @@ export class DebtApi {
       });
   }
 
+  private getDebtsByTag() {
+    return route
+      .get('/by-tag/:name')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async (ctx) => {
+        const debts = await this.debtService.getDebtsByTag(ctx.routeParams.name);
+        return ok(debts);
+      });
+  }
+
   private getDebtsByPayment() {
     return route
       .get('/by-payment/:id')
@@ -893,6 +903,7 @@ export class DebtApi {
       this.updateDebt(),
       this.updateMultipleDebts(),
       this.getDebtsByEmail(),
+      this.getDebtsByTag(),
     );
   }
 }

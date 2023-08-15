@@ -62,6 +62,14 @@ const debtApi = rtkApi.injectEndpoints({
       ],
     }),
 
+    getDebtsByTag: builder.query<Debt[], string>({
+      query: (tag) => `/debt/by-tag/${tag}`,
+      providesTags: (result) => [
+        { type: 'Debt' as const, id: 'LIST' },
+        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+      ],
+    }),
+
     getDebt: builder.query<DebtResponse, string>({
       query: (id) => `/debt/${id}`,
       providesTags: (result) => [{ type: 'Debt', id: result.id }],
@@ -224,6 +232,7 @@ export const {
   useMarkPaidWithCashMutation,
   useSendReminderMutation,
   useSendAllRemindersMutation,
+  useGetDebtsByTagQuery,
   useUpdateDebtMutation,
   useDeleteDebtComponentMutation,
   useUpdateMultipleDebtsMutation,
