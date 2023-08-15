@@ -3,6 +3,7 @@ import { Breadcrumbs } from '../../components/breadcrumbs';
 import uuid from 'uuid'; 
 import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
+import { useLocation } from 'wouter';
 import { EuroField } from '../../components/euro-field';
 import debtCentersApi, { useGetDebtCenterQuery } from '../../api/debt-centers';
 import { useCreateDebtComponentMutation, useCreateDebtMutation, CreateDebtPayload } from '../../api/debt';
@@ -14,6 +15,7 @@ import { useAppSelector } from '../../store';
 import { ColumnType, EditableTable, TableRef } from '../../components/editable-table';
 import payersApi from '../../api/payers';
 import { NewDebtTag, PayerIdentity } from '../../../common/types';
+import { ExternalLink } from 'react-feather';
 
 const parseDate = (v: string) => v;
 
@@ -39,6 +41,8 @@ export const MassCreateDebts = ({ params }) => {
   const [getAccountingPeriods] = accountingApi.endpoints.getAccountingPeriods.useLazyQuery();
   const [createDebtMutation] = useCreateDebtMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
+
+  const [, setLocation] = useLocation();
 
   const tableRef = useRef<TableRef>();
 
@@ -586,7 +590,7 @@ export const MassCreateDebts = ({ params }) => {
         />
       </h1>
       <p>
-        <div>
+        <div className="space-x-4">
           <Button
             onClick={async () => {
               if (tableRef.current) {
@@ -608,6 +612,14 @@ export const MassCreateDebts = ({ params }) => {
             }}
           >
             Create Debts
+          </Button>
+          <Button
+            secondary
+            onClick={() => {
+              window.open(`/admin/debts?tag=${encodeURIComponent(batchTag.name)}`, '_blank', 'noreferrer');
+            }}
+          >
+            View created <ExternalLink className="h-4 w-4 ml-0.5" />
           </Button>
         </div>
 
