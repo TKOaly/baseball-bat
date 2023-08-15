@@ -501,6 +501,13 @@ const actionHandlers: { [K in Action['type']]: ActionHandler<Extract<Action, { t
     state.columns.delete(column);
 
     for (const row of state.data.values()) {
+      const cell = row.cells.get(column);
+
+      if (cell.value) {
+        invalidate(`row-${row.key}`);
+        invalidate('row', row.key);
+      }
+
       row.cells.delete(column);
     }
 
@@ -878,7 +885,6 @@ const TableProvider = ({ children, ...props }: PropsWithChildren<Props>) => {
         validateCell({ row, column });
       }
     }, true);
-
   }, [ref, subscribe]);
 
   invalidate('row', row);

@@ -5,14 +5,14 @@ import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
 import { useLocation } from 'wouter';
 import { EuroField } from '../../components/euro-field';
-import debtCentersApi, { useGetDebtCenterQuery } from '../../api/debt-centers';
+import debtCentersApi, { useCreateDebtCenterMutation, useGetDebtCenterQuery } from '../../api/debt-centers';
 import { useCreateDebtComponentMutation, useCreateDebtMutation, CreateDebtPayload } from '../../api/debt';
 import { Button } from '../../components/button';
 import { cents, EuroValue } from '../../../common/currency';
 import { isMatch } from 'date-fns';
 import accountingApi, { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
-import { ColumnType, EditableTable, TableRef } from '../../components/editable-table';
+import { ColumnType, EditableTable, RowApi, TableRef } from '../../components/editable-table';
 import payersApi from '../../api/payers';
 import { NewDebtTag, PayerIdentity } from '../../../common/types';
 import { ExternalLink } from 'react-feather';
@@ -41,6 +41,7 @@ export const MassCreateDebts = ({ params }) => {
   const [getAccountingPeriods] = accountingApi.endpoints.getAccountingPeriods.useLazyQuery();
   const [createDebtMutation] = useCreateDebtMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
+  const [createDebtCenter] = useCreateDebtCenterMutation();
 
   const [, setLocation] = useLocation();
 
@@ -199,18 +200,15 @@ export const MassCreateDebts = ({ params }) => {
     }
   ], [validateEmail]);
 
-  const resolvePayer = useCallback(async (row): Promise<PayerIdentity | null> => {
+  const resolvePayer = useCallback(async (row, dryRun: boolean): Promise<PayerIdentity | null> => {
     const email = row.columns['email'];
     const name = row.columns['payer-name'];
 
     if (!email) {
-      row.setColumnAnnotation({
-        column: 'email',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Payer email is required!',
-        },
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Payer email is required!',
       });
 
       return null;
@@ -220,6 +218,10 @@ export const MassCreateDebts = ({ params }) => {
 
     if (!isError) {
       return data.id;
+    }
+
+    if (dryRun) {
+      return null;
     }
 
     const result = await createPayer({
@@ -240,17 +242,14 @@ export const MassCreateDebts = ({ params }) => {
     return result.data.id;
   }, [createPayer, getPayerByEmail]);
 
-  const resolveDebtCenter = useCallback(async (row): Promise<string | null> => {
+  const resolveDebtCenter = useCallback(async (row: RowApi, accountingPeriod: number, dryRun: boolean): Promise<string | null> => {
     const debtCenter = row.columns['debt-center'];
 
     if (!debtCenter) {
-      row.setColumnAnnotation({
-        column: 'debt-center',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Debt center is required!',
-        },
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Debt center is required!',
       });
 
       return null;
@@ -278,20 +277,33 @@ export const MassCreateDebts = ({ params }) => {
 
         const center = debtCenters.find((dc) => dc.name === debtCenter);
 
-        if (!center) {
-          row.setColumnAnnotation({
-            column: 'debt-center',
-            annotation: {
-              id: 'create-debt',
-              type: 'error',
-              message: 'No such debt center!',
-            },
-          });
+        if (center) {
+          return center.id;
+        }
 
+        if (dryRun) {
           return null;
         }
 
-        return center.id;
+        const result = await createDebtCenter({
+          accountingPeriod,
+          name: debtCenter,
+          description: '',
+          url: '',
+        });
+
+        if ('data' in result) {
+          return result.data.id;
+        }
+
+        row.setColumnAnnotation({
+          column: 'debt-center',
+          annotation: {
+            id: 'create-debt',
+            type: 'error',
+            message: 'Failed to create debt center!',
+          },
+        });
       } else {
         throw err;
       }
@@ -303,66 +315,8 @@ export const MassCreateDebts = ({ params }) => {
     hidden: true,
   }), []);
 
-  const resolveDebtRow = useCallback(async (row): Promise<CreateDebtPayload | null> => {
+  const resolveDebtRow = useCallback(async (row, dryRun): Promise<CreateDebtPayload | null> => {
     let failed = false;
-    const debtCenterId = await resolveDebtCenter(row);
-
-    if (!debtCenterId) {
-      return null;
-    }
-
-    const payerId = await resolvePayer(row);
-
-    if (!payerId) {
-      return null;
-    }
-
-    const title = row.columns.title;
-
-    if (!title) {
-      row.setColumnAnnotation({
-        column: 'title',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Title is required!',
-        },
-      });
-
-      failed = true;
-    }
-
-    const description = row.columns.description;
-
-    if (!description) {
-      row.setColumnAnnotation({
-        column: 'description',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Description is required!',
-        },
-      });
-
-      failed = true;
-    }
-
-    if (!row.columns.amount) {
-      row.setColumnAnnotation({
-        column: 'amount',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Amount is required!',
-        },
-      });
-
-      failed = true;
-    }
-
-    if (failed) {
-      return null;
-    }
 
     let accountingPeriod: null | number = null;
 
@@ -372,13 +326,10 @@ export const MassCreateDebts = ({ params }) => {
       const accountingPeriodValue = row.columns['accounting-period'];
 
       if (!accountingPeriodValue) {
-        row.setColumnAnnotation({
-          column: 'accounting-period',
-          annotations: {
-            type: 'error',
-            id: 'create-debt',
-            message: 'Accounting period is required.',
-          },
+        row.setRowAnnotation({
+          type: 'error',
+          id: 'create-debt',
+          message: 'Accounting period is required.',
         });
 
         failed = true;
@@ -398,6 +349,52 @@ export const MassCreateDebts = ({ params }) => {
           failed = true;
         }
       }
+    }
+
+    const debtCenterId = await resolveDebtCenter(row, accountingPeriod, dryRun);
+
+    if (!debtCenterId) {
+      failed = true;
+    }
+
+    const payerId = await resolvePayer(row, dryRun);
+
+    if (!payerId) {
+      failed = true;
+    }
+
+    const title = row.columns.title;
+
+    if (!title) {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Title is required!',
+      });
+
+      failed = true;
+    }
+
+    const description = row.columns.description;
+
+    if (!description) {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Description is required!',
+      });
+
+      failed = true;
+    }
+
+    if (!row.columns.amount) {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Amount is required!',
+      });
+
+      failed = true;
     }
 
     const dueDateValue = row.columns['due-date'];
@@ -440,18 +437,19 @@ export const MassCreateDebts = ({ params }) => {
     let amount: EuroValue;
 
     if (!amountValue) {
-      row.setColumnAnnotation({
-        column: 'amount',
-        annotation: {
-          id: 'create-debt',
-          type: 'error',
-          message: 'Amount is required!',
-        },
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Amount is required!',
       });
 
       failed = true;
     } else {
       amount = parseEuros(amountValue);
+    }
+
+    if (failed) {
+      return null;
     }
 
     const componentResult = await createDebtComponent({
@@ -489,6 +487,10 @@ export const MassCreateDebts = ({ params }) => {
   }, [resolveDebtCenter, accountingPeriods, activeAccountingPeriod, batchTag]);
 
   const createDebt = useCallback(async (row) => {
+    if (row.isLocked()) {
+      return;
+    }
+
     row.setLocked(true);
 
     row.clearRowAnnotation({
@@ -499,7 +501,7 @@ export const MassCreateDebts = ({ params }) => {
       annotationId: 'debt-center',
     });
 
-    const debtDetails = await resolveDebtRow(row);
+    const debtDetails = await resolveDebtRow(row, false);
 
     if (!debtDetails) {
       row.setLocked(false);
@@ -527,7 +529,7 @@ export const MassCreateDebts = ({ params }) => {
   }, [createDebtMutation, resolveDebtRow]);
 
   const validateRow = useCallback(async (row) => {
-    const payerEmail = row.columns.email;
+    /*const payerEmail = row.columns.email;
     const payerName = row.columns['payer-name'];
 
     let errors = [];
@@ -570,8 +572,19 @@ export const MassCreateDebts = ({ params }) => {
       }
     }
 
-    return errors;
-  }, [getPayerByEmail, getAccountingPeriods]);
+    return errors;*/
+    row.clearRowAnnotation({
+      id: 'create-debt',
+    });
+
+    row.clearColumnAnnotation({
+      id: 'create-debt',
+    });
+
+    resolveDebtRow(row, true);
+
+    return [];
+  }, [resolveDebtRow]);
 
   const rowActions = useMemo(() => [
     {
@@ -605,18 +618,7 @@ export const MassCreateDebts = ({ params }) => {
               if (tableRef.current) {
                 const rows = [...tableRef.current.getRowIterator()];
 
-                rows.forEach(async (row) => {
-                  try {
-                    if (row.isLocked()) {
-                      return;
-                    }
-
-                    row.setLocked(true);
-                    await createDebt(row);
-                  } finally {
-                    row.setLocked(false);
-                  }
-                });
+                rows.forEach(createDebt);
               }
             }}
           >
