@@ -502,6 +502,7 @@ export const MassCreateDebts = ({ params }) => {
     const debtDetails = await resolveDebtRow(row);
 
     if (!debtDetails) {
+      row.setLocked(false);
       return;
     }
 
@@ -514,6 +515,14 @@ export const MassCreateDebts = ({ params }) => {
         type: 'info',
         message: `Debt ${result.data.humanId} created!`,
       });
+    } else {
+      row.setRowAnnotation({
+        id: 'create-debt',
+        type: 'error',
+        message: 'Unknown error occurred while creating the debt!',
+      });
+
+      row.setLocked(false);
     }
   }, [createDebtMutation, resolveDebtRow]);
 
