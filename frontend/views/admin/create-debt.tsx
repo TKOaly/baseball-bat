@@ -283,6 +283,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 narrow
                 label="Date"
                 name="date"
+                format="yyyy-MM-dd"
                 component={DateField}
               />
               { accountingPeriods?.length > 1 && (
