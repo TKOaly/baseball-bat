@@ -172,7 +172,7 @@ export const MassCreateDebts = ({ params }) => {
       label: 'Due date',
       align: 'right',
       validate: (value, row) => {
-        if (!isMatch(value, 'dd.MM.yyyy')) {
+        if (!isMatch(value, 'd.M.y')) {
           return 'Dates must be in the dd.MM.yyyy format';
         }
 
@@ -499,9 +499,9 @@ export const MassCreateDebts = ({ params }) => {
   }, [resolveDebtCenter, accountingPeriods, activeAccountingPeriod, batchTag]);
 
   const createDebt = useCallback(async (row) => {
-    if (row.isLocked()) {
+    /*if (row.isLocked()) {
       return;
-    }
+    }*/
 
     row.setLocked(true);
 
@@ -530,10 +530,16 @@ export const MassCreateDebts = ({ params }) => {
         message: `Debt ${result.data.humanId} created!`,
       });
     } else {
+      let message = 'Unknown error occurred while creating the debt!';
+
+      if (result.error.message) {
+        message = result.error.message;
+      }
+
       row.setRowAnnotation({
         id: 'create-debt',
         type: 'error',
-        message: 'Unknown error occurred while creating the debt!',
+        message,
       });
 
       row.setLocked(false);
@@ -602,7 +608,11 @@ export const MassCreateDebts = ({ params }) => {
     {
       key: 'create-debt',
       label: 'Create Debt',
-      execute: createDebt,
+      execute: async (row) => {
+        if (!row.isLocked()) {
+          await createDebt(row);
+        }
+      },
     },
   ], [createDebt]);
 
@@ -630,7 +640,31 @@ export const MassCreateDebts = ({ params }) => {
               if (tableRef.current) {
                 const rows = [...tableRef.current.getRowIterator()];
 
-                rows.forEach(createDebt);
+                rows.forEach((row) => {
+                  row.setLocked(true);
+                  row.setRowAnnotation({
+                    id: 'create-debt-loading',
+                    type: 'loading',
+                    message: 'Waiting...',
+                  });
+                });
+
+                for (const row of tableRef.current.getRowIterator()) {
+                  row.setRowAnnotation({
+                    id: 'create-debt-loading',
+                    type: 'loading',
+                    message: 'Creating debt...',
+                  });
+
+                  try {
+                    await createDebt(row);
+                  } finally {
+                    row.setLocked(false);
+                    row.clearRowAnnotation({
+                      id: 'create-debt-loading',
+                    });
+                  }
+                }
               }
             }}
           >
