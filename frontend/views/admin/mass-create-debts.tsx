@@ -9,7 +9,7 @@ import debtCentersApi, { useCreateDebtCenterMutation, useGetDebtCenterQuery } fr
 import { useCreateDebtComponentMutation, useCreateDebtMutation, CreateDebtPayload } from '../../api/debt';
 import { Button } from '../../components/button';
 import { cents, EuroValue } from '../../../common/currency';
-import { isMatch } from 'date-fns';
+import { isMatch, parse, format, isValid } from 'date-fns';
 import accountingApi, { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
 import { ColumnType, EditableTable, RowApi, TableRef } from '../../components/editable-table';
@@ -17,7 +17,19 @@ import payersApi from '../../api/payers';
 import { NewDebtTag, PayerIdentity } from '../../../common/types';
 import { ExternalLink } from 'react-feather';
 
-const parseDate = (v: string) => v;
+const parseDate = (v: string) => {
+  let date = parse(v, 'd.M.y', new Date());
+
+  if (!isValid(date)) {
+    date = parse(v, 'y-M-d', new Date());
+  }
+
+  if (!isValid(date)) {
+    return null;
+  }
+
+  return format(date, 'yyyy-MM-dd');
+};
 
 const parseEuros = (v: string): EuroValue => {
   const [euros, centsPart] = v.replace(/€$/, '').trim().split(/[,.]/, 2);
