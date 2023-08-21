@@ -31,6 +31,7 @@
   ],
   "include": [
     "backend",
-    "common/types.ts"
+    "common/types.ts",
+    "tests"
   ]
 }

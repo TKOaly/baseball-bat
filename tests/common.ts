@@ -7,34 +7,70 @@ import Stripe from 'stripe';
 import Container, { ContainerInstance } from 'typedi';
 import { Config } from '../backend/config';
 import { PgClient } from '../backend/db';
-import { GenericContainer } from 'testcontainers';
+import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisClientType } from 'redis';
+import { EventEmitter } from 'events';
 
 export type AppTestFn = TestFn<{
   container: ContainerInstance,
+  testcontainers: Array<StartedTestContainer>,
 }>;
 
 export function createTestFunc(): AppTestFn {
-  const test = anyTest as TestFn<{ container: ContainerInstance }>;
+  const test = anyTest as AppTestFn;
+
+  const setupPostgres = async () => {
+    const container = await new PostgreSqlContainer().start();
+
+    await migrate({
+      databaseUrl: container.getConnectionUri(),
+      migrationsTable: '__migrations',
+      direction: 'up',
+      dir: path.resolve(__dirname, '../../migrations'),
+      log: () => {},
+    });
+
+    const client = PgClient.create(container.getConnectionUri());
+
+    return {
+      container,
+      client,
+    };
+  };
+
+  const setupRedis = async () => {
+    const container = await new GenericContainer('redis')
+      .withExposedPorts(6379)
+      .start();
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const client = redis.createClient({
+      socket: {
+        host: container.getHost(),
+        port: container.getMappedPort(6379),
+      },
+    });
+
+    await client.connect();
+
+    return { container, client };
+  };
 
   test.beforeEach(async (t) => {
-    const container = Container.of(t.title);
+    const [
+      { container: redisContainer, client: redisClient },
+      { container: postgresContainer, client: postgresClient },
+    ] = await Promise.all([
+        setupRedis(),
+        setupPostgres(),
+    ]);
 
-    const redisContainer = await new GenericContainer('redis').withExposedPorts(6379).start()
-    const postgresContainer = await new PostgreSqlContainer().start();
+    t.context.testcontainers = [redisContainer, postgresContainer];
 
     const dbUrl = postgresContainer.getConnectionUri();
     const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
-
-    const pg = PgClient.create(dbUrl);
-
-    await migrate({
-      databaseUrl: dbUrl,
-      migrationsTable: '__migrations',
-      direction: 'up',
-      dir: path.resolve(__dirname, '../migrations'),
-      log: () => {},
-    });
 
     const config = new Config({
       dbUrl,
@@ -61,20 +97,16 @@ export function createTestFunc(): AppTestFn {
       dataPath: '',
     });
 
+    const container = Container.of(t.title);
+
     container.set(Config, config);
-
-    const redisClient = redis.createClient({
-      url: redisUrl,
-    });
-
-    redisClient.connect();
 
     const stripeClient = new Stripe(config.stripeSecretKey, {
       apiVersion: '2020-08-27',
     });
 
     container.set('redis', redisClient);
-    container.set(PgClient, pg);
+    container.set(PgClient, postgresClient);
     container.set('stripe', stripeClient);
 
     t.context.container = container;
@@ -83,8 +115,14 @@ export function createTestFunc(): AppTestFn {
   test.afterEach(async (t) => {
     const { container } = t.context;
     const pg = container.get(PgClient);
+    const redis: RedisClientType = container.get('redis');
 
-    await pg.conn.end();
+    await Promise.all([
+      redis.disconnect(),
+      pg.conn.end(),
+    ]);
+
+    await Promise.all(t.context.testcontainers.map((c) => c.stop()));
   });
 
   return test;

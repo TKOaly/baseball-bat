@@ -46,7 +46,7 @@ function assertNever(_value: never) {
 
 export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerEmail[] }): PayerProfile => ({
   id: internalIdentity(profile.id),
-  tkoalyUserId: profile.tkoaly_user_id === undefined
+  tkoalyUserId: !profile.tkoaly_user_id
     ? undefined
     : tkoalyIdentity(profile.tkoaly_user_id),
   email: profile.email,
@@ -109,7 +109,7 @@ export class PayerService {
           COUNT(DISTINCT d.id) as debt_count,
           COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
           COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
-          SUM(dco.amount) AS total,
+          COALESCE(SUM(dco.amount), 0) AS total,
           COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
         FROM payer_profiles pp
         LEFT JOIN debt d ON d.payer_id = pp.id
@@ -482,138 +482,6 @@ export class PayerService {
       UPDATE payer_profiles
       SET tkoaly_user_id = ${account.value}
       WHERE id = ${id.value}
-    `);
-  }
-
-  async getPaymentMethod(id: PayerIdentity) {
-    const payerProfile = await this.getPayerProfileByIdentity(id);
-
-    if (!payerProfile) {
-      return null;
-    }
-
-    const paymentMethod = await this.pg
-      .one<DbPaymentMethod>(
-        sql`SELECT * FROM payment_methods WHERE payer_id = ${payerProfile.id.value} `,
-      );
-
-    if (!paymentMethod) {
-      return null;
-    }
-
-    return formatPaymentMethod(paymentMethod);
-  }
-
-  /*async getSetupIntentForUser(id: PayerIdentity) {
-    const payerProfile = await this.getPayerProfileByIdentity(id)
-
-    if (!payerProfile) {
-      throw new Error('Payer profile not found')
-    }
-
-    await this.stripe.setupIntents.list({
-      customer: payerProfile.stripeCustomerId,
-    })
-
-    const setupIntent = await this.stripe.setupIntents.create({
-      customer: payerProfile.stripeCustomerId,
-      usage: 'off_session',
-      payment_method_types: ['card'],
-    })
-
-    return { secret: setupIntent.client_secret }
-  }*/
-
-  /*async setPaymentMethod(setupIntentId: string) {
-    const setupIntent = await this.stripe.setupIntents.retrieve(setupIntentId)
-
-    if (!setupIntent.payment_method) {
-      throw new Error('Payment method not found')
-    }
-
-    const payerProfileId = await this.pg
-      .one<{ id: string }>(
-        sql`SELECT id FROM payer_profiles WHERE stripe_customer_id = ${setupIntent.customer} `
-      )
-      .then(res => res?.id ?? null)
-
-    if (!payerProfileId) {
-      throw new Error('Payer profile not found')
-    }
-
-    const paymentMethod = await this.stripe.paymentMethods.retrieve(
-      setupIntent.payment_method.toString()
-    )
-
-    if (!paymentMethod) {
-      throw new Error('No payment method found')
-    }
-
-    await this.pg.any(sql`
-      INSERT INTO payment_methods(payer_id, stripe_pm_id, brand, last4, exp_month, exp_year)
-      VALUES(
-        ${payerProfileId},
-        ${paymentMethod.id},
-        ${paymentMethod.card?.brand},
-        ${paymentMethod.card?.last4},
-        ${paymentMethod.card?.exp_month},
-        ${paymentMethod.card?.exp_year}
-      ) ON CONFLICT(payer_id) DO UPDATE
-        SET stripe_pm_id = ${paymentMethod.id},
-          brand = ${paymentMethod.card?.brand},
-          last4 = ${paymentMethod.card?.last4},
-          exp_month = ${paymentMethod.card?.exp_month},
-          exp_year = ${paymentMethod.card?.exp_year},
-          updated_at = NOW()
-    `)
-  }*/
-
-  /*async getEventsWithPaymentStatus(id: PayerIdentity, registeredEvents: Event[]): Promise<EventWithPaymentStatus[]> {
-    const payerProfile = await this.getPayerProfileByIdentity(id);
-
-    if (!payerProfile) {
-      return [];
-    }
-
-    const paidEvents = await this.pg.any<{
-      payment_status: PaymentStatus
-      event_id: number
-      created_at: Date
-    }>(sql`
-      SELECT
-        p.payment_status,
-        li.event_id,
-        p.created_at
-      FROM payments p
-      INNER JOIN line_items li ON li.payment_id = p.id
-      WHERE p.payer_id = ${payerProfile.id.value}
-      AND p.payment_status = 'succeeded'
-      GROUP BY li.event_id, p.payment_status, p.created_at
-    `);
-
-    return registeredEvents
-      .filter(e => e.price !== null)
-      .map(event => {
-        const paymentStatus =
-          paidEvents.find(paidEvent => paidEvent.event_id === event.id) ?? null;
-        return {
-          ...event,
-          payment: paymentStatus
-            ? {
-              status: paymentStatus.payment_status,
-              createdAt: paymentStatus.created_at,
-            }
-            : null,
-        };
-      });
-  }*/
-
-  updatePaymentStatus(paymentIntentId: string, status: PaymentStatus) {
-    return this.pg.any(sql`
-      UPDATE payments
-      SET payment_status = ${status},
-          updated_at = NOW()
-      WHERE stripe_payment_intent_id = ${paymentIntentId}
     `);
   }
 

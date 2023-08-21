@@ -8,7 +8,7 @@
     "build:server": "tsc",
     "build:frontend": "parcel build --no-scope-hoist ./public/index.html --dist-dir ./web-dist",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
-    "test": "c8 ava -s --timeout=2m"
+    "test": "c8 ava -s --timeout=30s"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^1.0.1",
@@ -84,6 +84,7 @@
   "devDependencies": {
     "@ava/typescript": "^4.1.0",
     "@testcontainers/postgresql": "^10.2.1",
+    "@types/chai": "^4.3.5",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
@@ -99,8 +100,10 @@
     "@typescript-eslint/parser": "^5.42.0",
     "ava": "^5.3.1",
     "c8": "^8.0.1",
+    "chai": "^4.3.7",
     "concurrently": "^7.6.0",
     "cypress": "^11.2.0",
+    "earl": "^1.1.0",
     "eslint": "^8.26.0",
     "eslint-plugin-react": "^7.31.10",
     "parcel": "^2.8.1",
@@ -126,14 +129,15 @@
     "react-error-overlay": "6.0.9"
   },
   "ava": {
+    "failWithoutAssertions": false,
     "files": [
       "tests/unit/**/*"
     ],
-    "extensions": {
-      "ts": "module"
-    },
-    "nodeArguments": [
-      "--loader=ts-node/esm"
-    ]
+    "typescript": {
+      "rewritePaths": {
+        "tests/": "build/tests/"
+      },
+      "compile": "tsc"
+    }
   }
 }
