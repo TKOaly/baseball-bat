@@ -265,32 +265,10 @@ export class PayersApi {
       })))
       .use(this.authService.createAuthMiddleware())
       .handler(async (ctx) => {
-        const { ignoreCooldown } = ctx.body;
-
         const id = internalIdentity(ctx.routeParams.id);
-        const debts = await this.debtService.getDebtsByPayer(id);
-        const email = await this.payerService.getPayerPrimaryEmail(id);
+        const res = await this.debtService.sendPaymentRemindersByPayer(id, ctx.body);
 
-        if (!email) {
-          throw new Error('No such user or no primary email for user ' + ctx.routeParams.id);
-        }
-
-        const overdue = debts.filter((debt) => debt.dueDate && isPast(debt.dueDate) && (ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
-
-        const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
-        const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
-        const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !ctx.body.send));
-
-        return pipe(
-          overdue,
-          A.traverse(T.ApplicativePar)(sendReminder),
-          T.map(A.separate),
-          T.map(({ left, right }) => ok({
-            messageCount: right.length,
-            payerCount: A.uniq(EmailPayerEq)(right).length,
-            errors: left,
-          })),
-        )();
+        return ok(res);
       });
   }
 

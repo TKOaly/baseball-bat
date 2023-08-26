@@ -12,10 +12,12 @@ import { cents } from '../../common/currency';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
+import * as S from 'fp-ts/lib/string';
 import * as T from 'fp-ts/lib/Task';
+import * as EQ from 'fp-ts/lib/Eq';
 import { toArray } from 'fp-ts/Record';
 import { flow, pipe } from 'fp-ts/lib/function';
-import { addDays, format, isPast, parseISO } from 'date-fns';
+import { addDays, format, isBefore, isPast, parseISO, subDays, subMonths } from 'date-fns';
 import { EmailService } from './email';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { ReportService } from './reports';
@@ -1011,25 +1013,7 @@ export class DebtService {
   }
 
   async getDebtsByPayer(id: InternalIdentity, { includeDrafts = false, includeCredited = false } = {}) {
-    const result = await this.pg.any<DbDebt>(sql`
-      SELECT
-        debt.*,
-        TO_JSON(payer_profiles.*) AS payer,
-        TO_JSON(debt_center.*) AS debt_center,
-        SUM(debt_component.amount) AS total,
-        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-        (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
-      FROM debt
-      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-      JOIN debt_center ON debt_center.id = debt.debt_center_id
-      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)
-      GROUP BY debt.id, payer_profiles.*, debt_center.*
-    `);
-
-    return result.map(formatDebt);
+    return this.queryDebts(sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`);
   }
 
   async getDebtTotal(id: string): Promise<EuroValue> {
@@ -1462,5 +1446,31 @@ export class DebtService {
     const debts = await this.queryDebts(sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`);
 
     return debts;
+  }
+
+  async sendPaymentRemindersByPayer(payerId: InternalIdentity, opts: { send: boolean, ignoreCooldown: boolean }) {
+    const debts = await this.debtService.getDebtsByPayer(payerId);
+    const email = await this.payerService.getPayerPrimaryEmail(payerId);
+
+    if (!email) {
+      throw new Error('No such user or no primary email for user ' + payerId.value);
+    }
+
+    const overdue = debts.filter((debt) => !!debt.publishedAt && debt.status != 'paid' && debt.dueDate && isPast(debt.dueDate) && (opts.ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
+
+    const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
+    const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
+    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !opts.send));
+
+    return pipe(
+      overdue,
+      A.traverse(T.ApplicativePar)(sendReminder),
+      T.map(A.separate),
+      T.map(({ left, right }) => ({
+        messageCount: right.length,
+        payerCount: A.uniq(EmailPayerEq)(right).length,
+        errors: left,
+      })),
+    )();
   }
 }
