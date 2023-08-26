@@ -11,8 +11,24 @@ env:
   REGISTRY: registry.tko-aly.fi
 
 jobs:
-  build:
+  test:
+    runs-on: ubuntu-latest
+    container: node:18.17.1
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Yarn
+        run: npm install --global yarn
+
+      - name: Install Yarn dependencies
+        run: yarn
+
+      - name: Run tests
+        run: yarn test
+
+  build:
     runs-on: ubuntu-latest
     
     permissions:
