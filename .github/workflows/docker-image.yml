@@ -22,6 +22,8 @@ jobs:
 
       - name: Run tests
         run: yarn test
+        env:
+          DEBUG: testcontainers*
 
   build:
     runs-on: ubuntu-latest
