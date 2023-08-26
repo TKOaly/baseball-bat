@@ -17,9 +17,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Install Yarn
-        run: npm install --global yarn
-
       - name: Install Yarn dependencies
         run: yarn
 
