@@ -13,8 +13,6 @@ export class AppBus {
   }
 
   public async close() {
-    //console.log(`Running ${this.closeHandlers.size} close handlers...`);
-
     for (const handler of this.closeHandlers) {
       await Promise.resolve(handler());
     }

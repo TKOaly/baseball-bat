@@ -671,7 +671,33 @@ export class DebtService {
     return components.map(formatDebtComponent);
   }
 
+  private async createDefaultPaymentFor(debt: Debt): Promise<Payment> {
+      const created = await this.paymentService.createInvoice({
+        title: debt.name,
+        message: debt.description,
+        series: 1,
+        debts: [debt.id],
+        date: debt.date ?? undefined,
+      }, {
+        sendNotification: false,
+      });
+
+      await this.debtService.setDefaultPayment(debt.id, created.id);
+
+      if (!created) {
+        return Promise.reject('Could not create invoice for debt');
+      }
+
+      return created;
+  }
+
   async publishDebt(debtId: string): Promise<void> {
+    const debt = await this.getDebt(debtId);
+
+    if (!debt) {
+      throw new Error('No such debt');
+    }
+
     await this.pg.any(sql`
       UPDATE debt
       SET
@@ -680,6 +706,30 @@ export class DebtService {
         due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
       WHERE id = ${debtId}
     `);
+    
+    const defaultPayment = debt.defaultPayment
+      ? await this.paymentService.getPayment(debt.defaultPayment)
+      : await this.createDefaultPaymentFor(debt);
+
+    if (!defaultPayment) {
+      throw new Error('No default invoice exists for payment');
+    }
+
+    if (!isPaymentInvoice(defaultPayment)) {
+      throw new Error(`The default payment of debt ${debt.id} is not an invoice!`);
+    }
+
+    const isBackdated = isBefore(parseISO(defaultPayment.data.date), subDays(new Date(), 1));
+
+    if (debt.status === 'unpaid' && !isBackdated) {
+      const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
+
+      if (E.isLeft(message)) {
+        throw new Error('Could not send invoice notification.');
+      }
+
+      await this.emailService.sendEmail(message.right.id);
+    }
   }
 
   async setDefaultPayment(debtId: string, paymentId: string) {
@@ -765,7 +815,8 @@ export class DebtService {
       await this.setDefaultPayment(created.id, payment.id);
     }
 
-    return formatDebt(created);
+    const createdDebt = (await this.getDebt(created.id))!;
+    return createdDebt;
   }
 
   async updateDebt(debt: DebtPatch): Promise<E.Either<Error, Debt>> {
@@ -1066,7 +1117,9 @@ export class DebtService {
   }
 
   async getOverdueDebts() {
-    const debts = await this.pg.any<DbDebt>(sql`
+    return this.queryDebts(sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`);
+
+    /*const debts = await this.pg.any<DbDebt>(sql`
       SELECT
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
@@ -1089,7 +1142,7 @@ export class DebtService {
       GROUP BY debt.id, payer_profiles.*, debt_center.*
     `);
 
-    return debts.map(formatDebt);
+    return debts.map(formatDebt);*/
   }
 
   async getDebtsPendingReminder() {

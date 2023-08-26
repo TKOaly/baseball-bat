@@ -17,7 +17,7 @@ import { SessionApi } from './api/session';
 import cors from 'cors';
 import helmet, { HelmetOptions } from 'helmet';
 // import { StripeEventsApi } from './api/stripe-events'
-import { Container } from 'typedi';
+import { Container, Service } from 'typedi';
 import { PayersApi } from './api/payers';
 import { EmailApi } from './api/email';
 import * as redis from 'redis';
@@ -30,6 +30,7 @@ import { ReportApi } from './api/report';
 import { AccountingApi } from './api/accounting';
 import { JobsApi } from './api/jobs';
 import { JobService } from './services/jobs';
+import EventEmitter from 'events';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
