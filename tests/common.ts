@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import anyTest, { TestFn } from 'ava';
+import { expect } from 'earl';
 import path from 'path';
 import * as redis from 'redis';
 import migrate from 'node-pg-migrate';
@@ -11,6 +12,7 @@ import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisClientType } from 'redis';
 import { EventEmitter } from 'events';
+import { AppBus } from '../backend/orchestrator';
 
 export type AppTestFn = TestFn<{
   container: ContainerInstance,
@@ -117,13 +119,18 @@ export function createTestFunc(): AppTestFn {
     const pg = container.get(PgClient);
     const redis: RedisClientType = container.get('redis');
 
-    await Promise.all([
-      redis.disconnect(),
-      pg.conn.end(),
-    ]);
+    const bus = container.get(AppBus);
+    await bus.close();
+
+    await redis.disconnect();
+    await pg.conn.end();
 
     await Promise.all(t.context.testcontainers.map((c) => c.stop()));
   });
 
   return test;
 } 
+
+export function uuidValidator() {
+  return expect.regex(/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/);
+}
