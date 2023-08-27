@@ -2,6 +2,7 @@ import { Service, Inject } from 'typedi';
 import { RedisClientType } from 'redis';
 import { ConnectionOptions, FlowJob, FlowProducer, Job, Processor, Queue, QueueEvents, Worker, WorkerOptions } from 'bullmq';
 import { Config } from '../config';
+import { AppBus } from '../orchestrator';
 
 @Service()
 export class JobService {
@@ -10,19 +11,10 @@ export class JobService {
 
   queues: Record<string, Queue> = {};
 
-  constructor(public config: Config) {
+  constructor(public config: Config, private bus: AppBus) {
     const events = new QueueEvents('main', { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
-    events.on('added', (job) => console.log('added', job.name, job.jobId));
-    events.on('completed', (job) => console.log('completed', job.jobId));
-    events.on('failed', (job) => {
-      this.getQueue('main')
-        .getJob(job.jobId)
-        .then((job) => {
-          if (job) {
-            console.log('failed', job.name, job.id, job.failedReason);
-          }
-        });
-    });
+
+    bus.onClose(() => events.close());
   }
 
   private getConnectionConfig(): ConnectionOptions {
@@ -38,7 +30,9 @@ export class JobService {
 
   getQueue<D, T, N extends string>(name: string): Queue<D, T, N> {
     if (!this.queues[name]) {
-      this.queues[name] = new Queue(name, { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+      const queue = this.queues[name] = new Queue(name, { connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+
+      this.bus.onClose(() => queue.close());
     }
 
     return this.queues[name] as any;
@@ -48,7 +42,8 @@ export class JobService {
 
   getFlowProducer(): FlowProducer {
     if (this.flowProducer === null) {
-      this.flowProducer = new FlowProducer({ connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+      const producer = this.flowProducer = new FlowProducer({ connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+      this.bus.onClose(() => producer.close());
     }
 
     return this.flowProducer;
@@ -70,7 +65,9 @@ export class JobService {
   }
 
   createWorker(queue: string, callback: Processor, options?: Omit<WorkerOptions, 'connection' | 'prefix'>) {
-    return new Worker(queue, callback, { ...options, connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+    const worker = new Worker(queue, callback, { ...options, connection: this.getConnectionConfig(), prefix: 'bbat-jobs' });
+    this.bus.onClose(() => worker.close());
+    return worker;
   }
 
   async getJob(queueName: string, id: string) {

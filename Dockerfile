@@ -1,4 +1,4 @@
-FROM node:18 AS production-build 
+FROM node:18.17 AS production-build
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ FROM nginx:alpine AS production-nginx
 COPY --from=production-build /app/web-dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
-FROM node:18-alpine AS production-backend
+FROM node:18.17-alpine AS production-backend
 
 RUN apk update && apk add chromium
 

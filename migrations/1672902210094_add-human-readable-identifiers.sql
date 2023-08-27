@@ -6,6 +6,8 @@ CREATE TABLE accounting_periods (
   -- is_default BOOLEAN NOT NULL DEFAULT false
 );
 
+INSERT INTO accounting_periods (year) VALUES (EXTRACT('year' FROM NOW()));
+
 -- INSERT INTO accounting_periods (year, is_default) VALUES (2022, true);
 -- CREATE UNIQUE INDEX accounting_periods_only_one_default ON accounting_periods (is_default) WHERE (is_default = true);
 

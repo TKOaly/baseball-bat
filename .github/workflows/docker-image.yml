@@ -1,18 +1,32 @@
-name: Docker
+name: Continuous Integration 
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  release:
+    types: [released]
 
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: registry.tko-aly.fi
 
 jobs:
-  build:
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    container: node:18.17.1
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Yarn dependencies
+        run: yarn
+
+      - name: Run tests
+        run: yarn test
+
+  build:
+    name: Build Docker images
     runs-on: ubuntu-latest
     
     permissions:
@@ -25,7 +39,6 @@ jobs:
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
         with:
           registry: ${{ secrets.PRIVATE_REGISTRY_URL }}
@@ -45,6 +58,7 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
+            ${{ github.event_name == 'release' && format('type=raw,value={0}', github.event.release.tag_name) }}
 
       # Extract metadata (tags, labels) for Docker
       # https://github.com/docker/metadata-action
@@ -66,7 +80,7 @@ jobs:
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
           target: production-nginx
@@ -77,7 +91,25 @@ jobs:
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           target: production-backend
+
+  release:
+    name: Deploy a new release
+    runs-on: ubuntu-latest
+    
+    if: ${{ github.event_name == 'release' }}
+
+    needs: [build, test]
+
+    steps:
+      - name: Trigger deployment
+        uses: aurelien-baudet/workflow-dispatch@v2
+        with:
+          token: ${{ secrets.DEPLOYMENT_PAT }}
+          workflow: Bump Service
+          inputs: '{"service": "baseball-bat", "tag": "${{ github.event.release.tag_name }}"}'
+          repo: TKOaly/tko-aly-k8s-configs
+          ref: main

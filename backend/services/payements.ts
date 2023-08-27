@@ -274,8 +274,8 @@ export class PaymentService {
       `);
   }
 
-  async getPaymentsContainingDebt(debtId: string) {
-    return this.pg
+  async getPaymentsContainingDebt(debtId: string): Promise<Payment[]> {
+    const payments = await this.pg
       .any<DbPayment>(sql`
         SELECT
           p.*,
@@ -289,6 +289,8 @@ export class PaymentService {
         JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
         WHERE pdm.debt_id = ${debtId}
       `);
+
+    return payments.map(formatPayment);
   }
 
   async getDefaultInvoicePaymentForDebt(debtId: string): Promise<Payment | null> {
@@ -319,7 +321,7 @@ export class PaymentService {
     const result = await this.pg
       .one<DbPayment>(sql`
         INSERT INTO payment_events (payment_id, type, amount, data)
-        VALUES (${paymentId}, 'payment', ${amount}, ${data})
+        VALUES (${paymentId}, 'payment', ${amount.value}, ${data})
         RETURNING *
      `);
 
@@ -451,7 +453,6 @@ export class PaymentService {
       if (typeof payment.data === 'function') {
         const callback = payment.data as any as ((p: Payment) => D);
         const data = callback(formatPayment({ ...createdPayment, data: {} }));
-        console.log('CALLBACK!', createdPayment, data);
         await tx.do(sql`
           UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id}
         `);
@@ -490,8 +491,6 @@ export class PaymentService {
   async onPaymentCreated(payment: Payment, options: PaymentCreationOptions) {
     if (isPaymentInvoice(payment)) {
       const isBackdated = isBefore(parseISO(payment.data.date), subDays(new Date(), 1));
-
-      console.log(payment.data.date, isBackdated);
 
       if (!isBackdated && options.sendNotification !== false) {
         const email = await this.sendNewPaymentNotification(payment.id);

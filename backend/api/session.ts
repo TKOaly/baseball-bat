@@ -32,7 +32,6 @@ export class SessionApi {
         const id = internalIdentity(session.payerId);
 
         const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id);
-        const paymentMethod = await this.payerService.getPaymentMethod(id);
         const preferences = await this.payerService.getPayerPreferences(id);
 
         if (!req.cookies.token) {
@@ -49,7 +48,6 @@ export class SessionApi {
           authLevel: session.authLevel,
           accessLevel: session.accessLevel,
           payerProfile,
-          paymentMethod,
           preferences,
         });
       });

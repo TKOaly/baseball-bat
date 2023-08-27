@@ -178,32 +178,12 @@ export class DebtApi {
   }
 
   private publishDebts() {
-    const createDefaultPaymentFor = async (debt: Debt): Promise<Payment> => {
-      const created = await this.paymentService.createInvoice({
-        title: debt.name,
-        message: debt.description,
-        series: 1,
-        debts: [debt.id],
-        date: debt.date ?? undefined,
-      }, {
-        sendNotification: false,
-      });
-
-      await this.debtService.setDefaultPayment(debt.id, created.id);
-
-      if (!created) {
-        return Promise.reject('Could not create invoice for debt');
-      }
-
-      return created;
-    };
-
     return route
       .post('/publish')
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(t.type({ ids: t.array(t.string) })))
       .handler(async ({ body }) => {
-        const emails = await Promise.all(body.ids.map(async (id): Promise<Email | null> => {
+        await Promise.all(body.ids.map(async (id): Promise<void> => {
           const debt = await this.debtService.getDebt(id);
 
           if (!debt) {
@@ -221,38 +201,7 @@ export class DebtApi {
           }
 
           await this.debtService.publishDebt(id);
-
-          const defaultPayment = debt.defaultPayment
-            ? await this.paymentService.getPayment(debt.defaultPayment)
-            : await createDefaultPaymentFor(debt);
-
-          if (!defaultPayment) {
-            return Promise.reject('No default invoice exists for payment');
-          }
-
-          if (!isPaymentInvoice(defaultPayment)) {
-            console.log('Not invoice', defaultPayment);
-            return Promise.reject(`The default payment of debt ${debt.id} is not an invoice!`);
-          }
-      
-          const isBackdated = isBefore(parseISO(defaultPayment.data.date), subDays(new Date(), 1));
-
-          if (debt.status === 'unpaid' && !isBackdated) {
-            const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
-
-            if (E.isRight(message)) {
-              return message.right;
-            } else {
-              return Promise.reject('Could not send invoice notification.');
-            }
-          }
-
-          return Promise.resolve(null);
         }));
-
-        const emailIds = emails.flatMap((message) => message ? [message.id] : []);
-
-        await this.emailService.batchSendEmails(emailIds, { jobName: `Publish ${body.ids.length} debts` });
 
         return ok();
       });
@@ -799,7 +748,6 @@ export class DebtApi {
         
         const amount = await this.debtService.getDebtTotal(debt.id);
 
-        console.log(payment.id, amount);
         await this.paymentService.createPaymentEvent(payment.id, {
           type: 'payment',
           amount,

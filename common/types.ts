@@ -385,7 +385,7 @@ export type DbDateString = t.TypeOf<typeof dbDateString>
 export type NewDebtTag = { name: string, hidden: boolean }
 
 export type NewDebt = {
-  centerId?: string
+  centerId: string
   description: string
   accountingPeriod: number
   components: string[]

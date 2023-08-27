@@ -186,9 +186,11 @@ export class EmailService {
   }
 
   loadTemplates() {
-    const templatesDir = process.env.NODE_ENV === 'production'
-      ? '/app/backend/templates'
-      : path.resolve(__dirname, '../templates');
+    const templatesDir = {
+      production: '/app/backend/templates',
+      development: path.resolve(__dirname, '../templates'),
+      testing: path.resolve(__dirname, '../../../backend/templates'),
+    }[process.env.NODE_ENV ?? 'development']!
 
     const files: Array<string> = fs.readdirSync(templatesDir);
 
@@ -342,18 +344,7 @@ export class EmailService {
   }
 
   async batchSendEmails(ids: string[], { jobName }: { jobName?: string } = {}) {
-    const jobs = await Promise.all(ids.map(async (id) => {
-      const email = await this.getEmail(id);
-
-      return {
-        queueName: 'emails',
-        name: 'send',
-        data: {
-          name: `Send email to ${email?.recipient}`,
-          emailId: id,
-        },
-      };
-    }));
+    const jobs = await Promise.all(ids.map((id) => this.createEmailJobDescription(id)));
 
     await this.jobService
       .createJob({
@@ -364,25 +355,30 @@ export class EmailService {
       });
   }
 
-  async sendEmail(id: string) {
+  async createEmailJobDescription(id: string) {
     const email = await this.getEmail(id);
 
-    await this.jobService
-      .createJob({
-        queueName: 'emails',
-        name: 'send',
-        data: {
-          name: `Send email to ${email?.recipient}`,
-          emailId: id,
+    return {
+      queueName: 'emails',
+      name: 'send',
+      data: {
+        name: `Send email to ${email?.recipient}`,
+        emailId: id,
+      },
+      opts: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 60 * 2000,
         },
-        opts: {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 60 * 2000,
-          },
-        },
-      });
+      },
+    };
+  }
+
+  async sendEmail(id: string) {
+    const description = await this.createEmailJobDescription(id);
+
+    await this.jobService.createJob(description);
   }
 
   async getEmails() {
