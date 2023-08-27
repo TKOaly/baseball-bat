@@ -1,9 +1,9 @@
-import React, { ComponentProps } from 'react';
+import React from 'react';
 import { useState } from 'react';
-import { CheckCircle, ChevronRight, Circle, Info } from 'react-feather';
+import { Circle, Info } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Trans, useTranslation } from 'react-i18next';
-import { Debt, euro, isPaymentInvoice, Payment } from '../../common/types';
+import { Debt, euro, isPaymentInvoice } from '../../common/types';
 import { TextField } from '../components/text-field';
 import { Dialog } from '../components/dialog';
 import paymentPoolSlice from '../state/payment-pool';
@@ -186,11 +186,11 @@ const Card: React.FC<CardProps> = ({ selectable, onChangeSelected, selected, tit
       </div>
     </div>
   );
-}
+};
 
 const CardAction: React.FC<React.HTMLProps<HTMLButtonElement>> = ({ children, className, onClick, ...props }) => (
   <button className={`uppercase text-xs font-bold py-1.5 px-2 rounded ${className}`} onClick={(evt) => { evt.stopPropagation(); onClick?.(evt); }} {...props}>{children}</button>
-)
+);
 
 type DebtCardProps = {
   debt: Debt
@@ -237,11 +237,6 @@ export const Main = () => {
   const { data: payments } = useGetOwnPaymentsQuery();
   const { data: profile } = useGetPayerQuery('me');
   const dispatch = useAppDispatch();
-  const selectedDebts = useAppSelector((state) => state.paymentPool.selectedPayments);
-
-  const toggleDebtSelection = (debt) => {
-    dispatch(paymentPoolSlice.actions.togglePaymentSelection(debt.id));
-  };
 
   const handlePayAll = async () => {
     dispatch(paymentPoolSlice.actions.setSelectedPayments(unpaidDepts.map(p => p.id)));
@@ -284,7 +279,7 @@ export const Main = () => {
         {t('unpaidDebts')}
       </h3>
 
-      {unpaidDepts.map((debt) => <DebtCard debt={debt} />)}
+      {unpaidDepts.map((debt) => <DebtCard key={debt.id} debt={debt} />)}
 
       {unpaidDepts.length === 0 && (
         <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
@@ -299,14 +294,15 @@ export const Main = () => {
 
       {openInvoices
         .map(p => (
-            <Card
-              title={p.title}
-              subtitle={t('openInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy'), due: format(new Date(p.data.due_date), 'dd.MM.yyyy') })}
-              amount={cents(-p.balance)}
-              actions={<>
-                <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
-              </>}
-            />
+          <Card
+            key={p.id}
+            title={p.title}
+            subtitle={t('openInvoiceInfoline', { dated: format(new Date(p.data.date), 'dd.MM.yyyy'), due: format(new Date(p.data.due_date), 'dd.MM.yyyy') })}
+            amount={cents(-p.balance)}
+            actions={<>
+              <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
+            </>}
+          />
         ))
       }
 
@@ -329,6 +325,7 @@ export const Main = () => {
 
           return [
             <Card
+              key={p.id}
               title={p.title}
               subtitle={
                 p.status === 'paid'
@@ -340,7 +337,7 @@ export const Main = () => {
               actions={<>
                 <CardAction className="text-gray-600 hover:bg-gray-100" onClick={() => setLocation(`/payment/${p.id}`)}>{t('viewDetails')}</CardAction>
               </>}
-            />
+            />,
           ];
         })
       }
@@ -364,7 +361,7 @@ export const Main = () => {
           amount={p.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))}
           status={{ className: 'text-white bg-green-500', label: t('paidStatus') }}
           actions={[
-            <CardAction className="text-gray-600 hover:bg-gray-100">{t('viewDetails')}</CardAction>
+            <CardAction key="viewDetails" className="text-gray-600 hover:bg-gray-100">{t('viewDetails')}</CardAction>,
           ]}
         />
       ))}

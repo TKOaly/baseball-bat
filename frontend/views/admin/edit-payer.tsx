@@ -1,13 +1,13 @@
-import { Formik } from "formik";
-import { useMemo } from "react";
-import { RouteComponentProps, useLocation } from "wouter";
-import { PayerEmailPriority } from "../../../common/types";
-import { useGetPayerQuery, useUpdatePayerMutation } from "../../api/payers";
-import { Breadcrumbs } from "../../components/breadcrumbs";
-import { DropdownField } from "../../components/dropdown-field";
-import { InputGroup } from "../../components/input-group";
-import { TabularFieldListFormik } from "../../components/tabular-field-list";
-import { TextField } from "../../components/text-field";
+import { Formik } from 'formik';
+import { useMemo } from 'react';
+import { RouteComponentProps, useLocation } from 'wouter';
+import { PayerEmailPriority } from '../../../common/types';
+import { useGetPayerQuery, useUpdatePayerMutation } from '../../api/payers';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { DropdownField } from '../../components/dropdown-field';
+import { InputGroup } from '../../components/input-group';
+import { TabularFieldListFormik } from '../../components/tabular-field-list';
+import { TextField } from '../../components/text-field';
 
 type Props = RouteComponentProps<{ id: string }>;
 
@@ -100,7 +100,7 @@ export const EditPayer = ({ params }: Props) => {
           }
         }}
       >
-        {({ values, submitForm, errors, isSubmitting, setFieldValue, setFieldError }) => {
+        {({ values, submitForm, isSubmitting, setFieldValue }) => {
           return (
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
               <InputGroup label="Name" name="name" component={TextField} />
@@ -124,12 +124,12 @@ export const EditPayer = ({ params }: Props) => {
                 createNew={() => ({ email: '', priority: 'default' })}
                 columns={[
                   {
-                    header: "Address",
+                    header: 'Address',
                     component: TextField,
                     key: 'email',
                   },
                   {
-                    header: "Priority",
+                    header: 'Priority',
                     component: DropdownField,
                     key: 'priority',
                     props: {
@@ -152,4 +152,4 @@ export const EditPayer = ({ params }: Props) => {
       </Formik>
     </div>
   );
-}
+};

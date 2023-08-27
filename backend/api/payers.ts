@@ -2,21 +2,14 @@ import { Inject, Service } from 'typedi';
 import { Parser, route, router } from 'typera-express';
 import { notFound, ok, unauthorized } from 'typera-express/response';
 import * as t from 'io-ts';
-import { Debt, Email, emailIdentity, internalIdentity, PayerEmailPriority, tkoalyIdentity } from '../../common/types';
+import { emailIdentity, internalIdentity, PayerEmailPriority, tkoalyIdentity } from '../../common/types';
 import { AuthService } from '../auth-middleware';
-import * as A from 'fp-ts/lib/Array';
-import * as E from 'fp-ts/lib/Either';
-import * as T from 'fp-ts/lib/Task';
-import * as S from 'fp-ts/lib/string';
-import * as EQ from 'fp-ts/lib/Eq';
 import { DebtService } from '../services/debt';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { EmailService } from '../services/email';
 import { Config } from '../config';
 import { PaymentService } from '../services/payements';
-import { isBefore, isPast, subMonths } from 'date-fns';
-import { pipe } from 'fp-ts/lib/function';
 import { body } from 'typera-express/parser';
 
 @Service()
@@ -359,7 +352,7 @@ export class PayersApi {
         const newPayer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(ctx.routeParams.id));
 
         return ok(newPayer);
-      })
+      });
   }
 
   router() {

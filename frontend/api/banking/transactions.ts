@@ -33,7 +33,7 @@ const transactionsApi = rtkApi.injectEndpoints({
         url: '/banking/autoregister',
         method: 'POST',
       }),
-    })
+    }),
   }),
 });
 

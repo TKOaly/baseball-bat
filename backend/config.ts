@@ -47,8 +47,8 @@ export class Config implements IConfig {
   assetPath = '';
   dataPath = '';
   jwtSecret = '';
-  stripeSecretKey: string = '';
-  stripeWebhookSecret: string = '';
+  stripeSecretKey = '';
+  stripeWebhookSecret = '';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -97,12 +97,12 @@ export class Config implements IConfig {
       'SERVICE_IDENTIFIER must be set.',
     );
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
-    assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.')
+    assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
     assert(
       STRIPE_WEBHOOK_SECRET,
-      'STRIPE_WEBHOOK_SECRET must be set.'
-    )
+      'STRIPE_WEBHOOK_SECRET must be set.',
+    );
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();

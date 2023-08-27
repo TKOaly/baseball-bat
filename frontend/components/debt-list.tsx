@@ -1,7 +1,7 @@
 import { TableView } from './table-view';
 import { Debt, DebtWithPayer, PayerProfile } from '../../common/types';
 import { Link, useLocation } from 'wouter';
-import { useDeleteDebtMutation, usePublishDebtsMutation, useSendAllRemindersMutation, useSendReminderMutation, useSendReminderMutation } from '../api/debt';
+import { useDeleteDebtMutation, usePublishDebtsMutation, useSendAllRemindersMutation } from '../api/debt';
 import { ExternalLink } from 'react-feather';
 import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';

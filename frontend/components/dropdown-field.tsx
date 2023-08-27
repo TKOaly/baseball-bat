@@ -1,9 +1,7 @@
 import React from 'react';
-import { memo, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { useField } from 'formik';
+import { memo, useMemo, useRef, useState } from 'react';
 import { equals } from 'remeda';
 import { ChevronDown } from 'react-feather';
-import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 import { FloatingPortal, size, useClick, useDismiss, useFloating, useFocus, useInteractions, useListNavigation } from '@floating-ui/react-dom-interactions';
 
 export type DropdownFieldProps<V> = {
@@ -122,7 +120,7 @@ export const DropdownField = memo(<V extends unknown>({
             if (allowCustom && inputRef.current) {
               inputRef.current.focus();
             }
-          }
+          },
         })}
       >
         {

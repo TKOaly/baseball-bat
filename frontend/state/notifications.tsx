@@ -1,4 +1,4 @@
-import { createSelector, createSlice, nanoid, PayloadAction } from "@reduxjs/toolkit";
+import { createSelector, createSlice, nanoid, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 
 export type NotificationType = 'info' | 'error' | 'success' | 'task' ;

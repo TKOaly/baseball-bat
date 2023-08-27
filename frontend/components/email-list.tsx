@@ -1,8 +1,8 @@
-import { format } from "date-fns";
-import { useLocation } from "wouter";
-import { Email } from "../../common/types";
-import { useSendEmailsMutation } from "../api/email";
-import { TableView } from "./table-view";
+import { format } from 'date-fns';
+import { useLocation } from 'wouter';
+import { Email } from '../../common/types';
+import { useSendEmailsMutation } from '../api/email';
+import { TableView } from './table-view';
 
 export interface Props {
   emails: Email[]

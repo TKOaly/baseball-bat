@@ -38,7 +38,7 @@ const SearchResultItem = ({ type, id, name, onSelect }) => {
             if (details.type === 'text') {
               value = details.value;
             } else if (details.type === 'resource') {
-              value = <ResourceLink type={details.resourceType} id={details.id} />
+              value = <ResourceLink type={details.resourceType} id={details.id} />;
             }
 
             return (

@@ -1,9 +1,9 @@
-import { JobNode } from "bullmq";
-import { Inject, Service } from "typedi";
-import { route, router } from "typera-express";
-import { notFound, ok } from "typera-express/response";
-import { AuthService } from "../auth-middleware";
-import { JobService } from "../services/jobs";
+import { JobNode } from 'bullmq';
+import { Inject, Service } from 'typedi';
+import { route, router } from 'typera-express';
+import { notFound, ok } from 'typera-express/response';
+import { AuthService } from '../auth-middleware';
+import { JobService } from '../services/jobs';
 
 const formatJob = async (node: JobNode): Promise<any> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
@@ -38,10 +38,10 @@ const formatJob = async (node: JobNode): Promise<any> => {
 @Service()
 export class JobsApi {
   @Inject(() => JobService)
-  jobService: JobService;
+    jobService: JobService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   private getJobs() {
     return route
@@ -51,7 +51,7 @@ export class JobsApi {
         const jobs = await this.jobService.getJobs();
 
         return ok(await Promise.all(jobs.map(formatJob)));
-      })
+      });
   }
 
   private getJob() {
@@ -66,7 +66,7 @@ export class JobsApi {
         }
 
         return ok(await formatJob(node));
-      })
+      });
   }
 
   private retryJob() {

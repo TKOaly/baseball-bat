@@ -3,7 +3,6 @@ import { GlobalSearchDialog } from './dialogs/global-search-dialog';
 import 'react-popper-tooltip/dist/styles.css';
 import { usePopperTooltip } from 'react-popper-tooltip';
 import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
-import { ExternalLink } from 'react-feather';
 import { ResourceLink } from './resource-link';
 
 export type Props = {
@@ -67,7 +66,7 @@ export const ResourceSelectField = (props: Props) => {
                   if (details.type === 'text') {
                     value = details.value;
                   } else if (details.type === 'resource') {
-                    value = <ResourceLink type={details.resourceType} id={details.id} />
+                    value = <ResourceLink type={details.resourceType} id={details.id} />;
                   }
 
                   return (

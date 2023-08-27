@@ -1,13 +1,8 @@
-import { useGetEmailsQuery, useSendEmailsMutation } from '../../api/email';
-import { TableView } from '../../components/table-view';
-import { useLocation } from 'wouter';
-import { format } from 'date-fns';
+import { useGetEmailsQuery } from '../../api/email';
 import { EmailList } from '../../components/email-list';
 
 export const EmailsListing = () => {
-  const [, setLocation] = useLocation();
   const { data: emails } = useGetEmailsQuery(null);
-  const [sendEmails] = useSendEmailsMutation();
 
   return (
     <>

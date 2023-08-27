@@ -25,31 +25,31 @@ const validateAuthCodeBody = t.type({
 @Service()
 export class AuthApi {
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   @Inject(() => MagicLinkService)
-  magicLinkService: MagicLinkService;
+    magicLinkService: MagicLinkService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject('redis')
-  redis: RedisClientType;
+    redis: RedisClientType;
 
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   private authCompleted() {
     return route

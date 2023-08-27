@@ -11,9 +11,6 @@ import { useMemo } from 'react';
 import * as dfns from 'date-fns';
 import { useGetDebtComponentsByCenterQuery, useUpdateMultipleDebtsMutation } from '../../api/debt';
 import { ResourceSelectField } from '../resource-select-field';
-import { TabularFieldListFormik } from '../tabular-field-list';
-import { EuroField } from '../euro-field';
-import { DropdownField } from '../dropdown-field';
 import { TableView } from '../table-view';
 import { AddTagDialog } from './add-tag-dialog';
 import { isRight, left } from 'fp-ts/lib/Either';
@@ -135,14 +132,14 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       });
     }
 
-    let tags = tagsSummary
+    const tags = tagsSummary
       .map(([name, count]) => {
         let operation: 'noop' | 'exclude' | 'include' = 'noop';
 
         if (count === 0) {
           operation = 'exclude';
         } else if (count === debts.length) {
-           operation = 'include';
+          operation = 'include';
         }
 
         return {
@@ -151,7 +148,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         };
       });
 
-    const date = dates.length === 1 && dates[0].date !== null ? dbDateString.decode(dfns.format(new Date(dates[0].date), 'yyyy-MM-dd')) : left(null)
+    const date = dates.length === 1 && dates[0].date !== null ? dbDateString.decode(dfns.format(new Date(dates[0].date), 'yyyy-MM-dd')) : left(null);
 
     return {
       name: names.length === 1 ? names[0].name : null,

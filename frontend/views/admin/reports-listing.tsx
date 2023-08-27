@@ -1,16 +1,16 @@
-import { format, parseISO } from "date-fns";
-import { CheckCircle, ExternalLink, Loader, XCircle } from "react-feather";
-import { Link, useLocation } from "wouter";
-import { InternalIdentity } from "../../../common/types";
-import { useGetPayerQuery } from "../../api/payers";
-import { useGetReportsQuery, useRefreshReportMutation } from "../../api/report";
-import { Button } from "../../components/button";
-import { useDialog } from "../../components/dialog";
-import { NewDebtLedgerDialog } from "../../components/dialogs/new-debt-ledger-dialog";
-import { NewDebtStatusReportDialog } from "../../components/dialogs/new-debt-status-report-dialog";
-import { NewPaymentLedgerDialog } from "../../components/dialogs/new-payment-ledger-dialog";
-import { ReportHistoryDialog } from "../../components/dialogs/report-history-dialog";
-import { TableView } from "../../components/table-view";
+import { format, parseISO } from 'date-fns';
+import { CheckCircle, ExternalLink, Loader, XCircle } from 'react-feather';
+import { Link } from 'wouter';
+import { InternalIdentity } from '../../../common/types';
+import { useGetPayerQuery } from '../../api/payers';
+import { useGetReportsQuery, useRefreshReportMutation } from '../../api/report';
+import { Button } from '../../components/button';
+import { useDialog } from '../../components/dialog';
+import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';
+import { NewDebtStatusReportDialog } from '../../components/dialogs/new-debt-status-report-dialog';
+import { NewPaymentLedgerDialog } from '../../components/dialogs/new-payment-ledger-dialog';
+import { ReportHistoryDialog } from '../../components/dialogs/report-history-dialog';
+import { TableView } from '../../components/table-view';
 
 const UserLink = ({ id }: { id: InternalIdentity }) => {
   const { data: user } = useGetPayerQuery(id.value);
@@ -23,7 +23,6 @@ export const ReportsListing = () => {
     pollingInterval: 3000,
   });
 
-  const [, setLocation] = useLocation();
   const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
   const showNewPaymentLedgerDialog = useDialog(NewPaymentLedgerDialog);
   const showNewDebtStatusReportDialog = useDialog(NewDebtStatusReportDialog);
@@ -120,14 +119,14 @@ export const ReportsListing = () => {
                   <Button
                     secondary
                     small
-                    onClick={() => { showReportHistoryDialog({ reports: report.history }) }}
+                    onClick={() => { showReportHistoryDialog({ reports: report.history }); }}
                   >
                     History
                   </Button>
                 ) }
               </div>
             ),
-          }
+          },
         ]}
       />
     </>

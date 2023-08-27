@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import notificationsSlice, { NotificationButton, NotificationType, selectNotification } from "../state/notifications";
-import { useAppDispatch, useAppSelector } from "../store";
-import { Info, AlertTriangle, CheckCircle, X } from "react-feather";
-import { cva } from "class-variance-authority";
+import { useEffect } from 'react';
+import notificationsSlice, { NotificationButton, NotificationType, selectNotification } from '../state/notifications';
+import { useAppDispatch, useAppSelector } from '../store';
+import { Info, AlertTriangle, CheckCircle, X } from 'react-feather';
+import { cva } from 'class-variance-authority';
 
 export type Props = {
   id: string,
@@ -112,4 +112,4 @@ export const Notification = (props: Props) => {
       </div>
     </div>
   );
-}
+};

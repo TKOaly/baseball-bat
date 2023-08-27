@@ -2,7 +2,7 @@ import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
 import { BankTransaction, DbDebt, DbEmail, DbPayerProfile, DbPaymentEvent, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentEvent, PaymentLedgerOptions, PaymentStatus } from '../../common/types';
 import * as R from 'remeda';
-import { FromDbType, PgClient, TxClient } from '../db';
+import { FromDbType, PgClient } from '../db';
 import { DebtService, formatDebt } from './debt';
 import { Either } from 'fp-ts/lib/Either';
 import * as E from 'fp-ts/lib/Either';
@@ -10,7 +10,7 @@ import { EmailService } from './email';
 import { BankingService } from './banking';
 import { formatPayerProfile, PayerService } from './payer';
 import { cents, euro, sumEuroValues } from '../../common/currency';
-import { format, formatISO, isBefore, isPast, parseISO, subDays } from 'date-fns';
+import { format, formatISO, isBefore, parseISO, subDays } from 'date-fns';
 import { ReportService } from './reports';
 import { pipe } from 'fp-ts/lib/function';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
@@ -79,10 +79,6 @@ function createReferenceNumber(series: number, year: number, number: number) {
   }
 
   return acc.map(i => `${i}`).join('');
-}
-
-function formatPaymentNumber(parts: [number, number]): string {
-  return parts.map(n => n.toString().padStart(4, '0')).join('-');
 }
 
 const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
@@ -190,33 +186,33 @@ export const formatPayment = (db: DbPayment): Payment => ({
   createdAt: db.created_at,
   credited: db.credited,
   events: db.events.map(formatPaymentEvent),
-})
+});
 
 @Service()
 export class PaymentService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject('stripe')
-  stripe: Stripe;
+    stripe: Stripe;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
+    debtCentersService: DebtCentersService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   @Inject(() => BankingService)
-  bankingService: BankingService;
+    bankingService: BankingService;
 
   @Inject(() => ReportService)
-  reportService: ReportService;
+    reportService: ReportService;
 
   async getPayments() {
     return this.pg
@@ -734,14 +730,14 @@ export class PaymentService {
       .append(
         options.paymentType
           ? sql` payment.type = ${options.paymentType} `
-          : sql` TRUE `
+          : sql` TRUE `,
       )
       .append(sql`AND`)
       .append(
         options.eventTypes
           ? sql` event.type = ANY (${options.eventTypes}) `
-          : sql` TRUE `
-      )
+          : sql` TRUE `,
+      ),
     );
 
     const events = R.sortBy(results
@@ -751,7 +747,7 @@ export class PaymentService {
         payer: formatPayerProfile(payer),
         payment: formatPayment({ ...payment, events: [] }),
       })),
-      (item) => item.time,
+    (item) => item.time,
     );
 
     type EventDetails = (typeof events)[0];

@@ -28,10 +28,10 @@ export class DebtCentersService {
     pg: PgClient;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => AccountingService)
-  accountingService: AccountingService;
+    accountingService: AccountingService;
 
   getDebtCenters() {
     return this.pg

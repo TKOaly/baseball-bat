@@ -67,7 +67,7 @@ test('Debt center deletion works', async (t) => {
 test('Querying debt center by name works', async (t) => {
   const centers = t.context.container.get(DebtCentersService);
 
-  let centerList = await centers.getDebtCenters();
+  const centerList = await centers.getDebtCenters();
   t.is(centerList.length, 0);
 
   const newCenter = {
@@ -92,7 +92,7 @@ test('Querying debt center by name works', async (t) => {
 test('Querying debt center by id works', async (t) => {
   const centers = t.context.container.get(DebtCentersService);
 
-  let centerList = await centers.getDebtCenters();
+  const centerList = await centers.getDebtCenters();
   t.is(centerList.length, 0);
 
   const newCenter = {
@@ -117,7 +117,7 @@ test('Querying debt center by id works', async (t) => {
 test('Updating debt center works', async (t) => {
   const centers = t.context.container.get(DebtCentersService);
 
-  let centerList = await centers.getDebtCenters();
+  const centerList = await centers.getDebtCenters();
   t.is(centerList.length, 0);
 
   const newCenter = {

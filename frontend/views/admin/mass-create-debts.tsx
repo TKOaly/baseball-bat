@@ -3,14 +3,13 @@ import { Breadcrumbs } from '../../components/breadcrumbs';
 import * as uuid from 'uuid';
 import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
-import { useLocation } from 'wouter';
 import { EuroField } from '../../components/euro-field';
 import debtCentersApi, { useCreateDebtCenterMutation, useGetDebtCenterQuery } from '../../api/debt-centers';
 import { useCreateDebtComponentMutation, useCreateDebtMutation, CreateDebtPayload } from '../../api/debt';
 import { Button } from '../../components/button';
 import { cents, EuroValue } from '../../../common/currency';
 import { isMatch, parse, format, isValid } from 'date-fns';
-import accountingApi, { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
 import { ColumnType, EditableTable, RowApi, TableRef } from '../../components/editable-table';
 import payersApi from '../../api/payers';
@@ -50,12 +49,9 @@ export const MassCreateDebts = ({ params }) => {
   const [getPayerByEmail] = payersApi.endpoints.getPayerByEmail.useLazyQuery();
   const [getDebtCenters] = debtCentersApi.endpoints.getDebtCenters.useLazyQuery();
   const [createPayer] = payersApi.endpoints.createPayer.useMutation();
-  const [getAccountingPeriods] = accountingApi.endpoints.getAccountingPeriods.useLazyQuery();
   const [createDebtMutation] = useCreateDebtMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
   const [createDebtCenter] = useCreateDebtCenterMutation();
-
-  const [, setLocation] = useLocation();
 
   const tableRef = useRef<TableRef>();
 
@@ -209,7 +205,7 @@ export const MassCreateDebts = ({ params }) => {
       label: 'Amount',
       align: 'right',
       input: (props: any) => <EuroField {...props} plain style={{ lineHeight: '1em' }} />,
-    }
+    },
   ], [validateEmail]);
 
   const resolvePayer = useCallback(async (row, dryRun: boolean): Promise<PayerIdentity | null> => {
@@ -434,7 +430,7 @@ export const MassCreateDebts = ({ params }) => {
       return null;
     }
 
-    let tags: NewDebtTag[] = [batchTag];
+    const tags: NewDebtTag[] = [batchTag];
 
     if (row.columns.tags) {
       tags.push(...(

@@ -1,12 +1,11 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, DbDateString, tkoalyIdentity, emailIdentity, DateString, convertToDbDate, DebtStatusReportOptions } from '../../common/types';
+import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, tkoalyIdentity, emailIdentity, DateString, convertToDbDate, DebtStatusReportOptions } from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
-import * as R from 'remeda';
 import * as t from 'io-ts';
 import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
 import { DebtCentersService, formatDebtCenter } from './debt_centers';
-import { DbPayment, formatPayment, NewInvoice, PaymentService } from './payements';
+import { NewInvoice, PaymentService } from './payements';
 import { cents } from '../../common/currency';
 
 import * as E from 'fp-ts/lib/Either';
@@ -42,7 +41,7 @@ const resolveDueDate = (debt: DbDebt) => {
   }
 
   return null;
-}
+};
 
 export const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
   name: debt.name,
@@ -126,31 +125,31 @@ type DebtJobDefinition = {
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
+    debtCentersService: DebtCentersService;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => AccountingService)
-  accountingService: AccountingService;
+    accountingService: AccountingService;
 
   @Inject(() => ReportService)
-  reportService: ReportService;
+    reportService: ReportService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName>;
 
@@ -251,7 +250,7 @@ export class DebtService {
         url: '',
       });
     }
-  };
+  }
 
   private async handleDebtJob(job: Job<DebtJobDefinition,  DebtJobResult, string>): Promise<DebtJobResult> {
     if (job.name === 'create') {
@@ -274,7 +273,7 @@ export class DebtService {
             result: 'error',
             soft: true,
             code: 'NO_PAYER_OR_EXPLICIT_EMAIL',
-            message: `Cannot create debt without sufficient payer information.`,
+            message: 'Cannot create debt without sufficient payer information.',
           };
         }
 
@@ -289,8 +288,8 @@ export class DebtService {
               result: 'error',
               soft: true,
               code: 'PAYER_HAS_NO_EMAIL',
-              message: `Could not resolve an email address for the payer.`,
-            }
+              message: 'Could not resolve an email address for the payer.',
+            };
           }
 
           email = primary.email;
@@ -331,8 +330,8 @@ export class DebtService {
             result: 'error',
             soft: true,
             code: 'COULD_NOT_RESOLVE_DEBT_CENTER',
-            message: `Could not resolve debt center for the debt.`,
-          }
+            message: 'Could not resolve debt center for the debt.',
+          };
         }
 
         let dueDate = null;
@@ -345,7 +344,7 @@ export class DebtService {
               result: 'error',
               soft: true,
               code: 'INVALID_VALUE',
-              message: `Invalid value provided for the field "dueDate".`,
+              message: 'Invalid value provided for the field "dueDate".',
             };
           }
         }
@@ -360,7 +359,7 @@ export class DebtService {
               result: 'error',
               soft: true,
               code: 'INVALID_VALUE',
-              message: `Invalid value provided for the field "date".`,
+              message: 'Invalid value provided for the field "date".',
             };
           }
         }
@@ -375,7 +374,7 @@ export class DebtService {
               result: 'error',
               soft: true,
               code: 'INVALID_VALUE',
-              message: `Invalid value provided for the field "publishedAt".`,
+              message: 'Invalid value provided for the field "publishedAt".',
             };
           }
         }
@@ -387,7 +386,7 @@ export class DebtService {
             result: 'error',
             soft: true,
             code: 'BOTH_DUE_DATE_AND_CONDITION',
-            message: `Both a due date and a payment condition were specified for the same debt.`,
+            message: 'Both a due date and a payment condition were specified for the same debt.',
           };
         } else if (!dueDate && !paymentCondition) {
           const zero = t.Int.decode(0);
@@ -408,7 +407,7 @@ export class DebtService {
               result: 'error',
               soft: true,
               code: 'NO_PAYER',
-              message: `No payer could be resolved for the debt.`,
+              message: 'No payer could be resolved for the debt.',
             };
           }
 
@@ -573,7 +572,7 @@ export class DebtService {
           code: 'UNKNOWN',
           message: `Unknown error: ${err}`,
           stack: err instanceof Error ? err.stack : undefined,
-        }
+        };
       }
     } else if (job.name === 'batch') {
       const values = await job.getChildrenValues<DebtJobResult>();
@@ -672,23 +671,23 @@ export class DebtService {
   }
 
   private async createDefaultPaymentFor(debt: Debt): Promise<Payment> {
-      const created = await this.paymentService.createInvoice({
-        title: debt.name,
-        message: debt.description,
-        series: 1,
-        debts: [debt.id],
-        date: debt.date ?? undefined,
-      }, {
-        sendNotification: false,
-      });
+    const created = await this.paymentService.createInvoice({
+      title: debt.name,
+      message: debt.description,
+      series: 1,
+      debts: [debt.id],
+      date: debt.date ?? undefined,
+    }, {
+      sendNotification: false,
+    });
 
-      await this.debtService.setDefaultPayment(debt.id, created.id);
+    await this.debtService.setDefaultPayment(debt.id, created.id);
 
-      if (!created) {
-        return Promise.reject('Could not create invoice for debt');
-      }
+    if (!created) {
+      return Promise.reject('Could not create invoice for debt');
+    }
 
-      return created;
+    return created;
   }
 
   async publishDebt(debtId: string): Promise<void> {
@@ -775,11 +774,11 @@ export class DebtService {
           RETURNING *
         `);
 
-        const tags = (await Promise.all(debt.tags.map((tag) => tx.do<DbDebtTag>(sql`
+      const tags = (await Promise.all(debt.tags.map((tag) => tx.do<DbDebtTag>(sql`
           INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${created.id}, ${tag.name}, ${tag.hidden}) RETURNING *;
         `)))).flat();
 
-        return { ...created, tags };
+      return { ...created, tags };
     });
 
     if (created === null) {
@@ -788,15 +787,11 @@ export class DebtService {
 
     await Promise.all(
       debt.components.map(async (component) => {
-        try {
-          await this.pg
-            .any(sql`
-                INSERT INTO debt_component_mapping (debt_id, debt_component_id)
-                VALUES (${created.id}, ${component})
-            `);
-        } catch (e) {
-          throw e;
-        }
+        await this.pg
+          .any(sql`
+              INSERT INTO debt_component_mapping (debt_id, debt_component_id)
+              VALUES (${created.id}, ${component})
+          `);
       }),
     );
 
@@ -815,7 +810,12 @@ export class DebtService {
       await this.setDefaultPayment(created.id, payment.id);
     }
 
-    const createdDebt = (await this.getDebt(created.id))!;
+    const createdDebt = await this.getDebt(created.id);
+
+    if (createdDebt === null) {
+      throw new Error('Could not fetch just created debt from the database!');
+    }
+
     return createdDebt;
   }
 
@@ -1333,7 +1333,7 @@ export class DebtService {
       groups = [{ debts }];
     }
 
-    let name = `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+    const name = `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
     const report = await this.reportService.createReport({
       name,
@@ -1348,8 +1348,6 @@ export class DebtService {
   }
 
   async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }, generatedBy: InternalIdentity, parent?: string) {
-    type ResultRow = Debt & { status: 'paid' | 'open' | 'credited' };
-
     let statusFilter = sql``;
 
     if (options.includeOnly === 'paid') {
@@ -1427,11 +1425,11 @@ export class DebtService {
       .append(
         options.centers
           ? sql` AND debt_center.id = ANY (${options.centers})`
-          : sql``
+          : sql``,
       )
       .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
       .append(statusFilter)
-      .append(sql` ORDER BY MIN(ps.paid_at)`)
+      .append(sql` ORDER BY MIN(ps.paid_at)`),
     );
 
     const results = await Promise.all(dbResults.map(async (row) => ([

@@ -1,10 +1,10 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from "../dialog";
-import { Button } from "../button";
-import { Formik } from "formik";
-import { PayerProfile } from "../../../common/types";
-import { InputGroup } from "../input-group";
-import { TextField } from "../text-field";
-import { useCreatePayerMutation } from "../../api/payers";
+import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../dialog';
+import { Button } from '../button';
+import { Formik } from 'formik';
+import { PayerProfile } from '../../../common/types';
+import { InputGroup } from '../input-group';
+import { TextField } from '../text-field';
+import { useCreatePayerMutation } from '../../api/payers';
 
 export type Props = {
   onClose: (result: PayerProfile) => void,

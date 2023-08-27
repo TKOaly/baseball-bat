@@ -76,8 +76,6 @@ const selectResourceDetails = createSelector(
         return null;
       }
       
-      const payer = payersApi.endpoints.getPayer.select(payment.data.payerId.value)(state);
-
       details.push(['Number', { type: 'text', value: '' + payment.data.paymentNumber }]);
       details.push(['Balance', { type: 'text', value: formatEuro(payment.data.balance) }]);
       details.push(['Payer', { type: 'resource', resourceType: 'payer', id: payment.data.payerId.value }]);

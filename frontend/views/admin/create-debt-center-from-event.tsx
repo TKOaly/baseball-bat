@@ -4,17 +4,16 @@ import { Circle, Search, X } from 'react-feather';
 import { TableView } from '../../components/table-view';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { Stepper } from '../../components/stepper';
-import { ApiEvent, DebtComponent, euro, Event, Registration } from '../../../common/types';
+import { DebtComponent, euro, Event, Registration } from '../../../common/types';
 import { TextField } from '../../components/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
-import upstreamUsersApi from '../../api/upstream-users';
 import { addDays, format, isMatch, subYears } from 'date-fns';
 import { FilledDisc } from '../../components/filled-disc';
 import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';
 import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
 import { TextareaField } from '../../components/textarea-field';
-import { FieldArray, Formik } from 'formik';
+import { Formik } from 'formik';
 import { DropdownField } from '../../components/dropdown-field';
 import { Button, DisabledButton, SecondaryButton } from '../../components/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
@@ -26,8 +25,6 @@ import { DateField } from '../../components/datetime-field';
 import { useLocation } from 'wouter';
 import { EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
-
-type WizardState = 'select-event' | 'confirmation' | 'settings' | 'participants'
 
 type EventSelectionViewProps = {
   state: State
@@ -139,7 +136,6 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E)
 
 const useFetchEventCustomFields = createMultiFetchHook(eventsApi.endpoints.getEventCustomFields);
 const useFetchEventRegistrations = createMultiFetchHook(eventsApi.endpoints.getEventRegistrations);
-const useFetchUsers = createMultiFetchHook(upstreamUsersApi.endpoints.getUpstreamUser);
 
 const Modal = ({ open, onClose, children }) => {
   return (
@@ -310,12 +306,12 @@ type Settings = {
 const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Action) => void }) => {
   const starting = useMemo(() => subYears(new Date(), 1), []);
   const { data: allEvents } = useGetEventsQuery({ starting });
-  const events = useMemo(() => (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1), [state.eventIds, allEvents])
+  const events = useMemo(() => (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1), [state.eventIds, allEvents]);
   const eventCustomFieldsArray = useFetchEventCustomFields(state.eventIds);
   const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
 
-  let [initialAccountingPeriod, setInitialAccountingPeriod] = useState<null | number>(null);
+  const [initialAccountingPeriod, setInitialAccountingPeriod] = useState<null | number>(null);
 
   useEffect(() => {
     if (initialAccountingPeriod === null && activeAccountingPeriod !== null) {
@@ -387,7 +383,7 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
           },
         })}
       >
-        {({ values, submitForm }) => (
+        {({ submitForm }) => (
           <>
             <div className="col-span-full border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
               Common information
@@ -559,7 +555,7 @@ const evaluateRules = (state: State, event: Event, registration: Registration): 
   }
 
   return components;
-}
+};
 
 type EvaluatedDebtComponent = Pick<DebtComponent, 'name' | 'amount'> & { id: number };
 type EvaluatedRegistration = Registration & { components: Array<EvaluatedDebtComponent>, event: Event, queue: boolean } ;
@@ -595,13 +591,13 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, on
           key: 'swap',
           text: actionLabel,
           onSelect: (r) => onSwap(r),
-        }
+        },
       ]}
       columns={[
         {
           name: 'Participant',
           getValue: (registration): string => registration.name, 
-          render: (value) => value
+          render: (value) => value,
         },
         {
           name: 'Event',
@@ -632,7 +628,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, on
       ]}
     />
   );
-}
+};
 
 type ParticipantsViewProps = {
   state: State,
@@ -662,7 +658,7 @@ const ParticipantsView: React.FC<ParticipantsViewProps> = ({ state, dispatch, qu
         <div className="h-[1px] bg-gray-300 flex-grow" />
       </div>
       <p className="mt-5 mb-7 px-3">
-        Below are listed the registrations for the users who fit into the event's participant quota.
+        Below are listed the registrations for the users who fit into the event&apos;s participant quota.
         A debt will be created for each of these users. You can move participants from this list to the queue below
         if they should not be charged for the event.
       </p>
@@ -736,7 +732,7 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({ participants, state
   return (
     <div className="pt-3">
       <p className="mb-5">
-        Creating {participants.length} debts named "{state.basicSettings.name}" with a total value of {formatEuro(participants.flatMap(p => p.components).map(c => c.amount).reduce(sumEuroValues, euro(0)))}. 
+        Creating {participants.length} debts named &quot;{state.basicSettings.name}&quot; with a total value of {formatEuro(participants.flatMap(p => p.components).map(c => c.amount).reduce(sumEuroValues, euro(0)))}. 
         The debts will be due at {state.basicSettings.dueDate}.
       </p>
       <TableView
@@ -892,10 +888,6 @@ type GoToConfirmationAction = {
 
 type Action = SelectEventsAction | SetBasicSettingsAction | AddComponentAction | RemoveComponentAction | AddComponentRule | RemoveComponentRule | PreviousStep | UpdateComponent | SetRegistrationSelectionAction | GoToConfirmationAction;
 
-type ActionPayload<K> = Action extends { type: K } ? Action : never;
-
-type Asd = Action & { type: 'REMOVE_COMPONENT_RULE' }
-
 type ActionMap = { [Key in Action['type']]: Action & { type: Key } }
 type ActionHandlers = { [Key in keyof ActionMap]: (payload: ActionMap[Key]['payload']) => void }
 
@@ -945,7 +937,7 @@ const createReducer = () => {
           component.rules.push({
             ...rule,
             id: counter++,
-          })
+          });
         }
       },
 

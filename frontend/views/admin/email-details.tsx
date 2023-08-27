@@ -45,7 +45,7 @@ export const EmailDetails = ({ params }: { params: { id: string } }) => {
         { debts && debts.length > 0 && (
           <Field label="Debts">
             {debts.map((debt) => (
-              <ResourceLink type="debt" id={debt.id} />
+              <ResourceLink key={debt.id} type="debt" id={debt.id} />
             ))}
           </Field>
         )}

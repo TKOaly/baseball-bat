@@ -1,4 +1,4 @@
-import { createContext, forwardRef, memo, MouseEventHandler, PropsWithChildren, ReactNode, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { createContext, forwardRef, memo, MouseEventHandler, PropsWithChildren, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Info, Loader, Lock, MoreVertical, PlusSquare } from 'react-feather';
 import { uid } from 'uid';
 import { parse } from 'papaparse';
@@ -8,9 +8,6 @@ import { autoUpdate, flip, FloatingPortal, useFloating, useHover, useInteraction
 import { offset, shift } from '@floating-ui/core';
 import { useDialog } from './dialog';
 import { DetectHeadersDialog } from './dialogs/detect-headers-dialog';
-
-export type Cell = {
-};
 
 export type ValidationResult = { type: Omit<AnnotationType, 'loading'>, message: string } | string | null
 
@@ -272,7 +269,7 @@ type ColumnState = {
 const newCellState = (): CellState => ({
   value: '',
   annotations: new Map(),
-})
+});
 
 const getColumnKey = (state: TableState, column: string | number): { key: string, isNew: boolean } => {
   if (typeof column === 'number') {
@@ -297,7 +294,7 @@ const getColumnKey = (state: TableState, column: string | number): { key: string
       for (const { cells } of state.data.values()) {
         cells.set(key, newCellState());
       }
-    })
+    });
 
     state.columnOrder.push(...newColumns); 
 
@@ -311,7 +308,7 @@ const getColumnKey = (state: TableState, column: string | number): { key: string
       isNew: false,
     };
   }
-}
+};
 
 type AnnotationType = 'error' | 'warning' | 'info' | 'loading'
 
@@ -339,7 +336,7 @@ type TableContextValue = {
   useColumns: () => Iterable<ColumnState>,
   useRowState: (rowKey: string) => RowState,
   subscribe: (tag: string, callback: (payload: unknown) => void, immediate?: boolean) => void,
-  unsubscribe: (callback: Function) => void,
+  unsubscribe: <A extends unknown[]>(callback: (...args: A) => void) => void,
   useColumnState: (columnKey: string) => ColumnState
   useColumnOrder: () => Array<string>
   useRowOrder: () => Array<string>
@@ -403,7 +400,7 @@ const actionHandlers: { [K in Action['type']]: ActionHandler<Extract<Action, { t
         state.rowOrder.push(newRow.key);
       }
 
-      invalidate(`row-order`);
+      invalidate('row-order');
     }
 
     const rowKey = resolveRowKey(state, row);
@@ -473,7 +470,7 @@ const actionHandlers: { [K in Action['type']]: ActionHandler<Extract<Action, { t
     state.data.set(rowState.key, rowState);
     state.rowOrder.splice(rowIndex, 0, rowState.key);
     
-    invalidate(`row-order`);
+    invalidate('row-order');
     invalidate(`row-${rowState.key}`);
     invalidate('row', rowState.key);
   },
@@ -626,7 +623,7 @@ const handleAction = (event: Action, state: TableState, invalidate: (tag: string
   }
 };
 
-const createInvalidableHook = <A extends unknown[], T extends unknown>(
+const createInvalidableHook = <A extends unknown[], T>(
   names: (...args: A) => string[],
   hook: (value: TableState, ...args: A) => T,
 ): ((...args: A) => T) => {
@@ -737,7 +734,7 @@ const TableProvider = ({ children, ...props }: PropsWithChildren<Props>) => {
     }
   }, [ref]);
   
-  const useCreateInvalidableHook = <A extends unknown[], T extends unknown>(
+  const useCreateInvalidableHook = <A extends unknown[], T>(
     names: (...args: A) => string[],
     hook: (value: TableState, ...args: A) => T,
   ): ((...args: A) => T) => {
@@ -899,6 +896,7 @@ const TableProvider = ({ children, ...props }: PropsWithChildren<Props>) => {
 
     if (!ref.current.batchTimeout) {
       ref.current.batchTimeout = setTimeout(() => {
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const actions = ref.current.pendingActions;
           ref.current.pendingActions = [];
@@ -941,7 +939,7 @@ const TableProvider = ({ children, ...props }: PropsWithChildren<Props>) => {
     <TableContext.Provider value={value}>
       {children}
     </TableContext.Provider>
-  )
+  );
 };
 
 const useTable = () => useContext(TableContext);
@@ -959,8 +957,8 @@ type Action =
   | { type: 'SET_COLUMN_TYPE', payload: { column: string | number, type: string } }
   | { type: 'DELETE_ROW', payload: { row: number | string } }
   | { type: 'INSERT_ROW', payload: { row: number | string } }
-  | { type: 'APPEND_NEW_COLUMN', payload: {} }
-  | { type: 'APPEND_ROW', payload: {} }
+  | { type: 'APPEND_NEW_COLUMN', payload: Record<string, never> }
+  | { type: 'APPEND_ROW', payload: Record<string, never> }
   | { type: 'SET_ROW_LOCK', payload: { row: string, locked: boolean } }
   | { type: 'SET_COLUMN_VALUE', payload: { row: string, columnType: string, value: string } };
 
@@ -976,9 +974,6 @@ const CellContent = ({ columnKey, rowKey }) => {
 
   const columnType = props.columnTypes.find(ct => ct.key === column.type);
 
-  const validate = async () => {
-  };
-
   const handleChange = async (evt: any) => {
     if (evt.target.value !== cell.value) {
       dispatch({
@@ -987,7 +982,7 @@ const CellContent = ({ columnKey, rowKey }) => {
           row: row.key,
           column: column.key,
           value: evt.target.value,
-        }
+        },
       });
     }
   };
@@ -996,7 +991,6 @@ const CellContent = ({ columnKey, rowKey }) => {
   
   const [internalValue, setInternalValue] = useState(cell.value);
 
-  useEffect(() => { validate(); }, [cell.value ?? column.default, column.type]);
   useEffect(() => setInternalValue(cell.value), [cell.value]);
   const inputRef = useRef();
 
@@ -1067,10 +1061,10 @@ const StatusIndicator = (props: StatusIndicatorProps) => {
     .sort((a, b) => STATUS_PRECEDENCE.indexOf(a.type) - STATUS_PRECEDENCE.indexOf(b.type));
 
   const getIcon = (type: AnnotationType) => ({
-    loading: (props: any) => <Loader className={`animate-[spin_3s_linear_infinite] duration-200 text-blue-500`} {...props} />,
+    loading: (props: any) => <Loader className={'animate-[spin_3s_linear_infinite] duration-200 text-blue-500'} {...props} />,
     error: (props: any) => <AlertTriangle className="text-red-500" {...props} />,
     success: (props: any) => <CheckCircle className="text-green-500" {...props} />,
-    info: (props: any) => <Info className="text-blue-500" {...props} />
+    info: (props: any) => <Info className="text-blue-500" {...props} />,
   })[type];
 
   const Icon = getIcon(type) ?? getIcon('error');
@@ -1233,7 +1227,7 @@ const DataRow = ({ rowKey }) => {
               onSelect: () => {
                 action.execute(createRowApiObject(ref.current, dispatch, row.key));
               },
-            }))
+            })),
           ]}
           showArrow={false}
           label={
@@ -1423,7 +1417,6 @@ export const EditableTableInner = forwardRef((props: Props, ref) => {
     }
 
     const firstRow = parsed[0];
-    let detectHeaders = false;
     const columnAliases = new Map(props.columnTypes.flatMap((ct) => [ ct.label, ct.key, ...(ct.aliases ?? []) ].map((alias) => [alias.toLowerCase(), ct.key])));
 
     if (firstRow.some((value) => columnAliases.has(value.toLowerCase()))) {
@@ -1433,7 +1426,6 @@ export const EditableTableInner = forwardRef((props: Props, ref) => {
 
       if (result) {
         parsed.splice(0, 1);
-        detectHeaders = true;
       }
     }
 
@@ -1525,6 +1517,8 @@ export const EditableTableInner = forwardRef((props: Props, ref) => {
     </EditableTableWrapper>
   );
 });
+
+EditableTableInner.displayName = 'EditableTableInner';
 
 const ColumnDefaultHeader = ({ columnKey }) => {
   const { dispatch } = useTable();

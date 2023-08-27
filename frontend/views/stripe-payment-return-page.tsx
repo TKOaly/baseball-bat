@@ -1,8 +1,8 @@
-import { useLocation } from "wouter";
-import { useGetDebtsByPaymentQuery } from "../api/debt";
-import { useTranslation } from "react-i18next";
-import { Button } from "../components/button";
-import { PaymentBreakdown } from "../components/payment-breakdown";
+import { useLocation } from 'wouter';
+import { useGetDebtsByPaymentQuery } from '../api/debt';
+import { useTranslation } from 'react-i18next';
+import { Button } from '../components/button';
+import { PaymentBreakdown } from '../components/payment-breakdown';
 
 export type Props = {
   params: {

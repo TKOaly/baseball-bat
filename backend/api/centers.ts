@@ -6,7 +6,7 @@ import { AuthService } from '../auth-middleware';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
 import { EventsService } from '../services/events';
-import { euro, emailIdentity, dateString, convertToDbDate, Registration } from '../../common/types';
+import { emailIdentity, dateString, convertToDbDate, Registration } from '../../common/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
 import { validateBody } from '../validate-middleware';
@@ -310,15 +310,15 @@ export class DebtCentersApi {
                 payer: payer.id,
                 dueDate,
                 paymentCondition: null,
-                tags: [{ name: `from-event`, hidden: true }],
+                tags: [{ name: 'from-event', hidden: true }],
               });
 
               return debt;
             })),
-          );
+        );
 
-          return ok(center);
-        });
+        return ok(center);
+      });
   }
 
   private deleteDebtComponent() {

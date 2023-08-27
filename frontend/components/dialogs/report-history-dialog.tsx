@@ -77,7 +77,7 @@ export const ReportHistoryDialog = ({ onClose, reports }: Params) => {
                   </Button>
                 </div>
               ),
-            }
+            },
           ]}
         />
       </DialogContent>

@@ -13,7 +13,7 @@ export const DebtListing = () => {
   const { data: allDebts } = useGetDebtsQuery(null, { skip: !!tag });
   const { data: debtsByTag } = useGetDebtsByTagQuery(tag, { skip: !tag });
 
-  const debts = !!tag 
+  const debts = tag 
     ? debtsByTag
     : allDebts;
 
@@ -43,8 +43,8 @@ export const DebtListing = () => {
     <>
       <h1 className="text-2xl mb-5 mt-10">Debts { tag && `(Tag: "${tag}")` }</h1>
       <p className="text-gray-800 mb-7 text-md">
-        { !!tag
-          ? `Here are listed all individual debts in the system.`
+        { tag
+          ? 'Here are listed all individual debts in the system.'
           : `Here are listed all debts associated with the tag "${tag}".`
         }
         A debt corresponds usually to a single event registration, but may not have one-to-one mapping to a payment.

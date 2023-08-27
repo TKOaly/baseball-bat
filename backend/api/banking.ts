@@ -12,13 +12,13 @@ import { PaymentService } from '../services/payements';
 @Service()
 export class BankingApi {
   @Inject(() => BankingService)
-  bankingService: BankingService;
+    bankingService: BankingService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   private upload = multer({
     storage: multer.memoryStorage(),
@@ -138,7 +138,7 @@ export class BankingApi {
     return route
       .post('/autoregister')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async (_ctx) => {
         const transactions = await this.bankingService.getTransactionsWithoutRegistration();
 
         for (const tx of transactions) {
@@ -146,7 +146,7 @@ export class BankingApi {
         }
 
         return ok();
-      })
+      });
   }
 
   router() {

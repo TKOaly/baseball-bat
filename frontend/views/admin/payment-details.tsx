@@ -2,11 +2,10 @@ import { Breadcrumbs } from '../../components/breadcrumbs';
 import { useCreditPaymentMutation, useGetPaymentQuery } from '../../api/payments';
 import { Timeline } from '../../components/timeline';
 import { DebtList } from '../../components/debt-list';
-import { cents, formatEuro } from '../../../common/currency';
+import { formatEuro } from '../../../common/currency';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import { Page, Header, Title, Actions, ActionButton, Section, DateField, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page';
 import { isPaymentInvoice } from '../../../common/types';
-import { parseISO } from 'date-fns';
 
 export const PaymentDetails = ({ params }) => {
   const { data: payment, isLoading } = useGetPaymentQuery(params.id);

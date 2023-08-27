@@ -37,7 +37,7 @@ export const CreateDebtCenter = () => {
     url: '',
     description: '',
     components: [],
-    accountingPeriod: null
+    accountingPeriod: null,
   });
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export const CreateDebtCenter = () => {
       setInitialValues((prev) => ({
         ...prev,
         accountingPeriod: activeAccountingPeriod,
-      }))
+      }));
     }
   }, [activeAccountingPeriod, initialValues.accountingPeriod]);
 

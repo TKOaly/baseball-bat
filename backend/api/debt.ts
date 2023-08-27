@@ -1,19 +1,18 @@
 import { Router, route, router, Parser } from 'typera-express';
 import { AuthService } from '../auth-middleware';
-import { CreateDebtOptions, DebtService } from '../services/debt';
+import { DebtService } from '../services/debt';
 import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response';
-import { validate, v4 as uuidv4 } from 'uuid';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, dbDateString, Debt, DebtComponent, DebtPatch, Email, emailIdentity, euro, internalIdentity, isPaymentInvoice, NewDebt, NewDebtTag, PayerProfile, Payment, tkoalyIdentity } from '../../common/types';
+import { convertToDbDate, dateString, dbDateString, Debt, DebtPatch, Email, euro, NewDebtTag } from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
 import { EmailService } from '../services/email';
-import { format, isBefore, parse, parseISO, subDays } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { pipe } from 'fp-ts/lib/function';
 import * as E from 'fp-ts/lib/Either';
 import * as A from 'fp-ts/lib/Array';
@@ -76,37 +75,37 @@ const createDebtPayload = t.intersection([
 @Service()
 export class DebtApi {
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject('redis')
-  redis: RedisClientType;
+    redis: RedisClientType;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   @Inject(() => JobService)
-  jobService: JobService;
+    jobService: JobService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
+    debtCentersService: DebtCentersService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   @Inject(() => AccountingService)
-  accountingService: AccountingService;
+    accountingService: AccountingService;
 
   private createDebtComponent() {
     return route
@@ -228,7 +227,7 @@ export class DebtApi {
         if (!accountingPeriodOpen) {
           return badRequest({
             message: `Accounting period ${ctx.body.accountingPeriod} is not open.`,
-          })
+          });
         }
 
         if (typeof payload.center === 'string') {
@@ -265,8 +264,8 @@ export class DebtApi {
             }),
         );
 
-        let dueDate = payload.dueDate ?? null;
-        let date = payload.date ?? null;
+        const dueDate = payload.dueDate ?? null;
+        const date = payload.date ?? null;
 
         if ((payload.paymentCondition || payload.paymentCondition === 0) && payload.dueDate) {
           return badRequest({
@@ -429,7 +428,7 @@ export class DebtApi {
       .handler(async (ctx) => {
         if (ctx.body.paymentCondition && ctx.body.dueDate) {
           return badRequest({
-            "message": "Payment condition and due date cannot be defined simultanously.",
+            'message': 'Payment condition and due date cannot be defined simultanously.',
           });
         }
 
@@ -450,7 +449,7 @@ export class DebtApi {
 
           if (!date) {
             return badRequest({
-              message: "Invalid date.",
+              message: 'Invalid date.',
             });
           }
         }
@@ -499,100 +498,6 @@ export class DebtApi {
   }
 
   private massCreateDebts() {
-    const resolvePayer = async (
-      { email, name, tkoalyUserId }: { email?: string, name?: string, tkoalyUserId?: number },
-      token: string,
-      dryRun: boolean,
-    ): Promise<PayerProfile | null> => {
-      if (tkoalyUserId) {
-        const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(tkoalyUserId));
-
-        if (payer) {
-          return payer;
-        }
-      }
-
-      if (email) {
-        const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email));
-
-        if (payer) {
-          return payer;
-        }
-
-        const user = await this.usersService.getUpstreamUserByEmail(email, token);
-
-        if (user) {
-          if (dryRun) {
-            return {
-              id: internalIdentity(''),
-              email: user.email,
-              emails: [],
-              name: user.screenName,
-              tkoalyUserId: tkoalyIdentity(user.id),
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              stripeCustomerId: '',
-              disabled: false,
-            };
-          } else {
-            return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token);
-          }
-        }
-
-        if (name) {
-          if (dryRun) {
-            return {
-              id: internalIdentity(''),
-              email,
-              name,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              emails: [],
-              stripeCustomerId: '',
-              disabled: false,
-            };
-          } else {
-            const payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name });
-            return payer;
-          }
-        }
-      }
-
-      return null;
-    };
-
-    const resolveDebtCenter = async (debtCenter: string, dryRun: boolean, accountingPeriod: number) => {
-      if (validate(debtCenter)) {
-        const byId = await this.debtCentersService.getDebtCenter(debtCenter);
-        return byId;
-      }
-
-      const byName = await this.debtCentersService.getDebtCenterByName(debtCenter);
-
-      if (byName) {
-        return byName;
-      }
-
-      if (dryRun) {
-        return {
-          id: '',
-          name: debtCenter,
-          accountingPeriod,
-          description: '',
-          url: '',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      } else {
-        return await this.debtCentersService.createDebtCenter({
-          name: debtCenter,
-          accountingPeriod,
-          description: '',
-          url: '',
-        });
-      }
-    };
-
     return route
       .post('/mass-create')
       .use(this.authService.createAuthMiddleware())
@@ -635,7 +540,7 @@ export class DebtApi {
         dryRun: t.boolean,
       })))
       .handler(async (ctx) => {
-        let { debts, defaults, dryRun, components } = ctx.body;
+        const { debts, defaults, dryRun, components } = ctx.body;
 
         defaults.tags = [
           `mass-import-${format(new Date(), 'ddMMyyyy-HHmmss')}`,
@@ -677,8 +582,6 @@ export class DebtApi {
         if (!total) {
           return internalServerError();
         }
-
-        const states = await Promise.all(flow.children.map((child) => child.job.getState()));
 
         const result = flow.job.returnvalue?.result === 'success'
           ? flow.job.returnvalue?.data?.debts
@@ -772,7 +675,7 @@ export class DebtApi {
         let debts: null | Debt[] = null;
 
         if (ctx.body.debts !== null) {
-          let results = await Promise.all(ctx.body.debts.map(async (d) => this.debtService.getDebt(d)));
+          const results = await Promise.all(ctx.body.debts.map(async (d) => this.debtService.getDebt(d)));
 
           if (results.some((d) => d === null)) {
             return notFound({

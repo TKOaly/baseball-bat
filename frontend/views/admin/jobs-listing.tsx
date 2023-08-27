@@ -1,7 +1,7 @@
-import { format, formatDuration, intervalToDuration } from "date-fns";
-import { useLocation } from "wouter";
-import { useGetJobsQuery } from "../../api/jobs";
-import { TableView } from "../../components/table-view";
+import { format, formatDuration } from 'date-fns';
+import { useLocation } from 'wouter';
+import { useGetJobsQuery } from '../../api/jobs';
+import { TableView } from '../../components/table-view';
 
 export const JobsListing = () => {
   const { data: jobs } = useGetJobsQuery(null, { pollingInterval: 100 });
@@ -17,7 +17,7 @@ export const JobsListing = () => {
           {
             name: 'Time',
             getValue: (job) => new Date(job.time),
-            render: (time) => format(time, 'dd.MM.yyyy HH:mm:ss')
+            render: (time) => format(time, 'dd.MM.yyyy HH:mm:ss'),
           },
           {
             name: 'Name',
@@ -26,7 +26,7 @@ export const JobsListing = () => {
               <div style={{ paddingLeft: `${depth * 1.5}em` }}>
                 {value}
               </div>
-            )
+            ),
           },
           {
             name: 'Duration',
@@ -61,7 +61,7 @@ export const JobsListing = () => {
                 </div>
               );
             },
-          }
+          },
         ]}
       />
     </div>

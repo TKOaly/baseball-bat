@@ -11,7 +11,6 @@ import { PgClient } from '../backend/db';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisClientType } from 'redis';
-import { EventEmitter } from 'events';
 import { AppBus } from '../backend/orchestrator';
 
 export type AppTestFn = TestFn<{
@@ -30,7 +29,9 @@ export function createTestFunc(): AppTestFn {
       migrationsTable: '__migrations',
       direction: 'up',
       dir: path.resolve(__dirname, '../../migrations'),
-      log: () => {},
+      log: () => {
+        return;
+      },
     });
 
     const client = PgClient.create(container.getConnectionUri());
@@ -65,8 +66,8 @@ export function createTestFunc(): AppTestFn {
       { container: redisContainer, client: redisClient },
       { container: postgresContainer, client: postgresClient },
     ] = await Promise.all([
-        setupRedis(),
-        setupPostgres(),
+      setupRedis(),
+      setupPostgres(),
     ]);
 
     t.context.testcontainers = [redisContainer, postgresContainer];

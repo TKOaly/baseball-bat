@@ -13,16 +13,16 @@ import { PaymentService } from '../services/payements';
 @Service()
 export class ReportApi {
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => ReportService)
-  reportService: ReportService
+    reportService: ReportService;
 
   @Inject(() => DebtService)
-  debtService: DebtService
+    debtService: DebtService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService
+    paymentService: PaymentService;
 
   private getReport() {
     return route
@@ -94,7 +94,7 @@ export class ReportApi {
 
         return ok();
         //return ok(report);
-      })
+      });
   }
 
   private generatePaymentLedgerReport() {

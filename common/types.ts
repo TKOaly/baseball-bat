@@ -544,60 +544,6 @@ export type BankTransaction = Omit<FromDbType<DbBankTransaction>, 'amount' | 'ot
   }
 }
 
-type Explode<T> = keyof T extends infer K
-  ? K extends unknown
-  ? { [I in keyof T]: I extends K ? T[I] : never }
-  : never
-  : never;
-
-type AtMostOne<T> = Explode<Partial<T>>;
-type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
-type ExactlyOne<T> = AtMostOne<T> & AtLeastOne<T>
-
-const exactlyOne = <T extends t.Props>(props: T) => new t.Type<
-  ExactlyOne<{ [K in keyof T]: t.TypeOf<T[K]> }>,
-  ExactlyOne<{ [K in keyof T]: t.TypeOf<T[K]> }>,
-  unknown
->(
-  'exactlyOne',
-  (input: unknown): input is ExactlyOne<T> => {
-    if (typeof input !== 'object' || input === null) {
-      return false;
-    }
-
-    const keys = Object.keys(input);
-
-    if (keys.length !== 1) {
-      return false;
-    }
-
-    if (!(keys[0] in props)) {
-      return false;
-    }
-
-    return true;
-  },
-  (input, context) => {
-    if (typeof input !== 'object' || input === null) {
-      return t.failure(input, context);
-    }
-
-    const keys = Object.keys(input);
-
-    if (keys.length !== 1) {
-      return t.failure(input, context);
-    }
-
-    if (!(keys[0] in props)) {
-      return t.failure(input, context);
-    }
-
-    return t.success(input as ExactlyOne<T>);
-  },
-  t.identity,
-);
-
-
 const newBankTransaction = t.intersection([
   t.type({
     id: t.string,

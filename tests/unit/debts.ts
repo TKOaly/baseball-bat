@@ -1,16 +1,15 @@
-import { createTestFunc, uuidValidator } from "../common";
-import { expect, mockObject } from "earl";
-import { spy, verify, anything } from "ts-mockito"; 
-import { faker } from "@faker-js/faker";
-import { TestHelper } from "../helper";
-import { DebtService } from "../../backend/services/debt";
-import { euro } from "../../common/currency";
-import { DebtCentersService } from "../../backend/services/debt_centers";
-import { format, addDays, isSameDay, isToday, subDays } from "date-fns";
-import { EmailService, IEmailTransport } from "../../backend/services/email";
-import { JobService } from "../../backend/services/jobs";
-import { PgClient } from "../../backend/db";
-import { PaymentService } from "../../backend/services/payements";
+import { createTestFunc, uuidValidator } from '../common';
+import { expect, mockObject } from 'earl';
+import { faker } from '@faker-js/faker';
+import { TestHelper } from '../helper';
+import { DebtService } from '../../backend/services/debt';
+import { euro } from '../../common/currency';
+import { DebtCentersService } from '../../backend/services/debt_centers';
+import { format, addDays, isSameDay, isToday, subDays } from 'date-fns';
+import { EmailService, IEmailTransport } from '../../backend/services/email';
+import { JobService } from '../../backend/services/jobs';
+import { PgClient } from '../../backend/db';
+import { PaymentService } from '../../backend/services/payements';
 
 const test = createTestFunc();
 
@@ -211,7 +210,7 @@ test('Reminders should not be sent for draft debts', async (t) => {
     centerId: center.id,
   };
 
-  let debt = await debts.createDebt(debtOpts);
+  await debts.createDebt(debtOpts);
 
   await debts.sendAllReminders(false, false);
 
@@ -283,7 +282,7 @@ test('Emails should be sent for published debts', async (t) => {
     centerId: center.id,
   };
 
-  let unpublishedDebt = await debts.createDebt(unpublishedDebtOpts);
+  await debts.createDebt(unpublishedDebtOpts);
 
   await debts.publishDebt(debt.id);
 
@@ -357,7 +356,7 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
     centerId: center.id,
   };
 
-  let debt = await debts.createDebt(debtOpts);
+  const debt = await debts.createDebt(debtOpts);
 
   await debts.publishDebt(debt.id);
 
@@ -373,7 +372,7 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
     centerId: center.id,
   };
 
-  const unpublishedDebt = await debts.createDebt(unpublishedDebtOpts);
+  await debts.createDebt(unpublishedDebtOpts);
 
   const paidDebtOpts = {
     name: 'Paid Debt',

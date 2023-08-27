@@ -37,10 +37,10 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
 @Service()
 export class BankingService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   async createBankAccount(account: BankAccount) {
     await this.pg.any(sql`
@@ -150,7 +150,7 @@ export class BankingService {
 
     await Promise.all(
       transactions
-        .map((transaction) => this.paymentService.createPaymentEventFromTransaction(transaction, paymentId))
+        .map((transaction) => this.paymentService.createPaymentEventFromTransaction(transaction, paymentId)),
     );
   }
 

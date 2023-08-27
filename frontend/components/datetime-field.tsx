@@ -2,15 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { Calendar } from 'react-feather';
 import { parse, format, isMatch } from 'date-fns';
-import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 import 'react-day-picker/dist/style.css';
-import { autoUpdate, FloatingPortal, useClick, useDismiss, useFloating, useInteractions } from '@floating-ui/react-dom-interactions';
+import { FloatingPortal, useClick, useDismiss, useFloating, useInteractions } from '@floating-ui/react-dom-interactions';
 
 export const DateField = ({ value, allowEmpty = true, onChange, format: formatString = 'dd.MM.yyyy', ...props }) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const ref = useRef();
-  // useOutsideEventListener(ref, 'click', calendarOpen, () => setCalendarOpen(false));
 
   const [displayValue, setDisplayValue] = useState('');
 

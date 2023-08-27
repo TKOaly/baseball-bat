@@ -1,11 +1,10 @@
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import { Button } from "../components/button";
-import { useState } from "react";
-import { useGetDebtsByPaymentQuery } from "../api/debt";
-import { euro, formatEuro, sumEuroValues } from "../../common/currency";
-import { useTranslation } from "react-i18next";
-import { PaymentBreakdown } from "../components/payment-breakdown";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { Button } from '../components/button';
+import { useState } from 'react';
+import { useGetDebtsByPaymentQuery } from '../api/debt';
+import { useTranslation } from 'react-i18next';
+import { PaymentBreakdown } from '../components/payment-breakdown';
 
 export interface Props {
   params: {

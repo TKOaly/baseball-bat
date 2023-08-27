@@ -1,8 +1,8 @@
-import { PayerService } from "../../backend/services/payer";
-import { emailIdentity, tkoalyIdentity, UpstreamUser } from "../../common/types";
-import { expect } from "earl";
-import { createTestFunc } from "../common";
-import { cents } from "../../common/currency";
+import { PayerService } from '../../backend/services/payer';
+import { emailIdentity, tkoalyIdentity, UpstreamUser } from '../../common/types';
+import { expect } from 'earl';
+import { createTestFunc } from '../common';
+import { cents } from '../../common/currency';
 
 const test = createTestFunc();
 
@@ -303,7 +303,7 @@ test('Updating payer preferences', async (t) => {
     hasConfirmedMembership: true,
     uiLanguage: 'fi',
     emailLanguage: 'fi',
-  })
+  });
 
   const updated = await payers.getPayerPreferences(created.id);
 
@@ -345,14 +345,14 @@ test('Getting and updating payer emails', async (t) => {
     priority: 'default',
     source: 'user',
     payerId: created.id,
-  })
+  });
 
   await payers.addPayerEmail({
     email: 'test+disabled@example.org',
     priority: 'disabled',
     source: 'tkoaly',
     payerId: created.id,
-  })
+  });
 
   const emailsAfter = await payers.getPayerEmails(created.id);
 

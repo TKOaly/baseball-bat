@@ -1,20 +1,20 @@
-import { Inject, Service } from "typedi";
-import { PgClient } from "../db";
+import { Inject, Service } from 'typedi';
+import { PgClient } from '../db';
 import * as t from 'io-ts';
-import * as puppeteer from "puppeteer";
-import { Browser } from "puppeteer";
+import * as puppeteer from 'puppeteer';
+import { Browser } from 'puppeteer';
 import sql from 'sql-template-strings';
-import { Config } from "../config";
+import { Config } from '../config';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as uuid from 'uuid';
-import { dbDateString, DbReport, InternalIdentity, internalIdentity, Report } from "../../common/types";
-import ejs from "ejs";
-import { cents, euro, formatEuro, sumEuroValues } from "../../common/currency";
+import { DbReport, InternalIdentity, internalIdentity, Report } from '../../common/types';
+import ejs from 'ejs';
+import { cents, euro, formatEuro, sumEuroValues } from '../../common/currency';
 import * as datefns from 'date-fns';
-import { DebtService } from "./debt";
-import { PaymentService } from "./payements";
-import { isRight } from "fp-ts/lib/Either";
+import { DebtService } from './debt';
+import { PaymentService } from './payements';
+import { isRight } from 'fp-ts/lib/Either';
 
 export type CreateReportOptions = {
   template: string
@@ -55,16 +55,16 @@ const formatReportWithHistory = (db: DbReport): Report => ({
 @Service()
 export class ReportService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   _browser: Browser | null = null;
 
@@ -80,7 +80,7 @@ export class ReportService {
     return this._browser;
   }
 
-  private async render(source: string, scale: number = 0.8) {
+  private async render(source: string, scale = 0.8) {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
 

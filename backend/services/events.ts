@@ -97,7 +97,7 @@ export class EventsService {
         .map(parseApiEvent)
         .filter(event => !event.deleted);
     } catch (err) {
-      console.error(err)
+      console.error(err);
       throw new Error('Failed to fetch events');
     }
   }

@@ -190,7 +190,11 @@ export class EmailService {
       production: '/app/backend/templates',
       development: path.resolve(__dirname, '../templates'),
       testing: path.resolve(__dirname, '../../../backend/templates'),
-    }[process.env.NODE_ENV ?? 'development']!
+    }[process.env.NODE_ENV ?? 'development'];
+
+    if (templatesDir === undefined) {
+      throw new Error(`Unknown NODE_ENV "${process.env.NODE_ENV}"`);
+    }
 
     const files: Array<string> = fs.readdirSync(templatesDir);
 
@@ -198,7 +202,7 @@ export class EmailService {
       files,
       map((filename): Template => {
         const parts = filename.split('.');
-        const filetype = parts.pop() ?? ''
+        const filetype = parts.pop() ?? '';
         const name = parts.join('.');
         const filepath = path.join(templatesDir, filename);
         const content = fs.readFileSync(filepath, { encoding: 'utf8' });

@@ -1,4 +1,4 @@
-import { Link, Redirect, Route, Switch, useLocation } from 'wouter';
+import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { CreateDebtCenter } from './create-debt-center';
 import { CreateDebtCenterFromEvent } from './create-debt-center-from-event';
 import { Notification } from '../../components/notification';
@@ -22,7 +22,6 @@ import { EmailsListing } from './emails-listing';
 import { EmailDetails } from './email-details';
 import { BankAccount } from './bank-account';
 import { CreateBankAccount } from './create-bank-account';
-import { X, AlertTriangle, CornerDownLeft, Info, CheckCircle, Loader } from 'react-feather';
 import { useEffect, useState } from 'react';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
 import { TextField } from '../../components/text-field';

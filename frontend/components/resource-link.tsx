@@ -1,7 +1,7 @@
-import { ExternalLink } from "react-feather";
-import { usePopperTooltip } from "react-popper-tooltip";
-import { useLocation } from "wouter";
-import { useFetchResourceDetails } from "../hooks/use-fetch-resource-details";
+import { ExternalLink } from 'react-feather';
+import { usePopperTooltip } from 'react-popper-tooltip';
+import { useLocation } from 'wouter';
+import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
 
 const RESOURCE_URL_FORMATS = {
   debt: '/admin/debts/%',
@@ -48,7 +48,7 @@ export const ResourceLink = (props: { type: string, id: string }) => {
                   if (details.type === 'text') {
                     value = details.value;
                   } else if (details.type === 'resource') {
-                    value = <ResourceLink type={details.resourceType} id={details.id} />
+                    value = <ResourceLink type={details.resourceType} id={details.id} />;
                   }
 
                   return (

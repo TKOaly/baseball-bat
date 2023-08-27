@@ -12,7 +12,6 @@ import { validateBody } from '../validate-middleware';
 import { euro, formatEuro, sumEuroValues } from '../../common/currency';
 import { EmailService } from '../services/email';
 import { Config } from '../config';
-import { parseISO } from 'date-fns';
 import { BankingService } from '../services/banking';
 import { headers } from 'typera-express/parser';
 import Stripe from 'stripe';
@@ -20,31 +19,31 @@ import Stripe from 'stripe';
 @Service()
 export class PaymentsApi {
   @Inject(() => Config)
-  config: Config;
+    config: Config;
 
   @Inject('stripe')
-  stripe: Stripe;
+    stripe: Stripe;
 
   @Inject(() => PaymentService)
-  paymentService: PaymentService;
+    paymentService: PaymentService;
 
   @Inject(() => BankingService)
-  bankingService: BankingService;
+    bankingService: BankingService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   @Inject(() => DebtService)
-  debtService: DebtService;
+    debtService: DebtService;
 
   @Inject(() => EmailService)
-  emailService: EmailService;
+    emailService: EmailService;
 
   private getPayments() {
     return route
@@ -124,9 +123,6 @@ export class PaymentsApi {
           return debt;
         }));
 
-        const totals = await Promise.all(debts.map(d => this.debtService.getDebtTotal(d.id)));
-        const total = totals.reduce(sumEuroValues, euro(0));
-
         if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
           return badRequest('All debts do not have the same payer');
         }
@@ -143,7 +139,7 @@ export class PaymentsApi {
           title: 'Combined invoice',
           message: 'Invoice for the following debts:\n' + (debts.map(d => ` - ${d.name} (${formatEuro(d.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))})`).join('\n')),
         }, {
-            sendNotification: ctx.body.sendEmail,
+          sendNotification: ctx.body.sendEmail,
         });
 
         return ok(payment);
@@ -234,53 +230,43 @@ export class PaymentsApi {
 
         let intent;
 
-        switch (event.type) {
-          case 'payment_intent.succeeded':
-            intent = event.data.object as any as Stripe.PaymentIntent;
+        if (event.type === 'payment_intent.succeeded') {
+          intent = event.data.object as any as Stripe.PaymentIntent;
 
-            const paymentId = intent.metadata.paymentId;
+          const paymentId = intent.metadata.paymentId;
 
-            if (intent.currency !== 'eur') {
-              return internalServerError('Currencies besides EUR are not supported!');
-            }
+          if (intent.currency !== 'eur') {
+            return internalServerError('Currencies besides EUR are not supported!');
+          }
 
-            await this.paymentService.createPaymentEvent(paymentId, {
-              type: 'payment',
-              amount: {
-                currency: 'eur',
-                value: intent.amount,
+          await this.paymentService.createPaymentEvent(paymentId, {
+            type: 'payment',
+            amount: {
+              currency: 'eur',
+              value: intent.amount,
+            },
+          });
+        } else if (event.type === 'payment_intent.payment_failed') {
+          intent = event.data.object as any as Stripe.PaymentIntent;
+
+          await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
+            type: 'failed',
+            amount: euro(0),
+          });
+        } else if (event.type === 'payment_intent.processing') {
+          intent = event.data.object as any as Stripe.PaymentIntent;
+
+          await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
+            type: 'other',
+            amount: euro(0),
+            data: {
+              stripe: {
+                type: 'processing',
               },
-            });
-
-            break;
-
-          case 'payment_intent.payment_failed':
-            intent = event.data.object as any as Stripe.PaymentIntent;
-
-            await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
-              type: 'failed',
-              amount: euro(0),
-            });
-
-            break;
-
-          case 'payment_intent.processing':
-            intent = event.data.object as any as Stripe.PaymentIntent;
-
-            await this.paymentService.createPaymentEvent(intent.metadata.paymentId, {
-              type: 'other',
-              amount: euro(0),
-              data: {
-                stripe: {
-                  type: 'processing',
-                },
-              },
-            });
-
-            break;
-
-          default:
-            console.log('Other Stripe event: ' + event.type, event);
+            },
+          });
+        } else {
+          console.log('Other Stripe event: ' + event.type, event);
         }
 
         return ok();

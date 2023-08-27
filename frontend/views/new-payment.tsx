@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { euro, formatEuro, sumEuroValues } from '../../common/currency';
 import debtApi from '../api/debt';
 import { createMultiFetchHook } from '../hooks/create-multi-fetch-hook';
 import { useAppSelector } from '../store';

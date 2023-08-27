@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Timeline } from '../components/timeline';
 import { useGetPaymentQuery } from '../api/payments';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
-import { formatEuro, euro, sumEuroValues, cents } from '../../common/currency';
+import { formatEuro, euro, sumEuroValues } from '../../common/currency';
 import { isPaymentInvoice, Payment } from '../../common/types';
 import { differenceInDays } from 'date-fns';
 
@@ -18,11 +18,6 @@ const formatDateRelative = (date: Date | string) => {
 
   return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), 'day');
 };
-
-type InvoiceData = {
-  reference_number: string
-  due_date: string
-}
 
 const InvoiceDetails = ({ payment }: { payment: Payment }) => {
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });

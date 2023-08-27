@@ -1,13 +1,13 @@
 import { Service, Inject } from 'typedi';
 import { RedisClientType } from 'redis';
-import { ConnectionOptions, FlowJob, FlowProducer, Job, Processor, Queue, QueueEvents, Worker, WorkerOptions } from 'bullmq';
+import { ConnectionOptions, FlowJob, FlowProducer, Processor, Queue, QueueEvents, Worker, WorkerOptions } from 'bullmq';
 import { Config } from '../config';
 import { AppBus } from '../orchestrator';
 
 @Service()
 export class JobService {
   @Inject('redis')
-  redis: RedisClientType;
+    redis: RedisClientType;
 
   queues: Record<string, Queue> = {};
 

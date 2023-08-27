@@ -38,7 +38,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: users } = useGetUpstreamUsersQuery();
   const { data: payers } = useGetPayersQuery();
   const { data: debtCenters } = useGetDebtCentersQuery();
-  const [debtCenterId, setDebtCenterId] = useState(props.debtCenterId)
+  const [debtCenterId, setDebtCenterId] = useState(props.debtCenterId);
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
   const [createDebt] = useCreateDebtMutation();
   const showCreatePayerDialog = useDialog(CreatePayerDialog);
@@ -153,7 +153,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       setInitialValues((prev) => ({
         ...prev,
         accountingPeriod: activeAccountingPeriod,
-      }))
+      }));
     }
   }, [activeAccountingPeriod, initialValues.accountingPeriod]);
 

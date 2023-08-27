@@ -1,9 +1,7 @@
 // import { Stripe } from 'stripe'
 import {
   DbPayerProfile,
-  DbPaymentMethod,
   EmailIdentity,
-  Event,
   ExternalIdentity,
   InternalIdentity,
   isEmailIdentity,
@@ -11,8 +9,6 @@ import {
   isTkoalyIdentity,
   PayerIdentity,
   PayerProfile,
-  PaymentMethod,
-  PaymentStatus,
   TkoalyIdentity,
   internalIdentity,
   tkoalyIdentity,
@@ -65,18 +61,6 @@ export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerE
   total: profile.total === undefined ? undefined : cents(parseInt('' + profile.total)),
 });
 
-const formatPaymentMethod = (method: DbPaymentMethod): PaymentMethod => ({
-  id: method.id,
-  payerId: internalIdentity(method.payer_id),
-  stripePaymentMethodId: method.stripe_pm_id,
-  brand: method.brand,
-  last4: method.last4,
-  expMonth: method.exp_month,
-  expYear: method.exp_year,
-  createdAt: method.created_at,
-  updatedAt: method.updated_at,
-});
-
 const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
   payerId: internalIdentity(email.payer_id),
   email: email.email,
@@ -89,16 +73,16 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
 @Service()
 export class PayerService {
   @Inject(() => PgClient)
-  pg: PgClient;
+    pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject(() => EventsService)
-  eventsService: EventsService;
+    eventsService: EventsService;
 
   @Inject(() => UsersService)
-  usersService: UsersService;
+    usersService: UsersService;
 
   async getPayerProfiles() {
     const dbProfiles = await this.pg

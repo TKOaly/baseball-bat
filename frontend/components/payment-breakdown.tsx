@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
-import { cents, euro, formatEuro, sumEuroValues } from "../../common/currency";
-import { Debt } from "../../common/types";
+import { useTranslation } from 'react-i18next';
+import { cents, euro, formatEuro, sumEuroValues } from '../../common/currency';
+import { Debt } from '../../common/types';
 
 export type Props = {
   debts: Debt[],

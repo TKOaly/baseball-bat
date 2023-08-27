@@ -1,7 +1,7 @@
-import { Inject, Service } from "typedi";
-import { faker } from "@faker-js/faker";
-import { PayerService } from "../backend/services/payer";
-import { emailIdentity, EuroValue } from "../common/types";
+import { Inject, Service } from 'typedi';
+import { faker } from '@faker-js/faker';
+import { PayerService } from '../backend/services/payer';
+import { emailIdentity } from '../common/types';
 
 export type CreatePayerOpts = {
   email?: string,
@@ -12,7 +12,7 @@ export type CreatePayerOpts = {
 @Service()
 export class TestHelper {
   @Inject(() => PayerService)
-  payers: PayerService;
+    payers: PayerService;
 
   async createPayer(opts?: CreatePayerOpts) {
     const firstName = opts?.firstName ?? faker.person.firstName();

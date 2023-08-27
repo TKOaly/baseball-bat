@@ -1,9 +1,9 @@
-import { format, formatDuration } from "date-fns";
-import { useLocation } from "wouter";
-import { useGetJobQuery } from "../../api/jobs";
-import { Breadcrumbs } from "../../components/breadcrumbs";
-import { TableView } from "../../components/table-view";
-import { Page, Header, Title, Actions, ActionButton, Section, Field, TextField, DateField, CurrencyField, LinkField, BadgeField, SectionDescription, SectionContent } from '../../components/resource-page/resource-page';
+import { format, formatDuration } from 'date-fns';
+import { useLocation } from 'wouter';
+import { useGetJobQuery } from '../../api/jobs';
+import { Breadcrumbs } from '../../components/breadcrumbs';
+import { TableView } from '../../components/table-view';
+import { Page, Header, Title, Section, TextField, DateField } from '../../components/resource-page/resource-page';
 
 export const JobDetails = ({ queue, id }) => {
   const { data: job } = useGetJobQuery({ queue, id }, { pollingInterval: 500 });
@@ -42,7 +42,7 @@ export const JobDetails = ({ queue, id }) => {
             {
               name: 'Time',
               getValue: (job) => new Date(job.time),
-              render: (time) => format(time, 'dd.MM.yyyy HH:mm:ss')
+              render: (time) => format(time, 'dd.MM.yyyy HH:mm:ss'),
             },
             {
               name: 'Name',
@@ -51,7 +51,7 @@ export const JobDetails = ({ queue, id }) => {
                 <div style={{ paddingLeft: `${depth * 1.5}em` }}>
                   {value}
                 </div>
-              )
+              ),
             },
             {
               name: 'Duration',
@@ -80,10 +80,10 @@ export const JobDetails = ({ queue, id }) => {
                   </div>
                 );
               },
-            }
+            },
           ]}
         />
       </Section>
     </Page>
   );
-}
+};

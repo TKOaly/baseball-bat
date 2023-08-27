@@ -1,7 +1,6 @@
 import { Router, route, router } from 'typera-express';
 import { ok } from 'typera-express/response';
 import { EventsService } from '../services/events';
-import { internalIdentity } from '../../common/types';
 import { AuthService } from '../auth-middleware';
 import { PayerService } from '../services/payer';
 import { Service, Inject } from 'typedi';
@@ -10,13 +9,13 @@ import * as dfn from 'date-fns';
 @Service()
 export class EventsApi {
   @Inject(() => EventsService)
-  eventsService: EventsService;
+    eventsService: EventsService;
 
   @Inject(() => PayerService)
-  payerService: PayerService;
+    payerService: PayerService;
 
   @Inject(() => AuthService)
-  authService: AuthService;
+    authService: AuthService;
 
   /*getEvents() {
     return route

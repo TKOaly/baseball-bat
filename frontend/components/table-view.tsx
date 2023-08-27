@@ -4,7 +4,6 @@ import { identity } from 'fp-ts/lib/function';
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
 import { difference, concat, uniq } from 'remeda';
-import { Button } from './button';
 import { Dropdown } from './dropdown';
 import { FilledDisc } from './filled-disc';
 
@@ -263,6 +262,7 @@ const TableRow = ({
       </div>
       { expandedRows.includes(data.key) && sortedChildren.map((childData) => (
         <TableRow
+          key={childData.key}
           data={childData}
           depth={depth + 1}
           rowIndex={1}

@@ -3,7 +3,7 @@ import rtkApi from './rtk-api';
 const jobsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getJobs: builder.query<any, void>({
-      query: () => `/jobs/list`,
+      query: () => '/jobs/list',
     }),
 
     getJob: builder.query<any, { queue: string, id: string }>({
