@@ -21,7 +21,7 @@ jobs:
         run: yarn
 
       - name: Run tests
-        run: yarn ava -s --timeout=30s --no-worker-threads
+        run: yarn ava --timeout=30s --no-worker-threads
         env:
           NODE_ENV: testing
 
