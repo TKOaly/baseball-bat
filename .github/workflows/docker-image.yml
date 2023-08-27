@@ -98,12 +98,13 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    
+    if: ${{ github.event_name == 'release' }}
 
     needs: [build, test]
 
     steps:
       - name: Trigger deployment
-        if: ${{ github.event_name == 'release' }}
         uses: aurelien-baudet/workflow-dispatch@v2
         with:
           token: ${{ secrets.DEPLOYMENT_PAT }}
