@@ -8,7 +8,8 @@
     "build:server": "tsc",
     "build:frontend": "parcel build --no-scope-hoist ./public/index.html --dist-dir ./web-dist",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
-    "test": "NODE_ENV=testing TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1 c8 ava -s --timeout=30s --no-worker-threads"
+    "test": "NODE_ENV=testing ava -s --timeout=30s",
+    "coverage": "c8 yarn test"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^1.0.1",
