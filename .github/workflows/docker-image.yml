@@ -23,7 +23,6 @@ jobs:
       - name: Run tests
         run: yarn ava -s --timeout=30s --no-worker-threads
         env:
-          DEBUG: testcontainers*
           NODE_ENV: testing
 
   build:
