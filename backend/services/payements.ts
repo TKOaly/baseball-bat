@@ -449,10 +449,10 @@ export class PaymentService {
       if (typeof payment.data === 'function') {
         const callback = payment.data as any as ((p: Payment) => D);
         const data = callback(formatPayment({ ...createdPayment, data: {} }));
-        await tx.do(sql`
-          UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id}
+        const [{ data: storedData }] = await tx.do<{ data: Record<string, never> }>(sql`
+          UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id} RETURNING data
         `);
-        createdPayment.data = data;
+        createdPayment.data = storedData;
       }
 
       await Promise.all(

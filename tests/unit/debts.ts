@@ -444,3 +444,75 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
     subject: '[Maksumuistutus / Payment Notice] Published Debt',
   })));
 });
+
+test.only('Emails should not be sent for backdated debts when publishing', async (t) => {
+  const { container } = t.context;
+
+  const debts = container.get(DebtService);
+  const centers = container.get(DebtCentersService);
+  const helper = container.get(TestHelper);
+  const emails = container.get(EmailService);
+
+  const payer = await helper.createPayer();
+
+  const debtCenterOpts = {
+    name: faker.lorem.words(4),
+    description: faker.lorem.words(15),
+    url: faker.internet.url(),
+    accountingPeriod: 2023,
+  };
+
+  const center = await centers.createDebtCenter(debtCenterOpts);
+
+  if (center === null) {
+    t.fail();
+
+    return;
+  }
+
+  const componentOpts = {
+    name: faker.lorem.words(3),
+    amount: euro(10),
+    description: faker.lorem.words(10),
+    debtCenterId: center.id,
+  };
+
+  const component = await debts.createDebtComponent(componentOpts);
+
+  const debtOpts = {
+    name: faker.lorem.word(4),
+    description: faker.lorem.word(10),
+    components: [component.id],
+    accountingPeriod: 2023,
+    payer: payer.id,
+    date: format(subDays(new Date(), 2), 'yyyy-MM-dd') as any,
+    dueDate: format(subDays(new Date(), 1), 'yyyy-MM-dd') as any,
+    paymentCondition: null,
+    tags: [],
+    centerId: center.id,
+  };
+
+  const debt = await debts.createDebt(debtOpts);
+  await debts.publishDebt(debt.id);
+
+  const e = await emails.getEmails();
+
+  expect(e).toHaveLength(0);
+
+  const d = await debts.getDebt(debt.id);
+
+  if (d === null) {
+    t.fail();
+    return;
+  }
+
+  await debts.sendReminder(d);
+
+  const e2 = await emails.getEmails();
+
+  expect(e2).toHaveLength(1);
+
+  expect(e2).toEqual([expect.subset({
+    subject: expect.includes(`[Maksumuistutus / Payment Notice] ${debt.name}`)
+  })]);
+});
