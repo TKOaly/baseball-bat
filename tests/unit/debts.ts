@@ -445,7 +445,7 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
   })));
 });
 
-test.only('Emails should not be sent for backdated debts when publishing', async (t) => {
+test('Emails should not be sent for backdated debts when publishing', async (t) => {
   const { container } = t.context;
 
   const debts = container.get(DebtService);
