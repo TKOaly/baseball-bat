@@ -9,7 +9,9 @@
     "build:frontend": "parcel build --no-scope-hoist ./public/index.html --dist-dir ./web-dist",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
     "test": "NODE_ENV=testing ava -s --no-worker-threads --timeout=30s",
-    "coverage": "c8 yarn test"
+    "coverage": "c8 yarn test",
+    "prettier": "prettier --write --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
+    "prettier:check": "prettier --check --cache './**/*.{js,jsx,ts,tsx,css,mjml}'"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^1.0.1",
