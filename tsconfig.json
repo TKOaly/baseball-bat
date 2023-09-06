@@ -19,7 +19,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "outDir": "build",
-    "jsxImportSource": "react",
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
