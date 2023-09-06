@@ -3,7 +3,7 @@ FROM node:18.17 AS production-build
 WORKDIR /app
 
 COPY package.json .
-COPY package-lock.json .
+COPY yarn.lock .
 RUN yarn install
 
 COPY . .
