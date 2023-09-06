@@ -14,7 +14,17 @@ import { map, reduce } from 'fp-ts/lib/Array';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '../../common/types';
-import { formatEuro, sumEuroValues, euro, cents } from '../../common/currency';
+import {
+  formatEuro,
+  sumEuroValues,
+  euro,
+  cents,
+  EuroValue,
+} from '../../common/currency';
+import {
+  formatBarcode,
+  generateBarcodeImage,
+} from '../../common/virtual-barcode';
 import { formatReferenceNumber } from './payements';
 import { JobService } from './jobs';
 import { Job } from 'bullmq';
@@ -279,6 +289,13 @@ export class EmailService {
         euro,
         cents,
         formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
+        formatBarcode: (
+          iban: string,
+          amount: EuroValue,
+          reference: string,
+          date: Date,
+        ) => formatBarcode(iban, amount.value / 100, reference, date),
+        generateBarcodeImage,
       });
 
     if (type === 'html') {

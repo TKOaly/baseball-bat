@@ -532,6 +532,7 @@ export const isPaymentInvoice = (
     p.data !== null &&
     'reference_number' in p.data &&
     'due_date' in p.data &&
+    // @ts-ignore
     (!('date' in p.data) || typeof p.data.date === 'string')
   );
 };

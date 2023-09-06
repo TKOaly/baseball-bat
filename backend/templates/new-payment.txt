@@ -20,3 +20,5 @@ Reference number:  <%= formatReferenceNumber(referenceNumber) %>
 Receiver name:     TKO-äly ry
 Receiver acccount: FI89 7997 7995 1312 86
 Receiver BIC:      HOLVFIHH
+
+<%- formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate) %>
