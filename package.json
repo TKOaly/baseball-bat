@@ -11,7 +11,8 @@
     "test": "NODE_ENV=testing ava -s --no-worker-threads --timeout=30s",
     "coverage": "c8 yarn test",
     "prettier": "prettier --write --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
-    "prettier:check": "prettier --check --cache './**/*.{js,jsx,ts,tsx,css,mjml}'"
+    "prettier:check": "prettier --check --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
+    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx ."
   },
   "dependencies": {
     "@floating-ui/react-dom": "^1.0.1",
