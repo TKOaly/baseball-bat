@@ -5,7 +5,7 @@ import { useSendEmailsMutation } from '../api/email';
 import { TableView } from './table-view';
 
 export interface Props {
-  emails: Email[]
+  emails: Email[];
 }
 
 export const EmailList = (props: Props) => {
@@ -27,16 +27,16 @@ export const EmailList = (props: Props) => {
         {
           name: 'Created',
           getValue: 'createdAt',
-          render: (value) => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
+          render: value => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Sent',
           getValue: 'sentAt',
-          render: (value) => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
+          render: value => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Status',
-          getValue: (row) => {
+          getValue: row => {
             if (row.draft) {
               return 'Draft';
             }
@@ -50,12 +50,12 @@ export const EmailList = (props: Props) => {
         {
           key: 'send',
           text: 'Send',
-          onSelect: async (emails) => {
+          onSelect: async emails => {
             await sendEmails(emails.map(e => e.id));
           },
         },
       ]}
-      onRowClick={(row) => setLocation(`/admin/emails/${row.id}`)}
+      onRowClick={row => setLocation(`/admin/emails/${row.id}`)}
     />
   );
 };

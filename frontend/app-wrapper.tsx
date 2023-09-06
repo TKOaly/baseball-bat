@@ -16,7 +16,13 @@ import { Landing } from './views/landing';
 import { Main } from './views/main';
 import { UpdatePaymentMethod } from './views/update-payment-method';
 import './style.css';
-import { authenticateSession, bootstrapSession, createSession, destroySession, heartbeat } from './session';
+import {
+  authenticateSession,
+  bootstrapSession,
+  createSession,
+  destroySession,
+  heartbeat,
+} from './session';
 import { Button } from './components/button';
 import { DialogContextProvider } from './components/dialog';
 import { StripePaymentFlow } from './views/stripe-payment-flow';
@@ -25,12 +31,11 @@ import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
 const Navigation = () => {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation();
-  const session = useAppSelector((state) => state.session);
+  const session = useAppSelector(state => state.session);
   const dispatch = useAppDispatch();
 
   const handleLogOut = () => {
-    dispatch(destroySession())
-      .then(() => setLocation('/'));
+    dispatch(destroySession()).then(() => setLocation('/'));
   };
 
   return (
@@ -53,14 +58,17 @@ const Navigation = () => {
       >
         {t('navigation.logOut')}
       </li>
-      {
-        session.accessLevel === 'admin' && (
-          <>
-            <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
-            <li className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0" onClick={() => setLocation('/admin/debt-centers')}>{t('navigation.administration')}</li>
-          </>
-        )
-      }
+      {session.accessLevel === 'admin' && (
+        <>
+          <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
+          <li
+            className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
+            onClick={() => setLocation('/admin/debt-centers')}
+          >
+            {t('navigation.administration')}
+          </li>
+        </>
+      )}
       <>
         <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
         <li
@@ -90,10 +98,10 @@ const PublicLayout = ({ children, sidebars }) => (
   <Provider store={store}>
     <div className="bg-[#fbfbfb] w-screen pb-10 min-h-screen justify-center md:pt-10 gap-5">
       <div className="grid justify-center gap-5 grid-cols-1 md:grid-cols-main">
-        <h1 className="text-center md:mb-5 hidden md:block text-3xl font-bold text-gray-600 md:col-span-3">TKO-äly ry - Maksupalvelu</h1>
-        <div className="flex md:justify-end">
-          {sidebars && <Navigation />}
-        </div>
+        <h1 className="text-center md:mb-5 hidden md:block text-3xl font-bold text-gray-600 md:col-span-3">
+          TKO-äly ry - Maksupalvelu
+        </h1>
+        <div className="flex md:justify-end">{sidebars && <Navigation />}</div>
         <div className="mx-3 md:max-w-[40em] md:w-[40em] flex flex-col items-stretch">
           <div className="rounded-lg bg-white border border-gray-100 shadow-lg flex-grow p-5">
             {children}
@@ -104,7 +112,10 @@ const PublicLayout = ({ children, sidebars }) => (
         </div>
       </div>
       <div className="fixed bottom-0 md:hidden flex items-center bg-white border-t shadow py-2 px-3 w-full">
-        <div className="flex-grow">Valittu 2 maksua.<br /> Yhteensä 33,00 euroa.</div>
+        <div className="flex-grow">
+          Valittu 2 maksua.
+          <br /> Yhteensä 33,00 euroa.
+        </div>
         <Button>Siiry maksamaan</Button>
       </div>
     </div>
@@ -116,7 +127,8 @@ const LazyAdmin = React.lazy(() => import('./views/admin'));
 const useManageSession = () => {
   const authToken = new URLSearchParams(window.location.search).get('token');
   const [location, setLocation] = useLocation();
-  const { bootstrapping, token, authenticated, creatingSession } = useAppSelector((state) => state.session);
+  const { bootstrapping, token, authenticated, creatingSession } =
+    useAppSelector(state => state.session);
   const dispatch = useAppDispatch();
 
   const [allowUnauthenticated] = useRoute('/magic/invalid');
@@ -139,10 +151,9 @@ const useManageSession = () => {
         if (authToken) {
           const redirect = window.localStorage.getItem('redirect') ?? '/';
 
-          dispatch(authenticateSession(authToken))
-            .then(() => {
-              setLocation(redirect);
-            });
+          dispatch(authenticateSession(authToken)).then(() => {
+            setLocation(redirect);
+          });
         } else {
           console.log(allowUnauthenticated);
           if (!allowUnauthenticated) {
@@ -152,11 +163,10 @@ const useManageSession = () => {
       }
 
       if (!token && !creatingSession) {
-        dispatch(createSession())
-          .then(() => {
-            window.localStorage.setItem('redirect', location);
-            setLocation('/auth');
-          });
+        dispatch(createSession()).then(() => {
+          window.localStorage.setItem('redirect', location);
+          setLocation('/auth');
+        });
       }
     }
   }, [bootstrapping, token, authToken, creatingSession, allowUnauthenticated]);
@@ -165,7 +175,7 @@ const useManageSession = () => {
 const Routes = () => {
   const { i18n } = useTranslation();
   const [isAdminRoute] = useRoute('/admin/:rest*');
-  const session = useAppSelector((state) => state.session);
+  const session = useAppSelector(state => state.session);
 
   useManageSession();
 
@@ -176,9 +186,7 @@ const Routes = () => {
   }, [session?.preferences?.uiLanguage]);
 
   if (session.bootstrapping !== 'completed') {
-    return (
-      <Loading />
-    );
+    return <Loading />;
   }
 
   if (isAdminRoute && session.authenticated) {
@@ -203,8 +211,14 @@ const Routes = () => {
             <Route path="/debt/:id" component={DebtDetails} />
             <Route path="/payment/new" component={NewPayment} />
             <Route path="/payment/:id" component={PaymentDetails} />
-            <Route path="/payment/:id/stripe/:secret" component={StripePaymentFlow} />
-            <Route path="/payment/:id/stripe/:secret/return" component={StripePaymentReturnPage} />
+            <Route
+              path="/payment/:id/stripe/:secret"
+              component={StripePaymentFlow}
+            />
+            <Route
+              path="/payment/:id/stripe/:secret/return"
+              component={StripePaymentReturnPage}
+            />
             <Route path="/update-payment-method">
               <UpdatePaymentMethod />
             </Route>

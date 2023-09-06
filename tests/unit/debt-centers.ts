@@ -6,7 +6,7 @@ import { createTestFunc } from '../common';
 
 const test = createTestFunc();
 
-test('Debt center creation works', async (t) => {
+test('Debt center creation works', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   const newCenter = {
@@ -34,7 +34,7 @@ test('Debt center creation works', async (t) => {
   t.is(centerList[0].id, createdCenter.id);
 });
 
-test('Debt center deletion works', async (t) => {
+test('Debt center deletion works', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   let centerList = await centers.getDebtCenters();
@@ -64,7 +64,7 @@ test('Debt center deletion works', async (t) => {
   t.is(centerList.length, 0);
 });
 
-test('Querying debt center by name works', async (t) => {
+test('Querying debt center by name works', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   const centerList = await centers.getDebtCenters();
@@ -89,7 +89,7 @@ test('Querying debt center by name works', async (t) => {
   t.deepEqual(createdCenter, result);
 });
 
-test('Querying debt center by id works', async (t) => {
+test('Querying debt center by id works', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   const centerList = await centers.getDebtCenters();
@@ -114,7 +114,7 @@ test('Querying debt center by id works', async (t) => {
   t.deepEqual(createdCenter, result);
 });
 
-test('Updating debt center works', async (t) => {
+test('Updating debt center works', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   const centerList = await centers.getDebtCenters();
@@ -152,7 +152,7 @@ test('Updating debt center works', async (t) => {
   t.like(queried, updateValues);
 });
 
-test('Updating debt center fails for non-existent id', async (t) => {
+test('Updating debt center fails for non-existent id', async t => {
   const centers = t.context.container.get(DebtCentersService);
 
   const updateValues = {

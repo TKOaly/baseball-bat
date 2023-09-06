@@ -1,10 +1,26 @@
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { useCreditPaymentMutation, useGetPaymentQuery } from '../../api/payments';
+import {
+  useCreditPaymentMutation,
+  useGetPaymentQuery,
+} from '../../api/payments';
 import { Timeline } from '../../components/timeline';
 import { DebtList } from '../../components/debt-list';
 import { formatEuro } from '../../../common/currency';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
-import { Page, Header, Title, Actions, ActionButton, Section, DateField, TextField, BadgeField, SectionDescription, SectionContent, BadgeColor } from '../../components/resource-page/resource-page';
+import {
+  Page,
+  Header,
+  Title,
+  Actions,
+  ActionButton,
+  Section,
+  DateField,
+  TextField,
+  BadgeField,
+  SectionDescription,
+  SectionContent,
+  BadgeColor,
+} from '../../components/resource-page/resource-page';
 import { isPaymentInvoice } from '../../../common/types';
 
 export const PaymentDetails = ({ params }) => {
@@ -16,7 +32,7 @@ export const PaymentDetails = ({ params }) => {
     return <div>Loading...</div>;
   }
 
-  let statusBadge: { text: string, color: BadgeColor } = {
+  let statusBadge: { text: string; color: BadgeColor } = {
     text: 'Unpaid',
     color: 'gray',
   };
@@ -35,16 +51,15 @@ export const PaymentDetails = ({ params }) => {
     };
   }
 
-  const timelineEvents = payment.events
-    .map((e) => ({
-      time: new Date(e.time),
-      title: {
-        'created': 'Payment created',
-        'payment': `Payment of ${formatEuro(e.amount)} received`,
-        'stripe.intent-created': 'Stripe payment flow initiated',
-        'failed': 'Payment failed',
-      }[e.type],
-    }));
+  const timelineEvents = payment.events.map(e => ({
+    time: new Date(e.time),
+    title: {
+      created: 'Payment created',
+      payment: `Payment of ${formatEuro(e.amount)} received`,
+      'stripe.intent-created': 'Stripe payment flow initiated',
+      failed: 'Payment failed',
+    }[e.type],
+  }));
 
   let invoiceDetailsSection = null;
 
@@ -53,7 +68,10 @@ export const PaymentDetails = ({ params }) => {
       <Section title="Invoice Details" columns={2}>
         <DateField label="Invoice Date" value={new Date(payment.data.date)} />
         <DateField label="Due Date" value={new Date(payment.data.due_date)} />
-        <TextField label="Reference Number" value={payment.data.reference_number} />
+        <TextField
+          label="Reference Number"
+          value={payment.data.reference_number}
+        />
       </Section>
     );
   }
@@ -74,7 +92,9 @@ export const PaymentDetails = ({ params }) => {
         </Title>
         <Actions>
           {!payment.credited && (
-            <ActionButton secondary onClick={() => creditPayment(params.id)}>Credit</ActionButton>
+            <ActionButton secondary onClick={() => creditPayment(params.id)}>
+              Credit
+            </ActionButton>
           )}
         </Actions>
       </Header>
@@ -86,9 +106,7 @@ export const PaymentDetails = ({ params }) => {
       </Section>
       {invoiceDetailsSection}
       <Section title="Debts">
-        <SectionDescription>
-
-        </SectionDescription>
+        <SectionDescription></SectionDescription>
         <SectionContent>
           <DebtList debts={debts ?? []} />
         </SectionContent>

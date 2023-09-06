@@ -1,18 +1,29 @@
 import { useRef, useState } from 'react';
 import { ChevronDown } from 'react-feather';
-import { useInteractions, useFloating, useListNavigation, useDismiss, useClick, FloatingPortal, autoUpdate } from '@floating-ui/react-dom-interactions';
+import {
+  useInteractions,
+  useFloating,
+  useListNavigation,
+  useDismiss,
+  useClick,
+  FloatingPortal,
+  autoUpdate,
+} from '@floating-ui/react-dom-interactions';
 import { useOutsideEventListener } from '../hooks/useOutsideEventListener';
 
 type DropdownProps = {
-  label?: string | React.ReactNode
-  scroll?: boolean
-  renderTrigger?: (arg: any, arg2: { label: React.ReactNode | string | null, open: boolean }) => React.ReactNode // eslint-disable-line
-  showArrow?: boolean
-  value?: string
-  options: any[] // eslint-disable-line
-  onSelect?: (value: string) => void
-  className?: string
-}
+  label?: string | React.ReactNode;
+  scroll?: boolean;
+  renderTrigger?: (
+    arg: any,
+    arg2: { label: React.ReactNode | string | null; open: boolean },
+  ) => React.ReactNode; // eslint-disable-line
+  showArrow?: boolean;
+  value?: string;
+  options: any[]; // eslint-disable-line
+  onSelect?: (value: string) => void;
+  className?: string;
+};
 
 export function Dropdown<P extends DropdownProps>({
   label = null,
@@ -34,27 +45,37 @@ export function Dropdown<P extends DropdownProps>({
     whileElementsMounted: autoUpdate,
   });
 
-  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
-    useClick(context),
-    useDismiss(context),
-    useListNavigation(context, {
-      listRef,
-      activeIndex,
-      onNavigate: setActiveIndex,
-    }),
-  ]);
+  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions(
+    [
+      useClick(context),
+      useDismiss(context),
+      useListNavigation(context, {
+        listRef,
+        activeIndex,
+        onNavigate: setActiveIndex,
+      }),
+    ],
+  );
 
   const dropdownRef = useRef();
 
-  useOutsideEventListener(dropdownRef, 'click', open, () => open && setOpen(false));
+  useOutsideEventListener(
+    dropdownRef,
+    'click',
+    open,
+    () => open && setOpen(false),
+  );
 
-  const customTrigger = renderTrigger?.(getReferenceProps({
-    className: 'text-sm text-gray-500 cursor-pointer',
-    ref: reference,
-    onClick(evt) {
-      evt.stopPropagation();
-    },
-  }), { label, open });
+  const customTrigger = renderTrigger?.(
+    getReferenceProps({
+      className: 'text-sm text-gray-500 cursor-pointer',
+      ref: reference,
+      onClick(evt) {
+        evt.stopPropagation();
+      },
+    }),
+    { label, open },
+  );
 
   return (
     <div {...props}>
@@ -65,7 +86,9 @@ export function Dropdown<P extends DropdownProps>({
           className="text-gray-600 inline-flex hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           {...getReferenceProps()}
         >
-          {(options ?? []).find(o => o.value === props.value && props.value !== undefined)?.text ?? label}
+          {(options ?? []).find(
+            o => o.value === props.value && props.value !== undefined,
+          )?.text ?? label}
           {showArrow && (
             <ChevronDown
               style={{
@@ -78,8 +101,7 @@ export function Dropdown<P extends DropdownProps>({
             />
           )}
         </button>
-      )
-      }
+      )}
       <FloatingPortal>
         {open && (
           <div
@@ -106,19 +128,20 @@ export function Dropdown<P extends DropdownProps>({
             `}
             {...getFloatingProps()}
           >
-            <ul className="py-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownDefault">
+            <ul
+              className="py-1 text-sm text-gray-700 dark:text-gray-200"
+              aria-labelledby="dropdownDefault"
+            >
               {(options ?? []).map((option, i) => {
                 if (option.divider) {
-                  return (
-                    <li className="h-[1px] bg-gray-200 my-1" key={i}></li>
-                  );
+                  return <li className="h-[1px] bg-gray-200 my-1" key={i}></li>;
                 }
 
                 return (
                   <li key={option.value}>
                     <button
                       tabIndex={-1}
-                      ref={(el) => listRef.current[i] = el}
+                      ref={el => (listRef.current[i] = el)}
                       className="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white focus:bg-gray-100"
                       {...getItemProps({
                         onClick(evt) {
@@ -138,7 +161,6 @@ export function Dropdown<P extends DropdownProps>({
           </div>
         )}
       </FloatingPortal>
-    </div >
+    </div>
   );
 }
-

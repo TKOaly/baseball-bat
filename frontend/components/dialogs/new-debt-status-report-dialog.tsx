@@ -4,20 +4,32 @@ import { DbDateString, Report } from '../../../common/types';
 import { useGenerateDebtStatusReportMutation } from '../../api/report';
 import { Button } from '../button';
 import { DateField } from '../datetime-field';
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../dialog';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+} from '../dialog';
 import { DropdownField } from '../dropdown-field';
 import { ResourceSelectField } from '../resource-select-field';
 import { InputGroup } from '../input-group';
 
 type FormValues = {
-  date: DbDateString,
-  groupBy: null | 'payer' | 'center',
-  center: null | { id: string }
-  includeOnly: null | 'open' | 'paid' | 'credited'
-}
+  date: DbDateString;
+  groupBy: null | 'payer' | 'center';
+  center: null | { id: string };
+  includeOnly: null | 'open' | 'paid' | 'credited';
+};
 
-export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose: (result: Report) => void, defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string } }) => {
-  const [generateDebtStatusReportMutation] = useGenerateDebtStatusReportMutation();
+export const NewDebtStatusReportDialog = ({
+  onClose,
+  defaults = {},
+}: {
+  onClose: (result: Report) => void;
+  defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string };
+}) => {
+  const [generateDebtStatusReportMutation] =
+    useGenerateDebtStatusReportMutation();
 
   const handleSubmit = async (values: FormValues) => {
     const result = await generateDebtStatusReportMutation({
@@ -34,13 +46,17 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
 
   return (
     <Formik
-      initialValues={{
-        date: format(new Date(), 'yyyy-MM-dd'),
-        groupBy: 'center',
-        includeOnly: null,
-        ...defaults,
-        center: defaults.center ? { type: 'debt_center', id: defaults.center } : null,
-      } as FormValues}
+      initialValues={
+        {
+          date: format(new Date(), 'yyyy-MM-dd'),
+          groupBy: 'center',
+          includeOnly: null,
+          ...defaults,
+          center: defaults.center
+            ? { type: 'debt_center', id: defaults.center }
+            : null,
+        } as FormValues
+      }
       onSubmit={handleSubmit}
     >
       {({ submitForm, isSubmitting }) => (
@@ -84,8 +100,12 @@ export const NewDebtStatusReportDialog = ({ onClose, defaults = {} }: { onClose:
             </div>
           </DialogContent>
           <DialogFooter>
-            <Button secondary onClick={() => onClose(null)}>Cancel</Button>
-            <Button onClick={submitForm} loading={isSubmitting}>Generate</Button>
+            <Button secondary onClick={() => onClose(null)}>
+              Cancel
+            </Button>
+            <Button onClick={submitForm} loading={isSubmitting}>
+              Generate
+            </Button>
           </DialogFooter>
         </DialogBase>
       )}

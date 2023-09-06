@@ -7,13 +7,9 @@ describe('DropdownField.cy.ts', () => {
     cy.mount(
       <Formik>
         {() => (
-          <DropdownField
-            options={[]}
-            onChange={() => {}}
-            name="dropdown"
-          />
+          <DropdownField options={[]} onChange={() => {}} name="dropdown" />
         )}
-      </Formik>
+      </Formik>,
     );
   });
 });

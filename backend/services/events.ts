@@ -47,13 +47,14 @@ const formatRegistration = (registration: ApiRegistration) => ({
   phone: registration.phone,
   email: registration.email,
   answers: registration.answers,
-  userId: registration.user_id === null ? null : tkoalyIdentity(registration.user_id),
+  userId:
+    registration.user_id === null ? null : tkoalyIdentity(registration.user_id),
 });
 
 @Service()
 export class EventsService {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   private _client: ReturnType<typeof axios.create> | null = null;
 
@@ -91,11 +92,11 @@ export class EventsService {
 
   async getAllEvents({ starting }: { starting: Date }): Promise<Event[]> {
     try {
-      const res = await this.client.get<ApiEvent[]>('/api/events', { params: { fromDate: starting } });
+      const res = await this.client.get<ApiEvent[]>('/api/events', {
+        params: { fromDate: starting },
+      });
 
-      return res.data
-        .map(parseApiEvent)
-        .filter(event => !event.deleted);
+      return res.data.map(parseApiEvent).filter(event => !event.deleted);
     } catch (err) {
       console.error(err);
       throw new Error('Failed to fetch events');
@@ -104,11 +105,11 @@ export class EventsService {
 
   async getEvents(id: TkoalyIdentity): Promise<Event[]> {
     try {
-      const res = await this.client.get<ApiEvent[]>(`/api/users/${id.value}/events`);
+      const res = await this.client.get<ApiEvent[]>(
+        `/api/users/${id.value}/events`,
+      );
 
-      return res.data
-        .map(parseApiEvent)
-        .filter(event => !event.deleted);
+      return res.data.map(parseApiEvent).filter(event => !event.deleted);
     } catch {
       throw new Error(`Failed to fetch events for user ${id.value}`);
     }
@@ -116,7 +117,9 @@ export class EventsService {
 
   async getEventRegistrations(id: number): Promise<Registration[]> {
     try {
-      const res = await this.client.get<ApiRegistration[]>(`/api/events/${id}/registrations`);
+      const res = await this.client.get<ApiRegistration[]>(
+        `/api/events/${id}/registrations`,
+      );
       return res.data.map(formatRegistration);
     } catch (err) {
       console.log(err);
@@ -126,7 +129,9 @@ export class EventsService {
 
   async getEventCustomFields(id: number): Promise<CustomField[]> {
     try {
-      const res = await this.client.get<ApiCustomField[]>(`/api/events/${id}/fields`);
+      const res = await this.client.get<ApiCustomField[]>(
+        `/api/events/${id}/fields`,
+      );
       return res.data;
     } catch (err) {
       console.log(err);

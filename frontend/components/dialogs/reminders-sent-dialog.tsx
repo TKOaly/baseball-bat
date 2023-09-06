@@ -1,4 +1,9 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+} from '../../components/dialog';
 import { Button } from '../../components/button';
 
 export const RemindersSentDialog = ({ onClose, payerCount, debtCount }) => {

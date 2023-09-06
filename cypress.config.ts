@@ -1,7 +1,7 @@
-import { defineConfig } from "cypress";
+import { defineConfig } from 'cypress';
 
 export default defineConfig({
   e2e: {
-    baseUrl: "http://bbat.tko-aly.localhost/",
+    baseUrl: 'http://bbat.tko-aly.localhost/',
   },
 });

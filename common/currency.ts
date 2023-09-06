@@ -5,7 +5,7 @@ export const euroValue = t.type({
   value: t.number,
 });
 
-export type EuroValue = t.TypeOf<typeof euroValue>
+export type EuroValue = t.TypeOf<typeof euroValue>;
 
 export const euro = (value: number): EuroValue => ({
   currency: 'eur',
@@ -17,7 +17,10 @@ export const cents = (value: number): EuroValue => ({
   value,
 });
 
-export const subEuroValues = (acc: undefined | EuroValue, value: EuroValue): EuroValue => {
+export const subEuroValues = (
+  acc: undefined | EuroValue,
+  value: EuroValue,
+): EuroValue => {
   if (acc === undefined) {
     return euro(0);
   } else {
@@ -25,7 +28,10 @@ export const subEuroValues = (acc: undefined | EuroValue, value: EuroValue): Eur
   }
 };
 
-export const sumEuroValues = (acc: undefined | EuroValue, value: EuroValue): EuroValue => {
+export const sumEuroValues = (
+  acc: undefined | EuroValue,
+  value: EuroValue,
+): EuroValue => {
   if (acc === undefined) {
     return euro(0);
   } else {
@@ -41,4 +47,3 @@ export const formatEuro = (value: EuroValue) => {
     maximumFractionDigits: 2,
   }).format(value.value / 100);
 };
-

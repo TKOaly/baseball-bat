@@ -1,6 +1,22 @@
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
-import { BankTransaction, DbDebt, DbEmail, DbPayerProfile, DbPaymentEvent, DbPaymentEventTransactionMapping, Debt, EuroValue, internalIdentity, InternalIdentity, isPaymentInvoice, Payment, PaymentEvent, PaymentLedgerOptions, PaymentStatus } from '../../common/types';
+import {
+  BankTransaction,
+  DbDebt,
+  DbEmail,
+  DbPayerProfile,
+  DbPaymentEvent,
+  DbPaymentEventTransactionMapping,
+  Debt,
+  EuroValue,
+  internalIdentity,
+  InternalIdentity,
+  isPaymentInvoice,
+  Payment,
+  PaymentEvent,
+  PaymentLedgerOptions,
+  PaymentStatus,
+} from '../../common/types';
 import * as R from 'remeda';
 import { FromDbType, PgClient } from '../db';
 import { DebtService, formatDebt } from './debt';
@@ -23,20 +39,23 @@ import Stripe from 'stripe';
 export type PaymentCreditReason = 'manual' | 'paid';
 
 type PaymentCreationOptions = {
-  sendNotification?: boolean
-}
+  sendNotification?: boolean;
+};
 
 type PaymentWithEvents = Payment & {
   events: Array<{
-    time: Date
-    data: Record<string, unknown>
-    type: 'created' | 'payment'
-    amount: EuroValue
-  }>,
-}
+    time: Date;
+    data: Record<string, unknown>;
+    type: 'created' | 'payment';
+    amount: EuroValue;
+  }>;
+};
 
 function normalizeReferenceNumber(reference: string) {
-  return reference.replace(/^0+/, '0').replace(/[^A-Z0-9]/ig, '').toUpperCase();
+  return reference
+    .replace(/^0+/, '0')
+    .replace(/[^A-Z0-9]/gi, '')
+    .toUpperCase();
 }
 
 export function formatReferenceNumber(reference: string) {
@@ -47,19 +66,23 @@ function finnishReferenceChecksum(num: bigint): bigint {
   const factors = [7n, 3n, 1n];
   let acc = 0n;
 
-  for (let i = 0; num > (10n ** BigInt(i)); i++) {
-    const digit = num / (10n ** BigInt(i)) % 10n;
+  for (let i = 0; num > 10n ** BigInt(i); i++) {
+    const digit = (num / 10n ** BigInt(i)) % 10n;
     acc += digit * factors[i % 3];
   }
 
-  return (10n - acc % 10n) % 10n;
+  return (10n - (acc % 10n)) % 10n;
 }
 
 function createReferenceNumber(series: number, year: number, number: number) {
-  const finRef = 1337n * (10n ** 11n) + BigInt(year) * (10n ** 7n) + BigInt(number) * (10n ** 3n) + BigInt(series);
+  const finRef =
+    1337n * 10n ** 11n +
+    BigInt(year) * 10n ** 7n +
+    BigInt(number) * 10n ** 3n +
+    BigInt(series);
   const finCheck = finnishReferenceChecksum(finRef);
   const content = finRef * 10n + finCheck;
-  const tmp = content * (10n ** 6n) + 271500n;
+  const tmp = content * 10n ** 6n + 271500n;
   const checksum = 98n - (tmp % 97n);
   const numbers: Record<string, string> = { Y: `${checksum}`, X: `${content}` };
   const template = 'RFYYXXXXXXXXXXXXXXXX';
@@ -91,83 +114,89 @@ const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
 });
 
 export type NewInvoice = {
-  title: string
-  series: number
-  message: string
-  date?: Date
-  debts: string[]
-  referenceNumber?: string
-  paymentNumber?: string
-}
+  title: string;
+  series: number;
+  message: string;
+  date?: Date;
+  debts: string[];
+  referenceNumber?: string;
+  paymentNumber?: string;
+};
 
 export type NewStripePayment = {
-  debts: string[]
-}
+  debts: string[];
+};
 
 export type StripePaymentResult = {
-  payment: Payment
-  clientSecret: string
-}
+  payment: Payment;
+  clientSecret: string;
+};
 
 type BankTransactionDetails = {
-  accountingId: string
-  referenceNumber: string
-  amount: EuroValue
-  time: Date
-}
+  accountingId: string;
+  referenceNumber: string;
+  amount: EuroValue;
+  time: Date;
+};
 
 type NewPaymentEvent = {
-  amount: EuroValue,
-  type: 'created' | 'payment' | 'stripe.intent-created' | 'failed' | 'canceled' | 'other'
-  data?: Record<string, any>
-  time?: Date
-  transaction?: string
-}
+  amount: EuroValue;
+  type:
+    | 'created'
+    | 'payment'
+    | 'stripe.intent-created'
+    | 'failed'
+    | 'canceled'
+    | 'other';
+  data?: Record<string, any>;
+  time?: Date;
+  transaction?: string;
+};
 
-type PaymentType = Invoice | CashPayment | StripePayment
+type PaymentType = Invoice | CashPayment | StripePayment;
 
 type Invoice = {
-  type: 'invoice'
-  data: Record<string, never>
-}
+  type: 'invoice';
+  data: Record<string, never>;
+};
 
 type CashPayment = {
-  type: 'cash'
-  data: Record<string, never>
-}
+  type: 'cash';
+  data: Record<string, never>;
+};
 
 type StripePayment = {
-  type: 'stripe'
-}
+  type: 'stripe';
+};
 
 export type DbPayment = {
-  id: string
-  human_id: string
-  human_id_nonce?: number
-  accounting_period: number
-  type: 'invoice'
-  title: string
-  payer_id: string
-  data: Record<string, unknown>,
-  message: string
-  balance: number
-  status: 'canceled' | 'paid' | 'unpaid' | 'mispaid'
-  updated_at: Date
-  created_at: Date
-  payment_number: number
-  credited: boolean
-  events: Array<DbPaymentEvent>
-}
+  id: string;
+  human_id: string;
+  human_id_nonce?: number;
+  accounting_period: number;
+  type: 'invoice';
+  title: string;
+  payer_id: string;
+  data: Record<string, unknown>;
+  message: string;
+  balance: number;
+  status: 'canceled' | 'paid' | 'unpaid' | 'mispaid';
+  updated_at: Date;
+  created_at: Date;
+  payment_number: number;
+  credited: boolean;
+  events: Array<DbPaymentEvent>;
+};
 
 type NewPayment<T extends PaymentType, D = null> = {
-  type: T['type'],
-  title: string,
-  message: string,
-  data: D | ((p: Omit<Payment, 'data'>) => D),
-  debts: Array<string>,
-  paymentNumber?: string,
-  createdAt?: Date
-}
+  type: T['type'];
+  title: string;
+  message: string;
+  data: D | ((p: Omit<Payment, 'data'>) => D);
+  debts: Array<string>;
+  paymentNumber?: string;
+  createdAt?: Date;
+};
 
 export const formatPayment = (db: DbPayment): Payment => ({
   id: db.id,
@@ -191,32 +220,31 @@ export const formatPayment = (db: DbPayment): Payment => ({
 @Service()
 export class PaymentService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject('stripe')
-    stripe: Stripe;
+  stripe: Stripe;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => BankingService)
-    bankingService: BankingService;
+  bankingService: BankingService;
 
   @Inject(() => ReportService)
-    reportService: ReportService;
+  reportService: ReportService;
 
   async getPayments() {
-    return this.pg
-      .any<DbPayment>(sql`
+    return this.pg.any<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -231,8 +259,7 @@ export class PaymentService {
   }
 
   async getPayment(id: string): Promise<Payment | null> {
-    const result = await this.pg
-      .one<DbPayment>(sql`
+    const result = await this.pg.one<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -250,8 +277,7 @@ export class PaymentService {
   }
 
   async getPayerPayments(id: InternalIdentity) {
-    return this.pg
-      .any<DbPayment>(sql`
+    return this.pg.any<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -271,8 +297,7 @@ export class PaymentService {
   }
 
   async getPaymentsContainingDebt(debtId: string): Promise<Payment[]> {
-    const payments = await this.pg
-      .any<DbPayment>(sql`
+    const payments = await this.pg.any<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -289,9 +314,10 @@ export class PaymentService {
     return payments.map(formatPayment);
   }
 
-  async getDefaultInvoicePaymentForDebt(debtId: string): Promise<Payment | null> {
-    const payment = await this.pg
-      .one<DbPayment>(sql`
+  async getDefaultInvoicePaymentForDebt(
+    debtId: string,
+  ): Promise<Payment | null> {
+    const payment = await this.pg.one<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -309,13 +335,8 @@ export class PaymentService {
     return payment && formatPayment(payment);
   }
 
-  async logPaymentEvent(
-    paymentId: string,
-    amount: EuroValue,
-    data: object,
-  ) {
-    const result = await this.pg
-      .one<DbPayment>(sql`
+  async logPaymentEvent(paymentId: string, amount: EuroValue, data: object) {
+    const result = await this.pg.one<DbPayment>(sql`
         INSERT INTO payment_events (payment_id, type, amount, data)
         VALUES (${paymentId}, 'payment', ${amount.value}, ${data})
         RETURNING *
@@ -324,8 +345,15 @@ export class PaymentService {
     return result;
   }
 
-  async createInvoice(invoice: NewInvoice, options: PaymentCreationOptions = {}): Promise<Payment & { data: { due_date: string, reference_number: string } }> {
-    const results = await Promise.all(invoice.debts.map(id => this.debtService.getDebt(id)));
+  async createInvoice(
+    invoice: NewInvoice,
+    options: PaymentCreationOptions = {},
+  ): Promise<
+    Payment & { data: { due_date: string; reference_number: string } }
+  > {
+    const results = await Promise.all(
+      invoice.debts.map(id => this.debtService.getDebt(id)),
+    );
 
     if (results.some(d => d === null)) {
       throw new Error('Debt does not exist');
@@ -333,37 +361,54 @@ export class PaymentService {
 
     const debts = results as Array<Debt>;
 
-    if (debts.some(debt => debt.dueDate === null && debt.publishedAt === null)) {
+    if (
+      debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
+    ) {
       throw Error('Not all debts have due dates or are published!');
     }
 
-    const due_dates = debts.flatMap(debt => debt.dueDate ? [new Date(debt.dueDate)] : []).sort();
+    const due_dates = debts
+      .flatMap(debt => (debt.dueDate ? [new Date(debt.dueDate)] : []))
+      .sort();
     const due_date = due_dates[0];
 
-    return this.createPayment({
-      type: 'invoice',
-      data: (payment) => {
-        if (payment.humanIdNonce === undefined) {
-          throw new Error('Generated payment does not have automatically assigned id');
-        }
+    return this.createPayment(
+      {
+        type: 'invoice',
+        data: payment => {
+          if (payment.humanIdNonce === undefined) {
+            throw new Error(
+              'Generated payment does not have automatically assigned id',
+            );
+          }
 
-        return {
-          reference_number: invoice.referenceNumber
-            ? normalizeReferenceNumber(invoice.referenceNumber)
-            : createReferenceNumber(invoice.series ?? 0, payment.accountingPeriod, payment.humanIdNonce),
-          due_date: formatISO(due_date),
-          date: invoice.date ?? new Date(),
-        };
+          return {
+            reference_number: invoice.referenceNumber
+              ? normalizeReferenceNumber(invoice.referenceNumber)
+              : createReferenceNumber(
+                  invoice.series ?? 0,
+                  payment.accountingPeriod,
+                  payment.humanIdNonce,
+                ),
+            due_date: formatISO(due_date),
+            date: invoice.date ?? new Date(),
+          };
+        },
+        message: invoice.message,
+        debts: invoice.debts,
+        paymentNumber: invoice.paymentNumber,
+        title: invoice.title,
       },
-      message: invoice.message,
-      debts: invoice.debts,
-      paymentNumber: invoice.paymentNumber,
-      title: invoice.title,
-    }, options);
+      options,
+    );
   }
 
-  async createStripePayment(options: NewStripePayment): Promise<StripePaymentResult> {
-    const results = await Promise.all(options.debts.map(id => this.debtService.getDebt(id)));
+  async createStripePayment(
+    options: NewStripePayment,
+  ): Promise<StripePaymentResult> {
+    const results = await Promise.all(
+      options.debts.map(id => this.debtService.getDebt(id)),
+    );
 
     if (results.some(d => d === null)) {
       throw new Error('Debt does not exist');
@@ -371,7 +416,9 @@ export class PaymentService {
 
     const debts = results as Array<Debt>;
 
-    if (debts.some(debt => debt.dueDate === null && debt.publishedAt === null)) {
+    if (
+      debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
+    ) {
       throw Error('Not all debts have due dates or are published!');
     }
 
@@ -426,9 +473,14 @@ export class PaymentService {
     };
   }
 
-  async createPayment<T extends PaymentType, D>(payment: NewPayment<T, D>, options: PaymentCreationOptions = {}): Promise<Omit<Payment, 'data'> & { data: D }> {
-    const created = await this.pg.tx(async (tx) => {
-      const [createdPayment] = await tx.do<Omit<DbPayment, 'data'> & { data: Record<string, never> | D }>(sql`
+  async createPayment<T extends PaymentType, D>(
+    payment: NewPayment<T, D>,
+    options: PaymentCreationOptions = {},
+  ): Promise<Omit<Payment, 'data'> & { data: D }> {
+    const created = await this.pg.tx(async tx => {
+      const [createdPayment] = await tx.do<
+        Omit<DbPayment, 'data'> & { data: Record<string, never> | D }
+      >(sql`
         INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
@@ -447,27 +499,31 @@ export class PaymentService {
       }
 
       if (typeof payment.data === 'function') {
-        const callback = payment.data as any as ((p: Payment) => D);
+        const callback = payment.data as any as (p: Payment) => D;
         const data = callback(formatPayment({ ...createdPayment, data: {} }));
-        const [{ data: storedData }] = await tx.do<{ data: Record<string, never> }>(sql`
+        const [{ data: storedData }] = await tx.do<{
+          data: Record<string, never>;
+        }>(sql`
           UPDATE payments SET data = ${data} WHERE id = ${createdPayment.id} RETURNING data
         `);
         createdPayment.data = storedData;
       }
 
       await Promise.all(
-        payment.debts.map((debt) => tx.do(sql`
+        payment.debts.map(debt =>
+          tx.do(sql`
           INSERT INTO payment_debt_mappings (payment_id, debt_id)
           VALUES (${createdPayment.id}, ${debt})
-        `)),
+        `),
+        ),
       );
 
-      const [{ total }] = (await tx.do<{ total: number }>(sql`
+      const [{ total }] = await tx.do<{ total: number }>(sql`
         SELECT SUM(c.amount) AS total
         FROM debt_component_mapping m
         JOIN debt_component c ON c.id = m.debt_component_id
         WHERE m.debt_id = ANY (${payment.debts})
-      `));
+      `);
 
       await tx.do(sql`
         INSERT INTO payment_events (payment_id, type, amount)
@@ -486,7 +542,10 @@ export class PaymentService {
 
   async onPaymentCreated(payment: Payment, options: PaymentCreationOptions) {
     if (isPaymentInvoice(payment)) {
-      const isBackdated = isBefore(parseISO(payment.data.date), subDays(new Date(), 1));
+      const isBackdated = isBefore(
+        parseISO(payment.data.date),
+        subDays(new Date(), 1),
+      );
 
       if (!isBackdated && options.sendNotification !== false) {
         const email = await this.sendNewPaymentNotification(payment.id);
@@ -500,7 +559,10 @@ export class PaymentService {
     }
 
     if (isPaymentInvoice(payment)) {
-      await this.bankingService.assignTransactionsToPaymentByReferenceNumber(payment.id, payment.data.reference_number);
+      await this.bankingService.assignTransactionsToPaymentByReferenceNumber(
+        payment.id,
+        payment.data.reference_number,
+      );
     }
   }
 
@@ -512,18 +574,27 @@ export class PaymentService {
       return;
     }
 
-    await Promise.all(debts.map((debt) => this.debtService.onDebtPaid(debt, payment, event)));
+    await Promise.all(
+      debts.map(debt => this.debtService.onDebtPaid(debt, payment, event)),
+    );
   }
 
-  async createPaymentEvent(id: string, event: NewPaymentEvent): Promise<PaymentEvent> {
-    const [created, oldStatus, newStatus] = await this.pg.tx(async (tx) => {
-      const [{ status: initialStatus }] = await tx.do<{ status: PaymentStatus }>(sql`
+  async createPaymentEvent(
+    id: string,
+    event: NewPaymentEvent,
+  ): Promise<PaymentEvent> {
+    const [created, oldStatus, newStatus] = await this.pg.tx(async tx => {
+      const [{ status: initialStatus }] = await tx.do<{
+        status: PaymentStatus;
+      }>(sql`
         SELECT status FROM payment_statuses WHERE id = ${id}
       `);
 
       const [created] = await tx.do<DbPaymentEvent>(sql`
         INSERT INTO payment_events (payment_id, type, amount, data, time)
-        VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${event.time ?? new Date()})
+        VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${
+          event.time ?? new Date()
+        })
         RETURNING *
       `);
 
@@ -538,7 +609,9 @@ export class PaymentService {
         `);
       }
 
-      const [{ status: newStatus }] = await tx.do<{ status: PaymentStatus }>(sql`
+      const [{ status: newStatus }] = await tx.do<{
+        status: PaymentStatus;
+      }>(sql`
         SELECT status FROM payment_statuses WHERE id = ${id}
       `);
 
@@ -561,10 +634,14 @@ export class PaymentService {
       throw new Error('Payment not found');
     }
 
-    const payer = await this.payerService.getPayerProfileByInternalIdentity(payment.payerId);
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(
+      payment.payerId,
+    );
     const email = await this.payerService.getPayerPrimaryEmail(payment.payerId);
     const debts = await this.debtService.getDebtsByPayment(id);
-    const amount = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
+    const amount = debts
+      .map(debt => debt?.total ?? euro(0))
+      .reduce(sumEuroValues, euro(0));
 
     await this.pg.any(sql`
       UPDATE payments
@@ -584,7 +661,7 @@ export class PaymentService {
           amount,
           payer,
         },
-        debts: debts.map((debt) => debt.id),
+        debts: debts.map(debt => debt.id),
       });
 
       if (!message) {
@@ -607,14 +684,20 @@ export class PaymentService {
         COALESCE(s.updated_at, p.created_at) AS updated_at
       FROM payments p
       JOIN payment_statuses s ON s.id = p.id
-      WHERE p.data->>'reference_number' = ANY (${rfs.map(rf => rf.replace(/^0+/, ''))})
+      WHERE p.data->>'reference_number' = ANY (${rfs.map(rf =>
+        rf.replace(/^0+/, ''),
+      )})
     `);
 
     return payments;
   }
 
-  async createPaymentEventFromTransaction(tx: BankTransaction, pPayment?: string) {
-    const existing_mapping = await this.pg.one<DbPaymentEventTransactionMapping>(sql`
+  async createPaymentEventFromTransaction(
+    tx: BankTransaction,
+    pPayment?: string,
+  ) {
+    const existing_mapping = await this.pg
+      .one<DbPaymentEventTransactionMapping>(sql`
       SELECT *
       FROM payment_event_transaction_mapping
       WHERE bank_transaction_id = ${tx.id}
@@ -647,14 +730,18 @@ export class PaymentService {
   }
 
   async createBankTransactionPaymentEvent(details: BankTransactionDetails) {
-    const payments = await this.getPaymentsByReferenceNumbers([details.referenceNumber]);
+    const payments = await this.getPaymentsByReferenceNumbers([
+      details.referenceNumber,
+    ]);
 
     if (payments.length === 0) {
       return null;
     }
 
     const [payment] = payments;
-    const already_exists = payment.events.some((event) => event.data?.accounting_id === details.accountingId);
+    const already_exists = payment.events.some(
+      event => event.data?.accounting_id === details.accountingId,
+    );
 
     if (already_exists) {
       return null;
@@ -671,7 +758,9 @@ export class PaymentService {
     });
   }
 
-  async sendNewPaymentNotification(id: string): Promise<Either<string, FromDbType<DbEmail>>> {
+  async sendNewPaymentNotification(
+    id: string,
+  ): Promise<Either<string, FromDbType<DbEmail>>> {
     const payment = await this.getPayment(id);
 
     if (!payment) {
@@ -679,8 +768,12 @@ export class PaymentService {
     }
 
     const debts = await this.debtService.getDebtsByPayment(id);
-    const total = debts.map(debt => debt?.total ?? euro(0)).reduce(sumEuroValues, euro(0));
-    const payer = await this.payerService.getPayerProfileByInternalIdentity(payment.payerId);
+    const total = debts
+      .map(debt => debt?.total ?? euro(0))
+      .reduce(sumEuroValues, euro(0));
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(
+      payment.payerId,
+    );
     const email = await this.payerService.getPayerPrimaryEmail(payment.payerId);
 
     if (!email || !payer) {
@@ -705,15 +798,26 @@ export class PaymentService {
         message: payment.message,
         receiverName: payer.name,
       },
-      debts: debts.map((debt) => debt.id),
+      debts: debts.map(debt => debt.id),
       subject: '[Lasku / Invoice] ' + payment.title,
     });
 
     return E.fromNullable('Could not create email')(created);
   }
 
-  async generatePaymentLedger(options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> & Record<'startDate' | 'endDate', Date>, generatedBy: InternalIdentity, parent?: string) {
-    const results = await this.pg.any<{ event: DbPaymentEvent, debt: DbDebt, payment: DbPayment, payer: DbPayerProfile }>(sql`
+  async generatePaymentLedger(
+    options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> &
+      Record<'startDate' | 'endDate', Date>,
+    generatedBy: InternalIdentity,
+    parent?: string,
+  ) {
+    const results = await this.pg.any<{
+      event: DbPaymentEvent;
+      debt: DbDebt;
+      payment: DbPayment;
+      payer: DbPayerProfile;
+    }>(
+      sql`
       SELECT DISTINCT ON (event.id, debt.id)
         TO_JSONB(event.*) AS event,
         TO_JSONB(debt.*) AS debt,
@@ -727,27 +831,27 @@ export class PaymentService {
       WHERE
         event.time BETWEEN ${options.startDate} AND ${options.endDate} AND
       `
-      .append(
-        options.paymentType
-          ? sql` payment.type = ${options.paymentType} `
-          : sql` TRUE `,
-      )
-      .append(sql`AND`)
-      .append(
-        options.eventTypes
-          ? sql` event.type = ANY (${options.eventTypes}) `
-          : sql` TRUE `,
-      ),
+        .append(
+          options.paymentType
+            ? sql` payment.type = ${options.paymentType} `
+            : sql` TRUE `,
+        )
+        .append(sql`AND`)
+        .append(
+          options.eventTypes
+            ? sql` event.type = ANY (${options.eventTypes}) `
+            : sql` TRUE `,
+        ),
     );
 
-    const events = R.sortBy(results
-      .map(({ payment, payer, event, debt }) => ({
+    const events = R.sortBy(
+      results.map(({ payment, payer, event, debt }) => ({
         ...formatPaymentEvent({ ...event, time: parseISO(event.time as any) }),
         debt: formatDebt(debt),
         payer: formatPayerProfile(payer),
         payment: formatPayment({ ...payment, events: [] }),
       })),
-    (item) => item.time,
+      item => item.time,
     );
 
     type EventDetails = (typeof events)[0];
@@ -775,10 +879,18 @@ export class PaymentService {
         });
       }
 
-      const createGroupUsing = (nameResolver: (id: string, rows: EventDetails[]) => Promise<{ name: string, id: string }>) => ([key, events]: [string, EventDetails[]]) => async () => {
-        const { name, id } = await nameResolver(key, events);
-        return { name, events, id }; 
-      };
+      const createGroupUsing =
+        (
+          nameResolver: (
+            id: string,
+            rows: EventDetails[],
+          ) => Promise<{ name: string; id: string }>,
+        ) =>
+        ([key, events]: [string, EventDetails[]]) =>
+        async () => {
+          const { name, id } = await nameResolver(key, events);
+          return { name, events, id };
+        };
 
       groups = await pipe(
         events,
@@ -790,10 +902,17 @@ export class PaymentService {
       groups = [{ events }];
     }
 
-    let name = `Payment Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+    let name = `Payment Ledger ${format(
+      options.startDate,
+      'dd.MM.yyyy',
+    )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
     if (options.paymentType) {
-      name = options.paymentType[0].toUpperCase() + options.paymentType.substring(1) + ' ' + name;
+      name =
+        options.paymentType[0].toUpperCase() +
+        options.paymentType.substring(1) +
+        ' ' +
+        name;
     }
 
     return this.reportService.createReport({

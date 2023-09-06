@@ -33,21 +33,21 @@ const ListViewRowContainer = tw.div`
 `;
 
 interface BadgeProps {
-  label: string
-  color: 'blue' | 'green'
+  label: string;
+  color: 'blue' | 'green';
 }
 
 interface ListViewItem {
-  key: string
-  title: string
-  description: string
-  label: string
-  badges: BadgeProps[]
+  key: string;
+  title: string;
+  description: string;
+  label: string;
+  badges: BadgeProps[];
 }
 
 interface ListViewItemProps {
-  item: ListViewItem
-  onSelected: () => void
+  item: ListViewItem;
+  onSelected: () => void;
 }
 
 const ListViewCard = ({ item, onSelected }: ListViewItemProps) => {
@@ -63,11 +63,16 @@ const ListViewCard = ({ item, onSelected }: ListViewItemProps) => {
         <span className="text-gray-600 text-right">{item.label}</span>
       </div>
       <div>{item.description}</div>
-      {
-        item.badges.map((badge) => (
-          <span className={`rounded-md mr-2 bg-gradient-to-br ${colors[badge.color]} py-0.5 px-2`} key={badge.label}>{badge.label}</span>
-        ))
-      }
+      {item.badges.map(badge => (
+        <span
+          className={`rounded-md mr-2 bg-gradient-to-br ${
+            colors[badge.color]
+          } py-0.5 px-2`}
+          key={badge.label}
+        >
+          {badge.label}
+        </span>
+      ))}
     </ListViewCardContainer>
   );
 };
@@ -77,11 +82,14 @@ const ListViewRow = ({ item, onSelected }: ListViewItemProps) => {
     <ListViewRowContainer tabIndex={0} onClick={onSelected}>
       <h3 className="text-md mt-0">{item.title}</h3>
       <div>
-        {
-          item.badges.map((badge) => (
-            <span className={`rounded-md mr-2 bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 py-0.5 px-2`} key={badge.label}>{badge.label}</span>
-          ))
-        }
+        {item.badges.map(badge => (
+          <span
+            className={`rounded-md mr-2 bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 py-0.5 px-2`}
+            key={badge.label}
+          >
+            {badge.label}
+          </span>
+        ))}
       </div>
       <div className="flex-grow"></div>
       <span className="text-gray-600">{item.label}</span>
@@ -89,19 +97,15 @@ const ListViewRow = ({ item, onSelected }: ListViewItemProps) => {
   );
 };
 
-type ListViewMode = 'cards' | 'rows'
+type ListViewMode = 'cards' | 'rows';
 
 export interface Props {
-  items: ListViewItem[]
-  actions?: ReactNode,
-  onSelected?: (item: ListViewItem) => void
+  items: ListViewItem[];
+  actions?: ReactNode;
+  onSelected?: (item: ListViewItem) => void;
 }
 
-export const ListView = ({
-  items,
-  actions,
-  onSelected,
-}: Props) => {
+export const ListView = ({ items, actions, onSelected }: Props) => {
   const [mode, setMode] = useState<ListViewMode>('cards');
 
   const ItemComponent = mode === 'cards' ? ListViewCard : ListViewRow;
@@ -128,10 +132,19 @@ export const ListView = ({
         />
       </div>
 
-      <div className={`grid items-stretch grid-cols-1 ${mode === 'cards' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-3 w-full`}>
-        {items.map((item) => <ItemComponent item={item} key={item.key} onSelected={() => onSelected?.(item)} />)}
+      <div
+        className={`grid items-stretch grid-cols-1 ${
+          mode === 'cards' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'
+        } gap-3 w-full`}
+      >
+        {items.map(item => (
+          <ItemComponent
+            item={item}
+            key={item.key}
+            onSelected={() => onSelected?.(item)}
+          />
+        ))}
       </div>
-    </div >
+    </div>
   );
 };
-

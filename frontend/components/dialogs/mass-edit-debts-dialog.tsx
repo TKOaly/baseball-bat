@@ -1,4 +1,10 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader, useDialog } from '../../components/dialog';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  useDialog,
+} from '../../components/dialog';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { Button } from '../../components/button';
 import { TextField } from '../../components/text-field';
@@ -6,51 +12,61 @@ import { DateField } from '../../components/datetime-field';
 import { InputGroup } from '../input-group';
 import { Formik } from 'formik';
 import { uniqBy } from 'remeda';
-import { dbDateString, DbDateString, Debt, DebtComponent, EuroValue } from '../../../common/types';
+import {
+  dbDateString,
+  DbDateString,
+  Debt,
+  DebtComponent,
+  EuroValue,
+} from '../../../common/types';
 import { useMemo } from 'react';
 import * as dfns from 'date-fns';
-import { useGetDebtComponentsByCenterQuery, useUpdateMultipleDebtsMutation } from '../../api/debt';
+import {
+  useGetDebtComponentsByCenterQuery,
+  useUpdateMultipleDebtsMutation,
+} from '../../api/debt';
 import { ResourceSelectField } from '../resource-select-field';
 import { TableView } from '../table-view';
 import { AddTagDialog } from './add-tag-dialog';
 import { isRight, left } from 'fp-ts/lib/Either';
 
 type Props = {
-  onClose: () => void,
-  debts: Debt[],
-}
+  onClose: () => void;
+  debts: Debt[];
+};
 
 type FormValues = {
-  name: string
-  date: DbDateString | null
-  dueDate: string | null
-  debtCenter: { id: string, type: 'debt_center' } | null
-  paymentCondition: string | null
+  name: string;
+  date: DbDateString | null;
+  dueDate: string | null;
+  debtCenter: { id: string; type: 'debt_center' } | null;
+  paymentCondition: string | null;
   tags: {
-    name: string,
-    operation: 'noop' | 'include' | 'exclude',
-  }[],
+    name: string;
+    operation: 'noop' | 'include' | 'exclude';
+  }[];
   components: {
-    id: string,
-    name: string,
-    amount: EuroValue,
-    operation: 'noop' | 'include' | 'exclude',
-  }[],
-}
+    id: string;
+    name: string;
+    amount: EuroValue;
+    operation: 'noop' | 'include' | 'exclude';
+  }[];
+};
 
 export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const showAddTagDialog = useDialog(AddTagDialog);
   const [updateMultipleDebtsMutation] = useUpdateMultipleDebtsMutation();
 
   const commonDebtCenterId = useMemo(() => {
-    if (debts.every((debt) => debt.debtCenterId === debts[0].debtCenterId)) {
+    if (debts.every(debt => debt.debtCenterId === debts[0].debtCenterId)) {
       return debts[0].debtCenterId;
     } else {
       return null;
     }
   }, [debts]);
 
-  const { data: commonDebtCenterComponents } = useGetDebtComponentsByCenterQuery(commonDebtCenterId ?? skipToken);
+  const { data: commonDebtCenterComponents } =
+    useGetDebtComponentsByCenterQuery(commonDebtCenterId ?? skipToken);
 
   const allDebtComponents = useMemo(() => {
     if (!commonDebtCenterComponents || !debts) {
@@ -85,14 +101,16 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       components[id] += 1;
     }
 
-    return Object.entries(components)
-      .map(([id, count]) => [allDebtComponents.find(dc => dc.id === id), count]);
+    return Object.entries(components).map(([id, count]) => [
+      allDebtComponents.find(dc => dc.id === id),
+      count,
+    ]);
   }, [allDebtComponents, debts]);
 
   const tagsSummary = useMemo<Array<[string, number]>>(() => {
     const summary = new Map();
 
-    for (const { name } of debts.flatMap((debt) => debt.tags)) {
+    for (const { name } of debts.flatMap(debt => debt.tags)) {
       const count = summary.get(name);
 
       if (count === undefined) {
@@ -107,8 +125,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
-    const dueDates = uniqBy(debts, d => dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'));
-    const dates = uniqBy(debts, d => d.date === null ? null : dfns.format(new Date(d.date), 'dd.MM.yyyy'));
+    const dueDates = uniqBy(debts, d =>
+      dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'),
+    );
+    const dates = uniqBy(debts, d =>
+      d.date === null ? null : dfns.format(new Date(d.date), 'dd.MM.yyyy'),
+    );
     const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
     let components = [];
@@ -132,46 +154,65 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       });
     }
 
-    const tags = tagsSummary
-      .map(([name, count]) => {
-        let operation: 'noop' | 'exclude' | 'include' = 'noop';
+    const tags = tagsSummary.map(([name, count]) => {
+      let operation: 'noop' | 'exclude' | 'include' = 'noop';
 
-        if (count === 0) {
-          operation = 'exclude';
-        } else if (count === debts.length) {
-          operation = 'include';
-        }
+      if (count === 0) {
+        operation = 'exclude';
+      } else if (count === debts.length) {
+        operation = 'include';
+      }
 
-        return {
-          name,
-          operation,
-        };
-      });
+      return {
+        name,
+        operation,
+      };
+    });
 
-    const date = dates.length === 1 && dates[0].date !== null ? dbDateString.decode(dfns.format(new Date(dates[0].date), 'yyyy-MM-dd')) : left(null);
+    const date =
+      dates.length === 1 && dates[0].date !== null
+        ? dbDateString.decode(
+            dfns.format(new Date(dates[0].date), 'yyyy-MM-dd'),
+          )
+        : left(null);
 
     return {
       name: names.length === 1 ? names[0].name : null,
       date: isRight(date) ? date.right : null,
-      dueDate: dueDates.length === 1 ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy') : null,
-      debtCenter: debtCenters.length === 1 ? { type: 'debt_center', id: debtCenters[0].debtCenterId } : null,
-      paymentCondition: paymentConditions.length === 1 ? '' + paymentConditions[0].paymentCondition : null,
+      dueDate:
+        dueDates.length === 1
+          ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy')
+          : null,
+      debtCenter:
+        debtCenters.length === 1
+          ? { type: 'debt_center', id: debtCenters[0].debtCenterId }
+          : null,
+      paymentCondition:
+        paymentConditions.length === 1
+          ? '' + paymentConditions[0].paymentCondition
+          : null,
       components,
       tags,
     };
   }, [debts, componentSummary]);
 
   const onSubmit = async (values: FormValues) => {
-    const date = values.date !== null ? dbDateString.decode(values.date) : left(null);
+    const date =
+      values.date !== null ? dbDateString.decode(values.date) : left(null);
 
     const res = await updateMultipleDebtsMutation({
       debts: debts.map(d => d.id),
       values: {
         name: values.name ?? undefined,
-        dueDate: values.dueDate === null ? null : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
+        dueDate:
+          values.dueDate === null
+            ? null
+            : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
         date: isRight(date) ? date.right : null,
         centerId: values.debtCenter?.id,
-        paymentCondition: values.paymentCondition ? parseInt(values.paymentCondition) : undefined,
+        paymentCondition: values.paymentCondition
+          ? parseInt(values.paymentCondition)
+          : undefined,
         components: values.components
           .filter(({ operation }) => operation !== 'noop')
           .map(({ id, operation }) => ({ id, operation })) as any,
@@ -191,7 +232,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       enableReinitialize
       initialValues={initialValues}
       onSubmit={onSubmit}
-      validate={(values) => {
+      validate={values => {
         if (values.debtCenter === null) {
           return { debtCenter: 'Debt center is required' };
         }
@@ -230,7 +271,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 label="Due Date"
                 name="dueDate"
                 component={DateField}
-                onChange={(evt) => {
+                onChange={evt => {
                   setFieldValue('dueDate', evt.target.value);
                   setFieldValue('paymentCondition', '');
                 }}
@@ -240,7 +281,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 label="Payment Condition"
                 name="paymentCondition"
                 component={TextField}
-                onChange={(evt) => {
+                onChange={evt => {
                   setFieldValue('paymentCondition', evt.target.value);
                   setFieldValue('dueDate', '');
                 }}
@@ -254,23 +295,27 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 type="debt_center"
               />
 
-              { values.tags.length > 0 && (
+              {values.tags.length > 0 && (
                 <>
                   <div className="col-span-full">
-                    <span className="text-sm font-bold text-gray-800 mb-1 block">Tags</span>
+                    <span className="text-sm font-bold text-gray-800 mb-1 block">
+                      Tags
+                    </span>
                     <TableView
                       hideTools
-                      rows={values.tags.map((c) => ({ ...c, key: c.name }))}
+                      rows={values.tags.map(c => ({ ...c, key: c.name }))}
                       columns={[
                         {
                           name: 'Name',
-                          getValue: (row) => row.name,
+                          getValue: row => row.name,
                         },
                         {
                           name: 'Presence',
-                          getValue: (row) => {
-                            const count = tagsSummary
-                              .find(([name]) => name === row.name)?.[1] ?? 0;
+                          getValue: row => {
+                            const count =
+                              tagsSummary.find(
+                                ([name]) => name === row.name,
+                              )?.[1] ?? 0;
 
                             let noopEq = 'noop';
                             let originalPresence = 'Mixed';
@@ -283,9 +328,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                               originalPresence = 'None';
                             }
 
-                            let newPresence = null; 
+                            let newPresence = null;
 
-                            if (row.operation !== 'noop' && row.operation !== noopEq) {
+                            if (
+                              row.operation !== 'noop' &&
+                              row.operation !== noopEq
+                            ) {
                               if (row.operation === 'include') {
                                 newPresence = 'All';
                               } else if (row.operation === 'exclude') {
@@ -295,61 +343,95 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
                             return [originalPresence, newPresence];
                           },
-                          render: ([ originalPresence, newPresence ]) => (
+                          render: ([originalPresence, newPresence]) => (
                             <>
-                              <span className={`${newPresence !== null ? 'line-through text-gray-500 bg-gray-200' : 'bg-gray-300'} px-1.5 text-sm rounded-sm`}>{originalPresence}</span>
-                              { newPresence !== null && (
-                                <span className={`ml-1.5 ${ newPresence === 'All' ? 'bg-green-500' : 'bg-red-500'} text-white px-1.5 text-sm rounded-sm`}>{newPresence}</span>
-                              ) }
+                              <span
+                                className={`${
+                                  newPresence !== null
+                                    ? 'line-through text-gray-500 bg-gray-200'
+                                    : 'bg-gray-300'
+                                } px-1.5 text-sm rounded-sm`}
+                              >
+                                {originalPresence}
+                              </span>
+                              {newPresence !== null && (
+                                <span
+                                  className={`ml-1.5 ${
+                                    newPresence === 'All'
+                                      ? 'bg-green-500'
+                                      : 'bg-red-500'
+                                  } text-white px-1.5 text-sm rounded-sm`}
+                                >
+                                  {newPresence}
+                                </span>
+                              )}
                             </>
                           ),
                         },
                         {
                           name: '',
-                          getValue: (row) => row,
-                          render: (row) => (
+                          getValue: row => row,
+                          render: row => (
                             <div className="flex gap-2">
-                              { (row.operation === 'noop' || row.operation === 'exclude') && (
+                              {(row.operation === 'noop' ||
+                                row.operation === 'exclude') && (
                                 <Button
                                   small
                                   className="bg-green-500 hover:bg-green-400"
                                   onClick={() => {
-                                    const i = values.tags.findIndex((t) => t.name === row.name);
-                                    setFieldValue(`tags.${i}.operation`, 'include');
+                                    const i = values.tags.findIndex(
+                                      t => t.name === row.name,
+                                    );
+                                    setFieldValue(
+                                      `tags.${i}.operation`,
+                                      'include',
+                                    );
                                   }}
                                 >
                                   Add
                                 </Button>
                               )}
-                              { (row.operation === 'noop' || row.operation === 'include') && (
+                              {(row.operation === 'noop' ||
+                                row.operation === 'include') && (
                                 <Button
                                   small
                                   className="bg-red-500 hover:bg-red-400"
                                   onClick={() => {
-                                    const i = values.tags.findIndex((t) => t.name === row.name);
-                                    setFieldValue(`tags.${i}.operation`, 'exclude');
+                                    const i = values.tags.findIndex(
+                                      t => t.name === row.name,
+                                    );
+                                    setFieldValue(
+                                      `tags.${i}.operation`,
+                                      'exclude',
+                                    );
                                   }}
                                 >
                                   Remove
                                 </Button>
                               )}
-                              { (row.operation !== 'noop') && (
+                              {row.operation !== 'noop' && (
                                 <Button
                                   small
                                   secondary
                                   onClick={() => {
-                                    const i = values.tags.findIndex((t) => t.name === row.name);
-                                    setFieldValue(`tags.${i}.operation`, 'noop');
+                                    const i = values.tags.findIndex(
+                                      t => t.name === row.name,
+                                    );
+                                    setFieldValue(
+                                      `tags.${i}.operation`,
+                                      'noop',
+                                    );
                                   }}
                                 >
                                   Clear
                                 </Button>
-                              ) }
+                              )}
                             </div>
                           ),
                         },
                       ]}
-                      actions={undefined /*[
+                      actions={
+                        undefined /*[
                         {
                           key: 'include',
                           text: 'Include',
@@ -383,7 +465,8 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                             }
                           },
                         },
-                      ]*/}
+                      ]*/
+                      }
                       footer={
                         <Button
                           small
@@ -391,7 +474,10 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                             const result = await showAddTagDialog({});
 
                             if (result) {
-                              setFieldValue('tags', [...values.tags, { name: result.name, operation: 'include' }]);
+                              setFieldValue('tags', [
+                                ...values.tags,
+                                { name: result.name, operation: 'include' },
+                              ]);
                             }
                           }}
                         >
@@ -403,23 +489,27 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                 </>
               )}
 
-              { values.components.length > 0 && (
+              {values.components.length > 0 && (
                 <>
                   <div className="col-span-full mt-3">
-                    <span className="text-sm font-bold text-gray-800 mb-1 block">Components</span>
+                    <span className="text-sm font-bold text-gray-800 mb-1 block">
+                      Components
+                    </span>
                     <TableView
                       hideTools
                       footer={false}
-                      rows={values.components.map((c) => ({ ...c, key: c.id }))}
+                      rows={values.components.map(c => ({ ...c, key: c.id }))}
                       columns={[
                         {
                           name: 'Name',
-                          getValue: (component) => component.name,
+                          getValue: component => component.name,
                         },
                         {
                           name: 'Presence',
-                          getValue: (component) => {
-                            const count = componentSummary.find(([{ id }]) => id === component.id)[1];
+                          getValue: component => {
+                            const count = componentSummary.find(
+                              ([{ id }]) => id === component.id,
+                            )[1];
 
                             let noopEq = 'noop';
                             let originalPresence = 'Mixed';
@@ -432,9 +522,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                               originalPresence = 'None';
                             }
 
-                            let newPresence = null; 
+                            let newPresence = null;
 
-                            if (component.operation !== 'noop' && component.operation !== noopEq) {
+                            if (
+                              component.operation !== 'noop' &&
+                              component.operation !== noopEq
+                            ) {
                               if (component.operation === 'include') {
                                 newPresence = 'All';
                               } else if (component.operation === 'exclude') {
@@ -444,61 +537,95 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
                             return [originalPresence, newPresence];
                           },
-                          render: ([ originalPresence, newPresence ]) => (
+                          render: ([originalPresence, newPresence]) => (
                             <>
-                              <span className={`${newPresence !== null ? 'line-through text-gray-500 bg-gray-200' : 'bg-gray-300'} px-1.5 text-sm rounded-sm`}>{originalPresence}</span>
-                              { newPresence !== null && (
-                                <span className={`ml-1.5 ${ newPresence === 'All' ? 'bg-green-500' : 'bg-red-500'} text-white px-1.5 text-sm rounded-sm`}>{newPresence}</span>
-                              ) }
+                              <span
+                                className={`${
+                                  newPresence !== null
+                                    ? 'line-through text-gray-500 bg-gray-200'
+                                    : 'bg-gray-300'
+                                } px-1.5 text-sm rounded-sm`}
+                              >
+                                {originalPresence}
+                              </span>
+                              {newPresence !== null && (
+                                <span
+                                  className={`ml-1.5 ${
+                                    newPresence === 'All'
+                                      ? 'bg-green-500'
+                                      : 'bg-red-500'
+                                  } text-white px-1.5 text-sm rounded-sm`}
+                                >
+                                  {newPresence}
+                                </span>
+                              )}
                             </>
                           ),
                         },
                         {
                           name: '',
-                          getValue: (row) => row,
-                          render: (row) => (
+                          getValue: row => row,
+                          render: row => (
                             <div className="flex gap-2">
-                              { (row.operation === 'noop' || row.operation === 'exclude') && (
+                              {(row.operation === 'noop' ||
+                                row.operation === 'exclude') && (
                                 <Button
                                   small
                                   className="bg-green-500 hover:bg-green-400"
                                   onClick={() => {
-                                    const i = values.components.findIndex((t) => t.id === row.id);
-                                    setFieldValue(`components.${i}.operation`, 'include');
+                                    const i = values.components.findIndex(
+                                      t => t.id === row.id,
+                                    );
+                                    setFieldValue(
+                                      `components.${i}.operation`,
+                                      'include',
+                                    );
                                   }}
                                 >
                                   Add
                                 </Button>
                               )}
-                              { (row.operation === 'noop' || row.operation === 'include') && (
+                              {(row.operation === 'noop' ||
+                                row.operation === 'include') && (
                                 <Button
                                   small
                                   className="bg-red-500 hover:bg-red-400"
                                   onClick={() => {
-                                    const i = values.components.findIndex((t) => t.id === row.id);
-                                    setFieldValue(`components.${i}.operation`, 'exclude');
+                                    const i = values.components.findIndex(
+                                      t => t.id === row.id,
+                                    );
+                                    setFieldValue(
+                                      `components.${i}.operation`,
+                                      'exclude',
+                                    );
                                   }}
                                 >
                                   Remove
                                 </Button>
                               )}
-                              { (row.operation !== 'noop') && (
+                              {row.operation !== 'noop' && (
                                 <Button
                                   small
                                   secondary
                                   onClick={() => {
-                                    const i = values.components.findIndex((t) => t.id === row.id);
-                                    setFieldValue(`components.${i}.operation`, 'noop');
+                                    const i = values.components.findIndex(
+                                      t => t.id === row.id,
+                                    );
+                                    setFieldValue(
+                                      `components.${i}.operation`,
+                                      'noop',
+                                    );
                                   }}
                                 >
                                   Clear
                                 </Button>
-                              ) }
+                              )}
                             </div>
                           ),
                         },
                       ]}
-                      actions={undefined /*[
+                      actions={
+                        undefined /*[
                         {
                           key: 'include',
                           text: 'Include',
@@ -532,7 +659,8 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                             }
                           },
                         },
-                      ]*/}
+                      ]*/
+                      }
                     />
                   </div>
                 </>
@@ -540,8 +668,16 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
             </div>
           </DialogContent>
           <DialogFooter>
-            <Button secondary onClick={() => onClose()}>Cancel</Button>
-            <Button disabled={!isValid} loading={isSubmitting} onClick={() => submitForm()}>Save</Button>
+            <Button secondary onClick={() => onClose()}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!isValid}
+              loading={isSubmitting}
+              onClick={() => submitForm()}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogBase>
       )}

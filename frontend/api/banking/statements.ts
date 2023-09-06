@@ -4,7 +4,7 @@ import { BankStatement } from '../../../common/types';
 const statementsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     createBankStatement: builder.mutation<BankStatement, File>({
-      query: (file) => {
+      query: file => {
         const body = new FormData();
 
         body.append('statement', file);
@@ -18,11 +18,11 @@ const statementsApi = rtkApi.injectEndpoints({
     }),
 
     getBankAccountStatements: builder.query<BankStatement[], string>({
-      query: (iban) => `/banking/accounts/${iban}/statements`,
+      query: iban => `/banking/accounts/${iban}/statements`,
     }),
 
     getBankStatement: builder.query<BankStatement, string>({
-      query: (id) => `/banking/statements/${id}`,
+      query: id => `/banking/statements/${id}`,
     }),
   }),
 });

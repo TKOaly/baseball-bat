@@ -4,15 +4,15 @@ import { PayerService } from '../backend/services/payer';
 import { emailIdentity } from '../common/types';
 
 export type CreatePayerOpts = {
-  email?: string,
-  firstName?: string,
-  lastName?: string,
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 @Service()
 export class TestHelper {
   @Inject(() => PayerService)
-    payers: PayerService;
+  payers: PayerService;
 
   async createPayer(opts?: CreatePayerOpts) {
     const firstName = opts?.firstName ?? faker.person.firstName();
@@ -24,7 +24,10 @@ export class TestHelper {
       name: `${firstName} ${lastName}`,
     };
 
-    const payer = await this.payers.createPayerProfileFromEmailIdentity(emailIdentity(email), details);
+    const payer = await this.payers.createPayerProfileFromEmailIdentity(
+      emailIdentity(email),
+      details,
+    );
 
     return payer;
   }

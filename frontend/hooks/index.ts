@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { DebtCenter, EventWithPaymentStatus, Session } from '../../common/types';
-import { getDebtCenters, getEvents, getSession, getSetupIntent, RequestError } from '../api';
+import {
+  DebtCenter,
+  EventWithPaymentStatus,
+  Session,
+} from '../../common/types';
+import {
+  getDebtCenters,
+  getEvents,
+  getSession,
+  getSetupIntent,
+  RequestError,
+} from '../api';
 
 const handleRequestError =
   (setLocation: (loc: string) => void) => (error: RequestError) => {
     const [isAuthRoute] = useRoute('/auth/:rest*');
 
     switch (error.status) {
-    case 401:
-      localStorage.removeItem('bbat_token');
+      case 401:
+        localStorage.removeItem('bbat_token');
 
-      if (!isAuthRoute) {
-        setLocation('/auth');
-      }
+        if (!isAuthRoute) {
+          setLocation('/auth');
+        }
 
-      break;
-    default:
-      console.error('Request failed', error);
+        break;
+      default:
+        console.error('Request failed', error);
     }
   };
 
@@ -37,15 +47,17 @@ export const useDebtCenters = () => {
   const setLocation = useLocation()[1];
 
   useEffect(() => {
-    getDebtCenters().then(setDebtCenters).catch(handleRequestError(setLocation));
+    getDebtCenters()
+      .then(setDebtCenters)
+      .catch(handleRequestError(setLocation));
   }, []);
 
   return debtCenters;
 };
 
 export const loadTokenAndSession = (): {
-  session: Session | null
-  loading: boolean
+  session: Session | null;
+  loading: boolean;
 } => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);

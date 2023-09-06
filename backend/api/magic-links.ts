@@ -10,28 +10,33 @@ import { PayerService } from '../services/payer';
 @Service()
 export class MagicLinksApi {
   @Inject(() => MagicLinkService)
-    magicLinkService: MagicLinkService;
+  magicLinkService: MagicLinkService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   private handleMagicLink() {
     return route
       .get('/magic/:payload')
-      .use(this.authService.createAuthMiddleware({
-        unauthenticated: true,
-      }))
-      .handler(async (ctx) => {
-        const magic_link = toNullable(this.magicLinkService.decodeMagicLink(ctx.routeParams.payload));
+      .use(
+        this.authService.createAuthMiddleware({
+          unauthenticated: true,
+        }),
+      )
+      .handler(async ctx => {
+        const magic_link = toNullable(
+          this.magicLinkService.decodeMagicLink(ctx.routeParams.payload),
+        );
 
         if (!magic_link) {
           return redirect(302, '/magic/invalid');
         }
 
-        const isValid = await this.magicLinkService.validateMagicLink(magic_link);
+        const isValid =
+          await this.magicLinkService.validateMagicLink(magic_link);
 
         if (!isValid) {
           return redirect(302, '/magic/invalid');
@@ -45,7 +50,10 @@ export class MagicLinksApi {
           }
 
           if (magic_link.payload.email) {
-            const profile = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(magic_link.payload.email));
+            const profile =
+              await this.payerService.getPayerProfileByEmailIdentity(
+                emailIdentity(magic_link.payload.email),
+              );
 
             if (profile) {
               payerId = profile.id;
@@ -56,7 +64,12 @@ export class MagicLinksApi {
             return redirect(302, '/magic/invalid');
           }
 
-          this.authService.authenticate(ctx.session.token, payerId, 'magic-link', ctx.req.cookies.token);
+          this.authService.authenticate(
+            ctx.session.token,
+            payerId,
+            'magic-link',
+            ctx.req.cookies.token,
+          );
         }
 
         return redirect(302, magic_link.payload.path);
@@ -64,8 +77,6 @@ export class MagicLinksApi {
   }
 
   router() {
-    return router(
-      this.handleMagicLink(),
-    );
+    return router(this.handleMagicLink());
   }
 }

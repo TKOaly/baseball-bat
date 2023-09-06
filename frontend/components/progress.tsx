@@ -1,9 +1,9 @@
 export type Props = {
-  value: number
-  max: number
-  message?: string
-  noText?: boolean
-}
+  value: number;
+  max: number;
+  message?: string;
+  noText?: boolean;
+};
 
 export const Progress: React.FC<Props> = ({
   value,
@@ -21,7 +21,7 @@ export const Progress: React.FC<Props> = ({
     text = null;
   }
 
-  const percentage = (!value || !max) ? 0 : (value / max);
+  const percentage = !value || !max ? 0 : value / max;
 
   return (
     <div className="relative text-sm h-7">

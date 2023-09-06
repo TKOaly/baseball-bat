@@ -10,13 +10,13 @@ import base64url from 'base64url';
 @Service()
 export class SessionApi {
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   getSession() {
     return route
@@ -31,16 +31,23 @@ export class SessionApi {
 
         const id = internalIdentity(session.payerId);
 
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(id);
+        const payerProfile =
+          await this.payerService.getPayerProfileByInternalIdentity(id);
         const preferences = await this.payerService.getPayerPreferences(id);
 
         if (!req.cookies.token) {
           return unauthorized();
         }
 
-        const tokenPayload = JSON.parse(Buffer.from(req.cookies.token.split('.')[1], 'base64').toString());
+        const tokenPayload = JSON.parse(
+          Buffer.from(req.cookies.token.split('.')[1], 'base64').toString(),
+        );
 
-        if (tokenPayload.authenticatedTo.split(',').indexOf(this.config.serviceId) === -1) {
+        if (
+          tokenPayload.authenticatedTo
+            .split(',')
+            .indexOf(this.config.serviceId) === -1
+        ) {
           return unauthorized();
         }
 
@@ -54,21 +61,33 @@ export class SessionApi {
   }
 
   login() {
-    return route
-      .get('/login')
-      .handler((ctx) => {
-        const payload = base64url.encode(JSON.stringify({
+    return route.get('/login').handler(ctx => {
+      const payload = base64url.encode(
+        JSON.stringify({
           target: ctx.req.query.target,
-        }));
+        }),
+      );
 
-        let redirectUrl = null;
+      let redirectUrl = null;
 
-        if (ctx.req.query.target === 'welcome' && typeof ctx.req.query.token === 'string') {
-          redirectUrl = `${this.config.appUrl}/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`;
-        }
+      if (
+        ctx.req.query.target === 'welcome' &&
+        typeof ctx.req.query.token === 'string'
+      ) {
+        redirectUrl = `${
+          this.config.appUrl
+        }/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`;
+      }
 
-        return redirect(302, `${this.config.userServiceUrl}?serviceIdentifier=${this.config.serviceId}&payload=${payload}${redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''}`);
-      });
+      return redirect(
+        302,
+        `${this.config.userServiceUrl}?serviceIdentifier=${
+          this.config.serviceId
+        }&payload=${payload}${
+          redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''
+        }`,
+      );
+    });
   }
 
   /*getSetupIntent() {

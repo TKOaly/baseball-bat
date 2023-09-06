@@ -73,8 +73,8 @@ const CardInfo = styled.p`
 `;
 
 type PayButtonProps = {
-  session: Session
-}
+  session: Session;
+};
 
 const PayButton = ({ session }: PayButtonProps) => {
   const [paymentLoading, setPaymentLoading] = useState(false);

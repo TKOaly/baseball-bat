@@ -35,4 +35,4 @@ describe('empty spec', () => {
     cy.visit('/admin');
     cy.contains('h1', 'Debt Centers').should('exist');
   });
-})
+});

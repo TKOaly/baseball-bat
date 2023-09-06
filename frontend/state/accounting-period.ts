@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 type AccountingPeriodState = {
-  activePeriod: number | null,
+  activePeriod: number | null;
 };
 
 const initialState: AccountingPeriodState = {
@@ -18,7 +18,7 @@ const accountingPeriodSlice = createSlice({
 
     bootstrap: (state, action) => {
       const sorted = [...action.payload]
-        .filter((period) => !period.closed)
+        .filter(period => !period.closed)
         .sort((a, b) => b.year - a.year);
 
       state.activePeriod = sorted[0].year;

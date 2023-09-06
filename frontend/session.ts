@@ -6,26 +6,35 @@ import { RootState } from './store';
 export const createSession = createAsyncThunk(
   'session/createSession',
   async (): Promise<string> => {
-    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/init`, { method: 'POST' });
+    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/init`, {
+      method: 'POST',
+    });
     const body = await res.json();
     window.localStorage.setItem('session-token', body?.token);
     return body?.token;
   },
 );
 
-export const destroySession = createAsyncThunk<void, void, { state: RootState }>(
+export const destroySession = createAsyncThunk<
+  void,
+  void,
+  { state: RootState }
+>(
   'session/destroySession',
   async (_payload: never, thunkApi): Promise<void> => {
     const state = thunkApi.getState();
     const sessionToken = state.session.token;
 
-    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/destroy-session`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${sessionToken}`,
-        'Content-Type': 'application/json',
+    const res = await fetch(
+      `${process.env.BACKEND_URL}/api/auth/destroy-session`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+    );
 
     if (res.ok) {
       return Promise.resolve();
@@ -35,43 +44,54 @@ export const destroySession = createAsyncThunk<void, void, { state: RootState }>
   },
 );
 
-export const authenticateSession = createAsyncThunk<{ accessLevel: 'normal' | 'admin', payerProfile: PayerProfile, preferences: PayerPreferences }, string, { state: RootState }>(
-  'session/authenticateSession',
-  async (authToken: string, thunkApi) => {
-    const state = thunkApi.getState();
-    const sessionToken = state.session.token;
+export const authenticateSession = createAsyncThunk<
+  {
+    accessLevel: 'normal' | 'admin';
+    payerProfile: PayerProfile;
+    preferences: PayerPreferences;
+  },
+  string,
+  { state: RootState }
+>('session/authenticateSession', async (authToken: string, thunkApi) => {
+  const state = thunkApi.getState();
+  const sessionToken = state.session.token;
 
-    const res = await fetch(`${process.env.BACKEND_URL}/api/auth/authenticate`, {
-      method: 'POST',
+  const res = await fetch(`${process.env.BACKEND_URL}/api/auth/authenticate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id: authToken,
+      remote: false,
+    }),
+  });
+
+  if (res.ok) {
+    const session_res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
+      method: 'GET',
       headers: {
-        'Authorization': `Bearer ${sessionToken}`,
+        Authorization: `Bearer ${sessionToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: authToken,
-        remote: false,
-      }),
     });
 
-    if (res.ok) {
-      const session_res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      return await session_res.json();
-    } else {
-      return Promise.reject();
-    }
-  },
-);
+    return await session_res.json();
+  } else {
+    return Promise.reject();
+  }
+});
 
 export const bootstrapSession = createAsyncThunk(
   'session/bootstrap',
-  async (): Promise<{ token: string, payerId: string, authLevel: string, accessLevel: 'admin' | 'normal', preferences: PayerPreferences }> => {
+  async (): Promise<{
+    token: string;
+    payerId: string;
+    authLevel: string;
+    accessLevel: 'admin' | 'normal';
+    preferences: PayerPreferences;
+  }> => {
     const token = window.localStorage.getItem('session-token');
 
     if (!token) {
@@ -80,7 +100,7 @@ export const bootstrapSession = createAsyncThunk(
 
     const res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
@@ -101,39 +121,36 @@ export const bootstrapSession = createAsyncThunk(
   },
 );
 
-export const heartbeat = createAsyncThunk(
-  'session/heartbeat',
-  async () => {
-    const token = window.localStorage.getItem('session-token');
+export const heartbeat = createAsyncThunk('session/heartbeat', async () => {
+  const token = window.localStorage.getItem('session-token');
 
-    if (!token) {
-      return Promise.reject();
-    }
+  if (!token) {
+    return Promise.reject();
+  }
 
-    const res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  const res = await fetch(`${process.env.BACKEND_URL}/api/session`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
 
-    if (res.ok) {
-      return Promise.resolve();
-    } else {
-      return Promise.reject();
-    }
-  },
-);
+  if (res.ok) {
+    return Promise.resolve();
+  } else {
+    return Promise.reject();
+  }
+});
 
 type SessionState = {
-  token: string | null
-  authenticated: boolean
-  payerId: null | string
-  bootstrapping: 'pending' | 'active' | 'completed'
-  accessLevel: 'normal' | 'admin'
-  preferences: null | PayerPreferences
-  creatingSession: boolean
-}
+  token: string | null;
+  authenticated: boolean;
+  payerId: null | string;
+  bootstrapping: 'pending' | 'active' | 'completed';
+  accessLevel: 'normal' | 'admin';
+  preferences: null | PayerPreferences;
+  creatingSession: boolean;
+};
 
 const sessionSlice = createSlice({
   name: 'session',
@@ -146,18 +163,18 @@ const sessionSlice = createSlice({
     creatingSession: false,
   } as SessionState,
   reducers: {
-    resetSession: (state) => {
+    resetSession: state => {
       state.token = null;
       state.authenticated = false;
     },
   },
   extraReducers: builder => {
-    builder.addCase(destroySession.pending, (state) => {
+    builder.addCase(destroySession.pending, state => {
       state.token = null;
       state.authenticated = false;
     });
 
-    builder.addCase(createSession.pending, (state) => {
+    builder.addCase(createSession.pending, state => {
       state.token = null;
       state.creatingSession = true;
     });
@@ -167,7 +184,7 @@ const sessionSlice = createSlice({
       state.creatingSession = false;
     });
 
-    builder.addCase(createSession.rejected, (state) => {
+    builder.addCase(createSession.rejected, state => {
       state.creatingSession = false;
     });
 
@@ -177,17 +194,16 @@ const sessionSlice = createSlice({
       state.payerId = action.payload.payerProfile.id.value;
       state.preferences = action.payload.preferences;
 
-      api.util.invalidateTags([
-        { type: 'Session', id: 'CURRENT' },
-      ]);
+      api.util.invalidateTags([{ type: 'Session', id: 'CURRENT' }]);
     });
 
-    builder.addCase(bootstrapSession.pending, (state) => {
+    builder.addCase(bootstrapSession.pending, state => {
       state.bootstrapping = 'active';
     });
 
     builder.addCase(bootstrapSession.fulfilled, (state, action) => {
-      const { token, authLevel, payerId, accessLevel, preferences } = action.payload;
+      const { token, authLevel, payerId, accessLevel, preferences } =
+        action.payload;
       state.bootstrapping = 'completed';
       state.authenticated = authLevel !== 'unauthenticated';
       state.token = token;
@@ -196,14 +212,14 @@ const sessionSlice = createSlice({
       state.payerId = payerId;
     });
 
-    builder.addCase(bootstrapSession.rejected, (state) => {
+    builder.addCase(bootstrapSession.rejected, state => {
       state.bootstrapping = 'completed';
       state.authenticated = false;
       state.token = null;
       window.localStorage.removeItem('session-token');
     });
 
-    builder.addCase(heartbeat.rejected, (state) => {
+    builder.addCase(heartbeat.rejected, state => {
       state.authenticated = false;
       state.token = null;
     });

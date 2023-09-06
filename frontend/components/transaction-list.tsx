@@ -8,12 +8,14 @@ import { useDialog } from './dialog';
 import { TransactionRegistrationDialog } from './dialogs/transaction-registration-dialog';
 
 export type Props = {
-  transactions: BankTransaction[]
-}
+  transactions: BankTransaction[];
+};
 
 export const TransactionList = ({ transactions }: Props) => {
   const [, setLocation] = useLocation();
-  const showTransactionRegistrationDialog = useDialog(TransactionRegistrationDialog);
+  const showTransactionRegistrationDialog = useDialog(
+    TransactionRegistrationDialog,
+  );
 
   return (
     <TableView
@@ -22,7 +24,7 @@ export const TransactionList = ({ transactions }: Props) => {
         {
           key: 'register',
           text: 'Register',
-          onSelect: async (transactions) => {
+          onSelect: async transactions => {
             await showTransactionRegistrationDialog({
               transactions,
             });
@@ -32,43 +34,49 @@ export const TransactionList = ({ transactions }: Props) => {
       columns={[
         {
           name: 'Type',
-          getValue: (tx) => tx.type,
-          render: (value) => (
-            {
-              'credit': <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">Credit</span>,
-              'debit': <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">Debit</span>,
-            }[value]
-          ),
+          getValue: tx => tx.type,
+          render: value =>
+            ({
+              credit: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">
+                  Credit
+                </span>
+              ),
+              debit: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">
+                  Debit
+                </span>
+              ),
+            })[value],
         },
         {
           name: 'Date',
-          getValue: (tx) => parseISO(tx.date),
-          render: (date) => format(date, 'dd.MM.yyyy'),
+          getValue: tx => parseISO(tx.date),
+          render: date => format(date, 'dd.MM.yyyy'),
         },
         {
           name: 'Amount',
-          getValue: (tx) => tx.amount.value,
-          render: (value) => formatEuro(cents(value)),
+          getValue: tx => tx.amount.value,
+          render: value => formatEuro(cents(value)),
           align: 'right',
         },
         {
           name: 'Other Party',
-          getValue: (tx) => tx.otherParty.name,
+          getValue: tx => tx.otherParty.name,
         },
         {
           name: 'Reference',
-          getValue: (tx) => tx.reference,
+          getValue: tx => tx.reference,
         },
         {
           name: 'Message',
-          getValue: (tx) => tx.message,
+          getValue: tx => tx.message,
         },
         {
           name: 'Payment',
-          getValue: (row) => row.payment?.payment_number,
+          getValue: row => row.payment?.payment_number,
           render: (_, row) => {
-            if (!row.payment)
-              return null;
+            if (!row.payment) return null;
 
             return (
               <div

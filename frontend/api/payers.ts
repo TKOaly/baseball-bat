@@ -1,78 +1,83 @@
 import rtkApi from './rtk-api';
-import { Debt, DebtComponentDetails, PayerEmail, PayerEmailPriority, PayerPreferences, PayerProfile } from '../../common/types';
+import {
+  Debt,
+  DebtComponentDetails,
+  PayerEmail,
+  PayerEmailPriority,
+  PayerPreferences,
+  PayerProfile,
+} from '../../common/types';
 
 export type UpdatePayerEmailsQueryPayload = {
-  payerId: string,
-  emails: PayerEmail[],
-}
+  payerId: string;
+  emails: PayerEmail[];
+};
 
 export type UpdatePayerPayload = {
-  id: string
-  name?: string
-  emails?: { email: string, priority: PayerEmailPriority }[]
-}
+  id: string;
+  name?: string;
+  emails?: { email: string; priority: PayerEmailPriority }[];
+};
 
 const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getPayers: builder.query<PayerProfile[], void>({
       query: () => '/payers',
-      providesTags: [
-        { type: 'Payer', id: 'LIST' },
-      ],
+      providesTags: [{ type: 'Payer', id: 'LIST' }],
     }),
 
     getPayer: builder.query<PayerProfile, string>({
-      query: (id) => `/payers/${id}`,
-      providesTags: ({ id }) => [
-        { type: 'Payer', id: id.value },
-      ],
+      query: id => `/payers/${id}`,
+      providesTags: ({ id }) => [{ type: 'Payer', id: id.value }],
     }),
 
     updatePayer: builder.mutation<PayerProfile, UpdatePayerPayload>({
-      query: (body) => ({
+      query: body => ({
         url: `/payers/${body.id}`,
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: ({ id }) => [
-        { type: 'Payer', id: id.value },
-      ],
+      invalidatesTags: ({ id }) => [{ type: 'Payer', id: id.value }],
     }),
 
-    updatePayerPreferences: builder.mutation<PayerPreferences, { payerId: string, preferences: Partial<PayerPreferences> }>({
+    updatePayerPreferences: builder.mutation<
+      PayerPreferences,
+      { payerId: string; preferences: Partial<PayerPreferences> }
+    >({
       query: ({ payerId, preferences }) => ({
         url: `/payers/${payerId}/preferences`,
         method: 'PATCH',
         body: preferences,
       }),
-      invalidatesTags: (_, __, { payerId }) => [
-        { type: 'Payer', id: payerId },
-      ],
+      invalidatesTags: (_, __, { payerId }) => [{ type: 'Payer', id: payerId }],
     }),
 
-    updatePayerEmails: builder.mutation<PayerEmail[], UpdatePayerEmailsQueryPayload>({
+    updatePayerEmails: builder.mutation<
+      PayerEmail[],
+      UpdatePayerEmailsQueryPayload
+    >({
       query: ({ payerId, emails }) => ({
         url: `/payers/${payerId}/emails`,
         method: 'PATCH',
         body: emails,
       }),
-      invalidatesTags: (_, __, { payerId }) => [
-        { type: 'Payer', id: payerId },
-      ],
+      invalidatesTags: (_, __, { payerId }) => [{ type: 'Payer', id: payerId }],
     }),
 
     getPayerByEmail: builder.query<PayerProfile, string>({
-      query: (email) => `/payers/by-email/${encodeURIComponent(email)}`,
-      providesTags: (response) => response !== undefined
-        ? [ { type: 'Payer', id: response.id.value } ]
-        : [],
+      query: email => `/payers/by-email/${encodeURIComponent(email)}`,
+      providesTags: response =>
+        response !== undefined
+          ? [{ type: 'Payer', id: response.id.value }]
+          : [],
     }),
 
     getPayerEmails: builder.query<PayerEmail[], string>({
-      query: (id) => `/payers/${id}/emails`,
-      providesTags: (payers) => payers.flatMap(({ payerId, email }) => [
-        { type: 'PayerEmail', id: `${payerId.value}-${email}` },
-      ]),
+      query: id => `/payers/${id}/emails`,
+      providesTags: payers =>
+        payers.flatMap(({ payerId, email }) => [
+          { type: 'PayerEmail', id: `${payerId.value}-${email}` },
+        ]),
     }),
 
     getSessionPayer: builder.query<PayerProfile, never>({
@@ -84,27 +89,32 @@ const payersApi = rtkApi.injectEndpoints({
     }),
 
     getPayerByTkoalyId: builder.query<PayerProfile, number>({
-      query: (id) => `/payers/by-tkoaly-id/${id}`,
-      providesTags: ({ id }) => [
-        { type: 'Payer', id: id.value },
-      ],
+      query: id => `/payers/by-tkoaly-id/${id}`,
+      providesTags: ({ id }) => [{ type: 'Payer', id: id.value }],
     }),
 
-    getPayerDebts: builder.query<(Debt & DebtComponentDetails)[], { id: string, includeDrafts?: boolean }>({
+    getPayerDebts: builder.query<
+      (Debt & DebtComponentDetails)[],
+      { id: string; includeDrafts?: boolean }
+    >({
       query: ({ id, includeDrafts }) => ({
         url: `/payers/${id}/debts`,
         params: {
           includeDrafts: includeDrafts ? 'true' : 'false',
         },
       }),
-      providesTags: (debts) => debts.flatMap(({ id }) => [
-        { type: 'Debt', id: 'LIST' },
-        { type: 'Debt', id },
-      ]),
+      providesTags: debts =>
+        debts.flatMap(({ id }) => [
+          { type: 'Debt', id: 'LIST' },
+          { type: 'Debt', id },
+        ]),
     }),
 
-    sendPayerDebtReminder: builder.mutation<{ messageCount: number, payerCount: number, errors: string[] }, { payerId: string, send: boolean, ignoreCooldown: boolean }>({
-      query: (body) => ({
+    sendPayerDebtReminder: builder.mutation<
+      { messageCount: number; payerCount: number; errors: string[] },
+      { payerId: string; send: boolean; ignoreCooldown: boolean }
+    >({
+      query: body => ({
         url: `/payers/${body.payerId}/send-reminder`,
         method: 'POST',
         body: {
@@ -115,15 +125,22 @@ const payersApi = rtkApi.injectEndpoints({
       invalidatesTags: [{ type: 'Email', id: 'LIST' }],
     }),
 
-    mergeProfiles: builder.mutation<{ affectedDebts: string[] }, { primaryPayerId: string, secondaryPayerId: string }>({
-      query: (body) => ({
+    mergeProfiles: builder.mutation<
+      { affectedDebts: string[] },
+      { primaryPayerId: string; secondaryPayerId: string }
+    >({
+      query: body => ({
         url: `/payers/${body.primaryPayerId}/merge`,
         method: 'POST',
         body: {
           mergeWith: body.secondaryPayerId,
         },
       }),
-      invalidatesTags: ({ affectedDebts }, __, { primaryPayerId, secondaryPayerId }) => [
+      invalidatesTags: (
+        { affectedDebts },
+        __,
+        { primaryPayerId, secondaryPayerId },
+      ) => [
         { type: 'Payer', id: primaryPayerId },
         { type: 'Payer', id: secondaryPayerId },
         { type: 'Payer', id: 'LIST' },
@@ -132,8 +149,11 @@ const payersApi = rtkApi.injectEndpoints({
       ],
     }),
 
-    createPayer: builder.mutation<PayerProfile, { name: string, email: string }>({
-      query: (body) => ({
+    createPayer: builder.mutation<
+      PayerProfile,
+      { name: string; email: string }
+    >({
+      query: body => ({
         url: '/payers',
         method: 'POST',
         body,

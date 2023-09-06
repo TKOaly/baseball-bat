@@ -1,13 +1,28 @@
 import { Router, route, router, Parser } from 'typera-express';
 import { AuthService } from '../auth-middleware';
 import { DebtService } from '../services/debt';
-import { badRequest, internalServerError, notFound, ok, unauthorized } from 'typera-express/response';
+import {
+  badRequest,
+  internalServerError,
+  notFound,
+  ok,
+  unauthorized,
+} from 'typera-express/response';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
 import { DebtCentersService } from '../services/debt_centers';
 import { Type } from 'io-ts';
 import * as t from 'io-ts';
-import { convertToDbDate, dateString, dbDateString, Debt, DebtPatch, Email, euro, NewDebtTag } from '../../common/types';
+import {
+  convertToDbDate,
+  dateString,
+  dbDateString,
+  Debt,
+  DebtPatch,
+  Email,
+  euro,
+  NewDebtTag,
+} from '../../common/types';
 import { PayerService } from '../services/payer';
 import { validateBody } from '../validate-middleware';
 import { PaymentService } from '../services/payements';
@@ -32,10 +47,7 @@ const debtCenter = t.type({
   description: t.string,
 });
 
-const newOrExisting = <T>(type: Type<T>) => t.union([
-  type,
-  t.string,
-]);
+const newOrExisting = <T>(type: Type<T>) => t.union([type, t.string]);
 
 const payerIdentity = t.union([
   t.type({ type: t.literal('tkoaly'), value: t.number }),
@@ -62,57 +74,61 @@ const createDebtPayload = t.intersection([
     date: dbDateString,
     dueDate: dbDateString,
     paymentCondition: t.union([t.null, t.number]),
-    tags: t.array(t.union([
-      t.string,
-      t.type({
-        hidden: t.boolean,
-        name: t.string,
-      }),
-    ])),
+    tags: t.array(
+      t.union([
+        t.string,
+        t.type({
+          hidden: t.boolean,
+          name: t.string,
+        }),
+      ]),
+    ),
   }),
 ]);
 
 @Service()
 export class DebtApi {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject('redis')
-    redis: RedisClientType;
+  redis: RedisClientType;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   @Inject(() => JobService)
-    jobService: JobService;
+  jobService: JobService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => AccountingService)
-    accountingService: AccountingService;
+  accountingService: AccountingService;
 
   private createDebtComponent() {
     return route
       .post('/component')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const component = await this.debtService.createDebtComponent(ctx.req.body);
+      .handler(async ctx => {
+        const component = await this.debtService.createDebtComponent(
+          ctx.req.body,
+        );
         return ok(component);
       });
   }
@@ -121,14 +137,17 @@ export class DebtApi {
     return route
       .get('/:id')
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
           return notFound();
         }
 
-        if (ctx.session.accessLevel === 'normal' && debt.payerId.value !== ctx.session.payerId) {
+        if (
+          ctx.session.accessLevel === 'normal' &&
+          debt.payerId.value !== ctx.session.payerId
+        ) {
           return unauthorized();
         }
 
@@ -150,8 +169,10 @@ export class DebtApi {
     return route
       .get('/by-tag/:name')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const debts = await this.debtService.getDebtsByTag(ctx.routeParams.name);
+      .handler(async ctx => {
+        const debts = await this.debtService.getDebtsByTag(
+          ctx.routeParams.name,
+        );
         return ok(debts);
       });
   }
@@ -160,14 +181,19 @@ export class DebtApi {
     return route
       .get('/by-payment/:id')
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
-      .handler(async (ctx) => {
-        const payment = await this.paymentService.getPayment(ctx.routeParams.id);
+      .handler(async ctx => {
+        const payment = await this.paymentService.getPayment(
+          ctx.routeParams.id,
+        );
 
         if (!payment) {
           return notFound();
         }
 
-        if (ctx.session.accessLevel != 'admin' && payment.payerId.value !== ctx.session.payerId) {
+        if (
+          ctx.session.accessLevel != 'admin' &&
+          payment.payerId.value !== ctx.session.payerId
+        ) {
           return unauthorized();
         }
 
@@ -182,25 +208,29 @@ export class DebtApi {
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(t.type({ ids: t.array(t.string) })))
       .handler(async ({ body }) => {
-        await Promise.all(body.ids.map(async (id): Promise<void> => {
-          const debt = await this.debtService.getDebt(id);
+        await Promise.all(
+          body.ids.map(async (id): Promise<void> => {
+            const debt = await this.debtService.getDebt(id);
 
-          if (!debt) {
-            return Promise.reject('No such debt');
-          }
+            if (!debt) {
+              return Promise.reject('No such debt');
+            }
 
-          if (!debt.draft) {
-            return Promise.reject('Debt already published');
-          }
+            if (!debt.draft) {
+              return Promise.reject('Debt already published');
+            }
 
-          const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
+            const email = await this.payerService.getPayerPrimaryEmail(
+              debt.payerId,
+            );
 
-          if (!email) {
-            return Promise.reject('No email for payer found');
-          }
+            if (!email) {
+              return Promise.reject('No email for payer found');
+            }
 
-          await this.debtService.publishDebt(id);
-        }));
+            await this.debtService.publishDebt(id);
+          }),
+        );
 
         return ok();
       });
@@ -211,18 +241,27 @@ export class DebtApi {
       .post('/')
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(createDebtPayload))
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const payload = ctx.body;
 
-        const payer = await this.payerService.getOrCreatePayerProfileForIdentity(payload.payer, ctx.req.cookies.token);
+        const payer =
+          await this.payerService.getOrCreatePayerProfileForIdentity(
+            payload.payer,
+            ctx.req.cookies.token,
+          );
 
         if (!payer) {
-          throw new Error('Could not find or create a payer profile for the payer');
+          throw new Error(
+            'Could not find or create a payer profile for the payer',
+          );
         }
 
         let centerId: string;
 
-        const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(ctx.body.accountingPeriod);
+        const accountingPeriodOpen =
+          await this.accountingService.isAccountingPeriodOpen(
+            ctx.body.accountingPeriod,
+          );
 
         if (!accountingPeriodOpen) {
           return badRequest({
@@ -248,35 +287,40 @@ export class DebtApi {
         }
 
         const componentIds = await Promise.all(
-          payload.components
-            .map(async (component) => {
-              if (typeof component === 'string') {
-                return component;
-              }
+          payload.components.map(async component => {
+            if (typeof component === 'string') {
+              return component;
+            }
 
-              const createdComponent = await this.debtService.createDebtComponent({
+            const createdComponent = await this.debtService.createDebtComponent(
+              {
                 ...component,
                 amount: euro(component.amount),
                 debtCenterId: centerId,
-              });
+              },
+            );
 
-              return createdComponent.id;
-            }),
+            return createdComponent.id;
+          }),
         );
 
         const dueDate = payload.dueDate ?? null;
         const date = payload.date ?? null;
 
-        if ((payload.paymentCondition || payload.paymentCondition === 0) && payload.dueDate) {
+        if (
+          (payload.paymentCondition || payload.paymentCondition === 0) &&
+          payload.dueDate
+        ) {
           return badRequest({
-            message: 'Payment condition and due date cannot be defined simultanously.',
+            message:
+              'Payment condition and due date cannot be defined simultanously.',
           });
         }
 
         let tags: NewDebtTag[] = [];
 
         if (payload.tags) {
-          tags = payload.tags.map((tag) => {
+          tags = payload.tags.map(tag => {
             if (typeof tag === 'string') {
               return { name: tag, hidden: false };
             } else {
@@ -305,33 +349,53 @@ export class DebtApi {
   private updateMultipleDebts() {
     return route
       .post('/update-multiple')
-      .use(validateBody(t.type({
-        debts: t.array(t.string),
-        values: t.partial({
-          name: t.string,
-          description: t.string,
-          payerId: payerIdentity,
-          centerId: t.string,
-          dueDate: t.union([t.null, t.string]),
-          date: dbDateString,
-          paymentCondition: t.union([t.null, t.number]),
-          components: t.array(t.type({
-            operation: t.union([ t.literal('include'), t.literal('exclude') ]),
-            id: t.string,
-          })),
-          tags: t.array(t.type({
-            operation: t.union([ t.literal('include'), t.literal('exclude') ]),
-            name: t.string,
-          })),
-        }),
-      })))
+      .use(
+        validateBody(
+          t.type({
+            debts: t.array(t.string),
+            values: t.partial({
+              name: t.string,
+              description: t.string,
+              payerId: payerIdentity,
+              centerId: t.string,
+              dueDate: t.union([t.null, t.string]),
+              date: dbDateString,
+              paymentCondition: t.union([t.null, t.number]),
+              components: t.array(
+                t.type({
+                  operation: t.union([
+                    t.literal('include'),
+                    t.literal('exclude'),
+                  ]),
+                  id: t.string,
+                }),
+              ),
+              tags: t.array(
+                t.type({
+                  operation: t.union([
+                    t.literal('include'),
+                    t.literal('exclude'),
+                  ]),
+                  name: t.string,
+                }),
+              ),
+            }),
+          }),
+        ),
+      )
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const { dueDate, paymentCondition } = ctx.body.values;
 
-        if (dueDate !== undefined && dueDate !== null && paymentCondition !== undefined && paymentCondition !== null) {
+        if (
+          dueDate !== undefined &&
+          dueDate !== null &&
+          paymentCondition !== undefined &&
+          paymentCondition !== null
+        ) {
           return badRequest({
-            message: 'Cannot define both due date and payment condition at the same time.',
+            message:
+              'Cannot define both due date and payment condition at the same time.',
           });
         }
 
@@ -403,10 +467,12 @@ export class DebtApi {
         return pipe(
           ctx.body.debts,
           A.traverse(TE.ApplicativePar)(update),
-          T.map(E.matchW(
-            () => badRequest(),
-            (debts) => ok(debts),
-          )),
+          T.map(
+            E.matchW(
+              () => badRequest(),
+              debts => ok(debts),
+            ),
+          ),
         )();
       });
   }
@@ -414,21 +480,26 @@ export class DebtApi {
   private updateDebt() {
     return route
       .patch('/:id')
-      .use(validateBody(t.partial({
-        name: t.string,
-        description: t.string,
-        payerId: payerIdentity,
-        date: t.union([t.null, dateString]),
-        centerId: t.string,
-        dueDate: t.union([t.null, t.string]),
-        paymentCondition: t.union([t.null, t.number]),
-        components: t.array(t.string),
-      })))
+      .use(
+        validateBody(
+          t.partial({
+            name: t.string,
+            description: t.string,
+            payerId: payerIdentity,
+            date: t.union([t.null, dateString]),
+            centerId: t.string,
+            dueDate: t.union([t.null, t.string]),
+            paymentCondition: t.union([t.null, t.number]),
+            components: t.array(t.string),
+          }),
+        ),
+      )
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         if (ctx.body.paymentCondition && ctx.body.dueDate) {
           return badRequest({
-            'message': 'Payment condition and due date cannot be defined simultanously.',
+            message:
+              'Payment condition and due date cannot be defined simultanously.',
           });
         }
 
@@ -470,7 +541,7 @@ export class DebtApi {
           updated,
           E.foldW(
             () => badRequest(),
-            (debt) => ok(debt),
+            debt => ok(debt),
           ),
         );
       });
@@ -480,18 +551,23 @@ export class DebtApi {
     return route
       .get('/:id/payments')
       .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
           return notFound();
         }
 
-        if (ctx.session.accessLevel === 'normal' && debt.payerId.value !== ctx.session.payerId) {
+        if (
+          ctx.session.accessLevel === 'normal' &&
+          debt.payerId.value !== ctx.session.payerId
+        ) {
           return unauthorized();
         }
 
-        const payments = await this.paymentService.getPaymentsContainingDebt(ctx.routeParams.id);
+        const payments = await this.paymentService.getPaymentsContainingDebt(
+          ctx.routeParams.id,
+        );
 
         return ok(payments);
       });
@@ -501,45 +577,53 @@ export class DebtApi {
     return route
       .post('/mass-create')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.type({
-        defaults: t.partial({
-          tkoalyUserId: t.number,
-          debtCenter: t.string,
-          title: t.string,
-          description: t.string,
-          email: t.string,
-          amount: euroValue,
-          dueDate: dateString,
-          components: t.array(t.string),
-          tags: t.array(t.string),
-          accountingPeriod: t.Int,
-          //paymentNumber: t.string,
-          //referenceNumber: t.string,
-        }),
-        debts: t.array(t.partial({
-          tkoalyUserId: t.number,
-          debtCenter: t.string,
-          title: t.string,
-          description: t.string,
-          email: t.string,
-          date: dateString,
-          amount: euroValue,
-          dueDate: dateString,
-          publishedAt: dateString,
-          paymentCondition: t.Int,
-          components: t.array(t.string),
-          paymentNumber: t.string,
-          referenceNumber: t.string,
-          tags: t.array(t.string),
-          accountingPeriod: t.Int,
-        })),
-        components: t.array(t.type({
-          name: t.string,
-          amount: euroValue,
-        })),
-        dryRun: t.boolean,
-      })))
-      .handler(async (ctx) => {
+      .use(
+        validateBody(
+          t.type({
+            defaults: t.partial({
+              tkoalyUserId: t.number,
+              debtCenter: t.string,
+              title: t.string,
+              description: t.string,
+              email: t.string,
+              amount: euroValue,
+              dueDate: dateString,
+              components: t.array(t.string),
+              tags: t.array(t.string),
+              accountingPeriod: t.Int,
+              //paymentNumber: t.string,
+              //referenceNumber: t.string,
+            }),
+            debts: t.array(
+              t.partial({
+                tkoalyUserId: t.number,
+                debtCenter: t.string,
+                title: t.string,
+                description: t.string,
+                email: t.string,
+                date: dateString,
+                amount: euroValue,
+                dueDate: dateString,
+                publishedAt: dateString,
+                paymentCondition: t.Int,
+                components: t.array(t.string),
+                paymentNumber: t.string,
+                referenceNumber: t.string,
+                tags: t.array(t.string),
+                accountingPeriod: t.Int,
+              }),
+            ),
+            components: t.array(
+              t.type({
+                name: t.string,
+                amount: euroValue,
+              }),
+            ),
+            dryRun: t.boolean,
+          }),
+        ),
+      )
+      .handler(async ctx => {
         const { debts, defaults, dryRun, components } = ctx.body;
 
         defaults.tags = [
@@ -548,7 +632,7 @@ export class DebtApi {
         ];
 
         const res = await this.debtService.batchCreateDebts(
-          debts.map((debt) => ({ ...defaults, ...debt })),
+          debts.map(debt => ({ ...defaults, ...debt })),
           components,
           ctx.req.cookies.token,
           dryRun,
@@ -564,14 +648,12 @@ export class DebtApi {
     return route
       .get('/mass-create/poll/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const flow = await this.jobService
-          .getFlowProducer()
-          .getFlow({
-            id: ctx.routeParams.id,
-            queueName: 'debts',
-            prefix: 'bbat-jobs',
-          });
+      .handler(async ctx => {
+        const flow = await this.jobService.getFlowProducer().getFlow({
+          id: ctx.routeParams.id,
+          queueName: 'debts',
+          prefix: 'bbat-jobs',
+        });
 
         if (!flow?.children) {
           return internalServerError();
@@ -583,9 +665,10 @@ export class DebtApi {
           return internalServerError();
         }
 
-        const result = flow.job.returnvalue?.result === 'success'
-          ? flow.job.returnvalue?.data?.debts
-          : undefined;
+        const result =
+          flow.job.returnvalue?.result === 'success'
+            ? flow.job.returnvalue?.data?.debts
+            : undefined;
 
         return ok({
           current: total.processed ?? 0,
@@ -600,7 +683,7 @@ export class DebtApi {
     return route
       .delete('/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         await this.debtService.deleteDebt(ctx.routeParams.id);
 
         return ok();
@@ -611,7 +694,7 @@ export class DebtApi {
     return route
       .post('/:id/credit')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         await this.debtService.creditDebt(ctx.routeParams.id);
 
         return ok();
@@ -622,7 +705,7 @@ export class DebtApi {
     return route
       .post('/:id/mark-paid-with-cash')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
@@ -648,7 +731,7 @@ export class DebtApi {
           debts: [debt.id],
           data: {},
         });
-        
+
         const amount = await this.debtService.getDebtTotal(debt.id);
 
         await this.paymentService.createPaymentEvent(payment.id, {
@@ -663,21 +746,27 @@ export class DebtApi {
   private sendAllReminders() {
     return route
       .post('/send-reminders')
-      .use(validateBody(t.type({
-        debts: t.union([t.null, t.array(t.string)]),
-        send: t.boolean,
-        ignoreCooldown: t.boolean,
-      })))
+      .use(
+        validateBody(
+          t.type({
+            debts: t.union([t.null, t.array(t.string)]),
+            send: t.boolean,
+            ignoreCooldown: t.boolean,
+          }),
+        ),
+      )
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
         const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
         let debts: null | Debt[] = null;
 
         if (ctx.body.debts !== null) {
-          const results = await Promise.all(ctx.body.debts.map(async (d) => this.debtService.getDebt(d)));
+          const results = await Promise.all(
+            ctx.body.debts.map(async d => this.debtService.getDebt(d)),
+          );
 
-          if (results.some((d) => d === null)) {
+          if (results.some(d => d === null)) {
             return notFound({
               message: 'Debt not found.',
             });
@@ -687,12 +776,19 @@ export class DebtApi {
         }
 
         return pipe(
-          () => this.debtService.sendAllReminders(!ctx.body.send, ctx.body.ignoreCooldown, debts),
-          T.map(({ left, right }) => ok({
-            messageCount: right.length,
-            payerCount: A.uniq(EmailPayerEq)(right).length,
-            errors: left,
-          })),
+          () =>
+            this.debtService.sendAllReminders(
+              !ctx.body.send,
+              ctx.body.ignoreCooldown,
+              debts,
+            ),
+          T.map(({ left, right }) =>
+            ok({
+              messageCount: right.length,
+              payerCount: A.uniq(EmailPayerEq)(right).length,
+              errors: left,
+            }),
+          ),
         )();
       });
   }
@@ -700,21 +796,25 @@ export class DebtApi {
   private sendReminder() {
     return route
       .post('/:id/send-reminder')
-      .use(Parser.query(t.partial({
-        draft: t.union([
-          t.literal('yes'),
-          t.literal('no'),
-        ]),
-      })))
+      .use(
+        Parser.query(
+          t.partial({
+            draft: t.union([t.literal('yes'), t.literal('no')]),
+          }),
+        ),
+      )
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const debt = await this.debtService.getDebt(ctx.routeParams.id);
 
         if (!debt) {
           return notFound('Debt not found');
         }
 
-        const result = await this.debtService.sendReminder(debt, ctx.query.draft === 'yes');
+        const result = await this.debtService.sendReminder(
+          debt,
+          ctx.query.draft === 'yes',
+        );
 
         if (E.isRight(result)) {
           return ok(result.right);
@@ -728,8 +828,10 @@ export class DebtApi {
     return route
       .get('/by-email/:email')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const debts = await this.debtService.getDebtsByEmail(ctx.routeParams.email);
+      .handler(async ctx => {
+        const debts = await this.debtService.getDebtsByEmail(
+          ctx.routeParams.email,
+        );
 
         return ok(debts);
       });

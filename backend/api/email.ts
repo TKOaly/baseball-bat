@@ -9,10 +9,10 @@ import * as t from 'io-ts';
 @Service()
 export class EmailApi {
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   private getEmails() {
     return route
@@ -28,8 +28,10 @@ export class EmailApi {
     return route
       .get('/by-debt/:debt')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const emails = await this.emailService.getEmailsByDebt(ctx.routeParams.debt);
+      .handler(async ctx => {
+        const emails = await this.emailService.getEmailsByDebt(
+          ctx.routeParams.debt,
+        );
         return ok(emails);
       });
   }
@@ -38,26 +40,24 @@ export class EmailApi {
     return route
       .get('/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const email = await this.emailService.getEmail(ctx.routeParams.id);
         return ok(email);
       });
   }
 
   private renderEmail() {
-    return route
-      .get('/:id/render')
-      .handler(async (ctx) => {
-        const email = await this.emailService.getEmail(ctx.routeParams.id);
+    return route.get('/:id/render').handler(async ctx => {
+      const email = await this.emailService.getEmail(ctx.routeParams.id);
 
-        if (!email) {
-          return notFound();
-        }
+      if (!email) {
+        return notFound();
+      }
 
-        ctx.res.setHeader('Content-Security-Policy', 'frame-ancestors \'self\'');
+      ctx.res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
 
-        return ok(email.html ?? email.text);
-      });
+      return ok(email.html ?? email.text);
+    });
   }
 
   private sendEmails() {
@@ -66,9 +66,11 @@ export class EmailApi {
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(t.type({ ids: t.array(t.string) })))
       .handler(async ({ body }) => {
-        await Promise.all(body.ids.map(async (id) => {
-          await this.emailService.sendEmail(id);
-        }));
+        await Promise.all(
+          body.ids.map(async id => {
+            await this.emailService.sendEmail(id);
+          }),
+        );
 
         return ok();
       });

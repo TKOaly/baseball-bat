@@ -6,7 +6,7 @@ import { Inject, Service } from 'typedi';
 @Service()
 export class UsersService {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   private _client: ReturnType<typeof axios.create> | null = null;
 
@@ -29,12 +29,14 @@ export class UsersService {
     const id = typeof pId === 'string' ? pId : pId.value;
 
     try {
-      const { data } = await this.client
-        .get<{ payload: UpstreamUser }>(`/api/users/${id}`, {
+      const { data } = await this.client.get<{ payload: UpstreamUser }>(
+        `/api/users/${id}`,
+        {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        },
+      );
 
       return data.payload;
     } catch (err) {
@@ -44,12 +46,14 @@ export class UsersService {
   }
 
   async getUpstreamUser(token: string): Promise<UpstreamUser> {
-    const { data } = await this.client
-      .get<{ payload: UpstreamUser }>('/api/users/me', {
+    const { data } = await this.client.get<{ payload: UpstreamUser }>(
+      '/api/users/me',
+      {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
+      },
+    );
 
     return data.payload;
   }
@@ -68,7 +72,7 @@ export class UsersService {
       })
       .then(
         ({ data }) => data.payload,
-        (err) => (console.log(err.response.data), []),
+        err => (console.log(err.response.data), []),
       );
   }
 }

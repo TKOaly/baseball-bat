@@ -1,13 +1,22 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader } from '../../components/dialog';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+} from '../../components/dialog';
 import { Button, SecondaryButton } from '../../components/button';
 
 export type Props = {
-  onClose: (confirmed: boolean) => void,
-  components: string[]
-  debtCenter: string | null
-}
+  onClose: (confirmed: boolean) => void;
+  components: string[];
+  debtCenter: string | null;
+};
 
-export const DebtAssociatedResourceCreationConfirmationDialog = ({ onClose, components, debtCenter }: Props) => {
+export const DebtAssociatedResourceCreationConfirmationDialog = ({
+  onClose,
+  components,
+  debtCenter,
+}: Props) => {
   const resources = [];
 
   if (debtCenter) {
@@ -17,19 +26,23 @@ export const DebtAssociatedResourceCreationConfirmationDialog = ({ onClose, comp
     });
   }
 
-  resources.push(...components.map((name) => ({ type: 'Debt Component', name })));
+  resources.push(...components.map(name => ({ type: 'Debt Component', name })));
 
   return (
-    <DialogBase onClose={() => onClose(false)} data-cy="edit-resource-creation-confirmation-dialog">
+    <DialogBase
+      onClose={() => onClose(false)}
+      data-cy="edit-resource-creation-confirmation-dialog"
+    >
       <DialogHeader>Creating additional resources</DialogHeader>
       <DialogContent>
         The following new resources are about to be created:
-
         <ul className="mt-3">
           {resources.map(({ type, name }) => (
             <li key={`${type}-${name}`}>
               <div className="rounded-md shadow-sm border p-1.5 text-sm items-center inline-flex pr-3 mb-2">
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">{type}</span>
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">
+                  {type}
+                </span>
                 <span>{name}</span>
               </div>
             </li>

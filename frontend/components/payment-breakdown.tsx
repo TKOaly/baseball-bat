@@ -3,7 +3,7 @@ import { cents, euro, formatEuro, sumEuroValues } from '../../common/currency';
 import { Debt } from '../../common/types';
 
 export type Props = {
-  debts: Debt[],
+  debts: Debt[];
 };
 
 export const PaymentBreakdown = ({ debts }: Props) => {
@@ -11,11 +11,17 @@ export const PaymentBreakdown = ({ debts }: Props) => {
 
   return (
     <ul className="border border-gray-300 rounded-md shadow-sm">
-      {debts.map((debt) => (
+      {debts.map(debt => (
         <li className="tabular-nums p-2 border-b border-gray-300" key={debt.id}>
           <h4 className="font-bold flex">
             <span className="flex-grow">{debt.name}</span>
-            <span>{formatEuro(debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
+            <span>
+              {formatEuro(
+                debt.debtComponents
+                  .map(dc => dc.amount)
+                  .reduce(sumEuroValues, euro(0)),
+              )}
+            </span>
           </h4>
           <div className="pl-3">
             <p>{debt.description}</p>
@@ -33,7 +39,14 @@ export const PaymentBreakdown = ({ debts }: Props) => {
       <li>
         <h4 className="font-bold flex p-2">
           <span className="flex-grow">{t('total')}</span>
-          <span>{formatEuro((debts ?? []).flatMap(d => d.debtComponents).map(dc => dc.amount).reduce(sumEuroValues, cents(0)))}</span>
+          <span>
+            {formatEuro(
+              (debts ?? [])
+                .flatMap(d => d.debtComponents)
+                .map(dc => dc.amount)
+                .reduce(sumEuroValues, cents(0)),
+            )}
+          </span>
         </h4>
       </li>
     </ul>

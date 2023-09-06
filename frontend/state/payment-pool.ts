@@ -1,8 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 type PaymentPoolState = {
-  selectedPayments: Array<string>,
-}
+  selectedPayments: Array<string>;
+};
 
 const initialState: PaymentPoolState = {
   selectedPayments: [],

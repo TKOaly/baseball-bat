@@ -1,5 +1,12 @@
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { Page, Header, Title, Section, TextField, SectionContent } from '../../components/resource-page/resource-page';
+import {
+  Page,
+  Header,
+  Title,
+  Section,
+  TextField,
+  SectionContent,
+} from '../../components/resource-page/resource-page';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
 import { Button } from '../../components/button';
 import { TransactionList } from '../../components/transaction-list';
@@ -39,35 +46,41 @@ export const BankAccount = ({ iban }: { iban: string }) => {
       </Section>
       <Section title="Statements">
         <SectionContent>
-          <Button onClick={() => setLocation('/admin/banking/import-statement')}>Import bank statement</Button>
+          <Button
+            onClick={() => setLocation('/admin/banking/import-statement')}
+          >
+            Import bank statement
+          </Button>
           <TableView
             rows={(statements ?? []).map(tx => ({ ...tx, key: tx.id }))}
-            onRowClick={(row) => setLocation(`/admin/banking/statements/${row.id}`)}
+            onRowClick={row =>
+              setLocation(`/admin/banking/statements/${row.id}`)
+            }
             columns={[
               {
                 name: 'Start Date',
-                getValue: (stmt) => new Date(stmt.openingBalance.date),
-                render: (date) => format(date, 'dd.MM.yyyy'),
+                getValue: stmt => new Date(stmt.openingBalance.date),
+                render: date => format(date, 'dd.MM.yyyy'),
               },
               {
                 name: 'End Date',
-                getValue: (stmt) => new Date(stmt.closingBalance.date),
-                render: (date) => format(date, 'dd.MM.yyyy'),
+                getValue: stmt => new Date(stmt.closingBalance.date),
+                render: date => format(date, 'dd.MM.yyyy'),
               },
               {
                 name: 'Opening Balance',
-                getValue: (stmt) => stmt.openingBalance.amount.value,
-                render: (amount) => formatEuro(cents(amount)),
+                getValue: stmt => stmt.openingBalance.amount.value,
+                render: amount => formatEuro(cents(amount)),
               },
               {
                 name: 'Closing Balance',
-                getValue: (stmt) => stmt.closingBalance.amount.value,
-                render: (amount) => formatEuro(cents(amount)),
+                getValue: stmt => stmt.closingBalance.amount.value,
+                render: amount => formatEuro(cents(amount)),
               },
               {
                 name: 'Generated',
-                getValue: (stmt) => new Date(stmt.generatedAt),
-                render: (date) => format(date, 'dd.MM.yyyy'),
+                getValue: stmt => new Date(stmt.generatedAt),
+                render: date => format(date, 'dd.MM.yyyy'),
               },
             ]}
           />

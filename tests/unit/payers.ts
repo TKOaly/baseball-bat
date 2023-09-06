@@ -1,21 +1,23 @@
 import { PayerService } from '../../backend/services/payer';
-import { emailIdentity, tkoalyIdentity, UpstreamUser } from '../../common/types';
+import {
+  emailIdentity,
+  tkoalyIdentity,
+  UpstreamUser,
+} from '../../common/types';
 import { expect } from 'earl';
 import { createTestFunc } from '../common';
 import { cents } from '../../common/currency';
 
 const test = createTestFunc();
 
-test('Creating payer profile from email identity', async (t) => {
+test('Creating payer profile from email identity', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
 
   const payer = {
     name: 'Teppo Testaaja',
-    emails: [
-      { email:'test@example.org' },
-    ],
+    emails: [{ email: 'test@example.org' }],
   };
 
   const id = emailIdentity(payer.emails[0].email);
@@ -35,37 +37,39 @@ test('Creating payer profile from email identity', async (t) => {
   t.like(byInternal, { ...payer, id: created.id });
 });
 
-test('Merging profiles', async (t) => {
+test('Merging profiles', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
 
   const payer1 = {
     name: 'Teppo Testaaja',
-    emails: [
-      { email:'teppo@example.org' },
-    ],
+    emails: [{ email: 'teppo@example.org' }],
   };
 
   const payer2 = {
     name: 'Testaaja, Teppo',
-    emails: [
-      { email:'teppo1337@hotmail.com' },
-    ],
+    emails: [{ email: 'teppo1337@hotmail.com' }],
   };
 
-  const created1 = await payers.createPayerProfileFromEmailIdentity(emailIdentity(payer1.emails[0].email), {
-    name: payer1.name,
-  });
+  const created1 = await payers.createPayerProfileFromEmailIdentity(
+    emailIdentity(payer1.emails[0].email),
+    {
+      name: payer1.name,
+    },
+  );
 
   t.false(created1.disabled);
   t.is(created1.emails.length, 1);
   t.is(created1.emails[0].email, payer1.emails[0].email);
   t.is(created1.name, payer1.name);
 
-  const created2 = await payers.createPayerProfileFromEmailIdentity(emailIdentity(payer2.emails[0].email), {
-    name: payer2.name,
-  });
+  const created2 = await payers.createPayerProfileFromEmailIdentity(
+    emailIdentity(payer2.emails[0].email),
+    {
+      name: payer2.name,
+    },
+  );
 
   t.false(created2.disabled);
   t.is(created2.emails.length, 1);
@@ -94,12 +98,12 @@ test('Merging profiles', async (t) => {
 
   t.false(merged.disabled);
   t.is(merged.emails.length, 2);
-  t.true(merged.emails.some((email) => email.email === payer1.emails[0].email));
-  t.true(merged.emails.some((email) => email.email === payer2.emails[0].email));
+  t.true(merged.emails.some(email => email.email === payer1.emails[0].email));
+  t.true(merged.emails.some(email => email.email === payer2.emails[0].email));
   t.is(merged.name, payer1.name);
 });
 
-test('Setting payer profile TKO-äly identity', async (t) => {
+test('Setting payer profile TKO-äly identity', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -143,7 +147,7 @@ test('Setting payer profile TKO-äly identity', async (t) => {
   t.deepEqual(byEmailAfter.tkoalyUserId, tkoalyId);
 });
 
-test('Creating payer profile from TKO-äly user', async (t) => {
+test('Creating payer profile from TKO-äly user', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -160,18 +164,21 @@ test('Creating payer profile from TKO-äly user', async (t) => {
 
   expect(created).not.toBeNullish();
 
-  expect(created)
-    .toEqual(expect.subset({
+  expect(created).toEqual(
+    expect.subset({
       name: user.screenName,
-      emails: expect.includes(expect.subset({
-        email: user.email,
-        priority: 'primary',
-      })),
+      emails: expect.includes(
+        expect.subset({
+          email: user.email,
+          priority: 'primary',
+        }),
+      ),
       tkoalyUserId: tkoalyIdentity(1234),
-    }));
+    }),
+  );
 });
 
-test('Listing payer profiles', async (t) => {
+test('Listing payer profiles', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -187,37 +194,43 @@ test('Listing payer profiles', async (t) => {
 
     const id = emailIdentity(email);
 
-    created.push(await payers.createPayerProfileFromEmailIdentity(id, {
-      name: payer.name,
-    }));
+    created.push(
+      await payers.createPayerProfileFromEmailIdentity(id, {
+        name: payer.name,
+      }),
+    );
   }
 
   const list = await payers.getPayerProfiles();
 
   expect(list).toHaveLength(created.length);
 
-  created.forEach((created) => expect(list).toInclude({
-    id: {
-      type: 'internal',
-      value: expect.regex(/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/),
-    },
-    tkoalyUserId: expect.nullish(),
-    email: expect.nullish(),
-    name: created.name,
-    stripeCustomerId: expect.nullish(),
-    createdAt: expect.a(Date),
-    updatedAt: expect.a(Date),
-    mergedTo: expect.nullish(),
-    emails: expect.a(Array),
-    debtCount: 0,
-    paidCount: 0,
-    unpaidCount: 0,
-    total: cents(0),
-    disabled: false,
-  }));
+  created.forEach(created =>
+    expect(list).toInclude({
+      id: {
+        type: 'internal',
+        value: expect.regex(
+          /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/,
+        ),
+      },
+      tkoalyUserId: expect.nullish(),
+      email: expect.nullish(),
+      name: created.name,
+      stripeCustomerId: expect.nullish(),
+      createdAt: expect.a(Date),
+      updatedAt: expect.a(Date),
+      mergedTo: expect.nullish(),
+      emails: expect.a(Array),
+      debtCount: 0,
+      paidCount: 0,
+      unpaidCount: 0,
+      total: cents(0),
+      disabled: false,
+    }),
+  );
 });
 
-test('Getting payer profile', async (t) => {
+test('Getting payer profile', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -234,28 +247,32 @@ test('Getting payer profile', async (t) => {
 
   const matcher = expect.subset({
     name: user.screenName,
-    emails: expect.includes(expect.subset({
-      email: user.email,
-      priority: 'primary',
-    })),
+    emails: expect.includes(
+      expect.subset({
+        email: user.email,
+        priority: 'primary',
+      }),
+    ),
     tkoalyUserId: tkoalyIdentity(1234),
   });
 
   expect(await payers.getPayerProfileByIdentity(created.id)).toEqual(matcher);
-  expect(await payers.getPayerProfileByIdentity(emailIdentity(user.email))).toEqual(matcher);
-  expect(await payers.getPayerProfileByIdentity(tkoalyIdentity(user.id))).toEqual(matcher);
+  expect(
+    await payers.getPayerProfileByIdentity(emailIdentity(user.email)),
+  ).toEqual(matcher);
+  expect(
+    await payers.getPayerProfileByIdentity(tkoalyIdentity(user.id)),
+  ).toEqual(matcher);
 });
 
-test('Getting default payer preferences', async (t) => {
+test('Getting default payer preferences', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
 
   const payer = {
     name: 'Teppo Testaaja',
-    emails: [
-      { email:'test@example.org' },
-    ],
+    emails: [{ email: 'test@example.org' }],
   };
 
   const id = emailIdentity(payer.emails[0].email);
@@ -273,16 +290,14 @@ test('Getting default payer preferences', async (t) => {
   });
 });
 
-test('Updating payer preferences', async (t) => {
+test('Updating payer preferences', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
 
   const payer = {
     name: 'Teppo Testaaja',
-    emails: [
-      { email:'test@example.org' },
-    ],
+    emails: [{ email: 'test@example.org' }],
   };
 
   const id = emailIdentity(payer.emails[0].email);
@@ -314,7 +329,7 @@ test('Updating payer preferences', async (t) => {
   });
 });
 
-test('Getting and updating payer emails', async (t) => {
+test('Getting and updating payer emails', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -334,11 +349,13 @@ test('Getting and updating payer emails', async (t) => {
   const emails = await payers.getPayerEmails(created.id);
 
   expect(emails).toHaveLength(1);
-  expect(emails[0]).toEqual(expect.subset({
-    email,
-    priority: 'primary',
-    source: 'other',
-  }));
+  expect(emails[0]).toEqual(
+    expect.subset({
+      email,
+      priority: 'primary',
+      source: 'other',
+    }),
+  );
 
   await payers.addPayerEmail({
     email: 'test+default@example.org',
@@ -358,61 +375,67 @@ test('Getting and updating payer emails', async (t) => {
 
   expect(emailsAfter).toHaveLength(3);
 
-  expect(emailsAfter).toEqual(expect.includes(
+  expect(emailsAfter).toEqual(
+    expect.includes(
+      expect.subset({
+        email,
+        priority: 'primary',
+        source: 'other',
+      }),
+      expect.subset({
+        email: 'test+disabled@example.org',
+        priority: 'disabled',
+        source: 'tkoaly',
+      }),
+      expect.subset({
+        email: 'test+default@example.org',
+        priority: 'default',
+        source: 'user',
+      }),
+    ),
+  );
+
+  const primaryEmail = await payers.getPayerPrimaryEmail(created.id);
+
+  expect(primaryEmail).toEqual(
     expect.subset({
       email,
       priority: 'primary',
       source: 'other',
     }),
-    expect.subset({
-      email: 'test+disabled@example.org',
-      priority: 'disabled',
-      source: 'tkoaly',
-    }),
-    expect.subset({
-      email: 'test+default@example.org',
-      priority: 'default',
-      source: 'user',
-    }),
-  ));
-
-  const primaryEmail = await payers.getPayerPrimaryEmail(created.id);
-
-  expect(primaryEmail).toEqual(expect.subset({
-    email,
-    priority: 'primary',
-    source: 'other',
-  }));
+  );
 
   await payers.replacePrimaryEmail(created.id, 'test+new-primary@example.org');
 
   const emailsAfterPrimaryChange = await payers.getPayerEmails(created.id);
 
-  expect(emailsAfterPrimaryChange).toEqual(expect.includes(
-    expect.subset({
-      email,
-      priority: 'default',
-      source: 'other',
-    }),
-    expect.subset({
-      email: 'test+disabled@example.org',
-      priority: 'disabled',
-      source: 'tkoaly',
-    }),
-    expect.subset({
-      email: 'test+default@example.org',
-      priority: 'default',
-      source: 'user',
-    }),
-    expect.subset({
-      email: 'test+new-primary@example.org',
-      priority: 'primary',
-      source: 'other',
-    }),
-  ));
+  expect(emailsAfterPrimaryChange).toEqual(
+    expect.includes(
+      expect.subset({
+        email,
+        priority: 'default',
+        source: 'other',
+      }),
+      expect.subset({
+        email: 'test+disabled@example.org',
+        priority: 'disabled',
+        source: 'tkoaly',
+      }),
+      expect.subset({
+        email: 'test+default@example.org',
+        priority: 'default',
+        source: 'user',
+      }),
+      expect.subset({
+        email: 'test+new-primary@example.org',
+        priority: 'primary',
+        source: 'other',
+      }),
+    ),
+  );
 });
 
-test('Creating profile for TKO-äly user, with existing profile with same email', async (t) => {
+test('Creating profile for TKO-äly user, with existing profile with same email', async t => {
   const { container } = t.context;
 
   const payers = container.get(PayerService);
@@ -439,10 +462,12 @@ test('Creating profile for TKO-äly user, with existing profile with same email'
 
   const created2 = await payers.createPayerProfileFromTkoalyUser(user);
 
-  expect(created2).toEqual(expect.subset({
-    id: created1.id,
-    name: created1.name,
-    tkoalyUserId: tkoalyIdentity(user.id),
-    emails: expect.length(1),
-  }));
+  expect(created2).toEqual(
+    expect.subset({
+      id: created1.id,
+      name: created1.name,
+      tkoalyUserId: tkoalyIdentity(user.id),
+      emails: expect.length(1),
+    }),
+  );
 });

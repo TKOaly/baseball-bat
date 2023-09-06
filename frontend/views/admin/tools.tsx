@@ -8,7 +8,11 @@ export const Tools = () => {
     <div>
       <h1 className="text-2xl mb-5 mt-10">Tools</h1>
       <div>
-        <SecondaryButton onClick={() => setLocation('/admin/tools/import-xml-statement')}>Import payments from XML bank statement</SecondaryButton>
+        <SecondaryButton
+          onClick={() => setLocation('/admin/tools/import-xml-statement')}
+        >
+          Import payments from XML bank statement
+        </SecondaryButton>
       </div>
     </div>
   );

@@ -38,7 +38,6 @@ export const Loading = () => {
         strokeLinejoin="round"
         className="feather feather-loader text-blue-500"
       >
-
         <line x1="12" y1="2" x2="12" y2="6" />
         <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
         <line x1="2" y1="12" x2="6" y2="12" />

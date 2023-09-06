@@ -1,10 +1,16 @@
 import NumberFormat from 'react-number-format';
 import { TextField } from './text-field';
 
-export const EuroField = ({ name, value, onChange, plain = false, ...props }) => (
+export const EuroField = ({
+  name,
+  value,
+  onChange,
+  plain = false,
+  ...props
+}) => (
   <NumberFormat
     value={value}
-    onValueChange={(value) => {
+    onValueChange={value => {
       onChange({
         target: { name, value: value.floatValue },
       });

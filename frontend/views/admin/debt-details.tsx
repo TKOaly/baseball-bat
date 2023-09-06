@@ -1,12 +1,34 @@
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { useCreditDebtMutation, useDeleteDebtMutation, useGetDebtQuery, useMarkPaidWithCashMutation, usePublishDebtsMutation, useSendReminderMutation } from '../../api/debt';
+import {
+  useCreditDebtMutation,
+  useDeleteDebtMutation,
+  useGetDebtQuery,
+  useMarkPaidWithCashMutation,
+  usePublishDebtsMutation,
+  useSendReminderMutation,
+} from '../../api/debt';
 import { useGetPaymentsByDebtQuery } from '../../api/payments';
 import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
 import * as dfns from 'date-fns';
 import { TextField as InputTextField } from '../../components/text-field';
 import { EuroField } from '../../components/euro-field';
-import { Page, Header, Title, Actions, ActionButton, Section, Field, TextField, DateField, CurrencyField, LinkField, BadgeField, SectionDescription, SectionContent } from '../../components/resource-page/resource-page';
+import {
+  Page,
+  Header,
+  Title,
+  Actions,
+  ActionButton,
+  Section,
+  Field,
+  TextField,
+  DateField,
+  CurrencyField,
+  LinkField,
+  BadgeField,
+  SectionDescription,
+  SectionContent,
+} from '../../components/resource-page/resource-page';
 import { useLocation } from 'wouter';
 import { euro, sumEuroValues } from '../../../common/currency';
 import React from 'react';
@@ -61,7 +83,10 @@ export const DebtDetails = ({ params }) => {
     }
   };
 
-  let statusBadge: Pick<React.ComponentProps<typeof BadgeField>, 'text' | 'color'> = {
+  let statusBadge: Pick<
+    React.ComponentProps<typeof BadgeField>,
+    'text' | 'color'
+  > = {
     text: 'Unpaid',
     color: 'gray',
   };
@@ -105,40 +130,80 @@ export const DebtDetails = ({ params }) => {
           {debt?.draft === true && (
             <ActionButton onClick={handlePublish}>Publish</ActionButton>
           )}
-          {debt?.draft && <ActionButton secondary onClick={handleDelete}>Delete</ActionButton>}
+          {debt?.draft && (
+            <ActionButton secondary onClick={handleDelete}>
+              Delete
+            </ActionButton>
+          )}
           {debt?.draft === false && debt?.credited === false && (
-            <ActionButton secondary onClick={handleCredit}>Credit</ActionButton>
+            <ActionButton secondary onClick={handleCredit}>
+              Credit
+            </ActionButton>
           )}
           {debt?.status !== 'paid' && (
-            <ActionButton secondary onClick={handleCashPayment}>Mark paid with cash</ActionButton>
+            <ActionButton secondary onClick={handleCashPayment}>
+              Mark paid with cash
+            </ActionButton>
           )}
-          {debt?.draft === false && debt.dueDate && dfns.isPast(debt.dueDate) && (
-            <ActionButton secondary onClick={handleReminder}>Send reminder</ActionButton>
-          )}
-          <ActionButton secondary onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}>Edit</ActionButton>
+          {debt?.draft === false &&
+            debt.dueDate &&
+            dfns.isPast(debt.dueDate) && (
+              <ActionButton secondary onClick={handleReminder}>
+                Send reminder
+              </ActionButton>
+            )}
+          <ActionButton
+            secondary
+            onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}
+          >
+            Edit
+          </ActionButton>
         </Actions>
       </Header>
       <Section title="Details" columns={2}>
         <TextField label="Name" value={debt.name} />
-        <LinkField label="Payer" text={debt.payer.name} to={`/admin/payers/${debt.payer.id.value}`} />
-        <LinkField label="Collection" text={debt.debtCenter.name} to={`/admin/debt-centers/${debt.debtCenter.id}`} />
-        <CurrencyField label="Total" value={debt.debtComponents.map(c => c.amount).reduce(sumEuroValues, euro(0))} />
-        { debt.date && <DateField label="Date" value={new Date(debt.date)} /> }
+        <LinkField
+          label="Payer"
+          text={debt.payer.name}
+          to={`/admin/payers/${debt.payer.id.value}`}
+        />
+        <LinkField
+          label="Collection"
+          text={debt.debtCenter.name}
+          to={`/admin/debt-centers/${debt.debtCenter.id}`}
+        />
+        <CurrencyField
+          label="Total"
+          value={debt.debtComponents
+            .map(c => c.amount)
+            .reduce(sumEuroValues, euro(0))}
+        />
+        {debt.date && <DateField label="Date" value={new Date(debt.date)} />}
         <DateField time label="Created at" value={new Date(debt.createdAt)} />
         <Field label="Published at">
-          {debt.publishedAt === null ? 'Not published' : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
+          {debt.publishedAt === null
+            ? 'Not published'
+            : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
         </Field>
         {debt.dueDate !== null && (
           <Field label="Due Date">
             {dfns.format(debt.dueDate, 'dd.MM.yyyy')}
             {dfns.isPast(debt.dueDate) && (
-              <div className={'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'}>Overdue</div>
+              <div
+                className={
+                  'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'
+                }
+              >
+                Overdue
+              </div>
             )}
           </Field>
         )}
         {debt.paymentCondition !== null && (
           <Field label="Payment Condition">
-            {debt.paymentCondition === 0 ? 'Immediately' : `${debt.paymentCondition} days`}
+            {debt.paymentCondition === 0
+              ? 'Immediately'
+              : `${debt.paymentCondition} days`}
           </Field>
         )}
         <BadgeField label="Status" {...statusBadge} />
@@ -150,7 +215,10 @@ export const DebtDetails = ({ params }) => {
         </SectionDescription>
         <SectionContent>
           <TabularFieldList
-            value={debt.debtComponents.map(c => ({ ...c, amount: c.amount.value / 100 }))}
+            value={debt.debtComponents.map(c => ({
+              ...c,
+              amount: c.amount.value / 100,
+            }))}
             readOnly
             columns={[
               {
@@ -166,7 +234,7 @@ export const DebtDetails = ({ params }) => {
                 props: { readOnly: true },
               },
             ]}
-            createNew={function() {
+            createNew={function () {
               throw new Error('Function not implemented.');
             }}
           />

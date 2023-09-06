@@ -8,8 +8,8 @@ import { useSetupIntent } from '../hooks';
 import { getStripe } from '../stripe';
 
 type Props = {
-  session: Session
-}
+  session: Session;
+};
 
 export const Onboarding = ({ session }: Props) => {
   const clientSecret = useSetupIntent();

@@ -2,14 +2,22 @@ import { Formik } from 'formik';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { euro, NewDebtComponent, PayerIdentity } from '../../common/types';
 import * as dfns from 'date-fns';
-import { useCreateDebtComponentMutation, useGetDebtComponentsByCenterQuery, useGetDebtQuery, useUpdateDebtMutation } from '../api/debt';
+import {
+  useCreateDebtComponentMutation,
+  useGetDebtComponentsByCenterQuery,
+  useGetDebtQuery,
+  useUpdateDebtMutation,
+} from '../api/debt';
 import { Breadcrumbs } from '../components/breadcrumbs';
 import { InputGroup } from '../components/input-group';
 import { TextField } from '../components/text-field';
 import { DropdownField } from '../components/dropdown-field';
 import { TabularFieldListFormik } from '../components/tabular-field-list';
 import { EuroField } from '../components/euro-field';
-import { useCreateDebtCenterMutation, useGetDebtCentersQuery } from '../api/debt-centers';
+import {
+  useCreateDebtCenterMutation,
+  useGetDebtCentersQuery,
+} from '../api/debt-centers';
 import { useGetUpstreamUsersQuery } from '../api/upstream-users';
 import { DateField } from '../components/datetime-field';
 import { TextareaField } from '../components/textarea-field';
@@ -24,15 +32,15 @@ import { DebtAssociatedResourceCreationConfirmationDialog } from '../components/
 import { pipe } from 'fp-ts/lib/function';
 
 type DebtFormValues = {
-  name: string,
-  center: string | { name: string },
-  description: string,
-  date: string | null,
-  due_date: string | null,
-  payment_condition: number | string | null,
-  components: { component: string | { name: string }, amount: number }[],
-  payer: PayerIdentity | null
-}
+  name: string;
+  center: string | { name: string };
+  description: string;
+  date: string | null;
+  due_date: string | null;
+  payment_condition: number | string | null;
+  components: { component: string | { name: string }; amount: number }[];
+  payer: PayerIdentity | null;
+};
 
 export const EditDebt = ({ params }: { params: { id: string } }) => {
   const { id } = params;
@@ -41,25 +49,31 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
   const { data: debt } = useGetDebtQuery(id);
   const { data: debtCenters } = useGetDebtCentersQuery();
   const [debtCenterId, setDebtCenterId] = useState(debt?.debtCenterId);
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId, { skip: !debtCenterId });
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(
+    debtCenterId,
+    { skip: !debtCenterId },
+  );
   const [updateDebt] = useUpdateDebtMutation();
   const [createDebtCenter] = useCreateDebtCenterMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
   const [, setLocation] = useLocation();
   const [editPublished, setEditPublished] = useState(false);
-  const showPublishedDebtEditConfirmationDialog = useDialog(PublishedDebtEditConfirmation);
-  const showResourceCreationDialog = useDialog(DebtAssociatedResourceCreationConfirmationDialog);
+  const showPublishedDebtEditConfirmationDialog = useDialog(
+    PublishedDebtEditConfirmation,
+  );
+  const showResourceCreationDialog = useDialog(
+    DebtAssociatedResourceCreationConfirmationDialog,
+  );
 
   useEffect(() => {
     if (debt && !debt.draft && !editPublished) {
-      showPublishedDebtEditConfirmationDialog({})
-        .then((allow) => {
-          if (allow) {
-            setEditPublished(true);
-          } else {
-            setLocation(`/admin/debts/${id}`);
-          }
-        });
+      showPublishedDebtEditConfirmationDialog({}).then(allow => {
+        if (allow) {
+          setEditPublished(true);
+        } else {
+          setLocation(`/admin/debts/${id}`);
+        }
+      });
     }
   }, [debt]);
 
@@ -116,8 +130,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       }
 
       const confirmed = await showResourceCreationDialog({
-        debtCenter: typeof values.center !== 'string' ? values.center.name : null,
-        components: pipe(newComponentsRef.value, A.map((c) => c.name)),
+        debtCenter:
+          typeof values.center !== 'string' ? values.center.name : null,
+        components: pipe(
+          newComponentsRef.value,
+          A.map(c => c.name),
+        ),
       });
 
       if (confirmed) {
@@ -130,7 +148,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
     let centerId = typeof values.center === 'string' ? values.center : null;
 
     if (centerId === null) {
-      if (!await confirm()) {
+      if (!(await confirm())) {
         return;
       }
 
@@ -151,7 +169,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
     const { left: newComponents, right: components } = separateComponents();
 
     if (newComponents.length > 0) {
-      if (!await confirm()) {
+      if (!(await confirm())) {
         return;
       }
 
@@ -174,7 +192,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
           debtCenterId: centerId,
         })),
         A.traverse(TE.ApplicativePar)(createDebtComponentTask),
-        TE.map(A.map((result) => result.id)),
+        TE.map(A.map(result => result.id)),
       )();
 
       if (E.isRight(result)) {
@@ -188,9 +206,18 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       id,
       name: values.name,
       description: values.description,
-      dueDate: values.due_date ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date()) : null,
-      date: values.date === null ? undefined : (values.date === '' ? null : values.date),
-      paymentCondition: values.payment_condition ? parseInt('' + values.payment_condition) : null,
+      dueDate: values.due_date
+        ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date())
+        : null,
+      date:
+        values.date === null
+          ? undefined
+          : values.date === ''
+          ? null
+          : values.date,
+      paymentCondition: values.payment_condition
+        ? parseInt('' + values.payment_condition)
+        : null,
       payerId: values.payer,
       centerId,
       components, // : components.map((component) => typeof component === 'string' ? { id: component } : component),
@@ -207,11 +234,16 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         name: debt.name,
         center: debt.debtCenterId,
         description: debt.description,
-        due_date: debt.dueDate ? dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy') : null,
+        due_date: debt.dueDate
+          ? dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy')
+          : null,
         date: debt.date ? dfns.format(new Date(debt.date), 'dd.MM.yyyy') : null,
         payment_condition: debt.paymentCondition,
         payer: debt.payerId,
-        components: debt.debtComponents.map(({ id, amount }) => ({ component: id, amount: amount.value / 100 })),
+        components: debt.debtComponents.map(({ id, amount }) => ({
+          component: id,
+          amount: amount.value / 100,
+        })),
       };
     } else {
       return {
@@ -228,34 +260,35 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
   }, [debt]);
 
   const createCustomPayerOption = useCallback(
-    (input) => ({
+    input => ({
       type: 'email',
       value: input,
     }),
     [],
   );
 
-  const formatCustomPayerOption = useCallback(
-    ({ value }) => value,
-    [],
-  );
+  const formatCustomPayerOption = useCallback(({ value }) => value, []);
 
   const payerOptions = useMemo(() => {
     const options = [];
 
     if (users) {
-      options.push(...users.map(user => ({
-        value: { type: 'tkoaly', value: user.id },
-        text: user.screenName,
-        label: user.username,
-      })));
+      options.push(
+        ...users.map(user => ({
+          value: { type: 'tkoaly', value: user.id },
+          text: user.screenName,
+          label: user.username,
+        })),
+      );
     }
 
     if (payers) {
-      options.push(...payers.map(payer => ({
-        value: payer.id,
-        text: payer.name,
-      })));
+      options.push(
+        ...payers.map(payer => ({
+          value: payer.id,
+          text: payer.name,
+        })),
+      );
     }
 
     return options;
@@ -282,9 +315,8 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
       <Formik
         enableReinitialize
         initialValues={initialValues}
-        validate={(values) => {
+        validate={values => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
-
 
           if (values.due_date) {
             if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
@@ -298,8 +330,17 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
         }}
         onSubmit={handleSubmit}
       >
-        {({ values, submitForm, isSubmitting, setFieldValue, setFieldError }) => {
-          if (typeof values.center === 'string' && values.center !== debtCenterId) {
+        {({
+          values,
+          submitForm,
+          isSubmitting,
+          setFieldValue,
+          setFieldError,
+        }) => {
+          if (
+            typeof values.center === 'string' &&
+            values.center !== debtCenterId
+          ) {
             setDebtCenterId(values.center);
           }
 
@@ -311,11 +352,11 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                 name="center"
                 allowCustom
                 component={DropdownField}
-                options={(debtCenters ?? []).map((center) => ({
+                options={(debtCenters ?? []).map(center => ({
                   text: center.name,
                   value: center.id,
                 }))}
-                createCustomOption={(name) => ({ name })}
+                createCustomOption={name => ({ name })}
                 formatCustomOption={({ name }) => name}
               />
               <InputGroup
@@ -332,7 +373,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                 label="Due Date"
                 name="due_date"
                 component={DateField}
-                onChange={(evt) => {
+                onChange={evt => {
                   console.log(evt);
                   setFieldValue('due_date', evt.target.value);
                   setFieldValue('payment_condition', '');
@@ -344,7 +385,7 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                 name="payment_condition"
                 readOnly={debt && !debt.draft}
                 component={TextField}
-                onChange={(evt) => {
+                onChange={evt => {
                   const value = evt.target.value;
 
                   setFieldValue('due_date', '');
@@ -357,7 +398,10 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                   try {
                     const matches = /[0-9]+/.exec(value);
                     const integer = parseInt(matches[0]);
-                    setFieldValue('payment_condition', integer === 0 ? 'NOW' : String(integer));
+                    setFieldValue(
+                      'payment_condition',
+                      integer === 0 ? 'NOW' : String(integer),
+                    );
                   } catch (e) {
                     setFieldValue('payment_condition', value);
                     setFieldError('payment_condition', 'Integer expected');
@@ -370,7 +414,12 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                 name="date"
                 component={DateField}
               />
-              <InputGroup label="Description" name="description" component={TextareaField} fullWidth />
+              <InputGroup
+                label="Description"
+                name="description"
+                component={TextareaField}
+                fullWidth
+              />
               <InputGroup
                 label="Components"
                 name="components"
@@ -386,33 +435,45 @@ export const EditDebt = ({ params }: { params: { id: string } }) => {
                     component: DropdownField,
                     key: 'component',
                     props: {
-                      options: (centerComponents ?? []).map((component) => ({
+                      options: (centerComponents ?? []).map(component => ({
                         value: component.id,
                         text: component.name,
                       })),
                       allowCustom: true,
                       formatCustomOption: ({ name }) => name,
-                      createCustomOption: (name) => ({ name }),
+                      createCustomOption: name => ({ name }),
                     },
                   },
                   {
                     header: 'Amount',
                     component: EuroField,
                     key: 'amount',
-                    props: (row) => {
-                      const component = (centerComponents ?? []).find(c => c.id === row.component);
+                    props: row => {
+                      const component = (centerComponents ?? []).find(
+                        c => c.id === row.component,
+                      );
 
                       return {
                         readOnly: typeof row.component === 'string',
-                        value: component ? component.amount.value / 100 : row.amount,
+                        value: component
+                          ? component.amount.value / 100
+                          : row.amount,
                       };
                     },
                   },
                 ]}
               />
               <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-                <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Save</button>
+                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+                  Cancel
+                </button>
+                <button
+                  className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                  onClick={submitForm}
+                  disabled={isSubmitting}
+                >
+                  Save
+                </button>
               </div>
             </div>
           );

@@ -1,4 +1,8 @@
-import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import {
+  PaymentElement,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js';
 import { Stripe, StripeElements } from '@stripe/stripe-js';
 import styled from 'styled-components';
 import { Button } from './button';
@@ -13,25 +17,25 @@ const CardForm = styled.form`
 `;
 const handleSubmit =
   (stripe: Stripe, elements: StripeElements) =>
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-      if (!stripe || !elements) {
-        return;
-      }
+    if (!stripe || !elements) {
+      return;
+    }
 
-      const result = await stripe.confirmSetup({
-        redirect: 'always',
-        elements,
-        confirmParams: {
-          return_url: `${process.env.BACKEND_URL}/api/session/confirm-card-setup`,
-        },
-      });
+    const result = await stripe.confirmSetup({
+      redirect: 'always',
+      elements,
+      confirmParams: {
+        return_url: `${process.env.BACKEND_URL}/api/session/confirm-card-setup`,
+      },
+    });
 
-      if (result.error) {
-        console.log(result.error.message);
-      }
-    };
+    if (result.error) {
+      console.log(result.error.message);
+    }
+  };
 
 export const PaymentForm = () => {
   const stripe = useStripe();

@@ -6,29 +6,31 @@ import { Inject, Service } from 'typedi';
 import { ok } from 'typera-express/response';
 
 export type ResultRow = {
-  type: 'payer' | 'debt' | 'debt_center'
-  id: string
-}
+  type: 'payer' | 'debt' | 'debt_center';
+  id: string;
+};
 
 @Service()
 export class SearchApi {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   private search() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const { term, type } = ctx.req.query;
 
         const results = await this.pg.any<ResultRow>(sql`
           SELECT *
           FROM resource_ts rts
-          WHERE ${term} <% rts.text AND (${type === undefined} OR rts.type = ${type})
+          WHERE ${term} <% rts.text AND (${
+            type === undefined
+          } OR rts.type = ${type})
           ORDER BY (${term} <<-> rts.text) + ((${term} <<-> rts.name) * 1.5)
           LIMIT 50
         `);
@@ -38,8 +40,6 @@ export class SearchApi {
   }
 
   router() {
-    return router(
-      this.search(),
-    );
+    return router(this.search());
   }
 }

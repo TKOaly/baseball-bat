@@ -13,22 +13,22 @@ import { PaymentService } from '../services/payements';
 @Service()
 export class ReportApi {
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => ReportService)
-    reportService: ReportService;
+  reportService: ReportService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   private getReport() {
     return route
       .get('/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const report = await this.reportService.getReport(ctx.routeParams.id);
 
         if (!report) {
@@ -42,27 +42,31 @@ export class ReportApi {
   }
 
   private getReportContent() {
-    return route
-      .get('/:id/content')
-      //.use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const report = await this.reportService.getReportContent(ctx.routeParams.id);
+    return (
+      route
+        .get('/:id/content')
+        //.use(this.authService.createAuthMiddleware())
+        .handler(async ctx => {
+          const report = await this.reportService.getReportContent(
+            ctx.routeParams.id,
+          );
 
-        if (!report) {
-          return notFound({
-            message: 'Report not found.',
-          });
-        }
+          if (!report) {
+            return notFound({
+              message: 'Report not found.',
+            });
+          }
 
-        return ok(report, { 'Content-Type': 'application/pdf' });
-      });
+          return ok(report, { 'Content-Type': 'application/pdf' });
+        })
+    );
   }
 
   private getReports() {
     return route
       .get('/')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (_ctx) => {
+      .handler(async _ctx => {
         const reports = await this.reportService.getReports();
         return ok(reports);
       });
@@ -72,25 +76,32 @@ export class ReportApi {
     return route
       .post('/generate/debt-ledger')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.type({
-        startDate: dbDateString,
-        endDate: dbDateString,
-        includeDrafts: t.union([
-          t.literal('include'),
-          t.literal('exclude'),
-          t.literal('only-drafts'),
-        ]),
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
-      })))
-      .handler(async (ctx) => {
-        /*const report = await */this.debtService.generateDebtLedger({
-          startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
-          endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
-          includeDrafts: ctx.body.includeDrafts,
-          groupBy: ctx.body.groupBy,
-          centers: ctx.body.centers,
-        }, internalIdentity(ctx.session.payerId));
+      .use(
+        validateBody(
+          t.type({
+            startDate: dbDateString,
+            endDate: dbDateString,
+            includeDrafts: t.union([
+              t.literal('include'),
+              t.literal('exclude'),
+              t.literal('only-drafts'),
+            ]),
+            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+            centers: t.union([t.null, t.array(t.string)]),
+          }),
+        ),
+      )
+      .handler(async ctx => {
+        /*const report = await */ this.debtService.generateDebtLedger(
+          {
+            startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
+            endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
+            includeDrafts: ctx.body.includeDrafts,
+            groupBy: ctx.body.groupBy,
+            centers: ctx.body.centers,
+          },
+          internalIdentity(ctx.session.payerId),
+        );
 
         return ok();
         //return ok(report);
@@ -101,23 +112,43 @@ export class ReportApi {
     return route
       .post('/generate/payment-ledger')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.type({
-        startDate: dbDateString,
-        endDate: dbDateString,
-        paymentType: t.union([ t.null, t.literal('cash'), t.literal('invoice') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        eventTypes: t.union([ t.null, t.array(t.union([ t.literal('payment'), t.literal('created'), t.literal('credited') ])) ]),
-      })))
-      .handler(async (ctx) => {
-        /*const report = await */this.paymentService.generatePaymentLedger({
-          startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
-          endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
-          paymentType: ctx.body.paymentType,
-          centers: ctx.body.centers,
-          groupBy: ctx.body.groupBy,
-          eventTypes: ctx.body.eventTypes,
-        }, internalIdentity(ctx.session.payerId));
+      .use(
+        validateBody(
+          t.type({
+            startDate: dbDateString,
+            endDate: dbDateString,
+            paymentType: t.union([
+              t.null,
+              t.literal('cash'),
+              t.literal('invoice'),
+            ]),
+            centers: t.union([t.null, t.array(t.string)]),
+            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+            eventTypes: t.union([
+              t.null,
+              t.array(
+                t.union([
+                  t.literal('payment'),
+                  t.literal('created'),
+                  t.literal('credited'),
+                ]),
+              ),
+            ]),
+          }),
+        ),
+      )
+      .handler(async ctx => {
+        /*const report = await */ this.paymentService.generatePaymentLedger(
+          {
+            startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
+            endDate: parse(ctx.body.endDate, 'yyyy-MM-dd', new Date()),
+            paymentType: ctx.body.paymentType,
+            centers: ctx.body.centers,
+            groupBy: ctx.body.groupBy,
+            eventTypes: ctx.body.eventTypes,
+          },
+          internalIdentity(ctx.session.payerId),
+        );
 
         return ok();
         // return ok(report);
@@ -128,19 +159,31 @@ export class ReportApi {
     return route
       .post('/generate/debt-status-report')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.type({
-        date: dbDateString,
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
-        includeOnly: t.union([ t.null, t.literal('paid'), t.literal('credited'), t.literal('open') ]),
-      })))
-      .handler(async (ctx) => {
-        /*const report = await */this.debtService.generateDebtStatusReport({
-          date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
-          centers: ctx.body.centers,
-          groupBy: ctx.body.groupBy,
-          includeOnly: ctx.body.includeOnly,
-        }, internalIdentity(ctx.session.payerId));
+      .use(
+        validateBody(
+          t.type({
+            date: dbDateString,
+            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+            centers: t.union([t.null, t.array(t.string)]),
+            includeOnly: t.union([
+              t.null,
+              t.literal('paid'),
+              t.literal('credited'),
+              t.literal('open'),
+            ]),
+          }),
+        ),
+      )
+      .handler(async ctx => {
+        /*const report = await */ this.debtService.generateDebtStatusReport(
+          {
+            date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
+            centers: ctx.body.centers,
+            groupBy: ctx.body.groupBy,
+            includeOnly: ctx.body.includeOnly,
+          },
+          internalIdentity(ctx.session.payerId),
+        );
 
         return ok();
         //return ok(report);
@@ -151,8 +194,11 @@ export class ReportApi {
     return route
       .post('/:id/refresh')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const report = await this.reportService.refreshReport(ctx.routeParams.id, internalIdentity(ctx.session.payerId));
+      .handler(async ctx => {
+        const report = await this.reportService.refreshReport(
+          ctx.routeParams.id,
+          internalIdentity(ctx.session.payerId),
+        );
 
         if (!report) {
           return notFound({

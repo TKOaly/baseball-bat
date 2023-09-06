@@ -16,22 +16,29 @@ const formatDate = (date: Date | string) => {
 const formatDateRelative = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), 'day');
+  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(
+    differenceInDays(parsed, new Date()),
+    'day',
+  );
 };
 
 export const DebtDetails = ({ params }) => {
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
-  const { data: payments, isLoading: paymentsAreLoading } = useGetPaymentsByDebtQuery(params.id);
+  const { data: payments, isLoading: paymentsAreLoading } =
+    useGetPaymentsByDebtQuery(params.id);
 
   if (isLoading || paymentsAreLoading) {
     return <div>Loading...</div>;
   }
 
-  const total = debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0));
+  const total = debt.debtComponents
+    .map(dc => dc.amount)
+    .reduce(sumEuroValues, euro(0));
 
-  const defaultPayment = (payments || [])
-    .find((payment) => payment.type === 'invoice');
+  const defaultPayment = (payments || []).find(
+    payment => payment.type === 'invoice',
+  );
 
   const isLate = debt?.dueDate && isPast(new Date(debt.dueDate));
   const isUnpaid = debt?.status === 'unpaid';
@@ -47,7 +54,8 @@ export const DebtDetails = ({ params }) => {
             <span>{t('amountLabel')}:</span> {formatEuro(total)}
           </div>
           <div>
-            <span>{t('dueDateLabel')}:</span> {format(new Date(debt.dueDate), 'yyyy.MM.dd')}
+            <span>{t('dueDateLabel')}:</span>{' '}
+            {format(new Date(debt.dueDate), 'yyyy.MM.dd')}
           </div>
           <p>{debt.description}</p>
         </div>
@@ -81,7 +89,9 @@ export const DebtDetails = ({ params }) => {
 
       {defaultPayment && (
         <>
-          <h4 className="text-gray-500 mt-5 mb-2 font-bold">{t('invoiceDetailsHeader')}</h4>
+          <h4 className="text-gray-500 mt-5 mb-2 font-bold">
+            {t('invoiceDetailsHeader')}
+          </h4>
           <div className="rounded shadow border p-3 bg-gray-50">
             <table>
               <tr>
@@ -93,27 +103,38 @@ export const DebtDetails = ({ params }) => {
                 <td>{defaultPayment.payment_number}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">{t('invoiceCreatedAtHeader')}</th>
+                <th className="text-right pr-3">
+                  {t('invoiceCreatedAtHeader')}
+                </th>
                 <td>{formatDate(defaultPayment.created_at)}</td>
               </tr>
               <tr>
                 <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
-                <td>{debt.dueDate && formatDate(new Date(debt.dueDate))} ({debt.dueDate && formatDateRelative(debt.dueDate)})</td>
+                <td>
+                  {debt.dueDate && formatDate(new Date(debt.dueDate))} (
+                  {debt.dueDate && formatDateRelative(debt.dueDate)})
+                </td>
               </tr>
               <tr>
                 <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
                 <td>{formatEuro(total)}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3 h-4">{t('invoiceReferenceNumberHeader')}</th>
+                <th className="text-right pr-3 h-4">
+                  {t('invoiceReferenceNumberHeader')}
+                </th>
                 <td>{defaultPayment.data?.reference_number}</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">{t('invoiceBeneficaryNameHeader')}</th>
+                <th className="text-right pr-3">
+                  {t('invoiceBeneficaryNameHeader')}
+                </th>
                 <td>TKO-äly ry</td>
               </tr>
               <tr>
-                <th className="text-right pr-3">{t('invoiceBeneficaryAccountHeader')}</th>
+                <th className="text-right pr-3">
+                  {t('invoiceBeneficaryAccountHeader')}
+                </th>
                 <td>FI89 7997 7995 1312 86</td>
               </tr>
               <tr>

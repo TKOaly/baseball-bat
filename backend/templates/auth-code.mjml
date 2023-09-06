@@ -1,24 +1,47 @@
 <mjml>
   <mj-body background-color="#ffcc33">
-      <mj-section padding-top="40px">
-      	<mj-column vertical-align="middle" width="40%">
-          <mj-image width="144px" src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg" align="center"></mj-image>
-        </mj-column>
-        <mj-column vertical-align="middle">
-          <mj-text font-size="30px" color="#000" font-family="serif" align="center">TKO-äly ry</mj-text>
-          <mj-text font-size="20px" color="#000" font-family="serif" align="center">Maksupalvelu</mj-text>
-        </mj-column>
-      </mj-section>
+    <mj-section padding-top="40px">
+      <mj-column vertical-align="middle" width="40%">
+        <mj-image
+          width="144px"
+          src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg"
+          align="center"
+        ></mj-image>
+      </mj-column>
+      <mj-column vertical-align="middle">
+        <mj-text
+          font-size="30px"
+          color="#000"
+          font-family="serif"
+          align="center"
+          >TKO-äly ry</mj-text
+        >
+        <mj-text
+          font-size="20px"
+          color="#000"
+          font-family="serif"
+          align="center"
+          >Maksupalvelu</mj-text
+        >
+      </mj-column>
+    </mj-section>
     <mj-section>
       <mj-column background-color="#FBFBFB" padding="30px 10px">
-        <mj-text font-size="24px" padding-top="30px">Your authentication code is <%= code %></mj-text>
+        <mj-text font-size="24px" padding-top="30px"
+          >Your authentication code is <%= code %></mj-text
+        >
 
-        <mj-text>This message was requested from the payment service web application. If you did not request this code, please ignore this message.</mj-text>
-          
-         <mj-text>
-           You can authenticate by typing the above code into the page you requested this code from. <!-- Alternatively you can click the button below: -->
-         </mj-text>
-        
+        <mj-text
+          >This message was requested from the payment service web application.
+          If you did not request this code, please ignore this message.</mj-text
+        >
+
+        <mj-text>
+          You can authenticate by typing the above code into the page you
+          requested this code from.
+          <!-- Alternatively you can click the button below: -->
+        </mj-text>
+
         <!-- <mj-button padding-top="30px" background-color="red" href="<%- link %>">Log In</mj-button> -->
       </mj-column>
     </mj-section>

@@ -2,49 +2,110 @@
   <mj-body background-color="black">
     <mj-section background-color="#fc3">
       <mj-column>
-        <mj-text font-size="30px" align="center" padding-top="20px" padding-bottom="10px">TKO-äly ry</mj-text>
-        <mj-text font-size="18px" align="center" padding-bottom="20px">Billing service</mj-text>
+        <mj-text
+          font-size="30px"
+          align="center"
+          padding-top="20px"
+          padding-bottom="10px"
+          >TKO-äly ry</mj-text
+        >
+        <mj-text font-size="18px" align="center" padding-bottom="20px"
+          >Billing service</mj-text
+        >
       </mj-column>
     </mj-section>
     <mj-section background-color="white">
-    	<mj-column>
-      	<mj-text font-size="20px">Hi, <%- payer.name %>!</mj-text>
+      <mj-column>
+        <mj-text font-size="20px">Hi, <%- payer.name %>!</mj-text>
         <mj-text>
-          <% if (reason === 'paid') { %>
-            Your invoice <%- payment.paymentNumber %> has been credited because you have paid a debt covered by the payment.
-          <% } else { %>
-            Your invoice <%- payment.paymentNumber %> has been credited. If you are unsure why this is, please contact the treasurer.
-          <% } %>
+          <% if (reason === 'paid') { %> Your invoice <%- payment.paymentNumber
+          %> has been credited because you have paid a debt covered by the
+          payment. <% } else { %> Your invoice <%- payment.paymentNumber %> has
+          been credited. If you are unsure why this is, please contact the
+          treasurer. <% } %>
         </mj-text>
         <mj-text>
-          You can find the details of the credited invoice from the end of this message. <b>Do not pay this invoice.</b>
+          You can find the details of the credited invoice from the end of this
+          message. <b>Do not pay this invoice.</b>
         </mj-text>
         <mj-text>
-          Best regards,<br/><br/>
-          <b>Vesa Rautiainen</b><br/><br/>
-          Treasurer<br/>
+          Best regards,<br /><br />
+          <b>Vesa Rautiainen</b><br /><br />
+          Treasurer<br />
           TKO-äly ry
         </mj-text>
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Invoice breakdown</mj-text>
         <mj-table>
           <% for (const debt of debts) { %>
-            <tr>
-              <th style="width: 0; white-space: nowrap !important; text-align: left; padding-right: 1em"><%- debt.name %></th>
-              <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(debt.total) %></td>
-              <td></td>
-            </tr>
-            <% for (const component of debt.debtComponents) { %>
-              <tr>
-                <th style="width: 0; white-space: nowrap !important; text-align: left; padding-left: 1.5em; padding-right: 5em"><%- component.name %></th>
-                <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(component.amount) %></td>
-                <td></td>
-              </tr>
-            <% } %>
-          <% } %>
           <tr>
-          	<th style="width: 0; white-space: nowrap !important; text-align: left; padding-top: 1em; padding-right: 1em">Total</th>
-            <td style="text-align: right; width: 0; white-space: nowrap !important"><%- formatEuro(amount) %></td>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-right: 1em;
+              "
+            >
+              <%- debt.name %>
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(debt.total) %>
+            </td>
+            <td></td>
+          </tr>
+          <% for (const component of debt.debtComponents) { %>
+          <tr>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-left: 1.5em;
+                padding-right: 5em;
+              "
+            >
+              <%- component.name %>
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(component.amount) %>
+            </td>
+            <td></td>
+          </tr>
+          <% } %> <% } %>
+          <tr>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-top: 1em;
+                padding-right: 1em;
+              "
+            >
+              Total
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(amount) %>
+            </td>
             <td></td>
           </tr>
         </mj-table>
@@ -52,39 +113,120 @@
         <mj-text font-size="20px">Payment information</mj-text>
         <mj-table>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Title</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Title
+            </th>
             <td><%- payment.title %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice number</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Invoice number
+            </th>
             <td><%- payment.paymentNumber %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice recipient</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Invoice recipient
+            </th>
             <td><%- payer.name %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Invoice date</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Invoice date
+            </th>
             <td><%- formatDate(new Date(payment.data.date)) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Due date</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Due date
+            </th>
             <td><%- formatDate(new Date(payment.data.due_date)) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Reference number</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Reference number
+            </th>
             <td><%- formatReferenceNumber(payment.data.reference_number) %></td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saaja</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Saaja
+            </th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saajan tilinumero</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Saajan tilinumero
+            </th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
-          	<th style="text-align: left; width: 0; white-space: nowrap !important; padding-right: 1em">Saajan BIC</th>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Saajan BIC
+            </th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>
