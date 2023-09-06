@@ -6,13 +6,10 @@ const jobsApi = rtkApi.injectEndpoints({
       query: () => '/jobs/list',
     }),
 
-    getJob: builder.query<any, { queue: string, id: string }>({
+    getJob: builder.query<any, { queue: string; id: string }>({
       query: ({ queue, id }) => `/jobs/queue/${queue}/${id}`,
     }),
   }),
 });
 
-export const {
-  useGetJobsQuery,
-  useGetJobQuery,
-} = jobsApi;
+export const { useGetJobsQuery, useGetJobQuery } = jobsApi;

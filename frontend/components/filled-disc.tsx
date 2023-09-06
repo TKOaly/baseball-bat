@@ -1,4 +1,3 @@
-
 export const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

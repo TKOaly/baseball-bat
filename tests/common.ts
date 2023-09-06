@@ -14,8 +14,8 @@ import { RedisClientType } from 'redis';
 import { AppBus } from '../backend/orchestrator';
 
 export type AppTestFn = TestFn<{
-  container: ContainerInstance,
-  testcontainers: Array<StartedTestContainer>,
+  container: ContainerInstance;
+  testcontainers: Array<StartedTestContainer>;
 }>;
 
 export function createTestFunc(): AppTestFn {
@@ -47,7 +47,7 @@ export function createTestFunc(): AppTestFn {
       .withExposedPorts(6379)
       .start();
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     const client = redis.createClient({
       socket: {
@@ -61,19 +61,18 @@ export function createTestFunc(): AppTestFn {
     return { container, client };
   };
 
-  test.beforeEach(async (t) => {
+  test.beforeEach(async t => {
     const [
       { container: redisContainer, client: redisClient },
       { container: postgresContainer, client: postgresClient },
-    ] = await Promise.all([
-      setupRedis(),
-      setupPostgres(),
-    ]);
+    ] = await Promise.all([setupRedis(), setupPostgres()]);
 
     t.context.testcontainers = [redisContainer, postgresContainer];
 
     const dbUrl = postgresContainer.getConnectionUri();
-    const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`;
+    const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(
+      6379,
+    )}`;
 
     const config = new Config({
       dbUrl,
@@ -115,7 +114,7 @@ export function createTestFunc(): AppTestFn {
     t.context.container = container;
   });
 
-  test.afterEach(async (t) => {
+  test.afterEach(async t => {
     const { container } = t.context;
     const pg = container.get(PgClient);
     const redis: RedisClientType = container.get('redis');
@@ -126,12 +125,14 @@ export function createTestFunc(): AppTestFn {
     await redis.disconnect();
     await pg.conn.end();
 
-    await Promise.all(t.context.testcontainers.map((c) => c.stop()));
+    await Promise.all(t.context.testcontainers.map(c => c.stop()));
   });
 
   return test;
-} 
+}
 
 export function uuidValidator() {
-  return expect.regex(/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/);
+  return expect.regex(
+    /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/,
+  );
 }

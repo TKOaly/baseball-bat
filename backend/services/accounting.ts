@@ -11,10 +11,12 @@ const formatAccountingPeriod = (db: DbAccountingPeriod): AccountingPeriod => ({
 @Service()
 export class AccountingService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   async getAccountingPeriods() {
-    const periods = await this.pg.any<DbAccountingPeriod>(sql`SELECT * FROM accounting_periods`);
+    const periods = await this.pg.any<DbAccountingPeriod>(
+      sql`SELECT * FROM accounting_periods`,
+    );
     return periods.map(formatAccountingPeriod);
   }
 

@@ -10,8 +10,6 @@ const accountingApi = rtkApi.injectEndpoints({
   }),
 });
 
-export const {
-  useGetAccountingPeriodsQuery,
-} = accountingApi;
+export const { useGetAccountingPeriodsQuery } = accountingApi;
 
 export default accountingApi;

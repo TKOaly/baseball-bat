@@ -36,10 +36,12 @@ export const CreateBankAccount = () => {
         />
       </h1>
       <Formik
-        initialValues={{
-          name: '',
-          iban: '',
-        } as BankAccount}
+        initialValues={
+          {
+            name: '',
+            iban: '',
+          } as BankAccount
+        }
         onSubmit={submitForm}
       >
         {({ submitForm, isSubmitting }) => (
@@ -47,8 +49,16 @@ export const CreateBankAccount = () => {
             <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup label="IBAN" name="iban" component={TextField} />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Create</button>
+              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+                Cancel
+              </button>
+              <button
+                className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                onClick={submitForm}
+                disabled={isSubmitting}
+              >
+                Create
+              </button>
             </div>
           </div>
         )}

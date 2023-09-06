@@ -9,32 +9,32 @@ pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
   ? FirstItem extends string
-  ? Rest extends string[]
-  ? `${FirstItem}${Capitalize<Join<Rest>>}`
-  : FirstItem
-  : never
+    ? Rest extends string[]
+      ? `${FirstItem}${Capitalize<Join<Rest>>}`
+      : FirstItem
+    : never
   : Items extends string
   ? Items
-  : ''
+  : '';
 
 type Split<
   Str,
-  Delim extends string
+  Delim extends string,
 > = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
   ? Str extends ''
-  ? never
-  : [Str]
-  : never
+    ? never
+    : [Str]
+  : never;
 
 export type FromDbType<T extends object> = {
-  [K in keyof T as Join<Split<K, '_'>>]: T[K]
-}
+  [K in keyof T as Join<Split<K, '_'>>]: T[K];
+};
 
 export type TxClient = {
-  do: <A>(query: SQLStatement) => Promise<A[]>
-}
+  do: <A>(query: SQLStatement) => Promise<A[]>;
+};
 
 @Service()
 export class PgClient {
@@ -52,9 +52,7 @@ export class PgClient {
   async one<T>(query: SQLStatement): Promise<T | null> {
     const result = await this.conn.query(query);
 
-    return result.rowCount > 0
-      ? result.rows[0]
-      : null;
+    return result.rowCount > 0 ? result.rows[0] : null;
   }
 
   oneTask<T>(query: SQLStatement): TE.TaskEither<Error, O.Option<T>> {

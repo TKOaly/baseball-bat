@@ -6,26 +6,53 @@ import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
 import { ResourceLink } from './resource-link';
 
 export type Props = {
-  type?: string,
-  value?: { type: string, id: string } | string,
-  name?: string
-  onChange?: (evt: { target: { value: { type: string, id: string }, name?: string } }, resource: { type: string, id: string }) => void,
-}
+  type?: string;
+  value?: { type: string; id: string } | string;
+  name?: string;
+  onChange?: (
+    evt: { target: { value: { type: string; id: string }; name?: string } },
+    resource: { type: string; id: string },
+  ) => void;
+};
 
 export const ResourceSelectField = (props: Props) => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
-  const selected = props.type && typeof props.value === 'string' ? { type: props.type, id: props.value } : props.value;
-  const { visible, getTooltipProps, getArrowProps, setTriggerRef, setTooltipRef } = usePopperTooltip({ interactive: true, followCursor: false, placement: 'top', delayShow: 300, offset: [0, 0] });
-  const resourceDetails = useFetchResourceDetails(selected?.type, selected?.id, !selected);
+  const selected =
+    props.type && typeof props.value === 'string'
+      ? { type: props.type, id: props.value }
+      : props.value;
+  const {
+    visible,
+    getTooltipProps,
+    getArrowProps,
+    setTriggerRef,
+    setTooltipRef,
+  } = usePopperTooltip({
+    interactive: true,
+    followCursor: false,
+    placement: 'top',
+    delayShow: 300,
+    offset: [0, 0],
+  });
+  const resourceDetails = useFetchResourceDetails(
+    selected?.type,
+    selected?.id,
+    !selected,
+  );
 
   const handleOpen = async () => {
     const result = await showSearchDialog({
       type: props.type,
-      title: props.type ? `Select a ${props.type.replace('_', ' ')}` : 'Select a resource',
+      title: props.type
+        ? `Select a ${props.type.replace('_', ' ')}`
+        : 'Select a resource',
     });
 
     if (result !== null) {
-      props?.onChange?.({ target: { value: result, name: props.name } }, result);
+      props?.onChange?.(
+        { target: { value: result, name: props.name } },
+        result,
+      );
     }
   };
 
@@ -39,12 +66,18 @@ export const ResourceSelectField = (props: Props) => {
       >
         {selected && (
           <>
-            <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize whitespace-nowrap">{selected.type.replace(/_/g, ' ')}</span>
+            <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize whitespace-nowrap">
+              {selected.type.replace(/_/g, ' ')}
+            </span>
             <span>{resourceDetails?.name}</span>
           </>
         )}
         {!selected && (
-          <span className="text-gray-700">{props.type ? `Select a ${props.type.replace('_', ' ')}...` : 'Select a resource...'}</span>
+          <span className="text-gray-700">
+            {props.type
+              ? `Select a ${props.type.replace('_', ' ')}...`
+              : 'Select a resource...'}
+          </span>
         )}
       </div>
       {visible && selected && resourceDetails && (
@@ -54,33 +87,41 @@ export const ResourceSelectField = (props: Props) => {
               <tr>
                 <td colSpan={2}>
                   <div className="flex items-center mb-2">
-                    <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-2 capitalize">{resourceDetails.type.replace(/_/g, ' ')}</span>
+                    <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-2 capitalize">
+                      {resourceDetails.type.replace(/_/g, ' ')}
+                    </span>
                     <span>{resourceDetails.name}</span>
                   </div>
                 </td>
               </tr>
-              {
-                (resourceDetails.details ?? []).map(([label, details]) => {
-                  let value = null;
+              {(resourceDetails.details ?? []).map(([label, details]) => {
+                let value = null;
 
-                  if (details.type === 'text') {
-                    value = details.value;
-                  } else if (details.type === 'resource') {
-                    value = <ResourceLink type={details.resourceType} id={details.id} />;
-                  }
-
-                  return (
-                    <tr key={label}>
-                      <th className="text-left text-gray-700 pr-2">{label}</th>
-                      <td>{value}</td>
-                    </tr>
+                if (details.type === 'text') {
+                  value = details.value;
+                } else if (details.type === 'resource') {
+                  value = (
+                    <ResourceLink type={details.resourceType} id={details.id} />
                   );
-                })
-              }
+                }
+
+                return (
+                  <tr key={label}>
+                    <th className="text-left text-gray-700 pr-2">{label}</th>
+                    <td>{value}</td>
+                  </tr>
+                );
+              })}
             </table>
           </div>
           <div {...getArrowProps()}>
-            <div className="w-2 h-2 bg-white absolute border-r border-b border-gray-200" style={{ marginTop: '-1px', transform: 'rotate(45deg) translate(-50%, 0%)' }} />
+            <div
+              className="w-2 h-2 bg-white absolute border-r border-b border-gray-200"
+              style={{
+                marginTop: '-1px',
+                transform: 'rotate(45deg) translate(-50%, 0%)',
+              }}
+            />
           </div>
         </div>
       )}

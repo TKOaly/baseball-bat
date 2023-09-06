@@ -5,7 +5,11 @@ import { InputGroup } from '../components/input-group';
 import { Formik } from 'formik';
 import { useLocation } from 'wouter';
 import { useEffect, useReducer, useState } from 'react';
-import { usePollAuthStatusQuery, useRequestAuthCodeMutation, useValidateAuthCodeMutation } from '../api/auth';
+import {
+  usePollAuthStatusQuery,
+  useRequestAuthCodeMutation,
+  useValidateAuthCodeMutation,
+} from '../api/auth';
 import { useAppDispatch } from '../store';
 import { authenticateSession } from '../session';
 
@@ -33,17 +37,10 @@ const SendStep = ({ onCompletion, setLoading, dispatch }) => {
   };
 
   return (
-    <Formik
-      initialValues={{ email: '' }}
-      onSubmit={sendAuthCode}
-    >
+    <Formik initialValues={{ email: '' }} onSubmit={sendAuthCode}>
       {({ submitForm }) => (
         <div className="w-80 mx-auto py-5">
-          <InputGroup
-            name="email"
-            component={TextField}
-            placeholder="Email"
-          />
+          <InputGroup name="email" component={TextField} placeholder="Email" />
           <div className="mt-3 text-right">
             <Button onClick={() => submitForm()}>Send Confirmation</Button>
           </div>
@@ -53,12 +50,14 @@ const SendStep = ({ onCompletion, setLoading, dispatch }) => {
   );
 };
 
-
 const ConfirmStep = ({ state, onCompletion }) => {
   const [validateAuthCode] = useValidateAuthCodeMutation();
   const [pollingInterval, setPollingInterval] = useState(1);
 
-  const authStatus = usePollAuthStatusQuery({ id: state.id }, { pollingInterval });
+  const authStatus = usePollAuthStatusQuery(
+    { id: state.id },
+    { pollingInterval },
+  );
 
   useEffect(() => {
     if (authStatus.data?.authenticated) {
@@ -97,8 +96,11 @@ const ConfirmStep = ({ state, onCompletion }) => {
             name="code"
             component={TextField}
             placeholder="Confirmation Code"
-            onChange={(evt) => {
-              setFieldValue('code', evt.target.value.toUpperCase().replace(/[^A-Z0-9]/, ''));
+            onChange={evt => {
+              setFieldValue(
+                'code',
+                evt.target.value.toUpperCase().replace(/[^A-Z0-9]/, ''),
+              );
             }}
           />
           <div className="mt-3 text-right">
@@ -115,8 +117,7 @@ const SuccessStep = ({ state }) => {
   const [, setLocation] = useLocation();
 
   const onContinue = () => {
-    dispatch(authenticateSession(state.id))
-      .then(() => setLocation('/'));
+    dispatch(authenticateSession(state.id)).then(() => setLocation('/'));
   };
 
   return (
@@ -127,10 +128,10 @@ const SuccessStep = ({ state }) => {
 };
 
 type State = {
-  id: string | null
-}
+  id: string | null;
+};
 
-type Event = { type: 'SET_AUTH_ID', payload: { id: string } }
+type Event = { type: 'SET_AUTH_ID'; payload: { id: string } };
 
 const reducer = (state: State, { type, payload }: Event): State => {
   if (type === 'SET_AUTH_ID') {
@@ -160,14 +161,19 @@ export const EmailAuth = () => {
       <h3 className="text-xl text-gray-500 font-bold">Email Authentication</h3>
 
       <p className="my-5">
-        If you do not have a TKO-äly member account, you can authenticate with a one-time code sent to your email.
-        This is only possible if your account does not have any other authentication mechanism enabled.
+        If you do not have a TKO-äly member account, you can authenticate with a
+        one-time code sent to your email. This is only possible if your account
+        does not have any other authentication mechanism enabled.
       </p>
 
       <div className="-mx-5 border-b mb-5"></div>
 
       <div className="mx-5">
-        <Stepper stages={['Send', 'Confirm', 'Success']} currentStage={stage} loading={loading} />
+        <Stepper
+          stages={['Send', 'Confirm', 'Success']}
+          currentStage={stage}
+          loading={loading}
+        />
       </div>
 
       <StepComponent
@@ -175,7 +181,7 @@ export const EmailAuth = () => {
           setStage(stage + 1);
           setLoading(false);
         }}
-        setLoading={(loading) => setLoading(loading)}
+        setLoading={loading => setLoading(loading)}
         state={state}
         dispatch={dispatch}
       />

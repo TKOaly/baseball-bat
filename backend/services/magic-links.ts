@@ -22,29 +22,31 @@ const magicLinkPayload = t.intersection([
   }),
 ]);
 
-export type MagicLinkPayload = t.TypeOf<typeof magicLinkPayload>
+export type MagicLinkPayload = t.TypeOf<typeof magicLinkPayload>;
 
 export type MagicLinkOptions = {
-  path: string
-  authenticate?: boolean
-  email?: string
-  profileId?: InternalIdentity
-  ttl?: number
-  oneTime?: boolean
-}
+  path: string;
+  authenticate?: boolean;
+  email?: string;
+  profileId?: InternalIdentity;
+  ttl?: number;
+  oneTime?: boolean;
+};
 
 export type MagicLink = {
-  payload: Omit<MagicLinkPayload, 'profileId'> & { profileId?: InternalIdentity },
-  hash: string,
-}
+  payload: Omit<MagicLinkPayload, 'profileId'> & {
+    profileId?: InternalIdentity;
+  };
+  hash: string;
+};
 
 @Service()
 export class MagicLinkService {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject('redis')
-    redis: RedisClientType;
+  redis: RedisClientType;
 
   getKey() {
     const hash = crypto.createHash('sha256');
@@ -59,7 +61,7 @@ export class MagicLinkService {
 
     const payload = {
       ...options,
-      ttl: options.ttl ?? (60 * 60),
+      ttl: options.ttl ?? 60 * 60,
       created: Date.now(),
     };
 
@@ -121,13 +123,17 @@ export class MagicLinkService {
       magicLinkPayload.decode,
       E.fold(
         () => O.none,
-        (payload) => O.some({
-          payload: {
-            ...payload,
-            profileId: payload.profileId === undefined ? undefined : internalIdentity(payload.profileId),
-          },
-          hash,
-        }),
+        payload =>
+          O.some({
+            payload: {
+              ...payload,
+              profileId:
+                payload.profileId === undefined
+                  ? undefined
+                  : internalIdentity(payload.profileId),
+            },
+            hash,
+          }),
       ),
     );
   }

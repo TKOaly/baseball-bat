@@ -4,9 +4,21 @@ import { Calendar } from 'react-feather';
 import { parse, format, isMatch } from 'date-fns';
 
 import 'react-day-picker/dist/style.css';
-import { FloatingPortal, useClick, useDismiss, useFloating, useInteractions } from '@floating-ui/react-dom-interactions';
+import {
+  FloatingPortal,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react-dom-interactions';
 
-export const DateField = ({ value, allowEmpty = true, onChange, format: formatString = 'dd.MM.yyyy', ...props }) => {
+export const DateField = ({
+  value,
+  allowEmpty = true,
+  onChange,
+  format: formatString = 'dd.MM.yyyy',
+  ...props
+}) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const ref = useRef();
 
@@ -40,11 +52,7 @@ export const DateField = ({ value, allowEmpty = true, onChange, format: formatSt
 
   return (
     <div className="flex flex-col items-center relative" ref={ref}>
-      <div
-        ref={reference}
-        className="relative w-full"
-        {...getReferenceProps()}
-      >
+      <div ref={reference} className="relative w-full" {...getReferenceProps()}>
         <input
           type="text"
           className={`
@@ -60,29 +68,42 @@ export const DateField = ({ value, allowEmpty = true, onChange, format: formatSt
             border
           `}
           value={displayValue}
-          onChange={(evt) => {
+          onChange={evt => {
             setDisplayValue(evt.target.value);
 
-            if (isMatch(evt.target.value, 'dd.MM.yyyy') || (evt.target.value === '' && allowEmpty)) {
+            if (
+              isMatch(evt.target.value, 'dd.MM.yyyy') ||
+              (evt.target.value === '' && allowEmpty)
+            ) {
               onChange({
                 ...evt,
                 target: {
                   ...evt.target,
                   name: evt.target.name,
                   id: evt.target.id,
-                  value: format(parse(evt.target.value, 'dd.MM.yyyy', new Date()), formatString),
+                  value: format(
+                    parse(evt.target.value, 'dd.MM.yyyy', new Date()),
+                    formatString,
+                  ),
                 },
               });
             }
           }}
           {...props}
-          onBlur={(evt) => {
+          onBlur={evt => {
             resetDisplayValue();
             props?.onBlur?.(evt);
           }}
         />
         <div className="absolute right-0 top-0 flex items-center mr-2 pt-1 bottom-0">
-          <Calendar className={`cursor-pointer ${calendarOpen ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-gray-500'}`} onClick={() => setCalendarOpen(!calendarOpen)} />
+          <Calendar
+            className={`cursor-pointer ${
+              calendarOpen
+                ? 'text-blue-500 hover:text-blue-400'
+                : 'text-gray-400 hover:text-gray-500'
+            }`}
+            onClick={() => setCalendarOpen(!calendarOpen)}
+          />
         </div>
       </div>
       <FloatingPortal>
@@ -100,8 +121,14 @@ export const DateField = ({ value, allowEmpty = true, onChange, format: formatSt
             <DayPicker
               mode="single"
               modifiersClassNames={{ selected: 'bg-blue-500' }}
-              onSelect={(day) => {
-                onChange({ target: { id: props.id, name: props.name, value: format(day, formatString) } });
+              onSelect={day => {
+                onChange({
+                  target: {
+                    id: props.id,
+                    name: props.name,
+                    value: format(day, formatString),
+                  },
+                });
               }}
             />
           </div>

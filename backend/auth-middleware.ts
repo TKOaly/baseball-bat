@@ -13,17 +13,21 @@ import { UsersService } from './services/users';
 import { PayerService } from './services/payer';
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
-  (O['unauthenticated'] extends true ? Session : Session & { authLevel: 'authenticated' }) & (O['accessLevel'] extends 'normal' ? Record<string, never> : { accessLevel: 'admin' })
+  (O['unauthenticated'] extends true
+    ? Session
+    : Session & { authLevel: 'authenticated' }) &
+    (O['accessLevel'] extends 'normal'
+      ? Record<string, never>
+      : { accessLevel: 'admin' });
 
-type AuthMiddleware<O extends AuthMiddlewareOptions> =
-  Middleware.Middleware<{ session: AuthMiddlewareSession<O> }, Response.Unauthorized<string>>
+type AuthMiddleware<O extends AuthMiddlewareOptions> = Middleware.Middleware<
+  { session: AuthMiddlewareSession<O> },
+  Response.Unauthorized<string>
+>;
 
-const accessLevel = t.union([
-  t.literal('normal'),
-  t.literal('admin'),
-]);
+const accessLevel = t.union([t.literal('normal'), t.literal('admin')]);
 
-export type AccessLevel = t.TypeOf<typeof accessLevel>
+export type AccessLevel = t.TypeOf<typeof accessLevel>;
 
 const session = t.union([
   t.type({
@@ -37,30 +41,32 @@ const session = t.union([
   }),
 ]);
 
-
-type Session = t.TypeOf<typeof session> & { token: string }
+type Session = t.TypeOf<typeof session> & { token: string };
 
 type AuthMiddlewareOptions = {
-  unauthenticated?: boolean
-  accessLevel?: AccessLevel
-  allowQueryToken?: boolean
-}
+  unauthenticated?: boolean;
+  accessLevel?: AccessLevel;
+  allowQueryToken?: boolean;
+};
 
 @Service()
 export class AuthService {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject('redis')
-    redis: RedisClientType;
+  redis: RedisClientType;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
-  private async getSession<R extends RequestBase>({ req }: R, allowQueryToken: boolean): Promise<[Session | null, string | null]> {
+  private async getSession<R extends RequestBase>(
+    { req }: R,
+    allowQueryToken: boolean,
+  ): Promise<[Session | null, string | null]> {
     const getTokenFromHeader = () => {
       const header = req.header('Authorization');
 
@@ -112,26 +118,40 @@ export class AuthService {
     return [{ ...data, token }, token];
   }
 
-  createAuthMiddleware<O extends AuthMiddlewareOptions>(options?: O): AuthMiddleware<O> {
+  createAuthMiddleware<O extends AuthMiddlewareOptions>(
+    options?: O,
+  ): AuthMiddleware<O> {
     return (async (ctx: RequestBase) => {
-      const [session, token] = await this.getSession(ctx, options?.allowQueryToken === true);
+      const [session, token] = await this.getSession(
+        ctx,
+        options?.allowQueryToken === true,
+      );
 
       if (session === null) {
         if (!options?.unauthenticated) {
           return Middleware.stop(Response.unauthorized('No session'));
         } else {
-          return Middleware.next({ session: { authLevel: 'unauthenticated', token } });
+          return Middleware.next({
+            session: { authLevel: 'unauthenticated', token },
+          });
         }
       }
 
       if (session.authLevel === 'unauthenticated') {
         if (!options?.unauthenticated) {
-          return Middleware.stop(Response.unauthorized('Session not authenticated'));
+          return Middleware.stop(
+            Response.unauthorized('Session not authenticated'),
+          );
         }
       } else {
         if (!options?.unauthenticated) {
-          if (options?.accessLevel !== 'normal' && session.accessLevel !== 'admin') {
-            return Middleware.stop(Response.unauthorized('Insufficient access level'));
+          if (
+            options?.accessLevel !== 'normal' &&
+            session.accessLevel !== 'admin'
+          ) {
+            return Middleware.stop(
+              Response.unauthorized('Insufficient access level'),
+            );
           }
         }
       }
@@ -193,8 +213,7 @@ export class AuthService {
   async getAuthTokenPayerId(token: string) {
     const id = await this.redis.get(`auth-token:${token}:payer`);
 
-    if (!id)
-      return null;
+    if (!id) return null;
 
     return internalIdentity(id);
   }
@@ -204,7 +223,9 @@ export class AuthService {
   }
 
   async getAuthTokenStatus(token: string, timeout?: number) {
-    const authenticated = await this.redis.get(`auth-token:${token}:authenticated`);
+    const authenticated = await this.redis.get(
+      `auth-token:${token}:authenticated`,
+    );
 
     if (authenticated === 'true') {
       return true;
@@ -225,7 +246,10 @@ export class AuthService {
 
   async createSession() {
     const token = uuid();
-    await this.redis.set(`session:${token}`, JSON.stringify({ authLevel: 'unauthenticated' }));
+    await this.redis.set(
+      `session:${token}`,
+      JSON.stringify({ authLevel: 'unauthenticated' }),
+    );
     return token;
   }
 
@@ -233,18 +257,28 @@ export class AuthService {
     await this.redis.del(`session:${token}`);
   }
 
-  async authenticate(token: string, payerId: InternalIdentity, method: string, userServiceToken: string, pAccessLevel?: AccessLevel) {
+  async authenticate(
+    token: string,
+    payerId: InternalIdentity,
+    method: string,
+    userServiceToken: string,
+    pAccessLevel?: AccessLevel,
+  ) {
     let accessLevel = pAccessLevel;
 
     if (accessLevel === undefined) {
-      const profile = await this.payerService.getPayerProfileByIdentity(payerId);
+      const profile =
+        await this.payerService.getPayerProfileByIdentity(payerId);
 
       if (!profile) {
         throw new Error('Profile does not exist');
       }
 
       if (profile.tkoalyUserId) {
-        const user = await this.usersService.getUpstreamUserById(profile.tkoalyUserId, userServiceToken);
+        const user = await this.usersService.getUpstreamUserById(
+          profile.tkoalyUserId,
+          userServiceToken,
+        );
 
         if (user && user.role === 'yllapitaja') {
           accessLevel = 'admin';

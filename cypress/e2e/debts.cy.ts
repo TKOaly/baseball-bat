@@ -14,12 +14,19 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.contains('button', 'Create').click();
-      cy.location().its('pathname').should('match', /\/admin\/debts\/[a-f0-9-]+/);
+      cy.location()
+        .its('pathname')
+        .should('match', /\/admin\/debts\/[a-f0-9-]+/);
 
       cy.getResourceSection('Details').as('details');
-      cy.get('@details').getResourceField('Published at').should('contain', 'Not published');
+      cy.get('@details')
+        .getResourceField('Published at')
+        .should('contain', 'Not published');
     });
 
     it('should not be possible to specify both a payment condition and a due date', () => {
@@ -36,21 +43,41 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
-      cy.contains('span', 'Payment Condition').parent().find('input').clear().type('1234');
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
+      cy.contains('span', 'Payment Condition')
+        .parent()
+        .find('input')
+        .clear()
+        .type('1234');
       cy.contains('span', 'Due Date').parent().find('input').type('01.01.2023');
-      cy.contains('span', 'Payment Condition').parent().find('input').should('have.value', '');
+      cy.contains('span', 'Payment Condition')
+        .parent()
+        .find('input')
+        .should('have.value', '');
       cy.contains('button', 'Create').click();
-      cy.location().its('pathname').should('match', /\/admin\/debts\/[a-f0-9-]+/);
+      cy.location()
+        .its('pathname')
+        .should('match', /\/admin\/debts\/[a-f0-9-]+/);
       cy.getResourceSection('Details').as('details');
-      cy.get('@details').getResourceField('Published at').should('contain', 'Not published');
-      cy.get('@details').getResourceField('Due Date').should('contain', '01.01.2023');
-      cy.get('@details').getResourceField('Payment Condition').should('not.exist');
+      cy.get('@details')
+        .getResourceField('Published at')
+        .should('contain', 'Not published');
+      cy.get('@details')
+        .getResourceField('Due Date')
+        .should('contain', '01.01.2023');
+      cy.get('@details')
+        .getResourceField('Payment Condition')
+        .should('not.exist');
 
-      cy.wait('@createDebt').its('request.body.paymentCondition').should('eq', '');
+      cy.wait('@createDebt')
+        .its('request.body.paymentCondition')
+        .should('eq', '');
     });
 
-    it('created debt should have a total amount equal to the sum of it\'s components', () => {
+    it("created debt should have a total amount equal to the sum of it's components", () => {
       cy.login({
         username: 'admin',
         password: 'admin',
@@ -64,14 +91,21 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=1][data-column="component"] input').type('Component B');
-      cy.get('[data-row=1][data-column="component"]').contains('Create "Component B"').click();
+      cy.get('[data-row=1][data-column="component"]')
+        .contains('Create "Component B"')
+        .click();
       cy.get('[data-row=1][data-column="amount"] input').clear().type('5');
       cy.contains('button', 'Create').click();
       cy.contains('div', 'Total').parent().should('contain', '15,00');
@@ -91,13 +125,23 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
-      cy.contains('div', 'Payments').parent().parent().find('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '0');
+      cy.contains('div', 'Payments')
+        .parent()
+        .parent()
+        .find('[data-cy=table-view]')
+        .invoke('attr', 'data-total-rows')
+        .should('eq', '0');
     });
 
     it('other payments should be marked as credited when one payment is realised', () => {
@@ -114,16 +158,25 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').click();
       cy.contains('button', 'Mark paid with cash').click();
-      cy.getResourceSection('Payments').contains('[data-cy=table-view] [data-column=Status]', 'Credited').should('exist');
-      cy.getResourceSection('Details').getResourceField('Status').should('contain', 'Paid');
+      cy.getResourceSection('Payments')
+        .contains('[data-cy=table-view] [data-column=Status]', 'Credited')
+        .should('exist');
+      cy.getResourceSection('Details')
+        .getResourceField('Status')
+        .should('contain', 'Paid');
     });
   });
 
@@ -142,10 +195,15 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.getResourceField('Status').should('contain', 'Draft');
@@ -167,10 +225,15 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').click();
@@ -193,15 +256,32 @@ describe('Debts', () => {
         cy.contains('span', 'Center').parent().find('input').type('Testi');
         cy.contains('span', 'Center').parent().contains('li', 'Create').click();
         cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-        cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+        cy.contains('span', 'Payer')
+          .parent()
+          .contains('li', 'Essi Esimerkki')
+          .click();
         cy.get('[data-cy="tabular-field-list-add-button"]').click();
-        cy.get('[data-row=0][data-column="component"] input').type('Component A');
-        cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+        cy.get('[data-row=0][data-column="component"] input').type(
+          'Component A',
+        );
+        cy.get('[data-row=0][data-column="component"]')
+          .contains('Create "Component A"')
+          .click();
         cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
         cy.contains('button', 'Create').click();
-        cy.contains('div', 'Payments').parent().parent().find('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '0');
+        cy.contains('div', 'Payments')
+          .parent()
+          .parent()
+          .find('[data-cy=table-view]')
+          .invoke('attr', 'data-total-rows')
+          .should('eq', '0');
         cy.contains('button', 'Publish').click();
-        cy.contains('div', 'Payments').parent().parent().find('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '1');
+        cy.contains('div', 'Payments')
+          .parent()
+          .parent()
+          .find('[data-cy=table-view]')
+          .invoke('attr', 'data-total-rows')
+          .should('eq', '1');
       });
 
       it('the created invoice should have correct due date when it is explicitly specified', () => {});
@@ -225,10 +305,15 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').click();
@@ -250,10 +335,15 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').should('not.exist');
@@ -275,46 +365,77 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.getResourceSection('Details').as('details');
       cy.get('@details').getResourceField('Name').should('contain', 'Testi');
-      cy.get('@details').getResourceField('Payer').should('contain', 'Essi Esimerkki Esimerkki');
-      cy.get('@details').getResourceField('Collection').should('contain', 'Testi');
+      cy.get('@details')
+        .getResourceField('Payer')
+        .should('contain', 'Essi Esimerkki Esimerkki');
+      cy.get('@details')
+        .getResourceField('Collection')
+        .should('contain', 'Testi');
       cy.get('@details').getResourceField('Total').should('contain', '10,00');
-      cy.get('@details').getResourceField('Payment Condition').should('contain', '14 days');
+      cy.get('@details')
+        .getResourceField('Payment Condition')
+        .should('contain', '14 days');
       cy.get('@details').getResourceField('Status').should('contain', 'Draft');
       cy.getResourceSection('Content').as('content');
-      cy.get('@content').find('[data-row=0][data-column=name]').should('contain', 'Component A');
+      cy.get('@content')
+        .find('[data-row=0][data-column=name]')
+        .should('contain', 'Component A');
       cy.get('@content').find('[data-row=1]').should('not.exist');
       cy.contains('button', 'Edit').click();
       cy.get('input[name=name]').clear().type('Muokattu nimi');
-      cy.contains('span', 'Center').parent().find('input').clear().type('Toinen kokoelma');
+      cy.contains('span', 'Center')
+        .parent()
+        .find('input')
+        .clear()
+        .type('Toinen kokoelma');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       //cy.contains('span', 'Payer').parent().find('input').clear().type('Janne');
       //cy.contains('span', 'Payer').parent().contains('li', 'Janne Jäsen').click();
-      cy.contains('span', 'Payment Condition').parent().find('input').clear().type('31');
+      cy.contains('span', 'Payment Condition')
+        .parent()
+        .find('input')
+        .clear()
+        .type('31');
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=1][data-column="component"] input').type('Component B');
-      cy.get('[data-row=1][data-column="component"]').contains('Create "Component B"').click();
+      cy.get('[data-row=1][data-column="component"]')
+        .contains('Create "Component B"')
+        .click();
       cy.get('[data-row=1][data-column="amount"] input').clear().type('5');
       cy.contains('button', 'Save').click();
-      cy.get('[data-cy="edit-resource-creation-confirmation-dialog"]').contains('button', 'Continue').click();
+      cy.get('[data-cy="edit-resource-creation-confirmation-dialog"]')
+        .contains('button', 'Continue')
+        .click();
       cy.getResourceSection('Details').as('details');
-      cy.get('@details').getResourceField('Name').should('contain', 'Muokattu nimi');
+      cy.get('@details')
+        .getResourceField('Name')
+        .should('contain', 'Muokattu nimi');
       // cy.get('@details').getResourceField('Payer').should('contain', 'Janne Jäsen');
-      cy.get('@details').getResourceField('Collection').should('contain', 'Toinen kokoelma');
+      cy.get('@details')
+        .getResourceField('Collection')
+        .should('contain', 'Toinen kokoelma');
       cy.get('@details').getResourceField('Total').should('contain', '15,00');
-      cy.get('@details').getResourceField('Payment Condition').should('contain', '31 days');
+      cy.get('@details')
+        .getResourceField('Payment Condition')
+        .should('contain', '31 days');
       cy.get('@details').getResourceField('Status').should('contain', 'Draft');
       cy.getResourceSection('Content').as('content');
       cy.get('@content')
         .find('[data-column=name]')
-        .then((columns) => {
+        .then(columns => {
           const names = columns.map((i, c) => Cypress.$(c).text()).toArray();
 
           expect(names).to.contain('Component A');
@@ -336,15 +457,22 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').click();
       cy.contains('button', 'Edit').click();
-      cy.get('[data-cy="published-debt-edit-confirmation-dialog"]').should('exist');
+      cy.get('[data-cy="published-debt-edit-confirmation-dialog"]').should(
+        'exist',
+      );
     });
   });
 
@@ -363,10 +491,15 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Publish').click();
@@ -387,20 +520,29 @@ describe('Debts', () => {
       cy.contains('span', 'Center').parent().find('input').type('Testi');
       cy.contains('span', 'Center').parent().contains('li', 'Create').click();
       cy.contains('span', 'Payer').parent().find('input').type('Esimerkki');
-      cy.contains('span', 'Payer').parent().contains('li', 'Essi Esimerkki').click();
+      cy.contains('span', 'Payer')
+        .parent()
+        .contains('li', 'Essi Esimerkki')
+        .click();
       cy.get('[data-cy="tabular-field-list-add-button"]').click();
       cy.get('[data-row=0][data-column="component"] input').type('Component A');
-      cy.get('[data-row=0][data-column="component"]').contains('Create "Component A"').click();
+      cy.get('[data-row=0][data-column="component"]')
+        .contains('Create "Component A"')
+        .click();
       cy.get('[data-row=0][data-column="amount"] input').clear().type('10');
       cy.contains('button', 'Create').click();
       cy.contains('button', 'Delete').should('exist');
-      cy.url().then((url) => {
+      cy.url().then(url => {
         cy.visit('/admin/debts');
-        cy.get('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '1');
+        cy.get('[data-cy=table-view]')
+          .invoke('attr', 'data-total-rows')
+          .should('eq', '1');
         cy.visit(url);
         cy.contains('button', 'Delete').click();
         cy.visit('/admin/debts');
-        cy.get('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '0');
+        cy.get('[data-cy=table-view]')
+          .invoke('attr', 'data-total-rows')
+          .should('eq', '0');
       });
     });
   });
@@ -414,13 +556,29 @@ describe('Debts', () => {
 
       cy.visit('/admin/debts/create-debts-csv');
 
-      let csv = 'Name;Email;Debt Center;Title;Description;Amount;Date;Due Date;Reference Number;Payment Number{enter}';
-      csv += ['Maija Maksaja', 'maija@example.com', 'Testi', 'Testi', 'Testi', 10, '01.01.2022', '01.01.2023', '12345', '1234'].map((value) => `"${value}"`).join(';');
+      let csv =
+        'Name;Email;Debt Center;Title;Description;Amount;Date;Due Date;Reference Number;Payment Number{enter}';
+      csv += [
+        'Maija Maksaja',
+        'maija@example.com',
+        'Testi',
+        'Testi',
+        'Testi',
+        10,
+        '01.01.2022',
+        '01.01.2023',
+        '12345',
+        '1234',
+      ]
+        .map(value => `"${value}"`)
+        .join(';');
 
       cy.get('textarea').type(csv, { delay: 0 });
       cy.contains('button', 'Create debts').click();
       cy.visit('/admin/debts');
-      cy.get('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '1');
+      cy.get('[data-cy=table-view]')
+        .invoke('attr', 'data-total-rows')
+        .should('eq', '1');
       cy.get('[data-cy=table-view] [data-column=Name]').click();
       cy.getResourceField('Name').should('contain', 'Testi');
       cy.getResourceField('Payer').should('contain', 'Maija Maksaja');
@@ -440,13 +598,28 @@ describe('Debts', () => {
 
       cy.visit('/admin/debts/create-debts-csv');
 
-      let csv = 'Name;Email;Debt Center;Title;Description;Amount;Due Date;Reference Number;Payment Number{enter}';
-      csv += ['Maija Maksaja', 'maija@example.com', 'Testi', 'Testi', 'Testi', 10, '01.01.2023', '12345', '1234'].map((value) => `"${value}"`).join(';');
+      let csv =
+        'Name;Email;Debt Center;Title;Description;Amount;Due Date;Reference Number;Payment Number{enter}';
+      csv += [
+        'Maija Maksaja',
+        'maija@example.com',
+        'Testi',
+        'Testi',
+        'Testi',
+        10,
+        '01.01.2023',
+        '12345',
+        '1234',
+      ]
+        .map(value => `"${value}"`)
+        .join(';');
 
       cy.get('textarea').type(csv, { delay: 0 });
       cy.contains('button', 'Create debts').click();
       cy.visit('/admin/debts');
-      cy.get('[data-cy=table-view]').invoke('attr', 'data-total-rows').should('eq', '1');
+      cy.get('[data-cy=table-view]')
+        .invoke('attr', 'data-total-rows')
+        .should('eq', '1');
       cy.get('[data-cy=table-view] [data-column=Name]').click();
       cy.getResourceField('Name').should('contain', 'Testi');
       cy.getResourceField('Payer').should('contain', 'Maija Maksaja');
@@ -457,4 +630,4 @@ describe('Debts', () => {
       cy.getResourceField('Emails').should('contain', 'maija@example.com');
     });
   });
-})
+});

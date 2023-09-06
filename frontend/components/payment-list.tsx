@@ -5,8 +5,8 @@ import { Payment } from '../../common/types';
 import { TableView } from './table-view';
 
 export type Props = {
-  payments: Payment[]
-}
+  payments: Payment[];
+};
 
 export const PaymentList = ({ payments }: Props) => {
   const [, setLocation] = useLocation();
@@ -14,13 +14,13 @@ export const PaymentList = ({ payments }: Props) => {
     <TableView
       selectable
       rows={payments.map(p => ({ ...p, key: p.id }))}
-      onRowClick={(row) => setLocation(`/admin/payments/${row.id}`)}
+      onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       columns={[
         { name: 'Name', getValue: 'title' },
         { name: 'Number', getValue: 'payment_number' },
         {
           name: 'Status',
-          getValue: (row) => {
+          getValue: row => {
             if (row.credited) {
               return 'Credited';
             }
@@ -30,7 +30,7 @@ export const PaymentList = ({ payments }: Props) => {
         },
         {
           name: 'Total',
-          getValue: (row) => {
+          getValue: row => {
             return formatEuro(cents(row.balance));
           },
         },

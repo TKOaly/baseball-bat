@@ -37,9 +37,17 @@ const classNames = {
   `,
 };
 
-const noop = () => { }; // eslint-disable-line
+const noop = () => {}; // eslint-disable-line
 
-export const Button = ({ secondary = false, small = false, disabled = false, children, loading = false, onClick = noop, ...rest }) => {
+export const Button = ({
+  secondary = false,
+  small = false,
+  disabled = false,
+  children,
+  loading = false,
+  onClick = noop,
+  ...rest
+}) => {
   let styleName = 'default';
 
   if (secondary) {
@@ -61,15 +69,23 @@ export const Button = ({ secondary = false, small = false, disabled = false, chi
       )}
       onClick={onClick}
     >
-      <Loader className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${loading ? 'w-5' : 'w-0'} overflow-hidden`} />
+      <Loader
+        className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${
+          loading ? 'w-5' : 'w-0'
+        } overflow-hidden`}
+      />
       {children}
     </button>
   );
 };
 
-export const DisabledButton = (props: Omit<ComponentProps<typeof Button>, 'disabled'>) => <Button disabled {...props} />;
+export const DisabledButton = (
+  props: Omit<ComponentProps<typeof Button>, 'disabled'>,
+) => <Button disabled {...props} />;
 
-export const SecondaryButton = (props: Omit<ComponentProps<typeof Button>, 'secondary'>) => <Button secondary {...props} />;
+export const SecondaryButton = (
+  props: Omit<ComponentProps<typeof Button>, 'secondary'>,
+) => <Button secondary {...props} />;
 
 export const RedButton = styled(Button)`
   background: #f44336;

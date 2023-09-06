@@ -48,8 +48,8 @@ const PriceAndCTA = styled.div`
 `;
 
 type Props = {
-  events: EventWithPaymentStatus[]
-}
+  events: EventWithPaymentStatus[];
+};
 
 const eventItem = (event: EventWithPaymentStatus) => {
   const { dispatch, items } = useContext(PaymentPool);

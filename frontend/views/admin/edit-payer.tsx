@@ -12,15 +12,15 @@ import { TextField } from '../../components/text-field';
 type Props = RouteComponentProps<{ id: string }>;
 
 type FormEmail = {
-  priority: PayerEmailPriority
-  email: string
-}
+  priority: PayerEmailPriority;
+  email: string;
+};
 
 type FormValues = {
-  name: string,
-  emails: FormEmail[],
-  disabled: boolean,
-}
+  name: string;
+  emails: FormEmail[];
+  disabled: boolean;
+};
 
 export const EditPayer = ({ params }: Props) => {
   const [, setLocation] = useLocation();
@@ -72,7 +72,8 @@ export const EditPayer = ({ params }: Props) => {
           values.emails.forEach(({ email, priority }, i) => {
             if (priority === 'primary') {
               if (primaryEncountered) {
-                errors[`emails[${i}].priority`] = 'Only one address can be set as the primary address';
+                errors[`emails[${i}].priority`] =
+                  'Only one address can be set as the primary address';
               }
 
               primaryEncountered = true;
@@ -87,7 +88,7 @@ export const EditPayer = ({ params }: Props) => {
 
           return errors;
         }}
-        onSubmit={async (values) => {
+        onSubmit={async values => {
           const result = await updatePayer({
             id: params.id,
             ...values,
@@ -109,11 +110,18 @@ export const EditPayer = ({ params }: Props) => {
                   <input
                     type="checkbox"
                     checked={values.disabled}
-                    onClick={(evt) => setFieldValue('disabled', evt.currentTarget.checked)}
+                    onClick={evt =>
+                      setFieldValue('disabled', evt.currentTarget.checked)
+                    }
                     className="w-4 cursor-pointer h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     id="toggle-disabled"
                   />
-                  <label htmlFor="toggle-disabled" className="cursor-pointer ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">Disable profile</label>
+                  <label
+                    htmlFor="toggle-disabled"
+                    className="cursor-pointer ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+                  >
+                    Disable profile
+                  </label>
                 </div>
               </div>
               <InputGroup
@@ -143,8 +151,16 @@ export const EditPayer = ({ params }: Props) => {
                 ]}
               />
               <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-                <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Save</button>
+                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+                  Cancel
+                </button>
+                <button
+                  className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                  onClick={submitForm}
+                  disabled={isSubmitting}
+                >
+                  Save
+                </button>
               </div>
             </div>
           );

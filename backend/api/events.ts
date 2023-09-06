@@ -9,13 +9,13 @@ import * as dfn from 'date-fns';
 @Service()
 export class EventsApi {
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   /*getEvents() {
     return route
@@ -43,8 +43,10 @@ export class EventsApi {
     return route
       .get('/:id(int)/registrations')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const registrations = await this.eventsService.getEventRegistrations(ctx.routeParams.id);
+      .handler(async ctx => {
+        const registrations = await this.eventsService.getEventRegistrations(
+          ctx.routeParams.id,
+        );
         return ok(registrations);
       });
   }
@@ -53,8 +55,10 @@ export class EventsApi {
     return route
       .get('/:id(int)/fields')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const fields = await this.eventsService.getEventCustomFields(ctx.routeParams.id);
+      .handler(async ctx => {
+        const fields = await this.eventsService.getEventCustomFields(
+          ctx.routeParams.id,
+        );
         return ok(fields);
       });
   }
@@ -63,11 +67,12 @@ export class EventsApi {
     return route
       .get('/all')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const events = await this.eventsService.getAllEvents({
-          starting: typeof ctx.req.query.starting === 'string'
-            ? new Date(ctx.req.query.starting)
-            : dfn.subMonths(new Date(), 1),
+          starting:
+            typeof ctx.req.query.starting === 'string'
+              ? new Date(ctx.req.query.starting)
+              : dfn.subMonths(new Date(), 1),
         });
 
         return ok(events);

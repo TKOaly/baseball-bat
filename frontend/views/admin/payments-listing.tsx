@@ -13,10 +13,10 @@ export const PaymentsListing = () => {
       <TableView
         selectable
         rows={(payments ?? []).map(p => ({ ...p, key: p.id })) ?? []}
-        onRowClick={(row) => setLocation(`/admin/payments/${row.id}`)}
+        onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
         columns={[
           {
-            getValue: (row) => {
+            getValue: row => {
               if (row.credited) {
                 return 'Credited';
               }
@@ -26,19 +26,19 @@ export const PaymentsListing = () => {
             name: 'Status',
           },
           {
-            getValue: (row) => row.type,
+            getValue: row => row.type,
             name: 'Type',
           },
           {
-            getValue: (row) => row.name,
+            getValue: row => row.name,
             name: 'Name',
           },
           {
-            getValue: (row) => row.payer?.name,
+            getValue: row => row.payer?.name,
             name: 'Payer',
           },
           {
-            getValue: (row) => row.payment_number,
+            getValue: row => row.payment_number,
             name: 'No.',
           },
         ]}

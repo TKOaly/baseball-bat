@@ -6,7 +6,12 @@ import { AuthService } from '../auth-middleware';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
 import { EventsService } from '../services/events';
-import { emailIdentity, dateString, convertToDbDate, Registration } from '../../common/types';
+import {
+  emailIdentity,
+  dateString,
+  convertToDbDate,
+  Registration,
+} from '../../common/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
 import { validateBody } from '../validate-middleware';
@@ -33,36 +38,38 @@ const createDebtCenterFromEventBody = t.type({
     basePrice: euroValue,
     accountingPeriod: t.Int,
     dueDate: dateString,
-    components: t.array(t.type({
-      name: t.string,
-      amount: euroValue,
-      rules: t.array(componentRule),
-    })),
+    components: t.array(
+      t.type({
+        name: t.string,
+        amount: euroValue,
+        rules: t.array(componentRule),
+      }),
+    ),
   }),
 });
 
 @Service()
 export class DebtCentersApi {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   getDebtCenters() {
     return route
@@ -78,8 +85,10 @@ export class DebtCentersApi {
     return route
       .get('/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const center = await this.debtCentersService.getDebtCenter(ctx.routeParams.id);
+      .handler(async ctx => {
+        const center = await this.debtCentersService.getDebtCenter(
+          ctx.routeParams.id,
+        );
 
         if (center) {
           return ok(center);
@@ -93,8 +102,10 @@ export class DebtCentersApi {
     return route
       .get('/:id/debts')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const debts = await this.debtService.getDebtsByCenter(ctx.routeParams.id);
+      .handler(async ctx => {
+        const debts = await this.debtService.getDebtsByCenter(
+          ctx.routeParams.id,
+        );
         return ok(debts);
       });
   }
@@ -103,8 +114,10 @@ export class DebtCentersApi {
     return route
       .get('/:id/components')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const components = await this.debtService.getDebtComponentsByCenter(ctx.routeParams.id);
+      .handler(async ctx => {
+        const components = await this.debtService.getDebtComponentsByCenter(
+          ctx.routeParams.id,
+        );
         return ok(components);
       });
   }
@@ -113,9 +126,11 @@ export class DebtCentersApi {
     return route
       .post('/')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         try {
-          const center = await this.debtCentersService.createDebtCenter(ctx.req.body);
+          const center = await this.debtCentersService.createDebtCenter(
+            ctx.req.body,
+          );
           return ok(center);
         } catch (err) {
           console.log(err);
@@ -140,8 +155,10 @@ export class DebtCentersApi {
     return route
       .delete('/:id')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
-        const debts = await this.debtService.getDebtsByCenter(ctx.routeParams.id);
+      .handler(async ctx => {
+        const debts = await this.debtService.getDebtsByCenter(
+          ctx.routeParams.id,
+        );
 
         if (debts.length > 0) {
           return badRequest({
@@ -149,7 +166,9 @@ export class DebtCentersApi {
           });
         }
 
-        const deleted = await this.debtCentersService.deleteDebtCenter(ctx.routeParams.id);
+        const deleted = await this.debtCentersService.deleteDebtCenter(
+          ctx.routeParams.id,
+        );
 
         if (deleted === null) {
           return notFound({
@@ -165,30 +184,42 @@ export class DebtCentersApi {
     return route
       .put('/:id')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.type({
-        name: t.string,
-        description: t.string,
-        url: t.string,
-      })))
-      .handler(async (ctx) => {
+      .use(
+        validateBody(
+          t.type({
+            name: t.string,
+            description: t.string,
+            url: t.string,
+          }),
+        ),
+      )
+      .handler(async ctx => {
         await this.debtCentersService.updateDebtCenter({
           id: ctx.routeParams.id,
           ...ctx.body,
         });
 
-        const updated = await this.debtCentersService.getDebtCenter(ctx.routeParams.id);
+        const updated = await this.debtCentersService.getDebtCenter(
+          ctx.routeParams.id,
+        );
 
         return ok(updated);
       });
   }
 
-  private async evaluateRule(rule: ComponentRule, eventId: number, registration: Registration): Promise<boolean> {
+  private async evaluateRule(
+    rule: ComponentRule,
+    eventId: number,
+    registration: Registration,
+  ): Promise<boolean> {
     if (rule.type === 'CUSTOM_FIELD') {
       if (rule.eventId !== eventId) {
         return false;
       }
 
-      const answer = registration.answers.find(answer => answer.question_id === rule.customFieldId);
+      const answer = registration.answers.find(
+        answer => answer.question_id === rule.customFieldId,
+      );
 
       if (!answer) {
         return false;
@@ -200,17 +231,16 @@ export class DebtCentersApi {
     return false;
   }
 
-
   createDebtCenterFromEvent() {
     return route
       .post('/fromEvent')
       .use(this.authService.createAuthMiddleware())
       .use(validateBody(createDebtCenterFromEventBody))
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const body = ctx.body;
 
         const registrations = await Promise.all(
-          body.events.map((id) => {
+          body.events.map(id => {
             return this.eventsService.getEventRegistrations(id);
           }),
         );
@@ -252,7 +282,7 @@ export class DebtCentersApi {
         }
 
         const components = await Promise.all(
-          body.settings.components.map((mapping) => {
+          body.settings.components.map(mapping => {
             return this.debtService.createDebtComponent({
               name: mapping.name,
               amount: mapping.amount,
@@ -263,58 +293,74 @@ export class DebtCentersApi {
         );
 
         await Promise.all(
-          registrations.flatMap((registrations, i) => registrations
-            .filter((reg) => body.registrations.indexOf(reg.id) > -1)
-            .map(async (registration) => {
-              const eventId = body.events[i];
+          registrations.flatMap((registrations, i) =>
+            registrations
+              .filter(reg => body.registrations.indexOf(reg.id) > -1)
+              .map(async registration => {
+                const eventId = body.events[i];
 
-              const componentIdPromises = body.settings.components
-                .map(async (mapping, i) => {
-                  for (const rule of mapping.rules) {
-                    const result = await this.evaluateRule(rule, eventId, registration);
+                const componentIdPromises = body.settings.components.map(
+                  async (mapping, i) => {
+                    for (const rule of mapping.rules) {
+                      const result = await this.evaluateRule(
+                        rule,
+                        eventId,
+                        registration,
+                      );
 
-                    if (result) {
-                      return [components[i].id];
+                      if (result) {
+                        return [components[i].id];
+                      }
                     }
-                  }
 
-                  return [];
+                    return [];
+                  },
+                );
+
+                const componentIds = (
+                  await Promise.all(componentIdPromises)
+                ).flat();
+
+                const payerIdentity = registration.userId
+                  ? registration.userId
+                  : emailIdentity(registration.email);
+
+                const payer =
+                  await this.payerService.createPayerProfileForExternalIdentity(
+                    payerIdentity,
+                    ctx.req.cookies.token,
+                    registration.name,
+                  );
+
+                if (!payer) {
+                  throw new Error(
+                    'Unable to create payer profile for the debt',
+                  );
+                }
+
+                const dueDate = convertToDbDate(body.settings.dueDate);
+
+                if (!dueDate) {
+                  throw new Error('Date conversion error');
+                }
+
+                const debt = await this.debtService.createDebt({
+                  name: body.settings.name,
+                  description: body.settings.description,
+                  centerId: center.id,
+                  accountingPeriod: body.settings.accountingPeriod,
+                  components: baseComponentId
+                    ? [baseComponentId, ...componentIds]
+                    : componentIds,
+                  payer: payer.id,
+                  dueDate,
+                  paymentCondition: null,
+                  tags: [{ name: 'from-event', hidden: true }],
                 });
 
-              const componentIds = (await Promise.all(componentIdPromises)).flat();
-
-              const payerIdentity = registration.userId
-                ? registration.userId
-                : emailIdentity(registration.email);
-
-              const payer = await this.payerService.createPayerProfileForExternalIdentity(payerIdentity, ctx.req.cookies.token, registration.name);
-
-              if (!payer) {
-                throw new Error('Unable to create payer profile for the debt');
-              }
-
-              const dueDate = convertToDbDate(body.settings.dueDate);
-
-              if (!dueDate) {
-                throw new Error('Date conversion error');
-              }
-
-              const debt = await this.debtService.createDebt({
-                name: body.settings.name,
-                description: body.settings.description,
-                centerId: center.id,
-                accountingPeriod: body.settings.accountingPeriod,
-                components: baseComponentId
-                  ? [baseComponentId, ...componentIds]
-                  : componentIds,
-                payer: payer.id,
-                dueDate,
-                paymentCondition: null,
-                tags: [{ name: 'from-event', hidden: true }],
-              });
-
-              return debt;
-            })),
+                return debt;
+              }),
+          ),
         );
 
         return ok(center);
@@ -325,11 +371,14 @@ export class DebtCentersApi {
     return route
       .delete('/:debtCenterId/components/:debtComponentId')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (ctx) => {
+      .handler(async ctx => {
         const { debtCenterId, debtComponentId } = ctx.routeParams;
 
         return pipe(
-          await this.debtService.deleteDebtComponent(debtCenterId, debtComponentId),
+          await this.debtService.deleteDebtComponent(
+            debtCenterId,
+            debtComponentId,
+          ),
           E.matchW(
             () => notFound(),
             ({ affectedDebts }) => ok({ affectedDebts }),
@@ -342,14 +391,22 @@ export class DebtCentersApi {
     return route
       .patch('/:debtCenterId/components/:debtComponentId')
       .use(this.authService.createAuthMiddleware())
-      .use(validateBody(t.partial({
-        name: t.string,
-        amount: euroValue,
-      })))
-      .handler(async (ctx) => {
+      .use(
+        validateBody(
+          t.partial({
+            name: t.string,
+            amount: euroValue,
+          }),
+        ),
+      )
+      .handler(async ctx => {
         const { debtCenterId, debtComponentId } = ctx.routeParams;
 
-        const component = await this.debtService.updateDebtComponent(debtCenterId, debtComponentId, ctx.body);
+        const component = await this.debtService.updateDebtComponent(
+          debtCenterId,
+          debtComponentId,
+          ctx.body,
+        );
 
         if (!component) {
           return notFound();
@@ -358,7 +415,6 @@ export class DebtCentersApi {
         }
       });
   }
-
 
   router() {
     return router(
@@ -375,4 +431,3 @@ export class DebtCentersApi {
     );
   }
 }
-

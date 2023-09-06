@@ -4,30 +4,36 @@ import { createPortal } from 'react-dom';
 
 export type DialogContextValue = {
   dialogs: {
-    key: string,
-    content: React.ReactNode,
-    resolve: (value: unknown) => void,
-  }[],
-  closeDialog: (key: string, value: unknown) => void,
-  openDialog: <P extends React.FunctionComponent, V>(component: DialogComponent<any>, props: Omit<React.ComponentProps<P>, 'onClose'>) => Promise<V>, // eslint-disable-line @typescript-eslint/no-explicit-any
-}
+    key: string;
+    content: React.ReactNode;
+    resolve: (value: unknown) => void;
+  }[];
+  closeDialog: (key: string, value: unknown) => void;
+  openDialog: <P extends React.FunctionComponent, V>(
+    component: DialogComponent<any>,
+    props: Omit<React.ComponentProps<P>, 'onClose'>,
+  ) => Promise<V>; // eslint-disable-line @typescript-eslint/no-explicit-any
+};
 
 export const DialogContext = createContext<DialogContextValue>({
   dialogs: [],
-  closeDialog: () => { }, // eslint-disable-line @typescript-eslint/no-empty-function
+  closeDialog: () => {}, // eslint-disable-line @typescript-eslint/no-empty-function
   openDialog: () => Promise.reject(),
 });
 
-export const useDialog = <P extends DialogProps<V>, V>(component: DialogComponent<P>) => {
+export const useDialog = <P extends DialogProps<V>, V>(
+  component: DialogComponent<P>,
+) => {
   const { openDialog } = useContext(DialogContext);
-  return (props: Omit<P, 'onClose'>): Promise<Parameters<P['onClose']>[0]> => openDialog(component, props);
+  return (props: Omit<P, 'onClose'>): Promise<Parameters<P['onClose']>[0]> =>
+    openDialog(component, props);
 };
 
 export const DialogContextProvider = ({ children }) => {
   const [dialogs, setDialogs] = useState<DialogContextValue['dialogs']>([]);
 
   const closeDialog = (key: string) => {
-    setDialogs((prev) => {
+    setDialogs(prev => {
       const index = prev.findIndex(d => d.key === key);
 
       if (index === -1) {
@@ -42,21 +48,38 @@ export const DialogContextProvider = ({ children }) => {
     });
   };
 
-  const openDialog = <C extends React.FC>(Component: C, props: React.ComponentProps<C>) => new Promise<React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown>((resolve) => {
-    let key: string;
+  const openDialog = <C extends React.FC>(
+    Component: C,
+    props: React.ComponentProps<C>,
+  ) =>
+    new Promise<
+      React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown
+    >(resolve => {
+      let key: string;
 
-    do {
-      key = Math.floor((1 + Math.random()) * 0x10000)
-        .toString(16)
-        .substring(1);
-    } while (dialogs.findIndex(d => d.key === key) > -1);
+      do {
+        key = Math.floor((1 + Math.random()) * 0x10000)
+          .toString(16)
+          .substring(1);
+      } while (dialogs.findIndex(d => d.key === key) > -1);
 
-    setDialogs((prev) => [...prev, {
-      content: <Component {...props} onClose={(value) => { resolve(value); closeDialog(key); }} />,
-      key,
-      resolve,
-    }]);
-  });
+      setDialogs(prev => [
+        ...prev,
+        {
+          content: (
+            <Component
+              {...props}
+              onClose={value => {
+                resolve(value);
+                closeDialog(key);
+              }}
+            />
+          ),
+          key,
+          resolve,
+        },
+      ]);
+    });
 
   const value: DialogContextValue = {
     dialogs,
@@ -65,15 +88,13 @@ export const DialogContextProvider = ({ children }) => {
   };
 
   return (
-    <DialogContext.Provider value={value}>
-      {children}
-    </DialogContext.Provider>
+    <DialogContext.Provider value={value}>{children}</DialogContext.Provider>
   );
 };
 
 export type DialogProps<V> = {
-  onClose: (value: V) => void,
-}
+  onClose: (value: V) => void;
+};
 
 export type DialogComponent<P extends DialogProps<unknown>> = React.FC<P>;
 
@@ -114,8 +135,17 @@ export const Portal = ({ children, containerId }) => {
 
 export const DialogBase = ({ children, onClose, wide = false, ...rest }) => {
   return (
-    <div {...rest} className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10" onClick={onClose}>
-      <div className={`rounded-lg flex flex-col bg-white border shadow-lg ${wide ? '' : 'w-[30em]'}`} onClick={(e) => e.stopPropagation()}>
+    <div
+      {...rest}
+      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10"
+      onClick={onClose}
+    >
+      <div
+        className={`rounded-lg flex flex-col bg-white border shadow-lg ${
+          wide ? '' : 'w-[30em]'
+        }`}
+        onClick={e => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
@@ -125,19 +155,13 @@ export const DialogBase = ({ children, onClose, wide = false, ...rest }) => {
 export const DialogContent = ({ children }) => {
   return (
     <div className="flex-grow max-h-[80vh] overflow-y-auto">
-      <div className="p-3">
-        {children}
-      </div>
+      <div className="p-3">{children}</div>
     </div>
   );
 };
 
 export const DialogHeader = ({ children }) => {
-  return (
-    <div className="flex gap-3 items-center p-3 border-b">
-      {children}
-    </div>
-  );
+  return <div className="flex gap-3 items-center p-3 border-b">{children}</div>;
 };
 
 export const DialogFooter = ({ children }) => {
@@ -148,8 +172,16 @@ export const DialogFooter = ({ children }) => {
   );
 };
 
-export const Dialog = ({ title = '', children, closeButton = null, open, noClose }) => {
-  let close = <X className="text-gray-400 rounded-full hover:bg-gray-100 p-0.5 h-6 w-6" />;
+export const Dialog = ({
+  title = '',
+  children,
+  closeButton = null,
+  open,
+  noClose,
+}) => {
+  let close = (
+    <X className="text-gray-400 rounded-full hover:bg-gray-100 p-0.5 h-6 w-6" />
+  );
 
   if (closeButton) {
     close = <span>{closeButton}</span>;
@@ -157,8 +189,7 @@ export const Dialog = ({ title = '', children, closeButton = null, open, noClose
 
   if (noClose) close = null;
 
-  if (!open)
-    return <div />;
+  if (!open) return <div />;
 
   return (
     <Portal containerId="dialog-container">

@@ -2,17 +2,17 @@ import rootApi from './rtk-api';
 import { DebtCenter, DebtCenterPatch, NewDebtCenter } from '../../common/types';
 
 const debtCentersApi = rootApi.injectEndpoints({
-  endpoints: (builder) => ({
+  endpoints: builder => ({
     getDebtCenters: builder.query<DebtCenter[], void>({
       query: () => '/debtCenters',
-      providesTags: (centers) => [
+      providesTags: centers => [
         { type: 'DebtCenter', id: 'LIST' },
         ...centers.map(({ id }) => ({ type: 'DebtCenter' as const, id })),
       ],
     }),
 
     getDebtCenter: builder.query<DebtCenter, string>({
-      query: (id) => `/debtCenters/${id}`,
+      query: id => `/debtCenters/${id}`,
     }),
 
     createDebtCenter: builder.mutation({
@@ -23,8 +23,11 @@ const debtCentersApi = rootApi.injectEndpoints({
       }),
     }),
 
-    createDebtCenterFromEvent: builder.mutation<DebtCenter, { events: number[], settings: any }>({
-      query: (payload) => ({
+    createDebtCenterFromEvent: builder.mutation<
+      DebtCenter,
+      { events: number[]; settings: any }
+    >({
+      query: payload => ({
         url: '/debtCenters/fromEvent',
         method: 'POST',
         body: payload,
@@ -44,13 +47,11 @@ const debtCentersApi = rootApi.injectEndpoints({
     }),
 
     deleteDebtCenter: builder.mutation<void, string>({
-      query: (id) => ({
+      query: id => ({
         method: 'DELETE',
         url: `/debtCenters/${id}`,
       }),
-      invalidatesTags: (_, __, id) => [
-        { type: 'DebtCenter', id },
-      ],
+      invalidatesTags: (_, __, id) => [{ type: 'DebtCenter', id }],
     }),
   }),
 });

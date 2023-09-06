@@ -7,32 +7,32 @@ import { Service } from 'typedi';
 dotenv.config();
 
 interface IConfig {
-  dbUrl: string
-  userServiceUrl: string
-  userServiceApiUrl: string
-  serviceId: string
-  assetPath: string
-  dataPath: string
-  chromiumBinaryPath: string | null
-  eventServiceUrl: string
-  eventServiceToken: string
-  jwtSecret: string
-  stripeSecretKey: string
-  stripeWebhookSecret: string
-  appUrl: string
-  redisUrl: string
+  dbUrl: string;
+  userServiceUrl: string;
+  userServiceApiUrl: string;
+  serviceId: string;
+  assetPath: string;
+  dataPath: string;
+  chromiumBinaryPath: string | null;
+  eventServiceUrl: string;
+  eventServiceToken: string;
+  jwtSecret: string;
+  stripeSecretKey: string;
+  stripeWebhookSecret: string;
+  appUrl: string;
+  redisUrl: string;
   emailDispatcher?: {
-    url: string
-    token: string
-  }
+    url: string;
+    token: string;
+  };
   smtp?: {
-    host: string
-    port: number
-    secure: boolean
-    user?: string
-    password?: string
-  }
-  magicLinkSecret: string
+    host: string;
+    port: number;
+    secure: boolean;
+    user?: string;
+    password?: string;
+  };
+  magicLinkSecret: string;
 }
 
 @Service()
@@ -52,15 +52,15 @@ export class Config implements IConfig {
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
-    url: string
-    token: string
+    url: string;
+    token: string;
   };
   smtp: {
-    host: string
-    port: number
-    secure: boolean
-    user?: string
-    password?: string
+    host: string;
+    port: number;
+    secure: boolean;
+    user?: string;
+    password?: string;
   };
   magicLinkSecret = '';
 
@@ -87,22 +87,19 @@ export class Config implements IConfig {
       MAGIC_LINK_SECRET,
     } = process.env;
 
-    assert(POSTGRES_CONNECTION_STRING, 'POSTGRES_CONNECTION_STRING must be set.');
+    assert(
+      POSTGRES_CONNECTION_STRING,
+      'POSTGRES_CONNECTION_STRING must be set.',
+    );
     assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.');
     assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.');
     assert(ASSET_PATH, 'ASSET_PATH must be set.');
     assert(DATA_PATH, 'DATA_PATH must be set.');
-    assert(
-      SERVICE_IDENTIFIER,
-      'SERVICE_IDENTIFIER must be set.',
-    );
+    assert(SERVICE_IDENTIFIER, 'SERVICE_IDENTIFIER must be set.');
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
     assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
-    assert(
-      STRIPE_WEBHOOK_SECRET,
-      'STRIPE_WEBHOOK_SECRET must be set.',
-    );
+    assert(STRIPE_WEBHOOK_SECRET, 'STRIPE_WEBHOOK_SECRET must be set.');
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();
@@ -142,7 +139,8 @@ export class Config implements IConfig {
   }
 
   static getSMTPConfig() {
-    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD } = process.env;
+    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD } =
+      process.env;
 
     if (!SMTP_HOST) {
       throw new Error('SMTP_HOST not defined');

@@ -1,4 +1,8 @@
-import { Session, DebtCenter, EventWithPaymentStatus } from '../../common/types';
+import {
+  Session,
+  DebtCenter,
+  EventWithPaymentStatus,
+} from '../../common/types';
 
 type RequestMethods =
   | 'GET'
@@ -9,12 +13,12 @@ type RequestMethods =
   | 'DELETE'
   | 'CONNECT'
   | 'TRACE'
-  | 'PATCH'
+  | 'PATCH';
 
 export type RequestError = {
-  status: number
-  statusText: string
-}
+  status: number;
+  statusText: string;
+};
 
 const getAuthToken = () => {
   const maybeToken = localStorage.getItem('bbat_token');

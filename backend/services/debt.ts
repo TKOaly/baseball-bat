@@ -1,4 +1,32 @@
-import { euro, DbDebt, DbDebtComponent, NewDebtComponent, DebtComponent, Debt, NewDebt, internalIdentity, DbPayerProfile, PayerProfile, DbDebtCenter, DebtCenter, InternalIdentity, EuroValue, Email, DebtPatch, DebtComponentPatch, isPaymentInvoice, Payment, PaymentEvent, DbDebtTag, DebtTag, tkoalyIdentity, emailIdentity, DateString, convertToDbDate, DebtStatusReportOptions } from '../../common/types';
+import {
+  euro,
+  DbDebt,
+  DbDebtComponent,
+  NewDebtComponent,
+  DebtComponent,
+  Debt,
+  NewDebt,
+  internalIdentity,
+  DbPayerProfile,
+  PayerProfile,
+  DbDebtCenter,
+  DebtCenter,
+  InternalIdentity,
+  EuroValue,
+  Email,
+  DebtPatch,
+  DebtComponentPatch,
+  isPaymentInvoice,
+  Payment,
+  PaymentEvent,
+  DbDebtTag,
+  DebtTag,
+  tkoalyIdentity,
+  emailIdentity,
+  DateString,
+  convertToDbDate,
+  DebtStatusReportOptions,
+} from '../../common/types';
 import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
@@ -16,7 +44,15 @@ import * as T from 'fp-ts/lib/Task';
 import * as EQ from 'fp-ts/lib/Eq';
 import { toArray } from 'fp-ts/Record';
 import { flow, pipe } from 'fp-ts/lib/function';
-import { addDays, format, isBefore, isPast, parseISO, subDays, subMonths } from 'date-fns';
+import {
+  addDays,
+  format,
+  isBefore,
+  isPast,
+  parseISO,
+  subDays,
+  subMonths,
+} from 'date-fns';
 import { EmailService } from './email';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { ReportService } from './reports';
@@ -43,7 +79,18 @@ const resolveDueDate = (debt: DbDebt) => {
   return null;
 };
 
-export const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerProfile, debt_center?: DbDebtCenter, debt_components?: DbDebtComponent[], total?: number }): Debt & { payer?: PayerProfile, debtCenter?: DebtCenter, debtComponents: Array<DebtComponent> } => ({
+export const formatDebt = (
+  debt: DbDebt & {
+    payer?: [DbPayerProfile] | DbPayerProfile;
+    debt_center?: DbDebtCenter;
+    debt_components?: DbDebtComponent[];
+    total?: number;
+  },
+): Debt & {
+  payer?: PayerProfile;
+  debtCenter?: DebtCenter;
+  debtComponents: Array<DebtComponent>;
+} => ({
   name: debt.name,
   id: debt.id,
   humanId: debt.human_id,
@@ -66,12 +113,18 @@ export const formatDebt = (debt: DbDebt & { payer?: [DbPayerProfile] | DbPayerPr
   debtComponents: debt.debt_components
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
     : [],
-  payer: debt.payer && (Array.isArray(debt.payer) ? formatPayerProfile(debt.payer[0]) : formatPayerProfile(debt.payer)),
+  payer:
+    debt.payer &&
+    (Array.isArray(debt.payer)
+      ? formatPayerProfile(debt.payer[0])
+      : formatPayerProfile(debt.payer)),
   status: debt.status,
   tags: (debt.tags ?? []).map(formatDebtTag),
 });
 
-const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => ({
+const formatDebtComponent = (
+  debtComponent: DbDebtComponent,
+): DebtComponent => ({
   id: debtComponent.id,
   name: debtComponent.name,
   amount: euro(debtComponent.amount / 100),
@@ -82,74 +135,82 @@ const formatDebtComponent = (debtComponent: DbDebtComponent): DebtComponent => (
 });
 
 export type CreateDebtOptions = {
-  defaultPayment?: Partial<NewInvoice>
-}
+  defaultPayment?: Partial<NewInvoice>;
+};
 
 export type DebtLedgerOptions = {
-  startDate: Date
-  endDate: Date
-  includeDrafts: 'include' | 'exclude' | 'only-drafts'
-  groupBy: null | 'center' | 'payer'
-  centers: null | Array<string>
-}
+  startDate: Date;
+  endDate: Date;
+  includeDrafts: 'include' | 'exclude' | 'only-drafts';
+  groupBy: null | 'center' | 'payer';
+  centers: null | Array<string>;
+};
 
 type DebtCreationDetails = Partial<{
-  tkoalyUserId: number,
-  debtCenter: string,
-  title: string,
-  description: string,
-  email: string,
-  date: DateString,
-  amount: EuroValue,
-  dueDate: DateString,
-  publishedAt: DateString,
-  paymentCondition: number,
-  components: string[],
-  paymentNumber: string,
-  referenceNumber: string,
-  tags: string[],
-  accountingPeriod: number,
+  tkoalyUserId: number;
+  debtCenter: string;
+  title: string;
+  description: string;
+  email: string;
+  date: DateString;
+  amount: EuroValue;
+  dueDate: DateString;
+  publishedAt: DateString;
+  paymentCondition: number;
+  components: string[];
+  paymentNumber: string;
+  referenceNumber: string;
+  tags: string[];
+  accountingPeriod: number;
 }>;
-type DebtJobResult = { result: 'success', data: any } | { result: 'error', soft: boolean, message: string, code: string, stack?: string };
+type DebtJobResult =
+  | { result: 'success'; data: any }
+  | {
+      result: 'error';
+      soft: boolean;
+      message: string;
+      code: string;
+      stack?: string;
+    };
 type DebtJobName = 'create' | 'batch';
 type DebtJobDefinition = {
-  details: DebtCreationDetails,
-  token: string,
-  dryRun: boolean,
+  details: DebtCreationDetails;
+  token: string;
+  dryRun: boolean;
   components: {
-    name: string,
-    amount: EuroValue,
-  }[],
+    name: string;
+    amount: EuroValue;
+  }[];
 };
 
 @Service()
 export class DebtService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => DebtCentersService)
-    debtCentersService: DebtCentersService;
+  debtCentersService: DebtCentersService;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => AccountingService)
-    accountingService: AccountingService;
+  accountingService: AccountingService;
 
   @Inject(() => ReportService)
-    reportService: ReportService;
+  reportService: ReportService;
 
   @Inject(() => PayerService)
-    payerService: PayerService;
+  payerService: PayerService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   @Inject(() => EmailService)
-    emailService: EmailService;
+  emailService: EmailService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName>;
 
@@ -159,12 +220,18 @@ export class DebtService {
   }
 
   private async resolvePayer(
-    { email, name, tkoalyUserId }: { email?: string, name?: string, tkoalyUserId?: number },
+    {
+      email,
+      name,
+      tkoalyUserId,
+    }: { email?: string; name?: string; tkoalyUserId?: number },
     token: string,
     dryRun: boolean,
   ): Promise<PayerProfile | null> {
     if (tkoalyUserId) {
-      const payer = await this.payerService.getPayerProfileByTkoalyIdentity(tkoalyIdentity(tkoalyUserId));
+      const payer = await this.payerService.getPayerProfileByTkoalyIdentity(
+        tkoalyIdentity(tkoalyUserId),
+      );
 
       if (payer) {
         return payer;
@@ -172,7 +239,9 @@ export class DebtService {
     }
 
     if (email) {
-      const payer = await this.payerService.getPayerProfileByEmailIdentity(emailIdentity(email));
+      const payer = await this.payerService.getPayerProfileByEmailIdentity(
+        emailIdentity(email),
+      );
 
       if (payer) {
         return payer;
@@ -194,7 +263,10 @@ export class DebtService {
             disabled: false,
           };
         } else {
-          return await this.payerService.createPayerProfileFromTkoalyIdentity(tkoalyIdentity(user.id), token);
+          return await this.payerService.createPayerProfileFromTkoalyIdentity(
+            tkoalyIdentity(user.id),
+            token,
+          );
         }
       }
 
@@ -211,7 +283,11 @@ export class DebtService {
             disabled: false,
           };
         } else {
-          const payer = await this.payerService.createPayerProfileFromEmailIdentity(emailIdentity(email), { name });
+          const payer =
+            await this.payerService.createPayerProfileFromEmailIdentity(
+              emailIdentity(email),
+              { name },
+            );
           return payer;
         }
       }
@@ -220,13 +296,18 @@ export class DebtService {
     return null;
   }
 
-  private async resolveDebtCenter(debtCenter: string, dryRun: boolean, accountingPeriod: number) {
+  private async resolveDebtCenter(
+    debtCenter: string,
+    dryRun: boolean,
+    accountingPeriod: number,
+  ) {
     if (validate(debtCenter)) {
       const byId = await this.debtCentersService.getDebtCenter(debtCenter);
       return byId;
     }
 
-    const byName = await this.debtCentersService.getDebtCenterByName(debtCenter);
+    const byName =
+      await this.debtCentersService.getDebtCenterByName(debtCenter);
 
     if (byName) {
       return byName;
@@ -252,11 +333,15 @@ export class DebtService {
     }
   }
 
-  private async handleDebtJob(job: Job<DebtJobDefinition,  DebtJobResult, string>): Promise<DebtJobResult> {
+  private async handleDebtJob(
+    job: Job<DebtJobDefinition, DebtJobResult, string>,
+  ): Promise<DebtJobResult> {
     if (job.name === 'create') {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      const missingField = (field: string): DebtJobResult & { result: 'error' } => ({
+      const missingField = (
+        field: string,
+      ): DebtJobResult & { result: 'error' } => ({
         result: 'error',
         soft: true,
         code: 'MISSING_FIELD',
@@ -281,7 +366,9 @@ export class DebtService {
         let emailSource = 'explicit';
 
         if (!email && payer) {
-          const primary = await this.payerService.getPayerPrimaryEmail(payer.id);
+          const primary = await this.payerService.getPayerPrimaryEmail(
+            payer.id,
+          );
 
           if (!primary) {
             return {
@@ -312,7 +399,10 @@ export class DebtService {
           return missingField('accountingPeriod');
         }
 
-        const accountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(details.accountingPeriod);
+        const accountingPeriodOpen =
+          await this.accountingService.isAccountingPeriodOpen(
+            details.accountingPeriod,
+          );
 
         if (!accountingPeriodOpen) {
           return {
@@ -323,7 +413,11 @@ export class DebtService {
           };
         }
 
-        const debtCenter = await this.resolveDebtCenter(details.debtCenter, dryRun, details.accountingPeriod);
+        const debtCenter = await this.resolveDebtCenter(
+          details.debtCenter,
+          dryRun,
+          details.accountingPeriod,
+        );
 
         if (!debtCenter) {
           return {
@@ -386,7 +480,8 @@ export class DebtService {
             result: 'error',
             soft: true,
             code: 'BOTH_DUE_DATE_AND_CONDITION',
-            message: 'Both a due date and a payment condition were specified for the same debt.',
+            message:
+              'Both a due date and a payment condition were specified for the same debt.',
           };
         } else if (!dueDate && !paymentCondition) {
           const zero = t.Int.decode(0);
@@ -411,48 +506,61 @@ export class DebtService {
             };
           }
 
-          const existingDebtComponents = await this.debtService.getDebtComponentsByCenter(debtCenter.id as any);
+          const existingDebtComponents =
+            await this.debtService.getDebtComponentsByCenter(
+              debtCenter.id as any,
+            );
 
-          debtComponents = await Promise.all((details?.components ?? []).map(async (c) => {
-            const match = existingDebtComponents.find(ec => ec.name === c);
+          debtComponents = await Promise.all(
+            (details?.components ?? []).map(async c => {
+              const match = existingDebtComponents.find(ec => ec.name === c);
 
-            if (match) {
-              return match;
-            }
+              if (match) {
+                return match;
+              }
 
-            const componentDetails = components.find(({ name }) => name === c);
+              const componentDetails = components.find(
+                ({ name }) => name === c,
+              );
 
-            if (componentDetails) {
-              return await this.debtService.createDebtComponent({
-                name: c,
-                amount: componentDetails.amount,
-                debtCenterId: debtCenter.id,
-                description: c,
+              if (componentDetails) {
+                return await this.debtService.createDebtComponent({
+                  name: c,
+                  amount: componentDetails.amount,
+                  debtCenterId: debtCenter.id,
+                  description: c,
+                });
+              }
+
+              return Promise.reject({
+                result: 'error',
+                soft: true,
+                code: 'NO_COMPONENT',
+                message: `Component "${c}" present on a debt but not defined.`,
               });
-            }
-
-            return Promise.reject({
-              result: 'error',
-              soft: true,
-              code: 'NO_COMPONENT',
-              message: `Component "${c}" present on a debt but not defined.`,
-            });
-          }));
+            }),
+          );
 
           if (details.amount) {
-            const existingBasePrice = existingDebtComponents.find((dc) => {
-              return dc.name === 'Base Price' && dc.amount.value === details.amount?.value && dc.amount.currency === details.amount?.currency;
+            const existingBasePrice = existingDebtComponents.find(dc => {
+              return (
+                dc.name === 'Base Price' &&
+                dc.amount.value === details.amount?.value &&
+                dc.amount.currency === details.amount?.currency
+              );
             });
 
             if (existingBasePrice) {
               debtComponents.push(existingBasePrice);
             } else {
-              debtComponents.push(await this.debtService.createDebtComponent({
-                name: 'Base Price',
-                amount: details.amount,
-                debtCenterId: debtCenter.id,
-                description: 'Base Price',
-              }));
+              debtComponents.push(
+                await this.debtService.createDebtComponent({
+                  name: 'Base Price',
+                  amount: details.amount,
+                  debtCenterId: debtCenter.id,
+                  description: 'Base Price',
+                }),
+              );
             }
           }
 
@@ -510,35 +618,42 @@ export class DebtService {
           };
 
           if (details.components && details.components.length > 0) {
-            debtComponents = await Promise.all(details.components.map(async (c) => {
-              const componentDetails = components.find(({ name }) => name === c);
+            debtComponents = await Promise.all(
+              details.components.map(async c => {
+                const componentDetails = components.find(
+                  ({ name }) => name === c,
+                );
 
-              if (componentDetails) {
-                return {
-                  id: '',
-                  name: c,
-                  amount: componentDetails.amount,
-                  description: '',
-                  debtCenterId: debtCenter.id,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                } as DebtComponent;
-              }
+                if (componentDetails) {
+                  return {
+                    id: '',
+                    name: c,
+                    amount: componentDetails.amount,
+                    description: '',
+                    debtCenterId: debtCenter.id,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  } as DebtComponent;
+                }
 
-              const existing = await this.debtService.getDebtComponentsByCenter(debtCenter.id);
-              const match = existing.find(ec => ec.name === c);
+                const existing =
+                  await this.debtService.getDebtComponentsByCenter(
+                    debtCenter.id,
+                  );
+                const match = existing.find(ec => ec.name === c);
 
-              if (match) {
-                return match;
-              }
+                if (match) {
+                  return match;
+                }
 
-              return Promise.reject({
-                result: 'error',
-                soft: true,
-                code: 'NO_SUCH_COMPONENT',
-                message: `Component "${c}" present on a debt but is no defined.`,
-              });
-            }));
+                return Promise.reject({
+                  result: 'error',
+                  soft: true,
+                  code: 'NO_SUCH_COMPONENT',
+                  message: `Component "${c}" present on a debt but is no defined.`,
+                });
+              }),
+            );
           }
 
           if (details.amount) {
@@ -589,16 +704,26 @@ export class DebtService {
 
       return { result: 'success', data: { debts } };
     } else {
-      return { result: 'error', soft: false, code: 'UNKNOWN_JOB_TYPE', message: `Unknown job type "${job.name}".` };
+      return {
+        result: 'error',
+        soft: false,
+        code: 'UNKNOWN_JOB_TYPE',
+        message: `Unknown job type "${job.name}".`,
+      };
     }
   }
 
-  async batchCreateDebts(debts: DebtCreationDetails[], components: { name: string, amount: EuroValue }[], token: string, dryRun: boolean) {
+  async batchCreateDebts(
+    debts: DebtCreationDetails[],
+    components: { name: string; amount: EuroValue }[],
+    token: string,
+    dryRun: boolean,
+  ) {
     return await this.jobService.createJob({
       queueName: 'debts',
       name: 'batch',
       data: { name: 'Create debts from CSV' },
-      children: debts.map((details) => ({
+      children: debts.map(details => ({
         name: 'create',
         queueName: 'debts',
         data: {
@@ -638,11 +763,11 @@ export class DebtService {
       query = query.append(' WHERE ').append(where).append(' ');
     }
 
-    query = query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
+    query = query.append(
+      sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`,
+    );
 
-    return this.pg
-      .any<DbDebt>(query)
-      .then(debts => debts.map(formatDebt));
+    return this.pg.any<DbDebt>(query).then(debts => debts.map(formatDebt));
   }
 
   async getDebt(id: string): Promise<Debt | null> {
@@ -655,7 +780,9 @@ export class DebtService {
   }
 
   async getDebtsByTag(tagName: string): Promise<Debt[]> {
-    return this.queryDebts(sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`);
+    return this.queryDebts(
+      sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`,
+    );
   }
 
   async getDebts(): Promise<Debt[]> {
@@ -671,15 +798,18 @@ export class DebtService {
   }
 
   private async createDefaultPaymentFor(debt: Debt): Promise<Payment> {
-    const created = await this.paymentService.createInvoice({
-      title: debt.name,
-      message: debt.description,
-      series: 1,
-      debts: [debt.id],
-      date: debt.date ?? undefined,
-    }, {
-      sendNotification: false,
-    });
+    const created = await this.paymentService.createInvoice(
+      {
+        title: debt.name,
+        message: debt.description,
+        series: 1,
+        debts: [debt.id],
+        date: debt.date ?? undefined,
+      },
+      {
+        sendNotification: false,
+      },
+    );
 
     await this.debtService.setDefaultPayment(debt.id, created.id);
 
@@ -705,7 +835,7 @@ export class DebtService {
         due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
       WHERE id = ${debtId}
     `);
-    
+
     const defaultPayment = debt.defaultPayment
       ? await this.paymentService.getPayment(debt.defaultPayment)
       : await this.createDefaultPaymentFor(debt);
@@ -715,13 +845,20 @@ export class DebtService {
     }
 
     if (!isPaymentInvoice(defaultPayment)) {
-      throw new Error(`The default payment of debt ${debt.id} is not an invoice!`);
+      throw new Error(
+        `The default payment of debt ${debt.id} is not an invoice!`,
+      );
     }
 
-    const isBackdated = isBefore(parseISO(defaultPayment.data.date), subDays(new Date(), 1));
+    const isBackdated = isBefore(
+      parseISO(defaultPayment.data.date),
+      subDays(new Date(), 1),
+    );
 
     if (debt.status === 'unpaid' && !isBackdated) {
-      const message = await this.paymentService.sendNewPaymentNotification(defaultPayment.id);
+      const message = await this.paymentService.sendNewPaymentNotification(
+        defaultPayment.id,
+      );
 
       if (E.isLeft(message)) {
         throw new Error('Could not send invoice notification.');
@@ -738,15 +875,16 @@ export class DebtService {
   }
 
   async createDebt(debt: NewDebt, options?: CreateDebtOptions): Promise<Debt> {
-    const payerProfile = await this.payerService.getPayerProfileByIdentity(debt.payer);
+    const payerProfile = await this.payerService.getPayerProfileByIdentity(
+      debt.payer,
+    );
 
     if (!payerProfile) {
       throw new Error('No such payer: ' + debt.payer.value);
     }
 
-    const created = await this.pg.tx(async (tx) => {
-      const [created] = await tx 
-        .do<DbDebt>(sql`
+    const created = await this.pg.tx(async tx => {
+      const [created] = await tx.do<DbDebt>(sql`
           INSERT INTO debt (
             name,
             description,
@@ -774,9 +912,15 @@ export class DebtService {
           RETURNING *
         `);
 
-      const tags = (await Promise.all(debt.tags.map((tag) => tx.do<DbDebtTag>(sql`
+      const tags = (
+        await Promise.all(
+          debt.tags.map(tag =>
+            tx.do<DbDebtTag>(sql`
           INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${created.id}, ${tag.name}, ${tag.hidden}) RETURNING *;
-        `)))).flat();
+        `),
+          ),
+        )
+      ).flat();
 
       return { ...created, tags };
     });
@@ -786,9 +930,8 @@ export class DebtService {
     }
 
     await Promise.all(
-      debt.components.map(async (component) => {
-        await this.pg
-          .any(sql`
+      debt.components.map(async component => {
+        await this.pg.any(sql`
               INSERT INTO debt_component_mapping (debt_id, debt_component_id)
               VALUES (${created.id}, ${component})
           `);
@@ -796,16 +939,19 @@ export class DebtService {
     );
 
     if (options?.defaultPayment) {
-      const payment = await this.paymentService.createInvoice({
-        series: 1,
-        message: debt.description,
-        debts: [created.id],
-        title: debt.name,
-        date: debt.date ? parseISO(debt.date) : undefined,
-        ...options.defaultPayment,
-      }, {
-        sendNotification: false,
-      });
+      const payment = await this.paymentService.createInvoice(
+        {
+          series: 1,
+          message: debt.description,
+          debts: [created.id],
+          title: debt.name,
+          date: debt.date ? parseISO(debt.date) : undefined,
+          ...options.defaultPayment,
+        },
+        {
+          sendNotification: false,
+        },
+      );
 
       await this.setDefaultPayment(created.id, payment.id);
     }
@@ -827,14 +973,20 @@ export class DebtService {
     }
 
     if (debt.payerId) {
-      const payer = await this.payerService.getPayerProfileByIdentity(debt.payerId);
+      const payer = await this.payerService.getPayerProfileByIdentity(
+        debt.payerId,
+      );
 
       if (!payer) {
         return E.left(new Error('No such payer'));
       }
     }
 
-    const update = (table: string, condition: SQLStatement, values: Record<string, any>) => {
+    const update = (
+      table: string,
+      condition: SQLStatement,
+      values: Record<string, any>,
+    ) => {
       let query = sql`UPDATE `.append(table).append(' SET ');
 
       let first = true;
@@ -875,14 +1027,17 @@ export class DebtService {
       payment_condition,
     });
 
-    let handleComponents: TE.TaskEither<Error, null> = async () => E.right(null);
+    let handleComponents: TE.TaskEither<Error, null> = async () =>
+      E.right(null);
 
     if (debt.components) {
       const components = debt.components;
 
       const newComponents = pipe(
         debt.components,
-        A.filter((id) => existingDebt.debtComponents.findIndex(x => x.id === id) === -1),
+        A.filter(
+          id => existingDebt.debtComponents.findIndex(x => x.id === id) === -1,
+        ),
       );
 
       const removedComponents = pipe(
@@ -891,21 +1046,25 @@ export class DebtService {
         A.map(c => c.id),
       );
 
-      const addComponents =
-        A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
+      const addComponents = A.traverse(TE.ApplicativePar)(
+        id => async (): Promise<E.Either<Error, null>> => {
           await this.pg.one(sql`
             INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
           `);
 
           return E.right(null);
-        });
+        },
+      );
 
-      const removeComponents =
-        A.traverse(TE.ApplicativePar)((id) => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`);
+      const removeComponents = A.traverse(TE.ApplicativePar)(
+        id => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(
+            sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`,
+          );
 
           return E.right(null);
-        });
+        },
+      );
 
       handleComponents = pipe(
         addComponents(newComponents),
@@ -921,7 +1080,9 @@ export class DebtService {
 
       const newTags = pipe(
         debt.tags,
-        A.filter((name) => existingDebt.tags.findIndex(x => x.name === name) === -1),
+        A.filter(
+          name => existingDebt.tags.findIndex(x => x.name === name) === -1,
+        ),
       );
 
       const removedTags = pipe(
@@ -932,21 +1093,25 @@ export class DebtService {
 
       console.log(newTags, removedTags);
 
-      const addTags =
-        A.traverse(TE.ApplicativePar)((name) => async (): Promise<E.Either<Error, null>> => {
+      const addTags = A.traverse(TE.ApplicativePar)(
+        name => async (): Promise<E.Either<Error, null>> => {
           await this.pg.one(sql`
             INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${debt.id}, ${name}, false)
           `);
 
           return E.right(null);
-        });
+        },
+      );
 
-      const removeTags =
-        A.traverse(TE.ApplicativePar)((name) => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(sql`DELETE FROM debt_tags WHERE debt_id = ${debt.id} AND name = ${name}`);
+      const removeTags = A.traverse(TE.ApplicativePar)(
+        name => async (): Promise<E.Either<Error, null>> => {
+          await this.pg.one(
+            sql`DELETE FROM debt_tags WHERE debt_id = ${debt.id} AND name = ${name}`,
+          );
 
           return E.right(null);
-        });
+        },
+      );
 
       handleTags = pipe(
         addTags(newTags),
@@ -958,7 +1123,7 @@ export class DebtService {
     return pipe(
       this.pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
-      TE.map((debt) => ({
+      TE.map(debt => ({
         ...debt,
         tags: [],
       })),
@@ -968,13 +1133,17 @@ export class DebtService {
     )();
   }
 
-  async createDebtComponent(debtComponent: NewDebtComponent): Promise<DebtComponent> {
+  async createDebtComponent(
+    debtComponent: NewDebtComponent,
+  ): Promise<DebtComponent> {
     return this.pg
-      .one<DbDebtComponent>(sql`
+      .one<DbDebtComponent>(
+        sql`
         INSERT INTO debt_component (name, amount, debt_center_id)
         VALUES (${debtComponent.name}, ${debtComponent.amount.value}, ${debtComponent.debtCenterId})
         RETURNING *
-      `)
+      `,
+      )
       .then(dbDebtComponent => {
         if (!dbDebtComponent) {
           throw new Error('Expected value to be returned from the database');
@@ -985,7 +1154,7 @@ export class DebtService {
   }
 
   async deleteDebtComponent(debtCenterId: string, debtComponentId: string) {
-    return await this.pg.tx(async (tx) => {
+    return await this.pg.tx(async tx => {
       const [{ exists }] = await tx.do<{ exists: boolean }>(sql`
         SELECT
           EXISTS(
@@ -1017,7 +1186,11 @@ export class DebtService {
     });
   }
 
-  async updateDebtComponent(debtCenterId: string, debtComponentId: string, patch: DebtComponentPatch) {
+  async updateDebtComponent(
+    debtCenterId: string,
+    debtComponentId: string,
+    patch: DebtComponentPatch,
+  ) {
     const updated = await this.pg.one<DbDebtComponent>(sql`
       UPDATE debt_component
       SET
@@ -1036,7 +1209,8 @@ export class DebtService {
 
   async getDebtsByPayment(paymentId: string): Promise<Array<Debt>> {
     return this.pg
-      .any<DbDebt>(sql`
+      .any<DbDebt>(
+        sql`
         SELECT
           debt.*,
           TO_JSON(payer_profiles.*) AS payer,
@@ -1058,13 +1232,18 @@ export class DebtService {
         LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
         WHERE pdm.payment_id = ${paymentId}
         GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `)
+      `,
+      )
       .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
-
   }
 
-  async getDebtsByPayer(id: InternalIdentity, { includeDrafts = false, includeCredited = false } = {}) {
-    return this.queryDebts(sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`);
+  async getDebtsByPayer(
+    id: InternalIdentity,
+    { includeDrafts = false, includeCredited = false } = {},
+  ) {
+    return this.queryDebts(
+      sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`,
+    );
   }
 
   async getDebtTotal(id: string): Promise<EuroValue> {
@@ -1093,8 +1272,10 @@ export class DebtService {
       throw new Error('Cannot delete published debts');
     }
 
-    await this.pg.tx(async (tx) => {
-      await tx.do(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`);
+    await this.pg.tx(async tx => {
+      await tx.do(
+        sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`,
+      );
       await tx.do(sql`DELETE FROM debt WHERE id = ${id}`);
     });
   }
@@ -1110,14 +1291,18 @@ export class DebtService {
       throw new Error('Cannot credit unpublished debts');
     }
 
-    await this.pg.tx(async (tx) => {
+    await this.pg.tx(async tx => {
       await tx.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `);
-      await tx.do(sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`);
+      await tx.do(
+        sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
+      );
     });
   }
 
   async getOverdueDebts() {
-    return this.queryDebts(sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`);
+    return this.queryDebts(
+      sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
+    );
 
     /*const debts = await this.pg.any<DbDebt>(sql`
       SELECT
@@ -1181,19 +1366,26 @@ export class DebtService {
     `);
   }
 
-  async sendReminder(debt: Debt, draft = true): Promise<E.Either<string, Email>> {
+  async sendReminder(
+    debt: Debt,
+    draft = true,
+  ): Promise<E.Either<string, Email>> {
     if (debt.draft) {
       return E.left('Debt is a draft');
     }
 
     const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
-    const payer = await this.payerService.getPayerProfileByInternalIdentity(debt.payerId);
+    const payer = await this.payerService.getPayerProfileByInternalIdentity(
+      debt.payerId,
+    );
 
     if (!email || !payer) {
       return E.left('No primary email for payer');
     }
 
-    const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(debt.id);
+    const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(
+      debt.id,
+    );
 
     if (!payment || !isPaymentInvoice(payment)) {
       return E.left('No default invoice found for debt');
@@ -1239,7 +1431,11 @@ export class DebtService {
     return E.right(createdEmail);
   }
 
-  async sendAllReminders(draft = true, ignoreReminderCooldown = false, _debts: null | Debt[] = null) {
+  async sendAllReminders(
+    draft = true,
+    ignoreReminderCooldown = false,
+    _debts: null | Debt[] = null,
+  ) {
     let debts = _debts;
 
     if (debts === null) {
@@ -1248,7 +1444,10 @@ export class DebtService {
         : await this.getDebtsPendingReminder();
     }
 
-    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.sendReminder(debt, true));
+    const sendReminder = (debt: Debt) =>
+      T.map(E.map(e => [e, debt] as [Email, Debt]))(() =>
+        this.sendReminder(debt, true),
+      );
 
     const result = await flow(
       A.traverse(T.ApplicativePar)(sendReminder),
@@ -1256,18 +1455,22 @@ export class DebtService {
     )(debts)();
 
     if (!draft) {
-      await this.emailService.batchSendEmails(result.right.map(([email]) => email.id));
+      await this.emailService.batchSendEmails(
+        result.right.map(([email]) => email.id),
+      );
     }
 
     return result;
   }
 
   async onDebtPaid(debt: Debt, payment: Payment, _event: PaymentEvent) {
-    const payments = await this.paymentService.getPaymentsContainingDebt(debt.id);
+    const payments = await this.paymentService.getPaymentsContainingDebt(
+      debt.id,
+    );
 
     const promises = payments
-      .filter((p) => p.id !== payment.id)
-      .map(async (payment) => {
+      .filter(p => p.id !== payment.id)
+      .map(async payment => {
         if (payment.type === 'invoice') {
           await this.paymentService.creditPayment(payment.id, 'paid');
         }
@@ -1276,7 +1479,11 @@ export class DebtService {
     await Promise.all(promises);
   }
 
-  async generateDebtLedger(options: DebtLedgerOptions, generatedBy: InternalIdentity, parent?: string) {
+  async generateDebtLedger(
+    options: DebtLedgerOptions,
+    generatedBy: InternalIdentity,
+    parent?: string,
+  ) {
     let criteria;
 
     if (options.includeDrafts === 'include') {
@@ -1289,10 +1496,12 @@ export class DebtService {
 
     if (options.centers !== null) {
       console.log(options.centers);
-      criteria = sql`(`.append(criteria).append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
+      criteria = sql`(`
+        .append(criteria)
+        .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
       console.log(criteria.sql, criteria.values);
     }
-    
+
     const debts = await this.queryDebts(criteria);
     let groups;
 
@@ -1311,17 +1520,23 @@ export class DebtService {
       } else {
         getGroupKey = (debt: Debt) => debt.payerId.value;
         getGroupDetails = async (id: string) => {
-          const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
+          const payer =
+            await this.payerService.getPayerProfileByInternalIdentity(
+              internalIdentity(id),
+            );
           const name = payer?.name ?? 'Unknown payer';
           const displayId = payer?.id?.value ?? '???';
           return { name, id: displayId };
         };
       }
 
-      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, Debt[]]) => async () => {
-        const { name, id } = await nameResolver(key);
-        return { name, debts, id }; 
-      };
+      const createGroupUsing =
+        (nameResolver: (id: string) => Promise<{ name: string; id: string }>) =>
+        ([key, debts]: [string, Debt[]]) =>
+        async () => {
+          const { name, id } = await nameResolver(key);
+          return { name, debts, id };
+        };
 
       groups = await pipe(
         debts,
@@ -1333,7 +1548,10 @@ export class DebtService {
       groups = [{ debts }];
     }
 
-    const name = `Debt Ledger ${format(options.startDate, 'dd.MM.yyyy')} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+    const name = `Debt Ledger ${format(
+      options.startDate,
+      'dd.MM.yyyy',
+    )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
     const report = await this.reportService.createReport({
       name,
@@ -1347,7 +1565,11 @@ export class DebtService {
     return report;
   }
 
-  async generateDebtStatusReport(options: Omit<DebtStatusReportOptions, 'date'> & { date: Date }, generatedBy: InternalIdentity, parent?: string) {
+  async generateDebtStatusReport(
+    options: Omit<DebtStatusReportOptions, 'date'> & { date: Date },
+    generatedBy: InternalIdentity,
+    parent?: string,
+  ) {
     let statusFilter = sql``;
 
     if (options.includeOnly === 'paid') {
@@ -1358,7 +1580,14 @@ export class DebtService {
       statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
     }
 
-    const dbResults = await this.pg.many<DbDebt & ({ status: 'paid', paid_at: Date } | { status: 'open', paid_at: null }) & { payment_id: string }>(sql`
+    const dbResults = await this.pg.many<
+      DbDebt &
+        (
+          | { status: 'paid'; paid_at: Date }
+          | { status: 'open'; paid_at: null }
+        ) & { payment_id: string }
+    >(
+      sql`
       WITH payment_agg AS (
         SELECT
           payment_id,
@@ -1422,22 +1651,29 @@ export class DebtService {
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
       WHERE debt.published_at IS NOT NULL
     `
-      .append(
-        options.centers
-          ? sql` AND debt_center.id = ANY (${options.centers})`
-          : sql``,
-      )
-      .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
-      .append(statusFilter)
-      .append(sql` ORDER BY MIN(ps.paid_at)`),
+        .append(
+          options.centers
+            ? sql` AND debt_center.id = ANY (${options.centers})`
+            : sql``,
+        )
+        .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+        .append(statusFilter)
+        .append(sql` ORDER BY MIN(ps.paid_at)`),
     );
 
-    const results = await Promise.all(dbResults.map(async (row) => ([
-      formatDebt(row),
-      row.status,
-      row.paid_at,
-      row.payment_id ? await this.paymentService.getPayment(row.payment_id) : null,
-    ] as [Debt, 'open' | 'paid', Date, Payment | null])));
+    const results = await Promise.all(
+      dbResults.map(
+        async row =>
+          [
+            formatDebt(row),
+            row.status,
+            row.paid_at,
+            row.payment_id
+              ? await this.paymentService.getPayment(row.payment_id)
+              : null,
+          ] as [Debt, 'open' | 'paid', Date, Payment | null],
+      ),
+    );
 
     let groups;
 
@@ -1456,17 +1692,26 @@ export class DebtService {
       } else {
         getGroupKey = (debt: Debt) => debt.payerId.value;
         getGroupDetails = async (id: string) => {
-          const payer = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(id));
+          const payer =
+            await this.payerService.getPayerProfileByInternalIdentity(
+              internalIdentity(id),
+            );
           const name = payer?.name ?? 'Unknown payer';
           const displayId = payer?.id?.value ?? '???';
           return { name, id: displayId };
         };
       }
 
-      const createGroupUsing = (nameResolver: (id: string) => Promise<{ name: string, id: string }>) => ([key, debts]: [string, [Debt, 'open' | 'paid', Date | null, Payment | null][]]) => async () => {
-        const { name, id } = await nameResolver(key);
-        return { name, debts, id }; 
-      };
+      const createGroupUsing =
+        (nameResolver: (id: string) => Promise<{ name: string; id: string }>) =>
+        ([key, debts]: [
+          string,
+          [Debt, 'open' | 'paid', Date | null, Payment | null][],
+        ]) =>
+        async () => {
+          const { name, id } = await nameResolver(key);
+          return { name, debts, id };
+        };
 
       groups = await pipe(
         results,
@@ -1494,24 +1739,43 @@ export class DebtService {
   }
 
   async getDebtsByEmail(emailId: string) {
-    const debts = await this.queryDebts(sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`);
+    const debts = await this.queryDebts(
+      sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
+    );
 
     return debts;
   }
 
-  async sendPaymentRemindersByPayer(payerId: InternalIdentity, opts: { send: boolean, ignoreCooldown: boolean }) {
+  async sendPaymentRemindersByPayer(
+    payerId: InternalIdentity,
+    opts: { send: boolean; ignoreCooldown: boolean },
+  ) {
     const debts = await this.debtService.getDebtsByPayer(payerId);
     const email = await this.payerService.getPayerPrimaryEmail(payerId);
 
     if (!email) {
-      throw new Error('No such user or no primary email for user ' + payerId.value);
+      throw new Error(
+        'No such user or no primary email for user ' + payerId.value,
+      );
     }
 
-    const overdue = debts.filter((debt) => !!debt.publishedAt && debt.status != 'paid' && debt.dueDate && isPast(debt.dueDate) && (opts.ignoreCooldown || !debt.lastReminded || isBefore(debt.lastReminded, subMonths(new Date(), 1))));
+    const overdue = debts.filter(
+      debt =>
+        !!debt.publishedAt &&
+        debt.status != 'paid' &&
+        debt.dueDate &&
+        isPast(debt.dueDate) &&
+        (opts.ignoreCooldown ||
+          !debt.lastReminded ||
+          isBefore(debt.lastReminded, subMonths(new Date(), 1))),
+    );
 
     const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
     const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
-    const sendReminder = (debt: Debt) => T.map(E.map((e) => [e, debt] as [Email, Debt]))(() => this.debtService.sendReminder(debt, !opts.send));
+    const sendReminder = (debt: Debt) =>
+      T.map(E.map(e => [e, debt] as [Email, Debt]))(() =>
+        this.debtService.sendReminder(debt, !opts.send),
+      );
 
     return pipe(
       overdue,

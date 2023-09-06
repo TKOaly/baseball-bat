@@ -2,7 +2,17 @@
 
 import { identity } from 'fp-ts/lib/function';
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Circle, MinusSquare, MoreVertical, PlusSquare, Square, TrendingDown, TrendingUp } from 'react-feather';
+import {
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  MinusSquare,
+  MoreVertical,
+  PlusSquare,
+  Square,
+  TrendingDown,
+  TrendingUp,
+} from 'react-feather';
 import { difference, concat, uniq } from 'remeda';
 import { Dropdown } from './dropdown';
 import { FilledDisc } from './filled-disc';
@@ -11,7 +21,10 @@ function union<T>(a: T[], b: T[]): T[] {
   return uniq(concat(a, b));
 }
 
-const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string }, row: R): V => {
+const getRowColumnValue = <R, V>(
+  column: { getValue: ((row: R) => V) | string },
+  row: R,
+): V => {
   if (typeof column.getValue === 'string') {
     return row[column.getValue];
   } else {
@@ -19,40 +32,49 @@ const getRowColumnValue = <R, V>(column: { getValue: ((row: R) => V) | string },
   }
 };
 
-export type Row<C = any> = { key: string | number, children?: Array<C> }
+export type Row<C = any> = { key: string | number; children?: Array<C> };
 
 export type Action<R> = {
-  key: string,
-  text: string,
-  rowWise?: boolean,
-  disabled?: boolean | ((r: R) => boolean),
-  onSelect?: (rows: Array<R>) => void
-}
+  key: string;
+  text: string;
+  rowWise?: boolean;
+  disabled?: boolean | ((r: R) => boolean);
+  onSelect?: (rows: Array<R>) => void;
+};
 
 export type Column<R, Name extends string, Value> = {
-  name: Name,
-  getValue: string | ((row: R) => Value),
-  render?: (value: Value, row: R) => any,
-  align?: 'right',
-  compareBy?: (value: Value) => any,
-}
+  name: Name;
+  getValue: string | ((row: R) => Value);
+  render?: (value: Value, row: R) => any;
+  align?: 'right';
+  compareBy?: (value: Value) => any;
+};
 
-export type TableViewProps<R extends Row<R>, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, Column<R, any, any>>> = {
-  rows: R[],
-  columns: Array<{ [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]>,
-  onRowClick?: (row: R) => void,
-  selectable?: boolean,
-  actions?: Array<Action<R>>,
-  emptyMessage?: JSX.Element | string,
-  hideTools?: boolean,
-  footer?: React.ReactNode,
+export type TableViewProps<
+  R extends Row<R>,
+  ColumnNames extends string,
+  ColumnTypeMap extends Record<ColumnNames, Column<R, any, any>>,
+> = {
+  rows: R[];
+  columns: Array<
+    { [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]
+  >;
+  onRowClick?: (row: R) => void;
+  selectable?: boolean;
+  actions?: Array<Action<R>>;
+  emptyMessage?: JSX.Element | string;
+  hideTools?: boolean;
+  footer?: React.ReactNode;
   initialSort?: {
-    column: ColumnNames,
-    direction: 'asc' | 'desc',
-  },
-}
+    column: ColumnNames;
+    direction: 'asc' | 'desc';
+  };
+};
 
-const getColumnValue = <R extends Row, Value>(column: Column<R, any, Value>, row: R): Value => {
+const getColumnValue = <R extends Row, Value>(
+  column: Column<R, any, Value>,
+  row: R,
+): Value => {
   if (typeof column.getValue === 'string') {
     return row[column.getValue];
   }
@@ -61,85 +83,95 @@ const getColumnValue = <R extends Row, Value>(column: Column<R, any, Value>, row
 };
 
 type FilterState = {
-  allowlist: Array<any>,
-  blocklist: Array<any>,
-}
+  allowlist: Array<any>;
+  blocklist: Array<any>;
+};
 
 const FilterDropdownItem = ({ column, rows, options, onChange }) => {
   let containsArrays = false;
 
-  const rowValues =
-    rows
-      .flatMap((r: Row) => {
-        const value = getColumnValue(column, r);
+  const rowValues = rows.flatMap((r: Row) => {
+    const value = getColumnValue(column, r);
 
-        if (Array.isArray(value)) {
-          containsArrays = true;
-          return value.map((v) => [r, v]);
-        } else {
-          return [[r, value]];
-        }
-      });
+    if (Array.isArray(value)) {
+      containsArrays = true;
+      return value.map(v => [r, v]);
+    } else {
+      return [[r, value]];
+    }
+  });
 
   const compareBy = column.compareBy ?? identity;
 
   return (
     <Dropdown
-      label=''
+      label=""
       scroll
-      renderTrigger={(props) => (
-        <div {...props} className={`flex ${(options.allowlist.length + options.blocklist.length > 0) && 'text-blue-500'} items-center ${props.style}`}>
+      renderTrigger={props => (
+        <div
+          {...props}
+          className={`flex ${
+            options.allowlist.length + options.blocklist.length > 0 &&
+            'text-blue-500'
+          } items-center ${props.style}`}
+        >
           <span className="flex-grow">{column.name}</span>
           <span className="text-gray-400 relative">
-            {(options.allowlist.length + options.blocklist.length > 0) ? 'Active' : 'Any'}
+            {options.allowlist.length + options.blocklist.length > 0
+              ? 'Active'
+              : 'Any'}
           </span>
         </div>
       )}
-      options={
-        rowValues
-          .reduce(([list, values]: [any[], Set<string>], [row, value]: [any, string]) => {
+      options={rowValues
+        .reduce(
+          (
+            [list, values]: [any[], Set<string>],
+            [row, value]: [any, string],
+          ) => {
             if (values.has(compareBy(value))) {
               return [list, values];
             } else {
               values.add(compareBy(value));
               return [[...list, [row, value]], values];
             }
-          }, [[], new Set()])[0]
-          .map(([row, value]) => {
-            let icon = null;
+          },
+          [[], new Set()],
+        )[0]
+        .map(([row, value]) => {
+          let icon = null;
 
-            const compareValue = compareBy(value);
+          const compareValue = compareBy(value);
 
-            if (options.allowlist.includes(compareValue)) {
-              icon = <PlusSquare className="text-green-500 h-4" />;
-            } else if (options.blocklist.includes(compareValue)) {
-              icon = <MinusSquare className="text-red-500 h-4" />;
+          if (options.allowlist.includes(compareValue)) {
+            icon = <PlusSquare className="text-green-500 h-4" />;
+          } else if (options.blocklist.includes(compareValue)) {
+            icon = <MinusSquare className="text-red-500 h-4" />;
+          }
+
+          let displayValue = String(value);
+
+          if (column.render) {
+            let renderValue = value;
+
+            if (containsArrays && !Array.isArray(renderValue)) {
+              renderValue = [value];
             }
 
-            let displayValue = String(value);
+            displayValue = column.render(renderValue, row);
+          }
 
-            if (column.render) {
-              let renderValue = value;
-
-              if (containsArrays && !Array.isArray(renderValue)) {
-                renderValue = [value];
-              }
-
-              displayValue = column.render(renderValue, row);
-            }
-
-            return {
-              value,
-              text: (
-                <div className="flex items-center">
-                  <span className="flex-grow">{displayValue}</span>
-                  {icon}
-                </div>
-              ),
-            };
-          })
-      }
-      onSelect={(value) => {
+          return {
+            value,
+            text: (
+              <div className="flex items-center">
+                <span className="flex-grow">{displayValue}</span>
+                {icon}
+              </div>
+            ),
+          };
+        })}
+      onSelect={value => {
         const compareValue = compareBy(value);
 
         if (options.allowlist.includes(compareValue)) {
@@ -183,11 +215,28 @@ const TableRow = ({
 
   const children = useMemo(() => data?.children ?? [], [data]);
 
-  const sortedChildren = useMemo(() => sortRows(children, columns.find(c => c.name === sorting?.[0]), sorting?.[1], columns, filters), [children, sorting, columns, filters]);
+  const sortedChildren = useMemo(
+    () =>
+      sortRows(
+        children,
+        columns.find(c => c.name === sorting?.[0]),
+        sorting?.[1],
+        columns,
+        filters,
+      ),
+    [children, sorting, columns, filters],
+  );
 
   return (
     <>
-      <div className="contents" onClick={() => (console.log('aAAA'), onRowClick && onRowClick(data), toggleRowExpanded(data.key))}>
+      <div
+        className="contents"
+        onClick={() => (
+          console.log('aAAA'),
+          onRowClick && onRowClick(data),
+          toggleRowExpanded(data.key)
+        )}
+      >
         {selectable && (
           <div
             className={`
@@ -195,33 +244,40 @@ const TableRow = ({
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
           >
-            <button onClick={(evt) => {
-              toggleSelection(data.key);
-              evt.stopPropagation();
-            }}>
-              {
-                selected
-                  ? <FilledDisc className="text-blue-500" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                  : <Circle className="text-gray-400" style={{ width: '1em', strokeWidth: '2.5px' }} />
-              }
+            <button
+              onClick={evt => {
+                toggleSelection(data.key);
+                evt.stopPropagation();
+              }}
+            >
+              {selected ? (
+                <FilledDisc
+                  className="text-blue-500"
+                  style={{ width: '1em', strokeWidth: '2.5px' }}
+                />
+              ) : (
+                <Circle
+                  className="text-gray-400"
+                  style={{ width: '1em', strokeWidth: '2.5px' }}
+                />
+              )}
             </button>
           </div>
         )}
-        {
-          columns.map((column, columnIndex) => {
-            const value = getRowColumnValue(column, data);
-            let content = value;
+        {columns.map((column, columnIndex) => {
+          const value = getRowColumnValue(column, data);
+          let content = value;
 
-            if (column.render) {
-              content = column.render(value, data, depth);
-            }
+          if (column.render) {
+            content = column.render(value, data, depth);
+          }
 
-            return (
-              <div
-                key={column.name}
-                data-row={rowIndex}
-                data-column={column.name}
-                className={`
+          return (
+            <div
+              key={column.name}
+              data-row={rowIndex}
+              data-column={column.name}
+              className={`
                   whitespace-nowrap
                   overflow-hidden
                   min-w-0
@@ -232,18 +288,19 @@ const TableRow = ({
                   py-2
                   border-b-gray-100
                   border-l
-                  ${(!actions && columnIndex === columns.length - 1) && 'border-r'}
+                  ${
+                    !actions && columnIndex === columns.length - 1 && 'border-r'
+                  }
                   ${rowIndex < rowCount - 1 && 'border-b'}
                   ${(columnIndex > 0 || selectable) && 'border-l-gray-100'}
                   ${onRowClick && 'cursor-pointer'}
                   ${column.align === 'right' && 'justify-end'}
                 `}
-              >
-                {content}
-              </div>
-            );
-          })
-        }
+            >
+              {content}
+            </div>
+          );
+        })}
         {actions && (
           <div
             className={`
@@ -252,38 +309,55 @@ const TableRow = ({
             `}
           >
             <Dropdown
-              renderTrigger={(props) => <button {...props}><MoreVertical /></button>}
+              renderTrigger={props => (
+                <button {...props}>
+                  <MoreVertical />
+                </button>
+              )}
               showArrow={false}
               className="h-[24px]"
-              options={actions.filter(a => typeof a.disabled === 'function' ? !a.disabled(data) : !a.disabled).map(a => ({ ...a, onSelect: () => a.onSelect([data]) }))}
+              options={actions
+                .filter(a =>
+                  typeof a.disabled === 'function'
+                    ? !a.disabled(data)
+                    : !a.disabled,
+                )
+                .map(a => ({ ...a, onSelect: () => a.onSelect([data]) }))}
             />
           </div>
         )}
       </div>
-      { expandedRows.includes(data.key) && sortedChildren.map((childData) => (
-        <TableRow
-          key={childData.key}
-          data={childData}
-          depth={depth + 1}
-          rowIndex={1}
-          rowCount={3}
-          actions={actions}
-          selectable={selectable}
-          selectedRows={selectedRows}
-          toggleSelection={toggleSelection}
-          onRowClick={onRowClick}
-          columns={columns}
-          expandedRows={expandedRows}
-          toggleRowExpanded={toggleRowExpanded}
-          filters={filters}
-          sorting={sorting}
-        />
-      )) }
+      {expandedRows.includes(data.key) &&
+        sortedChildren.map(childData => (
+          <TableRow
+            key={childData.key}
+            data={childData}
+            depth={depth + 1}
+            rowIndex={1}
+            rowCount={3}
+            actions={actions}
+            selectable={selectable}
+            selectedRows={selectedRows}
+            toggleSelection={toggleSelection}
+            onRowClick={onRowClick}
+            columns={columns}
+            expandedRows={expandedRows}
+            toggleRowExpanded={toggleRowExpanded}
+            filters={filters}
+            sorting={sorting}
+          />
+        ))}
     </>
   );
 };
 
-const sortRows = <R extends Row<R>>(rows, column, direction, columns, filters: Record<string, FilterState>) => {
+const sortRows = <R extends Row<R>>(
+  rows,
+  column,
+  direction,
+  columns,
+  filters: Record<string, FilterState>,
+) => {
   let tmpRows = [...rows];
 
   if (column) {
@@ -355,13 +429,39 @@ const sortRows = <R extends Row<R>>(rows, column, direction, columns, filters: R
   return tmpRows.filter(filter);
 };
 
-export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeMap extends Record<ColumnNames, any>>({ rows, columns, selectable, actions, onRowClick, emptyMessage, hideTools, footer, initialSort = null }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
+export const TableView = <
+  R extends Row,
+  ColumnNames extends string,
+  ColumnTypeMap extends Record<ColumnNames, any>,
+>({
+  rows,
+  columns,
+  selectable,
+  actions,
+  onRowClick,
+  emptyMessage,
+  hideTools,
+  footer,
+  initialSort = null,
+}: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
-  const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(initialSort ? [initialSort.column, initialSort.direction] : null);
+  const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
+    initialSort ? [initialSort.column, initialSort.direction] : null,
+  );
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
   const [expandedRows, setExpandedRows] = useState([]);
 
-  const sortedRows = useMemo(() => sortRows(rows, columns.find(c => c.name === sorting?.[0]), sorting?.[1], columns, filters), [rows, sorting, columns, filters]);
+  const sortedRows = useMemo(
+    () =>
+      sortRows(
+        rows,
+        columns.find(c => c.name === sorting?.[0]),
+        sorting?.[1],
+        columns,
+        filters,
+      ),
+    [rows, sorting, columns, filters],
+  );
 
   const toggleSelection = (row: Row['key']) => {
     const newSet = [...selectedRows];
@@ -392,14 +492,14 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
   const columnCount = columns.length;
 
   const availableActions = useMemo(() => {
-    if (!actions || actions.length === 0)
-      return [];
+    if (!actions || actions.length === 0) return [];
 
-    const matches = actions.map(a => typeof a.disabled !== 'boolean' || a.disabled === false);
+    const matches = actions.map(
+      a => typeof a.disabled !== 'boolean' || a.disabled === false,
+    );
 
     for (const row of rows) {
-      if (!selectedRows.includes(row.key))
-        continue;
+      if (!selectedRows.includes(row.key)) continue;
 
       actions.forEach((action, i) => {
         if (typeof action.disabled === 'function') {
@@ -412,7 +512,7 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
       });
     }
 
-    return matches.flatMap((matches, i) => matches ? [actions[i]] : []);
+    return matches.flatMap((matches, i) => (matches ? [actions[i]] : []));
   }, [selectedRows, actions]);
 
   const handleColumnHeaderClick = (column: Column<any, any, any>) => {
@@ -426,21 +526,31 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
   };
 
   return (
-    <div className="relative" data-cy="table-view" data-visible-rows={sortedRows.length} data-total-rows={rows.length}>
-      { !hideTools && (
+    <div
+      className="relative"
+      data-cy="table-view"
+      data-visible-rows={sortedRows.length}
+      data-total-rows={rows.length}
+    >
+      {!hideTools && (
         <div className="absolute top-0 bottom-0 right-0 w-0">
           <div className="flex flex-col gap-2 ml-5 mt-12 sticky top-12">
             <Dropdown
               label="Sort"
-              options={columns.map((col) => ({
+              options={columns.map(col => ({
                 text: (
-                  <div className={`flex ${sorting?.[0] === col.name && 'text-blue-500'} items-center`}>
+                  <div
+                    className={`flex ${
+                      sorting?.[0] === col.name && 'text-blue-500'
+                    } items-center`}
+                  >
                     <span className="flex-grow">{col.name}</span>
-                    {sorting?.[0] === col.name && (
-                      sorting[1] === 'asc'
-                        ? <TrendingUp className="h-4" />
-                        : <TrendingDown className="h-4" />
-                    )}
+                    {sorting?.[0] === col.name &&
+                      (sorting[1] === 'asc' ? (
+                        <TrendingUp className="h-4" />
+                      ) : (
+                        <TrendingDown className="h-4" />
+                      ))}
                   </div>
                 ),
                 value: col.name,
@@ -458,45 +568,90 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
             <Dropdown
               label="Filter"
               options={[
-                ...columns.map((col) => ({
-                  text: <FilterDropdownItem
-                    column={col}
-                    rows={rows}
-                    options={filters[col.name] ?? { allowlist: [], blocklist: [] }}
-                    onChange={(options) => setFilters((prev) => ({ ...prev, [col.name]: options }))}
-                  />,
+                ...columns.map(col => ({
+                  text: (
+                    <FilterDropdownItem
+                      column={col}
+                      rows={rows}
+                      options={
+                        filters[col.name] ?? { allowlist: [], blocklist: [] }
+                      }
+                      onChange={options =>
+                        setFilters(prev => ({ ...prev, [col.name]: options }))
+                      }
+                    />
+                  ),
                   value: col.name,
                 })),
                 { divider: true },
-                { text: (<div className="flex items-center gap-1 -ml-2"><Square className="h-4 text-gray-500" /> TKO-äly member</div>) },
+                {
+                  text: (
+                    <div className="flex items-center gap-1 -ml-2">
+                      <Square className="h-4 text-gray-500" /> TKO-äly member
+                    </div>
+                  ),
+                },
               ]}
             />
             <Dropdown
               label="Actions"
               options={[
-                { text: 'Select all', onSelect: () => setSelectedRows(sortedRows.map(r => r.key)) },
+                {
+                  text: 'Select all',
+                  onSelect: () => setSelectedRows(sortedRows.map(r => r.key)),
+                },
                 { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
-                { text: 'Invert selection', onSelect: () => setSelectedRows(sortedRows.filter(r => !selectedRows.includes(r.key)).map(r => r.key)) },
-                ...(
-                  availableActions.length > 0
-                    ? [{ divider: true }, ...availableActions.map(a => ({ ...a, onSelect: () => a.onSelect(selectedRows.map(key => sortedRows.find(r => r.key === key)).filter(identity)) }))]
-                    : []
-                ),
+                {
+                  text: 'Invert selection',
+                  onSelect: () =>
+                    setSelectedRows(
+                      sortedRows
+                        .filter(r => !selectedRows.includes(r.key))
+                        .map(r => r.key),
+                    ),
+                },
+                ...(availableActions.length > 0
+                  ? [
+                      { divider: true },
+                      ...availableActions.map(a => ({
+                        ...a,
+                        onSelect: () =>
+                          a.onSelect(
+                            selectedRows
+                              .map(key => sortedRows.find(r => r.key === key))
+                              .filter(identity),
+                          ),
+                      })),
+                    ]
+                  : []),
               ]}
             />
           </div>
         </div>
       )}
       <div className="bg-white shadow-sm">
-        <div className="grid" style={{ gridTemplateColumns: `${selectable ? 'min-content ' : ''}repeat(${columnCount}, auto)${actions ? ' min-content' : ''}` }}>
-          {selectable && <div className="sticky top-0 z-10 rounded-tl-md border-l border-t border-b bg-gray-50" />}
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `${
+              selectable ? 'min-content ' : ''
+            }repeat(${columnCount}, auto)${actions ? ' min-content' : ''}`,
+          }}
+        >
+          {selectable && (
+            <div className="sticky top-0 z-10 rounded-tl-md border-l border-t border-b bg-gray-50" />
+          )}
           {columns.map((column, i) => (
             <div
               key={column.name}
               onClick={() => handleColumnHeaderClick(column)}
               className={`
                 ${!selectable && i == 0 && 'rounded-tl-md border-l'}
-                ${!actions && i == columns.length - 1 && 'rounded-tr-md border-r'}
+                ${
+                  !actions &&
+                  i == columns.length - 1 &&
+                  'rounded-tr-md border-r'
+                }
                 border-l
                 border-t sticky top-0 z-10 text-gray-700 px-3 py-2
                 bg-gray-50 border-b text-sm font-bold
@@ -506,11 +661,21 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
               `}
             >
               {column.name}
-              {sorting !== null && sorting[0] === column.name && sorting[1] === 'asc' && <ChevronUp className="h-5 text-gray-400" /> }
-              {sorting !== null && sorting[0] === column.name && sorting[1] === 'desc' && <ChevronDown className="h-5 text-gray-400" /> }
+              {sorting !== null &&
+                sorting[0] === column.name &&
+                sorting[1] === 'asc' && (
+                  <ChevronUp className="h-5 text-gray-400" />
+                )}
+              {sorting !== null &&
+                sorting[0] === column.name &&
+                sorting[1] === 'desc' && (
+                  <ChevronDown className="h-5 text-gray-400" />
+                )}
             </div>
           ))}
-          {actions && <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />}
+          {actions && (
+            <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />
+          )}
           {sortedRows.flatMap((row, i) => (
             <TableRow
               data={row}
@@ -528,23 +693,26 @@ export const TableView = <R extends Row, ColumnNames extends string, ColumnTypeM
               sorting={sorting}
             />
           ))}
-          { rows.length === 0 && (
+          {rows.length === 0 && (
             <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
               <div className="w-[30em] text-gray-800 py-3">
-                { emptyMessage ?? 'No rows to display.' }
+                {emptyMessage ?? 'No rows to display.'}
               </div>
             </div>
-          ) }
+          )}
         </div>
-        { footer !== false && (
+        {footer !== false && (
           <div className="sticky bottom-0 border rounded-b-md py-2 px-3 flex justify-end gap-3 bg-gray-50 border-t items-center">
-            { selectedRows.length > 0 && <span className="text-sm text-gray-700">Selected: {selectedRows.length}</span> }
+            {selectedRows.length > 0 && (
+              <span className="text-sm text-gray-700">
+                Selected: {selectedRows.length}
+              </span>
+            )}
             <div className="flex-grow h-[1.5em]" />
-            { footer }
+            {footer}
           </div>
         )}
       </div>
     </div>
   );
 };
-

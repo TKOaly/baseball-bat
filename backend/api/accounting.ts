@@ -7,24 +7,22 @@ import { AccountingService } from '../services/accounting';
 @Service()
 export class AccountingApi {
   @Inject(() => AccountingService)
-    accountingService: AccountingService;
+  accountingService: AccountingService;
 
   @Inject(() => AuthService)
-    authService: AuthService;
+  authService: AuthService;
 
   private getAccountingPeriods() {
     return route
       .get('/periods')
       .use(this.authService.createAuthMiddleware())
-      .handler(async (_ctx) => {
+      .handler(async _ctx => {
         const periods = await this.accountingService.getAccountingPeriods();
         return ok(periods);
       });
   }
 
   public router() {
-    return router(
-      this.getAccountingPeriods(),
-    );
+    return router(this.getAccountingPeriods());
   }
 }

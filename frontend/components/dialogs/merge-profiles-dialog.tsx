@@ -1,4 +1,10 @@
-import { DialogBase, DialogContent, DialogFooter, DialogHeader, useDialog } from '../../components/dialog';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  useDialog,
+} from '../../components/dialog';
 import { Button } from '../../components/button';
 import { ResourceSelectField } from '../resource-select-field';
 import { InternalIdentity } from '../../../common/types';
@@ -7,10 +13,10 @@ import { useMergeProfilesMutation } from '../../api/payers';
 import { ErrorDialog } from './error-dialog';
 
 export type Props = {
-  primaryId?: InternalIdentity,
-  secondaryId?: InternalIdentity,
-  onClose: (_: { primaryId: string, secondaryId: string } | null) => void,
-}
+  primaryId?: InternalIdentity;
+  secondaryId?: InternalIdentity;
+  onClose: (_: { primaryId: string; secondaryId: string } | null) => void;
+};
 
 export const MergeProfilesDialog = (props: Props) => {
   const [primaryId, setPrimaryId] = useState(props.primaryId?.value);
@@ -39,21 +45,27 @@ export const MergeProfilesDialog = (props: Props) => {
 
   return (
     <DialogBase onClose={() => props.onClose(null)}>
-      <DialogHeader>
-        Merge payer profiles
-      </DialogHeader>
+      <DialogHeader>Merge payer profiles</DialogHeader>
       <DialogContent>
         <table>
           <tr>
             <th className="text-left pr-3">Merge from</th>
             <td>
-              <ResourceSelectField type="payer" value={secondaryId} onChange={(evt) => setSecondaryId(evt.target.value.id)} />
+              <ResourceSelectField
+                type="payer"
+                value={secondaryId}
+                onChange={evt => setSecondaryId(evt.target.value.id)}
+              />
             </td>
           </tr>
           <tr>
             <th className="text-left pr-3">Merge to</th>
             <td>
-              <ResourceSelectField type="payer" value={primaryId} onChange={(evt) => setPrimaryId(evt.target.value.id)} />
+              <ResourceSelectField
+                type="payer"
+                value={primaryId}
+                onChange={evt => setPrimaryId(evt.target.value.id)}
+              />
             </td>
           </tr>
         </table>
@@ -67,8 +79,16 @@ export const MergeProfilesDialog = (props: Props) => {
         </Button>
       </DialogContent>
       <DialogFooter>
-        <Button secondary onClick={() => props.onClose(null)}>Close</Button>
-        <Button disabled={!primaryId || !secondaryId} onClick={handleMerge} loading={isLoading}>Merge</Button>
+        <Button secondary onClick={() => props.onClose(null)}>
+          Close
+        </Button>
+        <Button
+          disabled={!primaryId || !secondaryId}
+          onClick={handleMerge}
+          loading={isLoading}
+        >
+          Merge
+        </Button>
       </DialogFooter>
     </DialogBase>
   );

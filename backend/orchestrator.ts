@@ -4,11 +4,11 @@ import { Service } from 'typedi';
 export class AppBus {
   private closeHandlers: Set<() => void> = new Set();
 
-  public onClose(handler: () => (void | Promise<void>)) {
+  public onClose(handler: () => void | Promise<void>) {
     this.closeHandlers.add(handler);
   }
 
-  public removeCloseHandler(handler: () => (void | Promise<void>)) {
+  public removeCloseHandler(handler: () => void | Promise<void>) {
     this.closeHandlers.delete(handler);
   }
 

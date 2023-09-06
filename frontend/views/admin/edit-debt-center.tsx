@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
 import { Formik } from 'formik';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { useGetDebtCenterQuery, useUpdateDebtCenterMutation } from '../../api/debt-centers';
+import {
+  useGetDebtCenterQuery,
+  useUpdateDebtCenterMutation,
+} from '../../api/debt-centers';
 import { useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
 import { TextField } from '../../components/text-field';
@@ -13,7 +16,12 @@ import * as E from 'fp-ts/lib/Either';
 import * as S from 'fp-ts/lib/string';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
-import { useCreateDebtComponentMutation, useDeleteDebtComponentMutation, useGetDebtComponentsByCenterQuery, useUpdateDebtComponentMutation } from '../../api/debt';
+import {
+  useCreateDebtComponentMutation,
+  useDeleteDebtComponentMutation,
+  useGetDebtComponentsByCenterQuery,
+  useUpdateDebtComponentMutation,
+} from '../../api/debt';
 import { DebtComponent, euro, NewDebtComponent } from '../../../common/types';
 import { pipe } from 'fp-ts/lib/function';
 import { useDialog } from '../../components/dialog';
@@ -21,18 +29,18 @@ import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-cent
 import { contramap } from 'fp-ts/lib/Eq';
 
 type FormComponentValue = {
-  name: string,
-  amount: number,
-  description: string,
-  id: string | null
-}
+  name: string;
+  amount: number;
+  description: string;
+  id: string | null;
+};
 
 type FormValues = {
-  name: string
-  url: string
-  description: string
-  components: FormComponentValue[]
-}
+  name: string;
+  url: string;
+  description: string;
+  components: FormComponentValue[];
+};
 
 export const EditDebtCenter = ({ params }) => {
   const { id } = params;
@@ -43,7 +51,9 @@ export const EditDebtCenter = ({ params }) => {
   const [deleteDebtComponent] = useDeleteDebtComponentMutation();
   const [updateDebtComponent] = useUpdateDebtComponentMutation();
   const [updateDebtCenter] = useUpdateDebtCenterMutation();
-  const showDebtCenterConfirmationDialog = useDialog(DebtCenterConfirmationDialog);
+  const showDebtCenterConfirmationDialog = useDialog(
+    DebtCenterConfirmationDialog,
+  );
 
   const initialValues = useMemo(() => {
     if (!debtCenter) {
@@ -61,11 +71,11 @@ export const EditDebtCenter = ({ params }) => {
         components: !components
           ? []
           : components.map(c => ({
-            id: c.id,
-            name: c.name,
-            amount: c.amount.value / 100,
-            description: c.description,
-          })),
+              id: c.id,
+              name: c.name,
+              amount: c.amount.value / 100,
+              description: c.description,
+            })),
       };
     }
   }, [debtCenter, components]);
@@ -80,17 +90,19 @@ export const EditDebtCenter = ({ params }) => {
 
     const newComponents = pipe(
       values.components,
-      A.filter((c) => c.id === null),
+      A.filter(c => c.id === null),
     );
 
-    const IdEq = contramap((c: { id: string, name: string }) => c.id)(S.Eq);
+    const IdEq = contramap((c: { id: string; name: string }) => c.id)(S.Eq);
 
     const removedComponents = pipe(
       components,
-      A.difference(IdEq)(pipe(
-        values.components,
-        A.filter((c) => c.id !== null),
-      )),
+      A.difference(IdEq)(
+        pipe(
+          values.components,
+          A.filter(c => c.id !== null),
+        ),
+      ),
     );
 
     const changedComponents = pipe(
@@ -100,15 +112,25 @@ export const EditDebtCenter = ({ params }) => {
         const existing = components.find(c => c.id === id);
         const modified = values.components.find(c => c.id === id);
 
-        if (existing.name !== modified.name || existing.amount.value / 100 !== modified.amount) {
-          return O.some([existing, modified] as [DebtComponent, FormComponentValue]);
+        if (
+          existing.name !== modified.name ||
+          existing.amount.value / 100 !== modified.amount
+        ) {
+          return O.some([existing, modified] as [
+            DebtComponent,
+            FormComponentValue,
+          ]);
         } else {
           return O.none;
         }
       }),
     );
 
-    if (removedComponents.length > 0 || newComponents.length > 0 || changedComponents.length > 0) {
+    if (
+      removedComponents.length > 0 ||
+      newComponents.length > 0 ||
+      changedComponents.length > 0
+    ) {
       const confirmed = await showDebtCenterConfirmationDialog({
         remove: removedComponents.map(c => c.name),
         create: newComponents.map(c => c.name),
@@ -132,37 +154,42 @@ export const EditDebtCenter = ({ params }) => {
         }
       };
 
-      const createDebtComponentTask = (newComponent: NewDebtComponent) => async () => {
-        const result = await createDebtComponent(newComponent);
+      const createDebtComponentTask =
+        (newComponent: NewDebtComponent) => async () => {
+          const result = await createDebtComponent(newComponent);
 
-        if ('data' in result) {
-          return E.right(result.data);
-        } else {
-          return E.left(result.error);
-        }
-      };
+          if ('data' in result) {
+            return E.right(result.data);
+          } else {
+            return E.left(result.error);
+          }
+        };
 
-      const updateDebtComponentTask = (existing: DebtComponent, updated: FormComponentValue) => async () => {
-        const result = await updateDebtComponent({
-          debtCenterId: id,
-          debtComponentId: existing.id,
-          values: {
-            name: existing.name !== updated.name ? updated.name : undefined,
-            amount: existing.amount.value / 100 !== updated.amount ? euro(updated.amount) : undefined,
-          },
-        });
+      const updateDebtComponentTask =
+        (existing: DebtComponent, updated: FormComponentValue) => async () => {
+          const result = await updateDebtComponent({
+            debtCenterId: id,
+            debtComponentId: existing.id,
+            values: {
+              name: existing.name !== updated.name ? updated.name : undefined,
+              amount:
+                existing.amount.value / 100 !== updated.amount
+                  ? euro(updated.amount)
+                  : undefined,
+            },
+          });
 
-        if ('data' in result) {
-          return E.right(result.data);
-        } else {
-          return E.left(result.error);
-        }
-      };
+          if ('data' in result) {
+            return E.right(result.data);
+          } else {
+            return E.left(result.error);
+          }
+        };
 
       if (removedComponents.length > 0) {
         const result = await pipe(
           removedComponents,
-          A.map((c) => c.id),
+          A.map(c => c.id),
           A.traverse(TE.ApplicativePar)(deleteDebtComponentTask),
         )();
 
@@ -174,7 +201,7 @@ export const EditDebtCenter = ({ params }) => {
       if (newComponents.length > 0) {
         const result = await pipe(
           newComponents,
-          A.map((c) => ({ ...c, debtCenterId: id, amount: euro(c.amount) })),
+          A.map(c => ({ ...c, debtCenterId: id, amount: euro(c.amount) })),
           A.traverse(TE.ApplicativePar)(createDebtComponentTask),
         )();
 
@@ -186,7 +213,9 @@ export const EditDebtCenter = ({ params }) => {
       if (changedComponents.length > 0) {
         const result = await pipe(
           changedComponents,
-          A.traverse(TE.ApplicativePar)(([existing, updated]) => updateDebtComponentTask(existing, updated)),
+          A.traverse(TE.ApplicativePar)(([existing, updated]) =>
+            updateDebtComponentTask(existing, updated),
+          ),
         )();
 
         if ('error' in result) {
@@ -215,7 +244,7 @@ export const EditDebtCenter = ({ params }) => {
       <Formik
         enableReinitialize
         initialValues={initialValues}
-        validate={(values) => {
+        validate={values => {
           const errors: Record<string, string> = {};
 
           if (values.name.length < 3) {
@@ -244,9 +273,14 @@ export const EditDebtCenter = ({ params }) => {
             <p className="col-span-full text-sm mb-2">
               Lorem ipsum dolor sit amet.
             </p>
-            <InputGroup label='Name' name="name" component={TextField} />
-            <InputGroup label='URL' name="url" component={TextField} />
-            <InputGroup label='Description' name="description" fullWidth component={TextareaField} />
+            <InputGroup label="Name" name="name" component={TextField} />
+            <InputGroup label="URL" name="url" component={TextField} />
+            <InputGroup
+              label="Description"
+              name="description"
+              fullWidth
+              component={TextareaField}
+            />
             <InputGroup
               label="Components"
               name="components"
@@ -269,11 +303,24 @@ export const EditDebtCenter = ({ params }) => {
                   header: 'Description',
                 },
               ]}
-              createNew={() => ({ name: '', amount: 0, description: '', id: null })}
+              createNew={() => ({
+                name: '',
+                amount: 0,
+                description: '',
+                id: null,
+              })}
             />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Save</button>
+              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+                Cancel
+              </button>
+              <button
+                className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                onClick={submitForm}
+                disabled={isSubmitting}
+              >
+                Save
+              </button>
             </div>
           </div>
         )}

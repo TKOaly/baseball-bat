@@ -1,11 +1,19 @@
 import { Inject, Service } from 'typedi';
-import { BankAccount, BankTransaction, DbBankTransaction, DbBankStatement, BankStatement } from '../../common/types';
+import {
+  BankAccount,
+  BankTransaction,
+  DbBankTransaction,
+  DbBankStatement,
+  BankStatement,
+} from '../../common/types';
 import { PgClient } from '../db';
 import sql from 'sql-template-strings';
 import { cents } from '../../common/currency';
 import { PaymentService } from './payements';
 
-const formatBankStatement = (stmt: DbBankStatement): Omit<BankStatement, 'transactions'> => ({
+const formatBankStatement = (
+  stmt: DbBankStatement,
+): Omit<BankStatement, 'transactions'> => ({
   id: stmt.id,
   accountIban: stmt.account,
   generatedAt: stmt.generated_at,
@@ -37,15 +45,17 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
 @Service()
 export class BankingService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   async createBankAccount(account: BankAccount) {
     await this.pg.any(sql`
       INSERT INTO bank_accounts (iban, name)
-      VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${account.name})
+      VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${
+        account.name
+      })
     `);
   }
 
@@ -54,7 +64,9 @@ export class BankingService {
   }
 
   async getBankAccount(iban: string) {
-    return this.pg.one<BankAccount>(sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`);
+    return this.pg.one<BankAccount>(
+      sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`,
+    );
   }
 
   async createBankStatement(details: BankStatement) {
@@ -84,15 +96,18 @@ export class BankingService {
       throw new Error('Could not create bank statement');
     }
 
-    const transactions = await Promise.all(details.transactions.map(async (tx) => {
-      const existing = await this.pg.any<DbBankTransaction>(sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`);
+    const transactions = await Promise.all(
+      details.transactions.map(async tx => {
+        const existing = await this.pg.any<DbBankTransaction>(
+          sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`,
+        );
 
-      let transaction;
+        let transaction;
 
-      if (existing.length > 0) {
-        transaction = formatBankTransaction(existing[0]);
-      } else {
-        const created = await this.pg.one<DbBankTransaction>(sql`
+        if (existing.length > 0) {
+          transaction = formatBankTransaction(existing[0]);
+        } else {
+          const created = await this.pg.one<DbBankTransaction>(sql`
           INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
           VALUES (
             ${details.accountIban},
@@ -108,18 +123,18 @@ export class BankingService {
           RETURNING *
         `);
 
-        if (!created) {
-          throw new Error('Could not create bank transaction');
+          if (!created) {
+            throw new Error('Could not create bank transaction');
+          }
+
+          transaction = formatBankTransaction(created);
         }
 
-        transaction = formatBankTransaction(created);
-      }
+        if (!transaction) {
+          throw new Error('Could not create transaction');
+        }
 
-      if (!transaction) {
-        throw new Error('Could not create transaction');
-      }
-
-      await this.pg.one(sql`
+        await this.pg.one(sql`
         INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
         VALUES (
           ${statement.id},
@@ -127,13 +142,14 @@ export class BankingService {
         )
       `);
 
-      await this.paymentService.createPaymentEventFromTransaction({
-        ...transaction,
-        account: details.accountIban,
-      });
+        await this.paymentService.createPaymentEventFromTransaction({
+          ...transaction,
+          account: details.accountIban,
+        });
 
-      return transaction;
-    }));
+        return transaction;
+      }),
+    );
 
     return {
       statement: formatBankStatement(statement),
@@ -141,7 +157,10 @@ export class BankingService {
     };
   }
 
-  async assignTransactionsToPaymentByReferenceNumber(paymentId: string, referenceNumber: string) {
+  async assignTransactionsToPaymentByReferenceNumber(
+    paymentId: string,
+    referenceNumber: string,
+  ) {
     const dbTransactions = await this.pg.any<DbBankTransaction>(sql`
       SELECT * FROM bank_transactions WHERE reference = ${referenceNumber}
     `);
@@ -149,8 +168,12 @@ export class BankingService {
     const transactions = dbTransactions.map(formatBankTransaction);
 
     await Promise.all(
-      transactions
-        .map((transaction) => this.paymentService.createPaymentEventFromTransaction(transaction, paymentId)),
+      transactions.map(transaction =>
+        this.paymentService.createPaymentEventFromTransaction(
+          transaction,
+          paymentId,
+        ),
+      ),
     );
   }
 

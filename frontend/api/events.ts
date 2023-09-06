@@ -11,11 +11,11 @@ const eventsApi = rtkApi.injectEndpoints({
     }),
 
     getEventRegistrations: builder.query<Registration[], number>({
-      query: (id) => `/events/${id}/registrations`,
+      query: id => `/events/${id}/registrations`,
     }),
 
     getEventCustomFields: builder.query<CustomField[], number>({
-      query: (id) => `/events/${id}/fields`,
+      query: id => `/events/${id}/fields`,
     }),
   }),
 });

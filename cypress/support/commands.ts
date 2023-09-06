@@ -28,17 +28,23 @@
 
 declare namespace Cypress {
   interface Chainable {
-    resetDatabase(opts?: { hard?: boolean }): Chainable<void>
-    login(opts: { username: string, password: string }): Chainable<void>
-    getResourceField(label: string): Chainable<Element>
-    getResourceSection(title: string): Chainable<Element>
+    resetDatabase(opts?: { hard?: boolean }): Chainable<void>;
+    login(opts: { username: string; password: string }): Chainable<void>;
+    getResourceField(label: string): Chainable<Element>;
+    getResourceSection(title: string): Chainable<Element>;
   }
 }
 
-Cypress.Commands.add('resetDatabase', ({ hard = false }: { hard?: boolean } = {}) => {
-  cy.log(`Performing ${ hard ? 'hard' : 'soft' } database reset...`);
-  cy.exec(`cd ../tko-aly.fi && ./reset.sh ${hard === true ? 'hard' : 'soft'}`, { log: false });
-});
+Cypress.Commands.add(
+  'resetDatabase',
+  ({ hard = false }: { hard?: boolean } = {}) => {
+    cy.log(`Performing ${hard ? 'hard' : 'soft'} database reset...`);
+    cy.exec(
+      `cd ../tko-aly.fi && ./reset.sh ${hard === true ? 'hard' : 'soft'}`,
+      { log: false },
+    );
+  },
+);
 
 Cypress.Commands.add('login', ({ username, password }) => {
   cy.intercept('/api/auth/authenticate').as('authenticate');
@@ -52,22 +58,30 @@ Cypress.Commands.add('login', ({ username, password }) => {
   cy.wait('@authenticate');
 });
 
-Cypress.Commands.add('getResourceSection', { prevSubject: 'optional' }, (subject, title) => {
-  const selector = `[data-cy="resource-section"][data-cy-title="${title}"] [data-cy="resource-section-content"]`;
+Cypress.Commands.add(
+  'getResourceSection',
+  { prevSubject: 'optional' },
+  (subject, title) => {
+    const selector = `[data-cy="resource-section"][data-cy-title="${title}"] [data-cy="resource-section-content"]`;
 
-  if (subject) {
-    return cy.wrap(subject).find(selector);
-  } else {
-    return cy.get(selector);
-  }
-});
+    if (subject) {
+      return cy.wrap(subject).find(selector);
+    } else {
+      return cy.get(selector);
+    }
+  },
+);
 
-Cypress.Commands.add('getResourceField', { prevSubject: 'optional' }, (subject, label) => {
-  const selector = `[data-cy=resource-field][data-cy-label="${label}"] [data-cy="resource-field-content"]`;
+Cypress.Commands.add(
+  'getResourceField',
+  { prevSubject: 'optional' },
+  (subject, label) => {
+    const selector = `[data-cy=resource-field][data-cy-label="${label}"] [data-cy="resource-field-content"]`;
 
-  if (subject) {
-    return cy.wrap(subject).find(selector);
-  } else {
-    return cy.get(selector);
-  }
-});
+    if (subject) {
+      return cy.wrap(subject).find(selector);
+    } else {
+      return cy.get(selector);
+    }
+  },
+);

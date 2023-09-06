@@ -16,7 +16,10 @@ const formatDate = (date: Date | string) => {
 const formatDateRelative = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
 
-  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(differenceInDays(parsed, new Date()), 'day');
+  return new Intl.RelativeTimeFormat([], { style: 'long' }).format(
+    differenceInDays(parsed, new Date()),
+    'day',
+  );
 };
 
 const InvoiceDetails = ({ payment }: { payment: Payment }) => {
@@ -43,22 +46,31 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
-          <td>{formatDate(new Date(payment.data.due_date))} ({formatDateRelative(payment.data.due_date)})</td>
+          <td>
+            {formatDate(new Date(payment.data.due_date))} (
+            {formatDateRelative(payment.data.due_date)})
+          </td>
         </tr>
         <tr>
           <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
           <td>{formatEuro(payment.balance)}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3 h-4">{t('invoiceReferenceNumberHeader')}</th>
+          <th className="text-right pr-3 h-4">
+            {t('invoiceReferenceNumberHeader')}
+          </th>
           <td>{payment.data.reference_number}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceBeneficaryNameHeader')}</th>
+          <th className="text-right pr-3">
+            {t('invoiceBeneficaryNameHeader')}
+          </th>
           <td>TKO-äly ry</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceBeneficaryAccountHeader')}</th>
+          <th className="text-right pr-3">
+            {t('invoiceBeneficaryAccountHeader')}
+          </th>
           <td>FI89 7997 7995 1312 86</td>
         </tr>
         <tr>
@@ -74,7 +86,10 @@ export const PaymentDetails = ({ params }) => {
   const id = params.id;
   const { t } = useTranslation();
   const { data: payment, isLoading } = useGetPaymentQuery(id);
-  const { data: debts, isLoading: debtsAreLoading } = useGetDebtsByPaymentQuery(id, { skip: !payment });
+  const { data: debts, isLoading: debtsAreLoading } = useGetDebtsByPaymentQuery(
+    id,
+    { skip: !payment },
+  );
 
   if (isLoading) {
     return <span>Loading...</span>;
@@ -82,7 +97,9 @@ export const PaymentDetails = ({ params }) => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">Payment: {payment.title} ({payment.paymentNumber})</h3>
+      <h3 className="text-xl text-gray-500 font-bold">
+        Payment: {payment.title} ({payment.paymentNumber})
+      </h3>
 
       <div className="my-3">
         <table>
@@ -113,11 +130,17 @@ export const PaymentDetails = ({ params }) => {
 
       <ul className="p-3">
         {debtsAreLoading && 'Loading...'}
-        {(debts ?? []).map((debt) => (
+        {(debts ?? []).map(debt => (
           <li className="mb-2 tabular-nums" key={debt.id}>
             <h4 className="font-bold flex">
               <span className="flex-grow">{debt.name}</span>
-              <span>{formatEuro(debt.debtComponents.map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
+              <span>
+                {formatEuro(
+                  debt.debtComponents
+                    .map(dc => dc.amount)
+                    .reduce(sumEuroValues, euro(0)),
+                )}
+              </span>
             </h4>
             <div className="pl-3">
               <p>{debt.description}</p>
@@ -135,7 +158,14 @@ export const PaymentDetails = ({ params }) => {
         <li>
           <h4 className="font-bold flex">
             <span className="flex-grow">{t('total')}</span>
-            <span>{formatEuro((debts ?? []).flatMap(d => d.debtComponents).map(dc => dc.amount).reduce(sumEuroValues, euro(0)))}</span>
+            <span>
+              {formatEuro(
+                (debts ?? [])
+                  .flatMap(d => d.debtComponents)
+                  .map(dc => dc.amount)
+                  .reduce(sumEuroValues, euro(0)),
+              )}
+            </span>
           </h4>
         </li>
       </ul>

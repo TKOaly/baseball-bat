@@ -17,17 +17,19 @@ import { useEffect, useState } from 'react';
 import { DropdownField } from '../../components/dropdown-field';
 
 type FormValues = {
-  name: string
-  url: string
-  description: string
-  components: { name: string, amount: number, description: string }[]
-  accountingPeriod: null | number
-}
+  name: string;
+  url: string;
+  description: string;
+  components: { name: string; amount: number; description: string }[];
+  accountingPeriod: null | number;
+};
 
 export const CreateDebtCenter = () => {
   const [createDebtCenter] = useCreateDebtCenterMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
-  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const activeAccountingPeriod = useAppSelector(
+    state => state.accountingPeriod.activePeriod,
+  );
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const [, setLocation] = useLocation();
   const showInfoDialog = useDialog(InfoDialog);
@@ -41,8 +43,11 @@ export const CreateDebtCenter = () => {
   });
 
   useEffect(() => {
-    if (initialValues.accountingPeriod === null && activeAccountingPeriod !== null) {
-      setInitialValues((prev) => ({
+    if (
+      initialValues.accountingPeriod === null &&
+      activeAccountingPeriod !== null
+    ) {
+      setInitialValues(prev => ({
         ...prev,
         accountingPeriod: activeAccountingPeriod,
       }));
@@ -52,13 +57,15 @@ export const CreateDebtCenter = () => {
   return (
     <div>
       <h1 className="text-2xl mb-5 mt-10">
-        <Breadcrumbs segments={[{ text: 'Debt Center', url: '/admin' }, 'Create']} />
+        <Breadcrumbs
+          segments={[{ text: 'Debt Center', url: '/admin' }, 'Create']}
+        />
       </h1>
       <p className="text-gray-800 mb-7 text-md"></p>
       <Formik
         initialValues={initialValues}
         enableReinitialize
-        validate={(values) => {
+        validate={values => {
           const errors: Record<string, string> = {};
 
           if (values.name.length < 3) {
@@ -85,8 +92,8 @@ export const CreateDebtCenter = () => {
             return;
           }
 
-          const createComponents = values.components
-            .map(async (component, i) => {
+          const createComponents = values.components.map(
+            async (component, i) => {
               const componentRes = await createDebtComponent({
                 ...component,
                 amount: euro(component.amount * 100),
@@ -96,10 +103,14 @@ export const CreateDebtCenter = () => {
               if ('data' in componentRes) {
                 return componentRes.data.id;
               } else {
-                setFieldError(`components.${i}.name`, 'Failed to create component.');
+                setFieldError(
+                  `components.${i}.name`,
+                  'Failed to create component.',
+                );
                 throw new Error();
               }
-            });
+            },
+          );
 
           try {
             await Promise.all(createComponents);
@@ -109,7 +120,9 @@ export const CreateDebtCenter = () => {
               title: 'Failed to create debt center',
               content: (
                 <>
-                  <p>Failed to create debt center due to the following error:</p>
+                  <p>
+                    Failed to create debt center due to the following error:
+                  </p>
                   <pre>{e}</pre>
                 </>
               ),
@@ -125,25 +138,28 @@ export const CreateDebtCenter = () => {
             <p className="col-span-full text-sm mb-2">
               Lorem ipsum dolor sit amet.
             </p>
-            <InputGroup label='Name' name="name" component={TextField} />
-            <InputGroup narrow label='URL' name="url" component={TextField} />
-            { accountingPeriods?.length > 1 && (
+            <InputGroup label="Name" name="name" component={TextField} />
+            <InputGroup narrow label="URL" name="url" component={TextField} />
+            {accountingPeriods?.length > 1 && (
               <InputGroup
                 narrow
                 label="Accounting Period"
                 name="accountingPeriod"
                 component={DropdownField}
-                options={
-                  (accountingPeriods ?? [])
-                    .filter((period) => !period.closed)
-                    .map((period) => ({
-                      value: period.year,
-                      text: period.year,
-                    }))
-                }
+                options={(accountingPeriods ?? [])
+                  .filter(period => !period.closed)
+                  .map(period => ({
+                    value: period.year,
+                    text: period.year,
+                  }))}
               />
             )}
-            <InputGroup label='Description' name="description" fullWidth component={TextareaField} />
+            <InputGroup
+              label="Description"
+              name="description"
+              fullWidth
+              component={TextareaField}
+            />
             <InputGroup
               label="Components"
               name="components"
@@ -169,8 +185,16 @@ export const CreateDebtCenter = () => {
               createNew={() => ({ name: '', amount: 0, description: '' })}
             />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">Cancel</button>
-              <button className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold" onClick={submitForm} disabled={isSubmitting}>Create</button>
+              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+                Cancel
+              </button>
+              <button
+                className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                onClick={submitForm}
+                disabled={isSubmitting}
+              >
+                Create
+              </button>
             </div>
           </div>
         )}

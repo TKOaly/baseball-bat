@@ -1,4 +1,9 @@
-import { NewDebtCenter, DbDebtCenter, DebtCenter, DebtCenterPatch } from '../../common/types';
+import {
+  NewDebtCenter,
+  DbDebtCenter,
+  DebtCenter,
+  DebtCenterPatch,
+} from '../../common/types';
 import { PgClient } from '../db';
 import { Service, Inject } from 'typedi';
 import sql from 'sql-template-strings';
@@ -18,24 +23,28 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   debtCount: debtCenter.debt_count,
   paidCount: debtCenter.paid_count,
   unpaidCount: debtCenter.unpaid_count,
-  total: debtCenter.total === undefined ? undefined : cents(parseInt('' + debtCenter.total)),
+  total:
+    debtCenter.total === undefined
+      ? undefined
+      : cents(parseInt('' + debtCenter.total)),
   url: debtCenter.url,
 });
 
 @Service()
 export class DebtCentersService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => AccountingService)
-    accountingService: AccountingService;
+  accountingService: AccountingService;
 
   getDebtCenters() {
     return this.pg
-      .any<DbDebtCenter>(sql`
+      .any<DbDebtCenter>(
+        sql`
         SELECT
           dc.*,
           COUNT(d.id) as debt_count,
@@ -50,31 +59,42 @@ export class DebtCentersService {
         LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
         WHERE NOT dc.deleted
         GROUP BY dc.id
-      `)
+      `,
+      )
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter));
   }
 
   getDebtCenterByName(name: string) {
     return this.pg
-      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`)
+      .one<DbDebtCenter>(
+        sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`,
+      )
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   }
 
   getDebtCenter(id: string) {
     return this.pg
-      .one<DbDebtCenter>(sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`)
+      .one<DbDebtCenter>(
+        sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`,
+      )
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   }
 
   async createDebtCenter(center: NewDebtCenter) {
-    const isAccountingPeriodOpen = await this.accountingService.isAccountingPeriodOpen(center.accountingPeriod);
+    const isAccountingPeriodOpen =
+      await this.accountingService.isAccountingPeriodOpen(
+        center.accountingPeriod,
+      );
 
     if (!isAccountingPeriodOpen) {
-      throw new Error(`Accounting period ${center.accountingPeriod} is not open.`);
+      throw new Error(
+        `Accounting period ${center.accountingPeriod} is not open.`,
+      );
     }
 
     return this.pg
-      .one<DbDebtCenter>(sql`
+      .one<DbDebtCenter>(
+        sql`
         INSERT INTO debt_center (name, url, description, accounting_period)
         VALUES (
           ${center.name},
@@ -83,13 +103,13 @@ export class DebtCentersService {
           ${center.accountingPeriod}
         )
         RETURNING *
-      `)
-      .then((dbDebtCenter) => dbDebtCenter && formatDebtCenter(dbDebtCenter));
+      `,
+      )
+      .then(dbDebtCenter => dbDebtCenter && formatDebtCenter(dbDebtCenter));
   }
 
   async deleteDebtCenter(id: string) {
-    return await this.pg
-      .one<{ id: string }>(sql`
+    return await this.pg.one<{ id: string }>(sql`
         UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
       `);
   }

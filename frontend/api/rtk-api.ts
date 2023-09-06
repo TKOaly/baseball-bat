@@ -4,7 +4,7 @@ import { fetchBaseQuery } from '@reduxjs/toolkit/query';
 import { pipe } from 'fp-ts/lib/function';
 import sessionSlice from '../session';
 
-const sessionAwareBaseQuery = (baseQuery) => async (args, api, extraOptions) => {
+const sessionAwareBaseQuery = baseQuery => async (args, api, extraOptions) => {
   const result = await baseQuery(args, api, extraOptions);
 
   if (result.meta.response.status === 401) {
@@ -29,5 +29,17 @@ export default createApi({
     sessionAwareBaseQuery,
   ),
   endpoints: () => ({}),
-  tagTypes: ['Debt', 'Email', 'Payment', 'Payer', 'PayerEmail', 'Session', 'BankAccount', 'BankTransaction', 'DebtCenter', 'Report', 'AccountingPeriod'],
+  tagTypes: [
+    'Debt',
+    'Email',
+    'Payment',
+    'Payer',
+    'PayerEmail',
+    'Session',
+    'BankAccount',
+    'BankTransaction',
+    'DebtCenter',
+    'Report',
+    'AccountingPeriod',
+  ],
 });

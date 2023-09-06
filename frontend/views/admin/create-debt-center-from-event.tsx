@@ -1,10 +1,23 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, useMemo, useReducer } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  useMemo,
+  useReducer,
+} from 'react';
 import { produce } from 'immer';
 import { Circle, Search, X } from 'react-feather';
 import { TableView } from '../../components/table-view';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { Stepper } from '../../components/stepper';
-import { DebtComponent, euro, Event, Registration } from '../../../common/types';
+import {
+  DebtComponent,
+  euro,
+  Event,
+  Registration,
+} from '../../../common/types';
 import { TextField } from '../../components/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
 import { addDays, format, isMatch, subYears } from 'date-fns';
@@ -15,11 +28,18 @@ import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
 import { TextareaField } from '../../components/textarea-field';
 import { Formik } from 'formik';
 import { DropdownField } from '../../components/dropdown-field';
-import { Button, DisabledButton, SecondaryButton } from '../../components/button';
+import {
+  Button,
+  DisabledButton,
+  SecondaryButton,
+} from '../../components/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
 import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
-import { QueryArgFrom, ResultTypeFrom } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
+import {
+  QueryArgFrom,
+  ResultTypeFrom,
+} from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
 import { DateField } from '../../components/datetime-field';
 import { useLocation } from 'wouter';
@@ -27,9 +47,9 @@ import { EuroValue, formatEuro, sumEuroValues } from '../../../common/currency';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 
 type EventSelectionViewProps = {
-  state: State
-  dispatch: (action: Action) => void
-}
+  state: State;
+  dispatch: (action: Action) => void;
+};
 
 const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
   const starting = useMemo(() => subYears(new Date(), 1), []);
@@ -41,88 +61,115 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(state.eventIds);
 
-  const handleSelect = (event) => setSelected(prev => {
-    const index = prev.indexOf(event.id);
+  const handleSelect = event =>
+    setSelected(prev => {
+      const index = prev.indexOf(event.id);
 
-    if (index === -1) {
-      return [...prev, event.id];
-    } else {
-      const clone = [...prev];
-      clone.splice(index, 1);
-      return clone;
-    }
-  });
+      if (index === -1) {
+        return [...prev, event.id];
+      } else {
+        const clone = [...prev];
+        clone.splice(index, 1);
+        return clone;
+      }
+    });
 
   return (
     <>
       <div className="flex gap-5 items-center">
         <TextField
           value={search}
-          onChange={(evt) => setSearch(evt.target.value)}
+          onChange={evt => setSearch(evt.target.value)}
           placeholder="Search events"
           iconRight={<Search />}
           className="my-5 flex-grow"
         />
-        {
-          selected.length === 0
-            ? <DisabledButton className="h-[40px] mt-1">Continue</DisabledButton>
-            : <Button
-              className="h-[40px] mt-1"
-              onClick={() => dispatch({
+        {selected.length === 0 ? (
+          <DisabledButton className="h-[40px] mt-1">Continue</DisabledButton>
+        ) : (
+          <Button
+            className="h-[40px] mt-1"
+            onClick={() =>
+              dispatch({
                 type: 'SELECT_EVENTS',
                 payload: { eventIds: selected },
-              })}
-            >Continue</Button>
-        }
+              })
+            }
+          >
+            Continue
+          </Button>
+        )}
       </div>
-      {
-        (events ?? []).filter((e) => search === '' || e.name.toLowerCase().indexOf(search.toLowerCase()) > -1).map((event) => (
+      {(events ?? [])
+        .filter(
+          e =>
+            search === '' ||
+            e.name.toLowerCase().indexOf(search.toLowerCase()) > -1,
+        )
+        .map(event => (
           <div
-            className={`p-3 hover:border-blue-400 cursor-pointer rounded-md bg-white border shadow-sm mt-2 flex items-center ${selected.indexOf(event.id) > -1 && 'border-blue-400'}`}
+            className={`p-3 hover:border-blue-400 cursor-pointer rounded-md bg-white border shadow-sm mt-2 flex items-center ${
+              selected.indexOf(event.id) > -1 && 'border-blue-400'
+            }`}
             onClick={() => handleSelect(event)}
             key={event.id}
           >
-            {
-              selected.indexOf(event.id) === -1
-                ? <Circle className="text-gray-400 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-                : <FilledDisc className="text-blue-500 mr-3" style={{ width: '1em', strokeWidth: '2.5px' }} />
-            }
+            {selected.indexOf(event.id) === -1 ? (
+              <Circle
+                className="text-gray-400 mr-3"
+                style={{ width: '1em', strokeWidth: '2.5px' }}
+              />
+            ) : (
+              <FilledDisc
+                className="text-blue-500 mr-3"
+                style={{ width: '1em', strokeWidth: '2.5px' }}
+              />
+            )}
             <h3 className="">{event.name}</h3>
             <div className="flex-grow" />
             <span>{format(new Date(event.starts), 'dd.MM.yyyy')}</span>
           </div>
-        ))
-      }
+        ))}
     </>
   );
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any> ? D : never
+type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any>
+  ? D
+  : never;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E): (params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => ResultTypeFrom<EndpointDefinitionFrom<E>>[] | null {
+function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
+  endpoint: E,
+): (
+  params: QueryArgFrom<EndpointDefinitionFrom<E>>[],
+) => ResultTypeFrom<EndpointDefinitionFrom<E>>[] | null {
   const selectMultipleCustomFieldQueries = createSelector(
     [
       (state: RootState) => state,
-      (_state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params,
+      (_state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) =>
+        params,
     ],
-    (state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) => params.map((param) => endpoint.select(param)(state)),
+    (state: RootState, params: QueryArgFrom<EndpointDefinitionFrom<E>>[]) =>
+      params.map(param => endpoint.select(param)(state)),
   );
 
-  return (params) => {
+  return params => {
     const [results, setResults] = useState(null);
 
     const dispatch = useAppDispatch();
 
     useEffect(() => {
-      params.forEach((param) => {
+      params.forEach(param => {
         const result = dispatch(endpoint.initiate(param));
         result.unsubscribe();
       });
     }, [params]);
 
-    const queries = useAppSelector((state) => selectMultipleCustomFieldQueries(state, params));
+    const queries = useAppSelector(state =>
+      selectMultipleCustomFieldQueries(state, params),
+    );
 
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
@@ -134,8 +181,12 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(endpoint: E)
   };
 }
 
-const useFetchEventCustomFields = createMultiFetchHook(eventsApi.endpoints.getEventCustomFields);
-const useFetchEventRegistrations = createMultiFetchHook(eventsApi.endpoints.getEventRegistrations);
+const useFetchEventCustomFields = createMultiFetchHook(
+  eventsApi.endpoints.getEventCustomFields,
+);
+const useFetchEventRegistrations = createMultiFetchHook(
+  eventsApi.endpoints.getEventRegistrations,
+);
 
 const Modal = ({ open, onClose, children }) => {
   return (
@@ -156,7 +207,8 @@ const Modal = ({ open, onClose, children }) => {
           inset: 'initial',
           borderRadius: '0.375rem',
           borderColor: 'rgb(229, 231, 235)',
-          boxShadow: 'rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px',
+          boxShadow:
+            'rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px',
           overflow: 'initial',
         },
       }}
@@ -200,7 +252,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
     }
   };
 
-  const handleSubmit = (values) => {
+  const handleSubmit = values => {
     if (promiseRef.current) {
       promiseRef.current[0](values);
       promiseRef.current = null;
@@ -217,7 +269,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
           customFieldId: null,
           value: null,
         }}
-        validate={(values) => {
+        validate={values => {
           const errors: Record<string, string> = {};
 
           if (values.eventId === null) {
@@ -240,7 +292,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
                 label="Event"
                 name="eventId"
                 component={DropdownField}
-                options={events.map((event) => ({
+                options={events.map(event => ({
                   value: event.id,
                   text: event.name,
                 }))}
@@ -249,7 +301,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
                 label="Question"
                 name="customFieldId"
                 component={DropdownField}
-                options={(fields.get(values.eventId) ?? []).map((field) => ({
+                options={(fields.get(values.eventId) ?? []).map(field => ({
                   value: field.id,
                   text: field.name,
                 }))}
@@ -258,7 +310,11 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
                 label="Answer"
                 name="value"
                 component={DropdownField}
-                options={((fields.get(values.eventId) ?? []).find(f => f.id === values.customFieldId)?.options ?? []).map((option) => ({
+                options={(
+                  (fields.get(values.eventId) ?? []).find(
+                    f => f.id === values.customFieldId,
+                  )?.options ?? []
+                ).map(option => ({
                   value: option,
                   text: option,
                 }))}
@@ -274,9 +330,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
               >
                 Cancel
               </SecondaryButton>
-              <Button onClick={() => submitForm()}>
-                Create
-              </Button>
+              <Button onClick={() => submitForm()}>Create</Button>
             </div>
           </>
         )}
@@ -288,30 +342,44 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
 PricingRuleModal.displayName = 'PricingRuleModal';
 
 type Settings = {
-  name: string,
-  basePrice: number,
-  description: string,
-  dueDate: string,
+  name: string;
+  basePrice: number;
+  description: string;
+  dueDate: string;
   componentMappings: Array<{
-    name: string,
-    price: number,
+    name: string;
+    price: number;
     rules: Array<{
-      event: number,
-      question: number,
-      value: string,
-    }>,
-  }>,
-}
+      event: number;
+      question: number;
+      value: string;
+    }>;
+  }>;
+};
 
-const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Action) => void }) => {
+const SettingsView = ({
+  state,
+  dispatch,
+}: {
+  state: State;
+  dispatch: (action: Action) => void;
+}) => {
   const starting = useMemo(() => subYears(new Date(), 1), []);
   const { data: allEvents } = useGetEventsQuery({ starting });
-  const events = useMemo(() => (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1), [state.eventIds, allEvents]);
+  const events = useMemo(
+    () =>
+      (allEvents ?? []).filter(event => state.eventIds.indexOf(event.id) > -1),
+    [state.eventIds, allEvents],
+  );
   const eventCustomFieldsArray = useFetchEventCustomFields(state.eventIds);
-  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const activeAccountingPeriod = useAppSelector(
+    state => state.accountingPeriod.activePeriod,
+  );
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
 
-  const [initialAccountingPeriod, setInitialAccountingPeriod] = useState<null | number>(null);
+  const [initialAccountingPeriod, setInitialAccountingPeriod] = useState<
+    null | number
+  >(null);
 
   useEffect(() => {
     if (initialAccountingPeriod === null && activeAccountingPeriod !== null) {
@@ -326,9 +394,17 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
 
     return {
       name: state.basicSettings.name ?? events[0].name,
-      basePrice: state.basicSettings.basePrice.value ? state.basicSettings.basePrice.value / 100 : (events[0].price ? events[0].price.value / 100 : 0),
-      description: state.basicSettings.description ?? `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
-      dueDate: state.basicSettings.dueDate ?? format(addDays(new Date(), 31), 'dd.MM.yyyy'),
+      basePrice: state.basicSettings.basePrice.value
+        ? state.basicSettings.basePrice.value / 100
+        : events[0].price
+        ? events[0].price.value / 100
+        : 0,
+      description:
+        state.basicSettings.description ??
+        `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
+      dueDate:
+        state.basicSettings.dueDate ??
+        format(addDays(new Date(), 31), 'dd.MM.yyyy'),
       accountingPeriod: initialAccountingPeriod,
     };
   }, [initialAccountingPeriod, state, events]);
@@ -340,10 +416,9 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
 
     const map = new Map();
 
-    eventCustomFieldsArray
-      .forEach((fields, i) => {
-        map.set(state.eventIds[i], fields);
-      });
+    eventCustomFieldsArray.forEach((fields, i) => {
+      map.set(state.eventIds[i], fields);
+    });
 
     return map;
   }, [eventCustomFieldsArray, state.eventIds]);
@@ -356,11 +431,17 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
 
   return (
     <div className="grid gap-x-5 gap-y-2 grid-cols-4">
-      {eventCustomFields && <PricingRuleModal ref={promptRef} events={events} fields={eventCustomFields} />}
+      {eventCustomFields && (
+        <PricingRuleModal
+          ref={promptRef}
+          events={events}
+          fields={eventCustomFields}
+        />
+      )}
       <Formik
         initialValues={initialValues}
         enableReinitialize
-        validate={(values) => {
+        validate={values => {
           const errors: Partial<Record<keyof Settings, string>> = {};
 
           if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.dueDate)) {
@@ -371,51 +452,43 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
 
           return errors;
         }}
-        onSubmit={(values) => dispatch({
-          type: 'SET_BASIC_SETTINGS',
-          payload: {
-            values: {
-              name: values.name,
-              basePrice: euro(values.basePrice),
-              dueDate: values.dueDate,
-              accountingPeriod: values.accountingPeriod,
+        onSubmit={values =>
+          dispatch({
+            type: 'SET_BASIC_SETTINGS',
+            payload: {
+              values: {
+                name: values.name,
+                basePrice: euro(values.basePrice),
+                dueDate: values.dueDate,
+                accountingPeriod: values.accountingPeriod,
+              },
             },
-          },
-        })}
+          })
+        }
       >
         {({ submitForm }) => (
           <>
             <div className="col-span-full border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
               Common information
             </div>
-            <InputGroup
-              label="Name"
-              name="name"
-              component={TextField}
-            />
+            <InputGroup label="Name" name="name" component={TextField} />
             <InputGroup
               label="Base price"
               name="basePrice"
               component={EuroField}
             />
-            <InputGroup
-              label="Due Date"
-              name="dueDate"
-              component={DateField}
-            />
-            { accountingPeriods?.length > 1 && (
+            <InputGroup label="Due Date" name="dueDate" component={DateField} />
+            {accountingPeriods?.length > 1 && (
               <InputGroup
                 label="Accounting Period"
                 name="accountingPeriod"
                 component={DropdownField}
-                options={
-                  (accountingPeriods ?? [])
-                    .filter((period) => !period.closed)
-                    .map((period) => ({
-                      value: period.year,
-                      text: period.year,
-                    }))
-                }
+                options={(accountingPeriods ?? [])
+                  .filter(period => !period.closed)
+                  .map(period => ({
+                    value: period.year,
+                    text: period.year,
+                  }))}
               />
             )}
             <InputGroup
@@ -428,72 +501,107 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
               Answer specific pricing
             </div>
             <div className="col-span-full">
-              {state.components.map(({ id: componentId, name, amount, rules }) => (
-                <div className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex" key={componentId}>
-                  <StandaloneInputGroup
-                    label="Name"
-                    component={TextField}
-                    value={name}
-                    onChange={(evt) => dispatch({
-                      type: 'UPDATE_COMPONENT',
-                      payload: {
-                        id: componentId,
-                        values: {
-                          name: evt.target.value,
-                        },
-                      },
-                    })}
-                  />
-                  <StandaloneInputGroup
-                    label="Price"
-                    component={EuroField}
-                    value={amount.value / 100}
-                    onChange={(evt) => dispatch({
-                      type: 'UPDATE_COMPONENT',
-                      payload: {
-                        id: componentId,
-                        values: {
-                          amount: euro(evt.target.value),
-                        },
-                      },
-                    })}
-                  />
-                  <div className="col-span-full">
-                    {rules.map(({ id: ruleId, type, eventId, customFieldId, value }) => {
-                      if (type === 'CUSTOM_FIELD') {
-                        return (
-                          <div className="flex items-center border-b last:border-0 py-2 px-3" key={ruleId}>
-                            <Breadcrumbs
-                              segments={[
-                                '' + events.find(e => e.id === eventId)?.name,
-                                '' + eventCustomFields.get(eventId).find(f => f.id === customFieldId).name,
-                                '' + value,
-                              ]}
-                            />
-                            <div className="flex-grow" />
-                            <button
-                              onClick={() => dispatch({
-                                type: 'REMOVE_COMPONENT_RULE',
-                                payload: {
-                                  componentId,
-                                  ruleId,
-                                },
-                              })}
-                              className="text-gray-500"
-                            >
-                              <X />
-                            </button>
-                          </div>
-                        );
+              {state.components.map(
+                ({ id: componentId, name, amount, rules }) => (
+                  <div
+                    className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex"
+                    key={componentId}
+                  >
+                    <StandaloneInputGroup
+                      label="Name"
+                      component={TextField}
+                      value={name}
+                      onChange={evt =>
+                        dispatch({
+                          type: 'UPDATE_COMPONENT',
+                          payload: {
+                            id: componentId,
+                            values: {
+                              name: evt.target.value,
+                            },
+                          },
+                        })
                       }
-                    })}
-                    <Button
-                      onClick={() => promptRef.current?.prompt?.().then((rule) => dispatch({ type: 'ADD_COMPONENT_RULE', payload: { componentId, rule: { ...rule, type: 'CUSTOM_FIELD' } } }))}
-                      className="mb-3"
-                    >
-                      Add rule
-                    </Button>
-                    {/*<FieldArray name={`componentMappings.${i}.rules`}>
+                    />
+                    <StandaloneInputGroup
+                      label="Price"
+                      component={EuroField}
+                      value={amount.value / 100}
+                      onChange={evt =>
+                        dispatch({
+                          type: 'UPDATE_COMPONENT',
+                          payload: {
+                            id: componentId,
+                            values: {
+                              amount: euro(evt.target.value),
+                            },
+                          },
+                        })
+                      }
+                    />
+                    <div className="col-span-full">
+                      {rules.map(
+                        ({
+                          id: ruleId,
+                          type,
+                          eventId,
+                          customFieldId,
+                          value,
+                        }) => {
+                          if (type === 'CUSTOM_FIELD') {
+                            return (
+                              <div
+                                className="flex items-center border-b last:border-0 py-2 px-3"
+                                key={ruleId}
+                              >
+                                <Breadcrumbs
+                                  segments={[
+                                    '' +
+                                      events.find(e => e.id === eventId)?.name,
+                                    '' +
+                                      eventCustomFields
+                                        .get(eventId)
+                                        .find(f => f.id === customFieldId).name,
+                                    '' + value,
+                                  ]}
+                                />
+                                <div className="flex-grow" />
+                                <button
+                                  onClick={() =>
+                                    dispatch({
+                                      type: 'REMOVE_COMPONENT_RULE',
+                                      payload: {
+                                        componentId,
+                                        ruleId,
+                                      },
+                                    })
+                                  }
+                                  className="text-gray-500"
+                                >
+                                  <X />
+                                </button>
+                              </div>
+                            );
+                          }
+                        },
+                      )}
+                      <Button
+                        onClick={() =>
+                          promptRef.current?.prompt?.().then(rule =>
+                            dispatch({
+                              type: 'ADD_COMPONENT_RULE',
+                              payload: {
+                                componentId,
+                                rule: { ...rule, type: 'CUSTOM_FIELD' },
+                              },
+                            }),
+                          )
+                        }
+                        className="mb-3"
+                      >
+                        Add rule
+                      </Button>
+                      {/*<FieldArray name={`componentMappings.${i}.rules`}>
                       {(tools) => <>
                         {mapping.rules.length > 0 && (
                           <div className="border mb-3 rounded-md shadow-sm">
@@ -509,16 +617,27 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
                         </Button>
                       </>}
                     </FieldArray>*/}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
               <Button
-                onClick={() => dispatch({ type: 'ADD_COMPONENT', payload: { name: '', amount: euro(0) } })}
+                onClick={() =>
+                  dispatch({
+                    type: 'ADD_COMPONENT',
+                    payload: { name: '', amount: euro(0) },
+                  })
+                }
               >
                 Create component mapping
               </Button>
               <div className="flex justify-end gap-3">
-                <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
+                <Button
+                  secondary
+                  onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}
+                >
+                  Back
+                </Button>
                 <Button onClick={submitForm}>Continue</Button>
               </div>
             </div>
@@ -529,8 +648,14 @@ const SettingsView = ({ state, dispatch }: { state: State, dispatch: (action: Ac
   );
 };
 
-const evaluateRules = (state: State, event: Event, registration: Registration): Array<EvaluatedDebtComponent> => {
-  const components = [{ name: 'Base Price', id: -1, amount: state.basicSettings.basePrice }];
+const evaluateRules = (
+  state: State,
+  event: Event,
+  registration: Registration,
+): Array<EvaluatedDebtComponent> => {
+  const components = [
+    { name: 'Base Price', id: -1, amount: state.basicSettings.basePrice },
+  ];
 
   for (const { id, name, amount, rules } of state.components) {
     for (const rule of rules) {
@@ -539,7 +664,9 @@ const evaluateRules = (state: State, event: Event, registration: Registration): 
 
         if (event.id !== eventId) continue;
 
-        const answer = registration.answers.find(q => q.question_id === customFieldId);
+        const answer = registration.answers.find(
+          q => q.question_id === customFieldId,
+        );
 
         if (!answer) continue;
 
@@ -557,72 +684,99 @@ const evaluateRules = (state: State, event: Event, registration: Registration): 
   return components;
 };
 
-type EvaluatedDebtComponent = Pick<DebtComponent, 'name' | 'amount'> & { id: number };
-type EvaluatedRegistration = Registration & { components: Array<EvaluatedDebtComponent>, event: Event, queue: boolean } ;
+type EvaluatedDebtComponent = Pick<DebtComponent, 'name' | 'amount'> & {
+  id: number;
+};
+type EvaluatedRegistration = Registration & {
+  components: Array<EvaluatedDebtComponent>;
+  event: Event;
+  queue: boolean;
+};
 
 type RegistrationTableProps = {
-  registrations: Array<EvaluatedRegistration>,
-  onSwap: (registrations: Array<EvaluatedRegistration>) => void,
-  emptyMessage?: string | JSX.Element
-  actionLabel: string
-}
+  registrations: Array<EvaluatedRegistration>;
+  onSwap: (registrations: Array<EvaluatedRegistration>) => void;
+  emptyMessage?: string | JSX.Element;
+  actionLabel: string;
+};
 
 type CustomFieldAnswer = Registration['answers'][0];
 
 const QuestionBadge = ({ question }: { question: CustomFieldAnswer }) => (
   <div className="flex">
-    <span className="py-0.5 max-w-[7em] overflow-hidden text-ellipsis whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">{question.question}</span>
-    <span className="py-0.5 whitespace-wrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{question.answer}</span>
+    <span className="py-0.5 max-w-[7em] overflow-hidden text-ellipsis whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">
+      {question.question}
+    </span>
+    <span className="py-0.5 whitespace-wrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">
+      {question.answer}
+    </span>
   </div>
 );
 
-const ComponentBadge = ({ component }: { component: EvaluatedDebtComponent }) => (
-  <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">{component.name} ({formatEuro(component.amount)})</span>
+const ComponentBadge = ({
+  component,
+}: {
+  component: EvaluatedDebtComponent;
+}) => (
+  <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">
+    {component.name} ({formatEuro(component.amount)})
+  </span>
 );
 
-const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, onSwap, emptyMessage, actionLabel }) => {
+const RegistrationTable: React.FC<RegistrationTableProps> = ({
+  registrations,
+  onSwap,
+  emptyMessage,
+  actionLabel,
+}) => {
   return (
     <TableView
       selectable
-      rows={registrations.map((r) => ({ ...r, key: r.id }))}
+      rows={registrations.map(r => ({ ...r, key: r.id }))}
       emptyMessage={emptyMessage}
       actions={[
         {
           key: 'swap',
           text: actionLabel,
-          onSelect: (r) => onSwap(r),
+          onSelect: r => onSwap(r),
         },
       ]}
       columns={[
         {
           name: 'Participant',
-          getValue: (registration): string => registration.name, 
-          render: (value) => value,
+          getValue: (registration): string => registration.name,
+          render: value => value,
         },
         {
           name: 'Event',
-          getValue: (registration) => registration.event.name, 
+          getValue: registration => registration.event.name,
         },
         {
           name: 'Answers',
-          getValue: (r) => r.answers.filter((answer) => answer.answer !== ''),
-          compareBy: (value) => `${value.question_id}:${value.answer}`,
-          render: (value) => (
+          getValue: r => r.answers.filter(answer => answer.answer !== ''),
+          compareBy: value => `${value.question_id}:${value.answer}`,
+          render: value => (
             <div className="flex flex-col gap-0.5">
-              {value.map((question) => <QuestionBadge key={question.question_id} question={question} />)}
+              {value.map(question => (
+                <QuestionBadge key={question.question_id} question={question} />
+              ))}
             </div>
           ),
         },
         {
           name: 'Components',
-          getValue: (r) => r.components,
-          compareBy: (value) => value.name,
-          render: (value) => value.map((component) => <ComponentBadge key={component.name} component={component} />),
+          getValue: r => r.components,
+          compareBy: value => value.name,
+          render: value =>
+            value.map(component => (
+              <ComponentBadge key={component.name} component={component} />
+            )),
         },
         {
           name: 'Total',
-          getValue: (r) => r.components.map((c) => c.amount).reduce(sumEuroValues, euro(0)),
-          compareBy: (v) => v.value,
+          getValue: r =>
+            r.components.map(c => c.amount).reduce(sumEuroValues, euro(0)),
+          compareBy: v => v.value,
           render: formatEuro,
         },
       ]}
@@ -631,22 +785,31 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({ registrations, on
 };
 
 type ParticipantsViewProps = {
-  state: State,
-  dispatch: React.Dispatch<Action>,
-  queue: EvaluatedRegistration[],
-  participants: EvaluatedRegistration[],
-}
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  queue: EvaluatedRegistration[];
+  participants: EvaluatedRegistration[];
+};
 
-const ParticipantsView: React.FC<ParticipantsViewProps> = ({ state, dispatch, queue, participants }) => {
-  const swapRegistration = (selection: 'queue' | 'participant') => (registrations: EvaluatedRegistration[]) => {
-    registrations.forEach(({ id }) => dispatch({
-      type: 'SET_REGISTRATION_SELECTION',
-      payload: {
-        registrationId: id,
-        selection,
-      },
-    }));
-  };
+const ParticipantsView: React.FC<ParticipantsViewProps> = ({
+  state,
+  dispatch,
+  queue,
+  participants,
+}) => {
+  const swapRegistration =
+    (selection: 'queue' | 'participant') =>
+    (registrations: EvaluatedRegistration[]) => {
+      registrations.forEach(({ id }) =>
+        dispatch({
+          type: 'SET_REGISTRATION_SELECTION',
+          payload: {
+            registrationId: id,
+            selection,
+          },
+        }),
+      );
+    };
 
   console.log(state);
 
@@ -654,59 +817,85 @@ const ParticipantsView: React.FC<ParticipantsViewProps> = ({ state, dispatch, qu
     <div className="pt-3">
       <div className="flex items-center mt-10 mb-5">
         <div className="h-[1px] w-3 bg-gray-300" />
-        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">Participants</div>
+        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">
+          Participants
+        </div>
         <div className="h-[1px] bg-gray-300 flex-grow" />
       </div>
       <p className="mt-5 mb-7 px-3">
-        Below are listed the registrations for the users who fit into the event&apos;s participant quota.
-        A debt will be created for each of these users. You can move participants from this list to the queue below
-        if they should not be charged for the event.
+        Below are listed the registrations for the users who fit into the
+        event&apos;s participant quota. A debt will be created for each of these
+        users. You can move participants from this list to the queue below if
+        they should not be charged for the event.
       </p>
       <RegistrationTable
         registrations={participants}
         onSwap={swapRegistration('queue')}
-        emptyMessage={<>
-          None of the selected events include any registrations! <br/> <br/>
-          If you want to import registrations from an external source, such as
-          Google Sheets, use the <strong>CSV import</strong> feature.
-        </>}
+        emptyMessage={
+          <>
+            None of the selected events include any registrations! <br /> <br />
+            If you want to import registrations from an external source, such as
+            Google Sheets, use the <strong>CSV import</strong> feature.
+          </>
+        }
         actionLabel="Move to queue"
       />
       <div className="flex items-center mt-10 mb-5">
         <div className="h-[1px] w-3 bg-gray-300" />
-        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">Queue</div>
+        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">
+          Queue
+        </div>
         <div className="h-[1px] bg-gray-300 flex-grow" />
       </div>
       <p className="mt-5 mb-7 px-3">
-        Below is a list of users who have registered to the event but will not be charged.
-        Initially this list contains users in the registration queue.
+        Below is a list of users who have registered to the event but will not
+        be charged. Initially this list contains users in the registration
+        queue.
       </p>
       <RegistrationTable
         registrations={queue}
         onSwap={swapRegistration('participant')}
-        emptyMessage={<>
-          There is nobody in the queue! You can move people here from the above
-          list by selecting rows and selecting the <strong>Move to queue</strong> action
-          from the context menu.
-        </>}
+        emptyMessage={
+          <>
+            There is nobody in the queue! You can move people here from the
+            above list by selecting rows and selecting the{' '}
+            <strong>Move to queue</strong> action from the context menu.
+          </>
+        }
         actionLabel="Move to participants"
       />
       <div className="flex gap-3 justify-end">
-        <Button secondary className="mt-5 inline-block" onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
-        <Button className="mt-5 inline-block" onClick={() => dispatch({ type: 'GO_TO_CONFIRMATION' })}>Continue</Button>
+        <Button
+          secondary
+          className="mt-5 inline-block"
+          onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}
+        >
+          Back
+        </Button>
+        <Button
+          className="mt-5 inline-block"
+          onClick={() => dispatch({ type: 'GO_TO_CONFIRMATION' })}
+        >
+          Continue
+        </Button>
       </div>
     </div>
   );
 };
 
 type ConfirmationViewProps = {
-  participants: EvaluatedRegistration[],
-  dispatch: React.Dispatch<Action>,
-  state: State,
-  onConfirm: () => void,
+  participants: EvaluatedRegistration[];
+  dispatch: React.Dispatch<Action>;
+  state: State;
+  onConfirm: () => void;
 };
 
-const ConfirmationView: React.FC<ConfirmationViewProps> = ({ participants, state, dispatch, onConfirm }) => {
+const ConfirmationView: React.FC<ConfirmationViewProps> = ({
+  participants,
+  state,
+  dispatch,
+  onConfirm,
+}) => {
   const componentStats = participants
     .flatMap(p => p.components)
     .reduce((acc, { id, name, amount }) => {
@@ -732,34 +921,43 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({ participants, state
   return (
     <div className="pt-3">
       <p className="mb-5">
-        Creating {participants.length} debts named &quot;{state.basicSettings.name}&quot; with a total value of {formatEuro(participants.flatMap(p => p.components).map(c => c.amount).reduce(sumEuroValues, euro(0)))}. 
-        The debts will be due at {state.basicSettings.dueDate}.
+        Creating {participants.length} debts named &quot;
+        {state.basicSettings.name}&quot; with a total value of{' '}
+        {formatEuro(
+          participants
+            .flatMap(p => p.components)
+            .map(c => c.amount)
+            .reduce(sumEuroValues, euro(0)),
+        )}
+        . The debts will be due at {state.basicSettings.dueDate}.
       </p>
       <TableView
         rows={componentStats}
         columns={[
           {
             name: 'Component',
-            getValue: (row) => row.name,
+            getValue: row => row.name,
           },
           {
             name: 'Price',
-            getValue: (row) => row.price,
+            getValue: row => row.price,
             render: formatEuro,
           },
           {
             name: 'Count',
-            getValue: (row) => row.count,
+            getValue: row => row.count,
           },
           {
             name: 'Total',
-            getValue: (row) => row.amount,
+            getValue: row => row.amount,
             render: formatEuro,
           },
         ]}
       />
       <div className="flex justify-end gap-3 mt-5">
-        <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>Back</Button>
+        <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>
+          Back
+        </Button>
         <Button onClick={() => onConfirm()}>Create Debts</Button>
       </div>
     </div>
@@ -767,24 +965,24 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({ participants, state
 };
 
 type State = {
-  step: 'select-events' | 'settings' | 'registrations' | 'confirm'
-  eventIds: number[]
+  step: 'select-events' | 'settings' | 'registrations' | 'confirm';
+  eventIds: number[];
   basicSettings: {
-    name: string
-    dueDate: string
-    description: string
-    basePrice: EuroValue
-  }
+    name: string;
+    dueDate: string;
+    description: string;
+    basePrice: EuroValue;
+  };
   components: {
-    id: number
-    name: string
-    amount: EuroValue
-    rules: ComponentRule[],
-  }[]
+    id: number;
+    name: string;
+    amount: EuroValue;
+    rules: ComponentRule[];
+  }[];
   registrationSelections: {
-    registrationId: number,
-    selection: 'participant' | 'queue',
-  }[],
+    registrationId: number;
+    selection: 'participant' | 'queue';
+  }[];
 };
 
 const INITIAL_STATE: State = {
@@ -801,95 +999,107 @@ const INITIAL_STATE: State = {
 };
 
 type SetRegistrationSelectionAction = {
-  type: 'SET_REGISTRATION_SELECTION',
+  type: 'SET_REGISTRATION_SELECTION';
   payload: {
-    registrationId: number,
-    selection: 'queue' | 'participant',
-  },
+    registrationId: number;
+    selection: 'queue' | 'participant';
+  };
 };
 
 type SelectEventsAction = {
-  type: 'SELECT_EVENTS',
+  type: 'SELECT_EVENTS';
   payload: {
-    eventIds: number[],
-  },
+    eventIds: number[];
+  };
 };
 
 type BasicSettings = {
-  name: string,
-  dueDate: string,
-  basePrice: EuroValue,
-  accountingPeriod: number,
+  name: string;
+  dueDate: string;
+  basePrice: EuroValue;
+  accountingPeriod: number;
 };
 
 type SetBasicSettingsAction = {
-  type: 'SET_BASIC_SETTINGS',
+  type: 'SET_BASIC_SETTINGS';
   payload: {
-    values: Partial<BasicSettings>,
-  },
+    values: Partial<BasicSettings>;
+  };
 };
 
 type AddComponentAction = {
-  type: 'ADD_COMPONENT', 
+  type: 'ADD_COMPONENT';
   payload: {
-    name: string,
-    amount: EuroValue,
-  },
+    name: string;
+    amount: EuroValue;
+  };
 };
 
 type RemoveComponentAction = {
-  type: 'REMOVE_COMPONENT',
+  type: 'REMOVE_COMPONENT';
   payload: {
-    id: number,
-  },
+    id: number;
+  };
 };
 
 type CustomFieldRule = {
-  type: 'CUSTOM_FIELD',
-  id: number
-  eventId: number,
-  customFieldId: number,
-  value: string,
+  type: 'CUSTOM_FIELD';
+  id: number;
+  eventId: number;
+  customFieldId: number;
+  value: string;
 };
 
 type ComponentRule = CustomFieldRule;
 
 type AddComponentRule = {
-  type: 'ADD_COMPONENT_RULE',
+  type: 'ADD_COMPONENT_RULE';
   payload: {
-    componentId: number,
-    rule: Omit<ComponentRule, 'id'>,
-  },
+    componentId: number;
+    rule: Omit<ComponentRule, 'id'>;
+  };
 };
 
 type RemoveComponentRule = {
-  type: 'REMOVE_COMPONENT_RULE',
+  type: 'REMOVE_COMPONENT_RULE';
   payload: {
-    componentId: number,
-    ruleId: number,
-  },
+    componentId: number;
+    ruleId: number;
+  };
 };
 
 type PreviousStep = {
-  type: 'PREVIOUS_STEP',
+  type: 'PREVIOUS_STEP';
 };
 
 type UpdateComponent = {
-  type: 'UPDATE_COMPONENT',
+  type: 'UPDATE_COMPONENT';
   payload: {
-    id: number,
-    values: Partial<{ name: string, amount: EuroValue }>,
-  },
+    id: number;
+    values: Partial<{ name: string; amount: EuroValue }>;
+  };
 };
 
 type GoToConfirmationAction = {
-  type: 'GO_TO_CONFIRMATION',
+  type: 'GO_TO_CONFIRMATION';
 };
 
-type Action = SelectEventsAction | SetBasicSettingsAction | AddComponentAction | RemoveComponentAction | AddComponentRule | RemoveComponentRule | PreviousStep | UpdateComponent | SetRegistrationSelectionAction | GoToConfirmationAction;
+type Action =
+  | SelectEventsAction
+  | SetBasicSettingsAction
+  | AddComponentAction
+  | RemoveComponentAction
+  | AddComponentRule
+  | RemoveComponentRule
+  | PreviousStep
+  | UpdateComponent
+  | SetRegistrationSelectionAction
+  | GoToConfirmationAction;
 
-type ActionMap = { [Key in Action['type']]: Action & { type: Key } }
-type ActionHandlers = { [Key in keyof ActionMap]: (payload: ActionMap[Key]['payload']) => void }
+type ActionMap = { [Key in Action['type']]: Action & { type: Key } };
+type ActionHandlers = {
+  [Key in keyof ActionMap]: (payload: ActionMap[Key]['payload']) => void;
+};
 
 const createReducer = () => {
   let counter = 0;
@@ -898,17 +1108,17 @@ const createReducer = () => {
     console.log('ACTION', action);
 
     const handlers: ActionHandlers = {
-      SELECT_EVENTS ({ eventIds }) {
+      SELECT_EVENTS({ eventIds }) {
         state.eventIds = eventIds;
         state.step = 'settings';
       },
 
-      SET_BASIC_SETTINGS ({ values }) {
+      SET_BASIC_SETTINGS({ values }) {
         Object.assign(state.basicSettings, values);
         state.step = 'registrations';
       },
 
-      ADD_COMPONENT ({ name, amount }) {
+      ADD_COMPONENT({ name, amount }) {
         state.components.push({
           name,
           id: counter++,
@@ -917,21 +1127,27 @@ const createReducer = () => {
         });
       },
 
-      UPDATE_COMPONENT ({ id, values }) {
-        const component = state.components.find((component) => component.id === id);
+      UPDATE_COMPONENT({ id, values }) {
+        const component = state.components.find(
+          component => component.id === id,
+        );
 
         if (component) {
           Object.assign(component, values);
         }
       },
 
-      REMOVE_COMPONENT ({ id }) {
-        const index = state.components.findIndex(component => component.id === id);
+      REMOVE_COMPONENT({ id }) {
+        const index = state.components.findIndex(
+          component => component.id === id,
+        );
         state.components.splice(index, 1);
       },
 
-      ADD_COMPONENT_RULE ({ componentId, rule }) {
-        const component = state.components.find(component => component.id === componentId);
+      ADD_COMPONENT_RULE({ componentId, rule }) {
+        const component = state.components.find(
+          component => component.id === componentId,
+        );
 
         if (component) {
           component.rules.push({
@@ -941,8 +1157,10 @@ const createReducer = () => {
         }
       },
 
-      REMOVE_COMPONENT_RULE ({ componentId, ruleId }) {
-        const component = state.components.find(component => component.id === componentId);
+      REMOVE_COMPONENT_RULE({ componentId, ruleId }) {
+        const component = state.components.find(
+          component => component.id === componentId,
+        );
 
         if (!component) {
           return;
@@ -955,13 +1173,20 @@ const createReducer = () => {
         }
       },
 
-      PREVIOUS_STEP () {
-        const sequence: readonly State['step'][] = ['select-events', 'settings', 'registrations', 'confirm'] as const;
+      PREVIOUS_STEP() {
+        const sequence: readonly State['step'][] = [
+          'select-events',
+          'settings',
+          'registrations',
+          'confirm',
+        ] as const;
         state.step = sequence[Math.max(0, sequence.indexOf(state.step) - 1)];
       },
 
-      SET_REGISTRATION_SELECTION ({ registrationId, selection }) {
-        const existing = state.registrationSelections.find((selection) => selection.registrationId === registrationId);
+      SET_REGISTRATION_SELECTION({ registrationId, selection }) {
+        const existing = state.registrationSelections.find(
+          selection => selection.registrationId === registrationId,
+        );
 
         if (existing) {
           existing.selection = selection;
@@ -973,7 +1198,7 @@ const createReducer = () => {
         }
       },
 
-      GO_TO_CONFIRMATION () {
+      GO_TO_CONFIRMATION() {
         state.step = 'confirm';
       },
     };
@@ -997,7 +1222,10 @@ export const CreateDebtCenterFromEvent = () => {
   const registrations = useFetchEventRegistrations(state.eventIds);
   const starting = useMemo(() => subYears(new Date(), 1), []);
   const { data: allEvents } = useGetEventsQuery({ starting });
-  const events = useMemo(() => state.eventIds.map((id) => (allEvents ?? []).find(e => e.id === id)), [state.eventIds, allEvents]);
+  const events = useMemo(
+    () => state.eventIds.map(id => (allEvents ?? []).find(e => e.id === id)),
+    [state.eventIds, allEvents],
+  );
 
   // console.log(state.eventIds, allEvents);
 
@@ -1008,34 +1236,43 @@ export const CreateDebtCenterFromEvent = () => {
       return [[], []];
     }
 
-    const evaluatedRegistrations = (registrations ?? [])
-      .flatMap((eventRegistrations, eventIndex) => {
+    const evaluatedRegistrations = (registrations ?? []).flatMap(
+      (eventRegistrations, eventIndex) => {
         const event = events[eventIndex];
         console.log(eventIndex, event);
 
-        const registrations = eventRegistrations.map((registration) => {
+        const registrations = eventRegistrations.map(registration => {
           const components = evaluateRules(state, event, registration);
 
-          return { ...registration, event, components, key: registration.id, queue: false } as EvaluatedRegistration;
+          return {
+            ...registration,
+            event,
+            components,
+            key: registration.id,
+            queue: false,
+          } as EvaluatedRegistration;
         });
 
         const participants = registrations
           .slice(0, event.maxParticipants)
-          .map((r) => ({ ...r, queue: false }));
+          .map(r => ({ ...r, queue: false }));
 
         const queue = registrations
           .slice(event.maxParticipants)
-          .map((r) => ({ ...r, queue: true }));
+          .map(r => ({ ...r, queue: true }));
 
         const all = [...participants, ...queue];
 
-        return all.map((reg) => {
-          const override = state.registrationSelections.find(s => s.registrationId === reg.id);
+        return all.map(reg => {
+          const override = state.registrationSelections.find(
+            s => s.registrationId === reg.id,
+          );
           const queue = override ? override.selection === 'queue' : reg.queue;
 
           return { ...reg, queue };
         });
-      });
+      },
+    );
 
     const participants = evaluatedRegistrations.filter(r => !r.queue);
     const queue = evaluatedRegistrations.filter(r => r.queue);
@@ -1058,7 +1295,6 @@ export const CreateDebtCenterFromEvent = () => {
     });
   };
 
-
   let content = null;
 
   if (state.step === 'select-events') {
@@ -1066,9 +1302,23 @@ export const CreateDebtCenterFromEvent = () => {
   } else if (state.step === 'settings') {
     content = <SettingsView state={state} dispatch={dispatch} />;
   } else if (state.step === 'registrations') {
-    content = <ParticipantsView state={state} dispatch={dispatch} participants={participants} queue={queue} />;
+    content = (
+      <ParticipantsView
+        state={state}
+        dispatch={dispatch}
+        participants={participants}
+        queue={queue}
+      />
+    );
   } else if (state.step === 'confirm') {
-    content = <ConfirmationView participants={participants} state={state} dispatch={dispatch} onConfirm={handleConfirm} />;
+    content = (
+      <ConfirmationView
+        participants={participants}
+        state={state}
+        dispatch={dispatch}
+        onConfirm={handleConfirm}
+      />
+    );
   }
 
   return (
@@ -1082,12 +1332,18 @@ export const CreateDebtCenterFromEvent = () => {
         />
       </h1>
       <p className="mb-10">
-        Create a new debt center and debts corresponding to a calendar event and it{'\''}s registrations.
+        Create a new debt center and debts corresponding to a calendar event and
+        it{"'"}s registrations.
       </p>
       <div className="mx-auto w-[30em]">
         <Stepper
           stages={['Select Events', 'Settings', 'Participants', 'Confirm']}
-          currentStage={['select-events', 'settings', 'registrations', 'confirm'].indexOf(state.step)}
+          currentStage={[
+            'select-events',
+            'settings',
+            'registrations',
+            'confirm',
+          ].indexOf(state.step)}
         />
       </div>
       {content}

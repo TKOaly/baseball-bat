@@ -8,7 +8,12 @@ import { Config } from '../config';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as uuid from 'uuid';
-import { DbReport, InternalIdentity, internalIdentity, Report } from '../../common/types';
+import {
+  DbReport,
+  InternalIdentity,
+  internalIdentity,
+  Report,
+} from '../../common/types';
 import ejs from 'ejs';
 import { cents, euro, formatEuro, sumEuroValues } from '../../common/currency';
 import * as datefns from 'date-fns';
@@ -17,25 +22,27 @@ import { PaymentService } from './payements';
 import { isRight } from 'fp-ts/lib/Either';
 
 export type CreateReportOptions = {
-  template: string
-  name: string
-  payload: unknown
-  options: unknown
-  scale?: number
-  parent?: string
-  generatedBy: InternalIdentity
+  template: string;
+  name: string;
+  payload: unknown;
+  options: unknown;
+  scale?: number;
+  parent?: string;
+  generatedBy: InternalIdentity;
 };
 
 export type SaveReportOptions = {
-  generatedAt?: Date,
-  name: string,
-  options: unknown
-  type: string
-  parent?: string
-  generatedBy: InternalIdentity
+  generatedAt?: Date;
+  name: string;
+  options: unknown;
+  type: string;
+  parent?: string;
+  generatedBy: InternalIdentity;
 };
 
-const formatReport = (db: Omit<DbReport, 'history'>): Omit<Report, 'history'> => ({
+const formatReport = (
+  db: Omit<DbReport, 'history'>,
+): Omit<Report, 'history'> => ({
   id: db.id,
   name: db.name,
   generatedAt: db.generated_at,
@@ -55,16 +62,16 @@ const formatReportWithHistory = (db: DbReport): Report => ({
 @Service()
 export class ReportService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   @Inject(() => DebtService)
-    debtService: DebtService;
+  debtService: DebtService;
 
   @Inject(() => PaymentService)
-    paymentService: PaymentService;
+  paymentService: PaymentService;
 
   _browser: Browser | null = null;
 
@@ -90,7 +97,7 @@ export class ReportService {
 
     // await page.waitForSelector('head style');
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
     await page.addStyleTag({
       content: `
@@ -114,18 +121,25 @@ export class ReportService {
   }
 
   private async loadTemplate(name: string): Promise<string> {
-    const templateBasePath = path.join(this.config.assetPath, 'templates', 'reports');
+    const templateBasePath = path.join(
+      this.config.assetPath,
+      'templates',
+      'reports',
+    );
     const templatePath = path.join(templateBasePath, `${name}.ejs`);
     const content = await fs.promises.readFile(templatePath, 'utf8');
     return content;
   }
 
-  async reserveReport(options: SaveReportOptions): Promise<Omit<Report, 'history'> | null> {
+  async reserveReport(
+    options: SaveReportOptions,
+  ): Promise<Omit<Report, 'history'> | null> {
     const id = uuid.v4();
 
     console.log(options.generatedBy);
-    
-    const report = await this.pg.one<Omit<DbReport, 'history'>>(sql`
+
+    const report = await this.pg.one<Omit<DbReport, 'history'>>(
+      sql`
       INSERT INTO reports (id, name, generated_at, options, type, generated_by, revision)
       VALUES (
         ${id},
@@ -134,19 +148,29 @@ export class ReportService {
         ${options.options},
         ${options.type},
         ${options.generatedBy.value},
-      `.append(options.parent ? sql`(SELECT revision + 1 FROM reports WHERE id = ${options.parent})` : sql`1`).append(sql`
+      `.append(
+        options.parent
+          ? sql`(SELECT revision + 1 FROM reports WHERE id = ${options.parent})`
+          : sql`1`,
+      ).append(sql`
       )
       RETURNING *;
-    `));
+    `),
+    );
 
     if (report && options.parent) {
-      await this.pg.any(sql`UPDATE reports SET superseded_by = ${report.id} WHERE id = ${options.parent}`);
+      await this.pg.any(
+        sql`UPDATE reports SET superseded_by = ${report.id} WHERE id = ${options.parent}`,
+      );
     }
 
     return report && formatReport(report);
   }
 
-  async updateReportStatus(id: string, status: 'finished' | 'failed'): Promise<Omit<Report, 'history'> | null> {
+  async updateReportStatus(
+    id: string,
+    status: 'finished' | 'failed',
+  ): Promise<Omit<Report, 'history'> | null> {
     const report = await this.pg.one<Omit<DbReport, 'history'>>(sql`
       UPDATE reports
       SET status = ${status}
@@ -173,7 +197,9 @@ export class ReportService {
     });
   }
 
-  async createReport(options: CreateReportOptions): Promise<Omit<Report, 'history'> | null> {
+  async createReport(
+    options: CreateReportOptions,
+  ): Promise<Omit<Report, 'history'> | null> {
     const template = await this.loadTemplate(options.template);
     const generatedAt = new Date();
 
@@ -282,8 +308,8 @@ export class ReportService {
           t.literal('exclude'),
           t.literal('only-drafts'),
         ]),
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
+        groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+        centers: t.union([t.null, t.array(t.string)]),
       });
 
       const result = optionsType.decode(report.options);
@@ -291,13 +317,17 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.debtService.generateDebtLedger({
-          startDate: new Date(options.startDate),
-          endDate: new Date(options.endDate),
-          centers: options.centers,
-          groupBy: options.groupBy,
-          includeDrafts: options.includeDrafts,
-        }, generatedBy, report.id);
+        return await this.debtService.generateDebtLedger(
+          {
+            startDate: new Date(options.startDate),
+            endDate: new Date(options.endDate),
+            centers: options.centers,
+            groupBy: options.groupBy,
+            includeDrafts: options.includeDrafts,
+          },
+          generatedBy,
+          report.id,
+        );
       } else {
         return;
       }
@@ -305,10 +335,19 @@ export class ReportService {
       const optionsType = t.type({
         startDate: t.string,
         endDate: t.string,
-        paymentType: t.union([ t.null, t.literal('cash'), t.literal('invoice') ]),
-        centers: t.union([ t.null, t.array(t.string) ]),
-        groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-        eventTypes: t.union([ t.null, t.array(t.union([ t.literal('payment'), t.literal('created'), t.literal('credited') ])) ]),
+        paymentType: t.union([t.null, t.literal('cash'), t.literal('invoice')]),
+        centers: t.union([t.null, t.array(t.string)]),
+        groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+        eventTypes: t.union([
+          t.null,
+          t.array(
+            t.union([
+              t.literal('payment'),
+              t.literal('created'),
+              t.literal('credited'),
+            ]),
+          ),
+        ]),
       });
 
       const result = optionsType.decode(report.options);
@@ -316,14 +355,18 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.paymentService.generatePaymentLedger({
-          startDate: new Date(options.startDate),
-          endDate: new Date(options.endDate),
-          centers: options.centers,
-          groupBy: options.groupBy,
-          eventTypes: options.eventTypes,
-          paymentType: options.paymentType,
-        }, generatedBy, report.id);
+        return await this.paymentService.generatePaymentLedger(
+          {
+            startDate: new Date(options.startDate),
+            endDate: new Date(options.endDate),
+            centers: options.centers,
+            groupBy: options.groupBy,
+            eventTypes: options.eventTypes,
+            paymentType: options.paymentType,
+          },
+          generatedBy,
+          report.id,
+        );
       } else {
         return;
       }
@@ -331,11 +374,16 @@ export class ReportService {
       const optionsType = t.intersection([
         t.type({
           date: t.string,
-          groupBy: t.union([ t.null, t.literal('payer'), t.literal('center') ]),
-          centers: t.union([ t.null, t.array(t.string) ]),
+          groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+          centers: t.union([t.null, t.array(t.string)]),
         }),
         t.partial({
-          includeOnly: t.union([ t.null, t.literal('open'), t.literal('paid'), t.literal('credited') ]),
+          includeOnly: t.union([
+            t.null,
+            t.literal('open'),
+            t.literal('paid'),
+            t.literal('credited'),
+          ]),
         }),
       ]);
 
@@ -344,12 +392,16 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.debtService.generateDebtStatusReport({
-          date: new Date(options.date),
-          centers: options.centers,
-          groupBy: options.groupBy,
-          includeOnly: options.includeOnly ?? null,
-        }, generatedBy, report.id);
+        return await this.debtService.generateDebtStatusReport(
+          {
+            date: new Date(options.date),
+            centers: options.centers,
+            groupBy: options.groupBy,
+            includeOnly: options.includeOnly ?? null,
+          },
+          generatedBy,
+          report.id,
+        );
       } else {
         console.log('Upps');
         return;

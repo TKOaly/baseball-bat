@@ -13,7 +13,7 @@ import { PaymentService } from '../../backend/services/payements';
 
 const test = createTestFunc();
 
-test('Creating debt', async (t) => {
+test('Creating debt', async t => {
   const { container } = t.context;
 
   const debts = container.get(DebtService);
@@ -60,42 +60,53 @@ test('Creating debt', async (t) => {
 
   const debt = await debts.createDebt(debtOpts);
 
-  expect(debt).toEqual(expect.subset({
-    id: uuidValidator(),
-    name: debtOpts.name,
-    description: debtOpts.description,
-    accountingPeriod: debtOpts.accountingPeriod,
-    payerId: debtOpts.payer,
-    paymentCondition: debtOpts.paymentCondition,
-    dueDate: null,
-    tags: [],
-    debtCenterId: debtOpts.centerId,
-    createdAt: expect.a(Date),
-    updatedAt: expect.a(Date),
-    humanId: expect.regex(/DEBT-[0-9]{4}-[0-9]{4}/),
-    date: null,
-    draft: true,
-    status: 'unpaid',
-    credited: false,
-    defaultPayment: null,
-    publishedAt: null,
-    lastReminded: null,
-    debtComponents: expect.length(1),
-  }));
+  expect(debt).toEqual(
+    expect.subset({
+      id: uuidValidator(),
+      name: debtOpts.name,
+      description: debtOpts.description,
+      accountingPeriod: debtOpts.accountingPeriod,
+      payerId: debtOpts.payer,
+      paymentCondition: debtOpts.paymentCondition,
+      dueDate: null,
+      tags: [],
+      debtCenterId: debtOpts.centerId,
+      createdAt: expect.a(Date),
+      updatedAt: expect.a(Date),
+      humanId: expect.regex(/DEBT-[0-9]{4}-[0-9]{4}/),
+      date: null,
+      draft: true,
+      status: 'unpaid',
+      credited: false,
+      defaultPayment: null,
+      publishedAt: null,
+      lastReminded: null,
+      debtComponents: expect.length(1),
+    }),
+  );
 
-  expect(debt.debtComponents).toInclude(expect.subset({
-    id: component.id,
-  }));
+  expect(debt.debtComponents).toInclude(
+    expect.subset({
+      id: component.id,
+    }),
+  );
 });
 
-test('Publishing debt with payment condition', async (t) => {
+test('Publishing debt with payment condition', async t => {
   const { container } = t.context;
 
   const emailMock = mockObject<IEmailTransport>({
     sendEmail: () => Promise.resolve(),
   });
-  
-  container.set(EmailService, new EmailService(emailMock, container.get(PgClient), container.get(JobService)));
+
+  container.set(
+    EmailService,
+    new EmailService(
+      emailMock,
+      container.get(PgClient),
+      container.get(JobService),
+    ),
+  );
 
   const debts = container.get(DebtService);
   const centers = container.get(DebtCentersService);
@@ -141,32 +152,49 @@ test('Publishing debt with payment condition', async (t) => {
 
   let debt = await debts.createDebt(debtOpts);
 
-  expect(debt).toEqual(expect.subset({
-    draft: true,
-    date: expect.nullish(),
-    publishedAt: expect.nullish(),
-  }));
+  expect(debt).toEqual(
+    expect.subset({
+      draft: true,
+      date: expect.nullish(),
+      publishedAt: expect.nullish(),
+    }),
+  );
 
   await debts.publishDebt(debt.id);
 
   debt = (await debts.getDebt(debt.id))!;
 
-  expect(debt).toEqual(expect.subset({
-    draft: false,
-    date: expect.satisfies((value) => value instanceof Date && isToday(value)),
-    publishedAt: expect.satisfies((value) => value instanceof Date && isToday(value)),
-    dueDate: expect.satisfies((value) => value instanceof Date && isSameDay(value, addDays(new Date(), debtOpts.paymentCondition))),
-  }));
+  expect(debt).toEqual(
+    expect.subset({
+      draft: false,
+      date: expect.satisfies(value => value instanceof Date && isToday(value)),
+      publishedAt: expect.satisfies(
+        value => value instanceof Date && isToday(value),
+      ),
+      dueDate: expect.satisfies(
+        value =>
+          value instanceof Date &&
+          isSameDay(value, addDays(new Date(), debtOpts.paymentCondition)),
+      ),
+    }),
+  );
 });
 
-test('Reminders should not be sent for draft debts', async (t) => {
+test('Reminders should not be sent for draft debts', async t => {
   const { container } = t.context;
 
   const emailMock = mockObject<IEmailTransport>({
     sendEmail: () => Promise.resolve(),
   });
-  
-  container.set(EmailService, new EmailService(emailMock, container.get(PgClient), container.get(JobService)));
+
+  container.set(
+    EmailService,
+    new EmailService(
+      emailMock,
+      container.get(PgClient),
+      container.get(JobService),
+    ),
+  );
 
   const debts = container.get(DebtService);
   const centers = container.get(DebtCentersService);
@@ -217,12 +245,12 @@ test('Reminders should not be sent for draft debts', async (t) => {
   expect(emailMock.sendEmail).toHaveBeenCalledTimes(0);
 });
 
-test('Emails should be sent for published debts', async (t) => {
+test('Emails should be sent for published debts', async t => {
   const { container } = t.context;
 
   //const realEmailService = container.get(EmailService);
   //const mockedEmailService = spy(realEmailService);
-  
+
   //container.set(EmailService, realEmailService);
 
   const debts = container.get(DebtService);
@@ -298,18 +326,26 @@ test('Emails should be sent for published debts', async (t) => {
 
   expect(debtEmails).toHaveLength(2);
 
-  expect(debtEmails).toEqual(expect.includes(expect.subset({
-    subject: expect.includes('Payment Notice'),
-    text: expect.includes('10,00'),
-  })));
+  expect(debtEmails).toEqual(
+    expect.includes(
+      expect.subset({
+        subject: expect.includes('Payment Notice'),
+        text: expect.includes('10,00'),
+      }),
+    ),
+  );
 
-  expect(debtEmails).toEqual(expect.includes(expect.subset({
-    subject: expect.includes('Invoice'),
-    text: expect.includes('10,00'),
-  })));
+  expect(debtEmails).toEqual(
+    expect.includes(
+      expect.subset({
+        subject: expect.includes('Invoice'),
+        text: expect.includes('10,00'),
+      }),
+    ),
+  );
 });
 
-test('Reminders should only be sent for unpaid and published debts', async (t) => {
+test('Reminders should only be sent for unpaid and published debts', async t => {
   const { container } = t.context;
 
   const debts = container.get(DebtService);
@@ -398,17 +434,25 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
     type: 'payment',
   });
 
-  payment = (await payments.getPayment(payment.id))!; 
+  payment = (await payments.getPayment(payment.id))!;
 
   expect(payment.events).toHaveLength(2);
-  expect(payment.events).toEqual(expect.includes(expect.subset({
-    type: 'created',
-    amount: euro(-10),
-  })));
-  expect(payment.events).toEqual(expect.includes(expect.subset({
-    type: 'payment',
-    amount: euro(10),
-  })));
+  expect(payment.events).toEqual(
+    expect.includes(
+      expect.subset({
+        type: 'created',
+        amount: euro(-10),
+      }),
+    ),
+  );
+  expect(payment.events).toEqual(
+    expect.includes(
+      expect.subset({
+        type: 'payment',
+        amount: euro(10),
+      }),
+    ),
+  );
   expect(payment.status).toEqual('paid');
 
   const afterPaid = await debts.getDebt(paidDebt.id);
@@ -430,7 +474,11 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
   await debts.publishDebt(creditedDebt.id);
   await debts.creditDebt(creditedDebt.id);
 
-  const { messageCount, payerCount, errors } = await debts.sendPaymentRemindersByPayer(payer.id, { send: true, ignoreCooldown: true });
+  const { messageCount, payerCount, errors } =
+    await debts.sendPaymentRemindersByPayer(payer.id, {
+      send: true,
+      ignoreCooldown: true,
+    });
 
   expect(messageCount).toEqual(1);
   expect(payerCount).toEqual(1);
@@ -440,12 +488,16 @@ test('Reminders should only be sent for unpaid and published debts', async (t) =
 
   expect(e).toHaveLength(4);
 
-  expect(e).toEqual(expect.includes(expect.subset({
-    subject: '[Maksumuistutus / Payment Notice] Published Debt',
-  })));
+  expect(e).toEqual(
+    expect.includes(
+      expect.subset({
+        subject: '[Maksumuistutus / Payment Notice] Published Debt',
+      }),
+    ),
+  );
 });
 
-test('Emails should not be sent for backdated debts when publishing', async (t) => {
+test('Emails should not be sent for backdated debts when publishing', async t => {
   const { container } = t.context;
 
   const debts = container.get(DebtService);
@@ -512,7 +564,11 @@ test('Emails should not be sent for backdated debts when publishing', async (t) 
 
   expect(e2).toHaveLength(1);
 
-  expect(e2).toEqual([expect.subset({
-    subject: expect.includes(`[Maksumuistutus / Payment Notice] ${debt.name}`)
-  })]);
+  expect(e2).toEqual([
+    expect.subset({
+      subject: expect.includes(
+        `[Maksumuistutus / Payment Notice] ${debt.name}`,
+      ),
+    }),
+  ]);
 });

@@ -37,13 +37,19 @@ import accountingPeriodSlice from '../../state/accounting-period';
 import { selectActiveNotifications } from '../../state/notifications';
 
 type MenuItemProps = {
-  path?: string
-  onClick?: () => void
-  className?: string
-  active?: boolean
-}
+  path?: string;
+  onClick?: () => void;
+  className?: string;
+  active?: boolean;
+};
 
-const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, className }) => {
+const MenuItem: React.FC<MenuItemProps> = ({
+  path,
+  active,
+  onClick,
+  children,
+  className,
+}) => {
   const [location, setLocation] = useLocation();
   let matched = location.indexOf(path) === 0;
 
@@ -53,7 +59,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, cl
 
   return (
     <li
-      className={twMerge(`
+      className={twMerge(
+        `
         px-4
         py-1
         relative
@@ -63,8 +70,10 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, cl
         border-gray-50
         group
         hover:bg-gray-100
-        ${ matched && 'bg-gray-100' }
-      `, className)}
+        ${matched && 'bg-gray-100'}
+      `,
+        className,
+      )}
       onClick={() => {
         onClick?.();
 
@@ -73,7 +82,11 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, cl
         }
       }}
     >
-      <div className={`absolute left-0 top-0 bottom-0 ${matched ? 'bg-blue-500 w-1.5' : 'bg-gray-300 w-0'} group-hover:w-1.5 duration-200`} />
+      <div
+        className={`absolute left-0 top-0 bottom-0 ${
+          matched ? 'bg-blue-500 w-1.5' : 'bg-gray-300 w-0'
+        } group-hover:w-1.5 duration-200`}
+      />
       {children}
     </li>
   );
@@ -81,20 +94,26 @@ const MenuItem: React.FC<MenuItemProps> = ({ path, active, onClick, children, cl
 
 const AccountingPeriodSelector = () => {
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
-  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
+  const activeAccountingPeriod = useAppSelector(
+    state => state.accountingPeriod.activePeriod,
+  );
   const dispatch = useAppDispatch();
 
   return (
     <div className="flex gap-2 items-center px-4 mt-3">
       <span className="text-sm">Accounting Period: </span>
       <Dropdown
-        label={activeAccountingPeriod ? `${activeAccountingPeriod}` : 'Loading...'}
-        options={
-          (accountingPeriods ?? [])
-            .filter((period) => !period.closed)
-            .map((period) => ({ value: period.year, text: `${period.year}` }))
+        label={
+          activeAccountingPeriod ? `${activeAccountingPeriod}` : 'Loading...'
         }
-        onSelect={(period) => dispatch(accountingPeriodSlice.actions.setActiveAccountingPeriod({ period }))}
+        options={(accountingPeriods ?? [])
+          .filter(period => !period.closed)
+          .map(period => ({ value: period.year, text: `${period.year}` }))}
+        onSelect={period =>
+          dispatch(
+            accountingPeriodSlice.actions.setActiveAccountingPeriod({ period }),
+          )
+        }
       />
     </div>
   );
@@ -104,8 +123,12 @@ const Admin = () => {
   const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow');
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
-  const activeAccountingPeriod = useAppSelector((state) => state.accountingPeriod.activePeriod);
-  const notifications = useAppSelector((state) => selectActiveNotifications(state));
+  const activeAccountingPeriod = useAppSelector(
+    state => state.accountingPeriod.activePeriod,
+  );
+  const notifications = useAppSelector(state =>
+    selectActiveNotifications(state),
+  );
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -127,13 +150,15 @@ const Admin = () => {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-
-
   return (
     <div className="flex flex-row h-screen bg-white">
       <div className="flex-shrink-0 flex flex-col w-80 bg-gray-50 border-r border-[#ececec]">
         <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
-        <TextField placeholder="Search..." className="mx-3 mb-5" onClick={() => showSearchDialog({ openOnSelect: true })} />
+        <TextField
+          placeholder="Search..."
+          className="mx-3 mb-5"
+          onClick={() => showSearchDialog({ openOnSelect: true })}
+        />
         <ul className="">
           <MenuItem path="/admin/debt-centers">Collections</MenuItem>
           <MenuItem path="/admin/debts">Debts</MenuItem>
@@ -143,25 +168,58 @@ const Admin = () => {
           <MenuItem path="/admin/banking">Banking</MenuItem>
           <MenuItem path="/admin/reports">Reports</MenuItem>
           <MenuItem path="/admin/jobs">Jobs</MenuItem>
-          <MenuItem path="/" active={false} className="mt-4">Back to public site</MenuItem>
+          <MenuItem path="/" active={false} className="mt-4">
+            Back to public site
+          </MenuItem>
           <MenuItem path="#">Log out</MenuItem>
         </ul>
         <AccountingPeriodSelector />
         <div className="flex-grow" />
         <ul className="flex justify-center">
-          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'narrow' && 'border-blue-500'}`} onClick={() => setWidth('narrow')}>Narrow</li>
-          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'wide' && 'border-blue-500'}`} onClick={() => setWidth('wide')}>Wide</li>
-          <li className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${width === 'full' && 'border-blue-500'}`} onClick={() => setWidth('full')}>Full</li>
+          <li
+            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
+              width === 'narrow' && 'border-blue-500'
+            }`}
+            onClick={() => setWidth('narrow')}
+          >
+            Narrow
+          </li>
+          <li
+            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
+              width === 'wide' && 'border-blue-500'
+            }`}
+            onClick={() => setWidth('wide')}
+          >
+            Wide
+          </li>
+          <li
+            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
+              width === 'full' && 'border-blue-500'
+            }`}
+            onClick={() => setWidth('full')}
+          >
+            Full
+          </li>
         </ul>
       </div>
       <div className="flex-grow flex justify-center items-start overflow-y-scroll">
-        <div className={`flex-grow ${{ 'narrow': 'max-w-[50em]', 'wide': 'max-w-[80em]', 'full': '' }[width]} py-5 mx-40`}>
+        <div
+          className={`flex-grow ${
+            { narrow: 'max-w-[50em]', wide: 'max-w-[80em]', full: '' }[width]
+          } py-5 mx-40`}
+        >
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
-            <Route path="/admin/debt-centers/create" component={CreateDebtCenter} />
-            <Route path="/admin/debt-centers/create-from-event" component={CreateDebtCenterFromEvent} />
+            <Route
+              path="/admin/debt-centers/create"
+              component={CreateDebtCenter}
+            />
+            <Route
+              path="/admin/debt-centers/create-from-event"
+              component={CreateDebtCenterFromEvent}
+            />
             <Route path="/admin/debts/create-debts-csv">
-              {(params) => <MassCreateDebts params={params} defaults={{}} />}
+              {params => <MassCreateDebts params={params} defaults={{}} />}
             </Route>
             <Route path="/admin/debt-centers/:id">
               {({ id }: { id: string }) => <DebtCenterDetails id={id} />}
@@ -170,9 +228,17 @@ const Admin = () => {
               {({ id }: { id: string }) => <CreateDebt debtCenterId={id} />}
             </Route>
             <Route path="/admin/debt-centers/:id/create-debts-csv">
-              {(params: { id: string }) => <MassCreateDebts params={params} defaults={{ debtCenter: params.id }} />}
+              {(params: { id: string }) => (
+                <MassCreateDebts
+                  params={params}
+                  defaults={{ debtCenter: params.id }}
+                />
+              )}
             </Route>
-            <Route path="/admin/debt-centers/:id/edit" component={EditDebtCenter} />
+            <Route
+              path="/admin/debt-centers/:id/edit"
+              component={EditDebtCenter}
+            />
             <Route path="/admin/debts/create" component={CreateDebt} />
             <Route path="/admin/debts/:id" component={DebtDetails} />
             <Route path="/admin/debts/:id/edit" component={EditDebt} />
@@ -186,14 +252,20 @@ const Admin = () => {
             <Route path="/admin/emails/:id" component={EmailDetails} />
             <Route path="/admin/banking" component={Banking} />
             <Route path="/admin/banking/accounts" component={Banking} />
-            <Route path="/admin/banking/accounts/create" component={CreateBankAccount} />
+            <Route
+              path="/admin/banking/accounts/create"
+              component={CreateBankAccount}
+            />
             <Route path="/admin/banking/accounts/:id">
               {({ id }) => <BankAccount iban={id} />}
             </Route>
             <Route path="/admin/banking/statements/:id">
               {({ id }: { id: string }) => <BankStatement id={id} />}
             </Route>
-            <Route path="/admin/banking/import-statement" component={ImportXMLStatement} />
+            <Route
+              path="/admin/banking/import-statement"
+              component={ImportXMLStatement}
+            />
             <Route path="/admin/reports" component={ReportsListing} />
             <Route path="/admin/jobs" component={JobsListing} />
             <Route path="/admin/jobs/:queue/:id">
@@ -205,11 +277,11 @@ const Admin = () => {
           </Switch>
         </div>
       </div>
-      <div onClick={(evt) => evt.stopPropagation()} data-cy="dialogs">
+      <div onClick={evt => evt.stopPropagation()} data-cy="dialogs">
         <DialogTarget />
       </div>
       <div className="absolute right-0 top-0 h-[100vh] flex flex-col justify-end w-[25em] p-4 gap-3 pointer-events-none">
-        {notifications.map((notification) => (
+        {notifications.map(notification => (
           <Notification key={notification.id} {...notification} />
         ))}
       </div>
