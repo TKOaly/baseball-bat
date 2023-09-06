@@ -39,7 +39,7 @@
     "ejs": "^3.1.7",
     "eslint-config-prettier": "^9.0.0",
     "express": "^4.17.2",
-    "finnish-bank-utils": "git+https://github.com/vkomulai/finnish-bank-utils.git",
+    "finnish-bank-utils": "git+https://github.com/vkomulai/finnish-bank-utils.git#b660a75",
     "flowbite": "^1.4.1",
     "formik": "^2.2.9",
     "fp-ts": "^2.11.8",
