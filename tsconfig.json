@@ -1,10 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": [
-      "es2019",
-      "dom"
-    ],
+    "lib": ["es2019", "dom"],
     "module": "commonjs",
     "strict": true,
     "strictPropertyInitialization": false,
@@ -26,12 +23,6 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "exclude": [
-    "node_modules"
-  ],
-  "include": [
-    "backend",
-    "common/types.ts",
-    "tests"
-  ]
+  "exclude": ["node_modules"],
+  "include": ["backend", "common/types.ts", "tests"]
 }
