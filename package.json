@@ -13,7 +13,8 @@
     "coverage": "c8 yarn test",
     "prettier": "prettier --write --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
     "prettier:check": "prettier --check --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
-    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx ."
+    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx .",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^1.0.1",
@@ -48,6 +49,7 @@
     "formik": "^2.2.9",
     "fp-ts": "^2.11.8",
     "helmet": "^5.0.2",
+    "husky": "^8.0.3",
     "i18next": "^21.9.1",
     "immer": "^10.0.2",
     "io-ts": "^2.2.16",
@@ -55,6 +57,7 @@
     "jsbarcode": "^3.11.5",
     "jsdom": "^20.0.0",
     "jsonwebtoken": "^8.5.1",
+    "lint-staged": "^14.0.1",
     "mjml": "^4.12.0",
     "mjml-browser": "^4.12.0",
     "monocle-ts": "^2.3.13",
@@ -125,7 +128,8 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.5.5",
     "vm-browserify": "^1.1.2",
-    "yargs-parser": "^21.1.1"
+    "yargs-parser": "^21.1.1",
+    "husky": "^8.0.0"
   },
   "@parcel/transformer-js": {
     "inlineEnvironment": [
@@ -152,5 +156,12 @@
       },
       "compile": "tsc"
     }
+  },
+  "lint-staged": {
+    "*.{ts,js,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{yml,md,html,json}": "prettier --write"
   }
 }
