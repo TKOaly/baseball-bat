@@ -26,21 +26,25 @@ import { Inject, Service } from 'typedi';
 import { UsersService } from './users';
 import { cents } from '../../common/currency';
 
-export type DbPayerProfileWithEmails = DbPayerProfile & { emails: DbPayerEmail[] }
+export type DbPayerProfileWithEmails = DbPayerProfile & {
+  emails: DbPayerEmail[];
+};
 
 export type AddPayerEmailOptions = {
-  email: string,
-  priority?: PayerEmailPriority,
-  source?: PayerEmail['source'],
-  payerId: InternalIdentity,
-}
+  email: string;
+  priority?: PayerEmailPriority;
+  source?: PayerEmail['source'];
+  payerId: InternalIdentity;
+};
 
 // eslint-disable-next-line
 function assertNever(_value: never) {
   throw new Error('Should-be unreachable code reached');
 }
 
-export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerEmail[] }): PayerProfile => ({
+export const formatPayerProfile = (
+  profile: DbPayerProfile & { emails?: DbPayerEmail[] },
+): PayerProfile => ({
   id: internalIdentity(profile.id),
   tkoalyUserId: !profile.tkoaly_user_id
     ? undefined
@@ -58,7 +62,10 @@ export const formatPayerProfile = (profile: DbPayerProfile & { emails?: DbPayerE
   debtCount: profile.debt_count,
   paidCount: profile.paid_count,
   unpaidCount: profile.unpaid_count,
-  total: profile.total === undefined ? undefined : cents(parseInt('' + profile.total)),
+  total:
+    profile.total === undefined
+      ? undefined
+      : cents(parseInt('' + profile.total)),
 });
 
 const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
@@ -73,20 +80,19 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
 @Service()
 export class PayerService {
   @Inject(() => PgClient)
-    pg: PgClient;
+  pg: PgClient;
 
   // @Inject('stripe')
   // stripe: Stripe
 
   @Inject(() => EventsService)
-    eventsService: EventsService;
+  eventsService: EventsService;
 
   @Inject(() => UsersService)
-    usersService: UsersService;
+  usersService: UsersService;
 
   async getPayerProfiles() {
-    const dbProfiles = await this.pg
-      .many<DbPayerProfileWithEmails>(sql`
+    const dbProfiles = await this.pg.many<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails,
@@ -123,7 +129,9 @@ export class PayerService {
   }
 
   // eslint-disable-next-line
-  private async createDefaultPayerPreferences(_id: InternalIdentity): Promise<PayerPreferences> {
+  private async createDefaultPayerPreferences(
+    _id: InternalIdentity,
+  ): Promise<PayerPreferences> {
     return {
       uiLanguage: 'en',
       emailLanguage: 'en',
@@ -132,7 +140,9 @@ export class PayerService {
   }
 
   async getPayerPreferences(id: InternalIdentity) {
-    const row = await this.pg.one<{ preferences: PayerPreferences }>(sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`);
+    const row = await this.pg.one<{ preferences: PayerPreferences }>(
+      sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`,
+    );
 
     if (!row?.preferences) {
       return await this.createDefaultPayerPreferences(id);
@@ -141,9 +151,14 @@ export class PayerService {
     return row?.preferences;
   }
 
-  async updatePayerPreferences(id: InternalIdentity, newValues: Partial<PayerPreferences>) {
-    return await this.pg.tx(async (tx) => {
-      const rows = await tx.do<{ preferences: PayerPreferences }>(sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`);
+  async updatePayerPreferences(
+    id: InternalIdentity,
+    newValues: Partial<PayerPreferences>,
+  ) {
+    return await this.pg.tx(async tx => {
+      const rows = await tx.do<{ preferences: PayerPreferences }>(
+        sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`,
+      );
 
       let preferences = rows.length > 0 ? rows[0].preferences : null;
 
@@ -153,7 +168,9 @@ export class PayerService {
 
       Object.assign(preferences, newValues);
 
-      const results = await tx.do<{ preferences: PayerPreferences }>(sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`);
+      const results = await tx.do<{ preferences: PayerPreferences }>(
+        sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`,
+      );
 
       if (results.length === 0) {
         throw new Error('could not update payer preferences');
@@ -165,30 +182,40 @@ export class PayerService {
 
   async getPayerPrimaryEmail(id: InternalIdentity) {
     const email = await this.pg
-      .one<DbPayerEmail>(sql`
+      .one<DbPayerEmail>(
+        sql`
         SELECT *
         FROM payer_emails
         WHERE payer_id = ${id.value} AND priority = 'primary'
-      `)
-      .then((email) => email && formatPayerEmail(email));
+      `,
+      )
+      .then(email => email && formatPayerEmail(email));
 
     return email;
   }
 
   async getPayerEmails(id: InternalIdentity) {
     const emails = await this.pg
-      .any<DbPayerEmail>(sql`
+      .any<DbPayerEmail>(
+        sql`
         SELECT *
         FROM payer_emails
         WHERE payer_id = ${id.value}
-      `)
-      .then((emails) => emails.map(formatPayerEmail));
+      `,
+      )
+      .then(emails => emails.map(formatPayerEmail));
 
     return emails;
   }
 
-  async updatePayerEmailPriority(iid: InternalIdentity, email: string, priority: PayerEmailPriority) {
-    const primary = await this.pg.one<{ email: string }>(sql`SELECT email FROM payer_emails WHERE payer_id = ${iid.value} AND priority = 'primary'`);
+  async updatePayerEmailPriority(
+    iid: InternalIdentity,
+    email: string,
+    priority: PayerEmailPriority,
+  ) {
+    const primary = await this.pg.one<{ email: string }>(
+      sql`SELECT email FROM payer_emails WHERE payer_id = ${iid.value} AND priority = 'primary'`,
+    );
 
     if (primary && priority === 'primary' && email !== primary.email) {
       throw new Error('payer profile already has a primary email address');
@@ -250,10 +277,11 @@ export class PayerService {
       priority = 'primary';
     }
 
-    const row = await this.pg
-      .one<DbPayerEmail>(sql`
+    const row = await this.pg.one<DbPayerEmail>(sql`
         INSERT INTO payer_emails (payer_id, email, priority, source)
-        VALUES (${params.payerId.value}, ${params.email}, ${priority}, ${params.source ?? 'other'})
+        VALUES (${params.payerId.value}, ${params.email}, ${priority}, ${
+          params.source ?? 'other'
+        })
         RETURNING *
       `);
 
@@ -265,14 +293,12 @@ export class PayerService {
   }
 
   async getPayerProfileByTkoalyIdentity(id: TkoalyIdentity) {
-    const dbProfile = await this.pg
-      .one<DbPayerProfileWithEmails>(sql`
+    const dbProfile = await this.pg.one<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
         FROM payer_profiles pp
-        WHERE tkoaly_user_id = ${id.value}`,
-      );
+        WHERE tkoaly_user_id = ${id.value}`);
 
     if (dbProfile) {
       return formatPayerProfile(dbProfile);
@@ -282,8 +308,7 @@ export class PayerService {
   }
 
   async getPayerProfileByInternalIdentity(id: InternalIdentity) {
-    const dbProfile = await this.pg
-      .one<DbPayerProfileWithEmails>(sql`
+    const dbProfile = await this.pg.one<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
@@ -314,7 +339,10 @@ export class PayerService {
     return null;
   }
 
-  async getOrCreatePayerProfileForIdentity(id: PayerIdentity, token?: string): Promise<PayerProfile | null> {
+  async getOrCreatePayerProfileForIdentity(
+    id: PayerIdentity,
+    token?: string,
+  ): Promise<PayerProfile | null> {
     const existingPayerProfile = await this.getPayerProfileByIdentity(id);
 
     if (existingPayerProfile) {
@@ -328,8 +356,11 @@ export class PayerService {
     return this.createPayerProfileForExternalIdentity(id, token);
   }
 
-
-  async createPayerProfileForExternalIdentity(id: ExternalIdentity, token?: string, name?: string): Promise<PayerProfile | null> {
+  async createPayerProfileForExternalIdentity(
+    id: ExternalIdentity,
+    token?: string,
+    name?: string,
+  ): Promise<PayerProfile | null> {
     const existingPayerProfile = await this.getPayerProfileByIdentity(id);
 
     if (existingPayerProfile) {
@@ -355,14 +386,21 @@ export class PayerService {
     return assertNever(id) as any; // eslint-disable-line
   }
 
-  async createPayerProfileFromTkoalyIdentity(id: TkoalyIdentity, token: string) {
+  async createPayerProfileFromTkoalyIdentity(
+    id: TkoalyIdentity,
+    token: string,
+  ) {
     const upstreamUser = await this.usersService.getUpstreamUserById(id, token);
     return this.createPayerProfileFromTkoalyUser(upstreamUser);
   }
 
-  async createPayerProfileFromEmailIdentity(id: EmailIdentity, details: { name: string }) {
-    const payerProfile = await this.pg
-      .one<DbPayerProfile>(sql`INSERT INTO payer_profiles (name) VALUES (${details.name}) RETURNING *`);
+  async createPayerProfileFromEmailIdentity(
+    id: EmailIdentity,
+    details: { name: string },
+  ) {
+    const payerProfile = await this.pg.one<DbPayerProfile>(
+      sql`INSERT INTO payer_profiles (name) VALUES (${details.name}) RETURNING *`,
+    );
 
     if (!payerProfile) {
       throw new Error('Could not create a new payer profile');
@@ -385,7 +423,7 @@ export class PayerService {
   }
 
   async replacePrimaryEmail(id: InternalIdentity, email: string) {
-    await this.pg.tx(async (tx) => {
+    await this.pg.tx(async tx => {
       await tx.do(sql`
         UPDATE payer_emails
         SET priority = 'default', updated_at = NOW()
@@ -399,8 +437,12 @@ export class PayerService {
     });
   }
 
-  async createPayerProfileFromTkoalyUser(user: UpstreamUser): Promise<PayerProfile> {
-    const existingPayerProfile = await this.getPayerProfileByTkoalyIdentity(tkoalyIdentity(user.id));
+  async createPayerProfileFromTkoalyUser(
+    user: UpstreamUser,
+  ): Promise<PayerProfile> {
+    const existingPayerProfile = await this.getPayerProfileByTkoalyIdentity(
+      tkoalyIdentity(user.id),
+    );
 
     if (existingPayerProfile) {
       const emails = await this.getPayerEmails(existingPayerProfile.id);
@@ -418,11 +460,12 @@ export class PayerService {
       return existingPayerProfile;
     }
 
-    const existingEmailProfile = await this.getPayerProfileByEmailIdentity(emailIdentity(user.email));
+    const existingEmailProfile = await this.getPayerProfileByEmailIdentity(
+      emailIdentity(user.email),
+    );
 
     if (existingEmailProfile) {
-      await this.pg
-        .one<DbPayerProfile>(sql`
+      await this.pg.one<DbPayerProfile>(sql`
           UPDATE payer_profiles
           SET tkoaly_user_id = ${user.id}
           WHERE id = ${existingEmailProfile.id.value}
@@ -434,8 +477,7 @@ export class PayerService {
       };
     }
 
-    const dbPayerProfile = await this.pg
-      .one<DbPayerProfile>(sql`
+    const dbPayerProfile = await this.pg.one<DbPayerProfile>(sql`
         INSERT INTO payer_profiles (tkoaly_user_id, name)
         VALUES (${user.id}, ${user.screenName})
         RETURNING *
@@ -470,7 +512,7 @@ export class PayerService {
   }
 
   async mergeProfiles(primary: InternalIdentity, secondary: InternalIdentity) {
-    return await this.pg.tx(async (tx) => {
+    return await this.pg.tx(async tx => {
       await tx.do(sql`
         UPDATE payer_profiles
         SET disabled = true, merged_to = ${primary.value}
@@ -485,7 +527,9 @@ export class PayerService {
         ON CONFLICT DO NOTHING
       `);
 
-      const debts = await tx.do<{ id: string }>(sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`);
+      const debts = await tx.do<{ id: string }>(
+        sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`,
+      );
 
       return debts.map(debt => debt.id);
     });

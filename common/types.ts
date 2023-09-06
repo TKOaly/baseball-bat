@@ -11,9 +11,9 @@ import { foldW } from 'fp-ts/lib/Either';
 export { EuroValue, euro };
 
 export type TkoAlyUserId = {
-  type: 'upstream'
-  id: number
-}
+  type: 'upstream';
+  id: number;
+};
 
 export const tkoalyIdentity = (id: number): TkoalyIdentity => ({
   type: 'tkoaly',
@@ -57,14 +57,14 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
         Either.chain(value =>
           !isNonEmpty(value)
             ? Either.left([
-              {
-                key: '',
-                type: 'array.minLength',
-                message: 'Array is empty',
-                context,
-                value,
-              },
-            ])
+                {
+                  key: '',
+                  type: 'array.minLength',
+                  message: 'Array is empty',
+                  context,
+                  value,
+                },
+              ])
             : Either.right(value),
         ),
       ),
@@ -72,34 +72,34 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
   );
 
 export type Event = {
-  id: number
-  name: string
-  starts: Date
-  registrationStarts: Date
-  registrationEnds: Date
-  cancellationStarts: Date
-  cancellationEnds: Date
-  registrationCount: number
-  maxParticipants: number | null
-  location: string
-  deleted: boolean
-  price: EuroValue | null
-}
+  id: number;
+  name: string;
+  starts: Date;
+  registrationStarts: Date;
+  registrationEnds: Date;
+  cancellationStarts: Date;
+  cancellationEnds: Date;
+  registrationCount: number;
+  maxParticipants: number | null;
+  location: string;
+  deleted: boolean;
+  price: EuroValue | null;
+};
 
 export type ApiEvent = {
-  id: 1078
-  name: string
-  starts: string
-  registration_starts: string
-  registration_ends: string
-  cancellation_starts: string
-  cancellation_ends: string
-  max_participants: number | null
-  registration_count: number
-  location: string
-  deleted: 0 | 1
-  price: string
-}
+  id: 1078;
+  name: string;
+  starts: string;
+  registration_starts: string;
+  registration_ends: string;
+  cancellation_starts: string;
+  cancellation_ends: string;
+  max_participants: number | null;
+  registration_count: number;
+  location: string;
+  deleted: 0 | 1;
+  price: string;
+};
 
 export const tkoalyIdentityT = t.type({
   type: t.literal('tkoaly'),
@@ -116,9 +116,9 @@ export const internalIdentityT = t.type({
   value: t.string,
 });
 
-export type TkoalyIdentity = t.TypeOf<typeof tkoalyIdentityT>
-export type EmailIdentity = t.TypeOf<typeof emailIdentityT>
-export type InternalIdentity = t.TypeOf<typeof internalIdentityT>
+export type TkoalyIdentity = t.TypeOf<typeof tkoalyIdentityT>;
+export type EmailIdentity = t.TypeOf<typeof emailIdentityT>;
+export type InternalIdentity = t.TypeOf<typeof internalIdentityT>;
 
 export const payerIdentity = t.union([
   emailIdentityT,
@@ -126,7 +126,7 @@ export const payerIdentity = t.union([
   internalIdentityT,
 ]);
 
-export type PayerIdentity = t.TypeOf<typeof payerIdentity>
+export type PayerIdentity = t.TypeOf<typeof payerIdentity>;
 
 export function isTkoalyIdentity(id: PayerIdentity): id is TkoalyIdentity {
   return id.type === 'tkoaly';
@@ -140,43 +140,48 @@ export function isEmailIdentity(id: PayerIdentity): id is EmailIdentity {
   return id.type === 'email';
 }
 
-export type ExternalIdentity = TkoalyIdentity | EmailIdentity
+export type ExternalIdentity = TkoalyIdentity | EmailIdentity;
 
-export type UpstreamUserRole = 'kayttaja' | 'virkailija' | 'tenttiarkistovirkailija' | 'jasenvirkailija' | 'yllapitaja'
+export type UpstreamUserRole =
+  | 'kayttaja'
+  | 'virkailija'
+  | 'tenttiarkistovirkailija'
+  | 'jasenvirkailija'
+  | 'yllapitaja';
 
 export type UpstreamUser = {
-  id: number
-  screenName: string
-  email: string
-  username: string
-  role: UpstreamUserRole
-}
+  id: number;
+  screenName: string;
+  email: string;
+  username: string;
+  role: UpstreamUserRole;
+};
 
 export type DbPayerProfile = {
-  id: string
-  tkoaly_user_id?: number
-  email: string
-  stripe_customer_id: string
-  created_at: Date
-  updated_at: Date
-  name: string
-  disabled: boolean
-  merged_to: string
-  paid_count?: number
-  unpaid_count?: number
-  debt_count?: number
-  total?: number
-}
+  id: string;
+  tkoaly_user_id?: number;
+  email: string;
+  stripe_customer_id: string;
+  created_at: Date;
+  updated_at: Date;
+  name: string;
+  disabled: boolean;
+  merged_to: string;
+  paid_count?: number;
+  unpaid_count?: number;
+  debt_count?: number;
+  total?: number;
+};
 export type PayerProfile = Omit<
   FromDbType<DbPayerProfile>,
   'id' | 'tkoalyUserId' | 'mergedTo' | 'total'
 > & {
-  id: InternalIdentity
-  tkoalyUserId?: TkoalyIdentity
-  mergedTo?: InternalIdentity
-  emails: PayerEmail[]
-  total?: EuroValue
-}
+  id: InternalIdentity;
+  tkoalyUserId?: TkoalyIdentity;
+  mergedTo?: InternalIdentity;
+  emails: PayerEmail[];
+  total?: EuroValue;
+};
 
 export const payerPreferences = t.type({
   uiLanguage: t.union([t.literal('fi'), t.literal('en')]),
@@ -184,44 +189,44 @@ export const payerPreferences = t.type({
   hasConfirmedMembership: t.boolean,
 });
 
-export type PayerPreferences = t.TypeOf<typeof payerPreferences>
+export type PayerPreferences = t.TypeOf<typeof payerPreferences>;
 
 export type DbPaymentMethod = {
-  id: string
-  payer_id: string
-  stripe_pm_id: string
-  brand: string
-  last4: string
-  exp_month: number
-  exp_year: number
-  created_at: Date
-  updated_at: Date
-}
+  id: string;
+  payer_id: string;
+  stripe_pm_id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+  created_at: Date;
+  updated_at: Date;
+};
 export type PaymentMethod = Omit<
   FromDbType<DbPaymentMethod>,
   'payerId' | 'stripePmId'
 > & {
-  payerId: InternalIdentity
-  stripePaymentMethodId: string
-}
+  payerId: InternalIdentity;
+  stripePaymentMethodId: string;
+};
 
 export type DbPaymentEvent = {
-  id: string,
-  payment_id: string,
-  type: string,
-  amount: number,
-  time: Date,
-  data: unknown,
+  id: string;
+  payment_id: string;
+  type: string;
+  amount: number;
+  time: Date;
+  data: unknown;
 };
 
 export type PaymentEvent = {
-  id: string,
-  paymentId: string,
-  type: string,
-  amount: EuroValue,
-  time: Date,
-  data: Record<string, unknown>,
-}
+  id: string;
+  paymentId: string;
+  type: string;
+  amount: EuroValue;
+  time: Date;
+  data: Record<string, unknown>;
+};
 
 export const TokenPayload = t.type({
   id: t.string,
@@ -230,136 +235,146 @@ export const TokenPayload = t.type({
   screenName: t.string,
 });
 
-export type TokenPayload = t.TypeOf<typeof TokenPayload>
+export type TokenPayload = t.TypeOf<typeof TokenPayload>;
 
 export type Session = {
-  payerId: null | string
-  paymentMethod: Pick<PaymentMethod, 'id' | 'brand' | 'last4'>
-  user: TokenPayload
-  preferences: PayerPreferences
-}
+  payerId: null | string;
+  paymentMethod: Pick<PaymentMethod, 'id' | 'brand' | 'last4'>;
+  user: TokenPayload;
+  preferences: PayerPreferences;
+};
 
 export type DbPayment = {
-  id: string
-  human_id: string
-  human_id_nonce?: number
-  accounting_period: number
-  payer_id: string
-  payment_status: PaymentStatus
-  stripe_payment_intent_id: string
-  created_at: Date
-  updated_at: Date
-  payment_number: number
-  data: unknown
-  credited: boolean
-}
+  id: string;
+  human_id: string;
+  human_id_nonce?: number;
+  accounting_period: number;
+  payer_id: string;
+  payment_status: PaymentStatus;
+  stripe_payment_intent_id: string;
+  created_at: Date;
+  updated_at: Date;
+  payment_number: number;
+  data: unknown;
+  credited: boolean;
+};
 
 export type DbLineItem = {
-  id: string
-  payment_id: string
-  event_id: number
-  event_item_id: number
-  amount: number
-  currency: string
-  item_name: string
-  created_at: Date
-  updated_at: Date
-}
+  id: string;
+  payment_id: string;
+  event_id: number;
+  event_item_id: number;
+  amount: number;
+  currency: string;
+  item_name: string;
+  created_at: Date;
+  updated_at: Date;
+};
 
 export type LineItem = Omit<FromDbType<DbLineItem>, 'amount'> & {
-  amount: EuroValue
-}
+  amount: EuroValue;
+};
 
 export type DbDebtCenter = {
-  paid_count?: number
-  human_id: string
-  accounting_period: number
-  unpaid_count?: number
-  debt_count?: number
-  id: string
-  name: string
-  description: string
-  url: string
-  created_at: Date
-  updated_at: Date
-  total?: number
-}
+  paid_count?: number;
+  human_id: string;
+  accounting_period: number;
+  unpaid_count?: number;
+  debt_count?: number;
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  created_at: Date;
+  updated_at: Date;
+  total?: number;
+};
 
-export type DebtCenter = Omit<FromDbType<DbDebtCenter>, 'total'> & { total?: EuroValue }
+export type DebtCenter = Omit<FromDbType<DbDebtCenter>, 'total'> & {
+  total?: EuroValue;
+};
 
-export type NewDebtCenter = Omit<DebtCenter, 'id' | 'createdAt' | 'updatedAt' | 'humanId'>
+export type NewDebtCenter = Omit<
+  DebtCenter,
+  'id' | 'createdAt' | 'updatedAt' | 'humanId'
+>;
 
 export type DbDebtComponent = {
-  id: string
-  name: string
-  value?: string
-  amount: number
-  description: string
-  debt_center_id: string
-  created_at: Date
-  updated_at: Date
-}
+  id: string;
+  name: string;
+  value?: string;
+  amount: number;
+  description: string;
+  debt_center_id: string;
+  created_at: Date;
+  updated_at: Date;
+};
 
 export type DebtComponentPatch = Partial<{
-  name: string,
-  amount: EuroValue,
-}>
+  name: string;
+  amount: EuroValue;
+}>;
 
-export type DebtComponent = Omit<FromDbType<DbDebtComponent>, 'amount'> & { amount: EuroValue }
+export type DebtComponent = Omit<FromDbType<DbDebtComponent>, 'amount'> & {
+  amount: EuroValue;
+};
 
-export type NewDebtComponent = Omit<DebtComponent, 'id' | 'createdAt' | 'updatedAt' | 'amount'> & { amount: EuroValue }
+export type NewDebtComponent = Omit<
+  DebtComponent,
+  'id' | 'createdAt' | 'updatedAt' | 'amount'
+> & { amount: EuroValue };
 
 export type DbDebtComponentMapping = {
-  component_id: string
-  debt_id: string
-}
+  component_id: string;
+  debt_id: string;
+};
 
 export type DbDebtTag = {
-  name: string,
-  hidden: boolean,
-  debt_id: string
-}
+  name: string;
+  hidden: boolean;
+  debt_id: string;
+};
 
 export type DebtTag = Omit<DbDebtTag, 'debt_id'>;
 
 export type DbDebt = {
-  id: string
-  human_id: string
-  accounting_period: number
-  name: string
-  tags: DbDebtTag[],
-  date: Date | null
-  last_reminded: Date | null
-  due_date: Date | null
-  draft: boolean
-  published_at: Date | null
-  payer_id: string
-  debt_center_id: string
-  description: string
-  created_at: Date
-  updated_at: Date
-  status: DebtStatus
-  payment_condition: number | null
-  default_payment: string | null
-  credited: boolean
-}
+  id: string;
+  human_id: string;
+  accounting_period: number;
+  name: string;
+  tags: DbDebtTag[];
+  date: Date | null;
+  last_reminded: Date | null;
+  due_date: Date | null;
+  draft: boolean;
+  published_at: Date | null;
+  payer_id: string;
+  debt_center_id: string;
+  description: string;
+  created_at: Date;
+  updated_at: Date;
+  status: DebtStatus;
+  payment_condition: number | null;
+  default_payment: string | null;
+  credited: boolean;
+};
 
-export type DebtStatus = 'paid' | 'unpaid' | 'mispaid'
+export type DebtStatus = 'paid' | 'unpaid' | 'mispaid';
 
 export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total' | 'tags'> & {
-  total?: EuroValue,
-  payerId: InternalIdentity,
-  status: DebtStatus,
-  debtComponents: Array<DebtComponent>,
-  tags: Array<DebtTag>,
+  total?: EuroValue;
+  payerId: InternalIdentity;
+  status: DebtStatus;
+  debtComponents: Array<DebtComponent>;
+  tags: Array<DebtTag>;
 };
 
 export type DebtWithPayer = Debt & { payer: PayerProfile };
 
-export type DebtComponentDetails = { debtComponents: DebtComponent[] }
+export type DebtComponentDetails = { debtComponents: DebtComponent[] };
 
 export interface DateBrand {
-  readonly Date: unique symbol
+  readonly Date: unique symbol;
 }
 
 export const dateString = t.brand(
@@ -368,10 +383,10 @@ export const dateString = t.brand(
   'Date',
 );
 
-export type DateString = t.TypeOf<typeof dateString>
+export type DateString = t.TypeOf<typeof dateString>;
 
 interface DbDateBrand {
-  readonly DbDate: unique symbol
+  readonly DbDate: unique symbol;
 }
 
 export const dbDateString = t.brand(
@@ -380,169 +395,190 @@ export const dbDateString = t.brand(
   'DbDate',
 );
 
-export type DbDateString = t.TypeOf<typeof dbDateString>
+export type DbDateString = t.TypeOf<typeof dbDateString>;
 
-export type NewDebtTag = { name: string, hidden: boolean }
+export type NewDebtTag = { name: string; hidden: boolean };
 
 export type NewDebt = {
-  centerId: string
-  description: string
-  accountingPeriod: number
-  components: string[]
-  publishedAt?: DbDateString | null
-  name: string
-  payer: PayerIdentity
-  date?: DbDateString | null
-  dueDate: DbDateString | null,
-  createdAt?: Date
-  paymentCondition: null | number
-  tags: Array<NewDebtTag>
-}
+  centerId: string;
+  description: string;
+  accountingPeriod: number;
+  components: string[];
+  publishedAt?: DbDateString | null;
+  name: string;
+  payer: PayerIdentity;
+  date?: DbDateString | null;
+  dueDate: DbDateString | null;
+  createdAt?: Date;
+  paymentCondition: null | number;
+  tags: Array<NewDebtTag>;
+};
 
 export type DebtPatch = {
-  id: string
-  name?: string
-  description?: string
-  payerId?: PayerIdentity
-  dueDate?: Date | null
-  date?: DbDateString | null
-  paymentCondition?: number | null
-  centerId?: string
-  components?: string[]
-  tags?: string[]
-}
+  id: string;
+  name?: string;
+  description?: string;
+  payerId?: PayerIdentity;
+  dueDate?: Date | null;
+  date?: DbDateString | null;
+  paymentCondition?: number | null;
+  centerId?: string;
+  components?: string[];
+  tags?: string[];
+};
 
 export type MultipleDebtPatchValues = {
-  name?: string
-  description?: string
-  payerId?: PayerIdentity
-  dueDate?: Date | null
-  date?: DbDateString | null
-  paymentCondition?: number | null
-  centerId?: string
+  name?: string;
+  description?: string;
+  payerId?: PayerIdentity;
+  dueDate?: Date | null;
+  date?: DbDateString | null;
+  paymentCondition?: number | null;
+  centerId?: string;
   components?: {
-    id: string
-    operation: 'include' | 'exclude'
-  }[]
+    id: string;
+    operation: 'include' | 'exclude';
+  }[];
   tags?: {
-    name: string
-    operation: 'include' | 'exclude'
-  }[]
-}
+    name: string;
+    operation: 'include' | 'exclude';
+  }[];
+};
 
 export type DebtCenterPatch = {
-  id: string
-  name: string
-  description: string
-  url: string
-}
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+};
 
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
   split('.'),
   reverse,
-  reduce(null as (string | null), (a, p) => a === null ? p : a + '-' + p),
+  reduce(null as string | null, (a, p) => (a === null ? p : a + '-' + p)),
   dbDateString.decode,
-  foldW(() => null, (a) => a),
+  foldW(
+    () => null,
+    a => a,
+  ),
 );
 
 export type ApiRegistration = {
-  id: number
-  user_id: number | null
-  name: string
-  email: string
-  phone: string
-  answers: { question_id: number, question: string, answer: string }[]
-}
+  id: number;
+  user_id: number | null;
+  name: string;
+  email: string;
+  phone: string;
+  answers: { question_id: number; question: string; answer: string }[];
+};
 
-export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & { userId: TkoalyIdentity | null }
+export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & {
+  userId: TkoalyIdentity | null;
+};
 
 export type ApiCustomField = {
-  id: number
-  name: string
-  type: 'text' | 'textarea' | 'radio' | 'checkbox'
-  options: string[]
-}
+  id: number;
+  name: string;
+  type: 'text' | 'textarea' | 'radio' | 'checkbox';
+  options: string[];
+};
 
-export type CustomField = ApiCustomField
+export type CustomField = ApiCustomField;
 
-export type PayerEmailPriority = 'primary' | 'disabled' | 'default'
+export type PayerEmailPriority = 'primary' | 'disabled' | 'default';
 
 export type DbPayerEmail = {
-  payer_id: string
-  email: string
-  priority: PayerEmailPriority
-  source: 'tkoaly' | 'other' | 'user'
-  created_at: Date
-  updated_at: Date
-}
+  payer_id: string;
+  email: string;
+  priority: PayerEmailPriority;
+  source: 'tkoaly' | 'other' | 'user';
+  created_at: Date;
+  updated_at: Date;
+};
 
-export type PayerEmail = Omit<FromDbType<DbPayerEmail>, 'payerId'> & { payerId: InternalIdentity }
+export type PayerEmail = Omit<FromDbType<DbPayerEmail>, 'payerId'> & {
+  payerId: InternalIdentity;
+};
 
 export type PaymentStatus = 'paid' | 'canceled' | 'mispaid' | 'unpaid';
 
 export type Payment = {
-  id: string,
-  humanId: string,
-  humanIdNonce?: number,
-  accountingPeriod: number
-  paymentNumber: number,
-  type: 'invoice',
-  data: object | null,
-  message: string,
-  payerId: InternalIdentity,
-  title: string,
-  createdAt: Date,
-  balance: EuroValue,
-  credited: boolean
-  status: PaymentStatus,
-  updatedAt: Date
-  events: Array<PaymentEvent>,
-}
+  id: string;
+  humanId: string;
+  humanIdNonce?: number;
+  accountingPeriod: number;
+  paymentNumber: number;
+  type: 'invoice';
+  data: object | null;
+  message: string;
+  payerId: InternalIdentity;
+  title: string;
+  createdAt: Date;
+  balance: EuroValue;
+  credited: boolean;
+  status: PaymentStatus;
+  updatedAt: Date;
+  events: Array<PaymentEvent>;
+};
 
-export const isPaymentInvoice = (p: Payment): p is Payment & { type: 'invoice', data: { reference_number: string, due_date: string, date: string } } => {
-  return p.type === 'invoice' && p.data !== null && 'reference_number' in p.data && 'due_date' in p.data && (!('date' in p.data) || typeof p.data.date === 'string');
+export const isPaymentInvoice = (
+  p: Payment,
+): p is Payment & {
+  type: 'invoice';
+  data: { reference_number: string; due_date: string; date: string };
+} => {
+  return (
+    p.type === 'invoice' &&
+    p.data !== null &&
+    'reference_number' in p.data &&
+    'due_date' in p.data &&
+    (!('date' in p.data) || typeof p.data.date === 'string')
+  );
 };
 
 export type DbEmail = {
-  id: string
-  recipient: string
-  subject: string
-  template: string
-  html: string | null
-  text: string
-  draft: boolean
-  created_at: Date
-  sent_at: Date | null
-}
+  id: string;
+  recipient: string;
+  subject: string;
+  template: string;
+  html: string | null;
+  text: string;
+  draft: boolean;
+  created_at: Date;
+  sent_at: Date | null;
+};
 
 export const bankAccount = t.type({
   iban: t.string,
   name: t.string,
 });
 
-export type BankAccount = t.TypeOf<typeof bankAccount>
+export type BankAccount = t.TypeOf<typeof bankAccount>;
 
 export type DbBankTransaction = {
-  id: string
-  account: string
-  amount: number
-  value_time: Date
-  type: 'credit' | 'debit'
-  other_party_account: string | null
-  other_party_name: string
-  reference: string | null
-  message: string | null
-  payment?: DbPayment
-}
+  id: string;
+  account: string;
+  amount: number;
+  value_time: Date;
+  type: 'credit' | 'debit';
+  other_party_account: string | null;
+  other_party_name: string;
+  reference: string | null;
+  message: string | null;
+  payment?: DbPayment;
+};
 
-export type BankTransaction = Omit<FromDbType<DbBankTransaction>, 'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime'> & {
-  amount: EuroValue
-  date: Date
+export type BankTransaction = Omit<
+  FromDbType<DbBankTransaction>,
+  'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime'
+> & {
+  amount: EuroValue;
+  date: Date;
   otherParty: {
-    name: string
-    account: string | null
-  }
-}
+    name: string;
+    account: string | null;
+  };
+};
 
 const newBankTransaction = t.intersection([
   t.type({
@@ -575,67 +611,70 @@ const newBankStatement = t.type({
   closingBalance: balance,
 });
 
-export type BankStatement = t.TypeOf<typeof newBankStatement>
+export type BankStatement = t.TypeOf<typeof newBankStatement>;
 
 export type DbBankStatement = {
-  id: string
-  account: string
-  generated_at: Date
-  opening_balance_date: Date
-  opening_balance: number
-  closing_balance_date: Date
-  closing_balance: number
-}
+  id: string;
+  account: string;
+  generated_at: Date;
+  opening_balance_date: Date;
+  opening_balance: number;
+  closing_balance_date: Date;
+  closing_balance: number;
+};
 
-export type Email = FromDbType<DbEmail>
+export type Email = FromDbType<DbEmail>;
 
 export type DbPaymentEventTransactionMapping = {
-  bank_transaction_id: string
-  payment_event_id: string
-}
+  bank_transaction_id: string;
+  payment_event_id: string;
+};
 
 export type DbReport = {
-  id: string
-  status: 'generating' | 'failed' | 'finished'
-  name: string
-  generated_at: Date
-  human_id: string
-  options: unknown
-  revision: number
-  type: string
-  history: Array<Omit<DbReport, 'history'>>
-  generated_by: string
-}
+  id: string;
+  status: 'generating' | 'failed' | 'finished';
+  name: string;
+  generated_at: Date;
+  human_id: string;
+  options: unknown;
+  revision: number;
+  type: string;
+  history: Array<Omit<DbReport, 'history'>>;
+  generated_by: string;
+};
 
-export type Report = Omit<FromDbType<DbReport>, 'history' | 'generatedBy'> & { history: Array<Omit<Report, 'history'>>, generatedBy: InternalIdentity | null }
+export type Report = Omit<FromDbType<DbReport>, 'history' | 'generatedBy'> & {
+  history: Array<Omit<Report, 'history'>>;
+  generatedBy: InternalIdentity | null;
+};
 
 export type DebtLedgerOptions = {
-  startDate: DbDateString
-  endDate: DbDateString
-  includeDrafts: 'include' | 'exclude' | 'only-drafts'
-  groupBy: null | 'center' | 'payer'
-  centers: null | Array<string>
-}
+  startDate: DbDateString;
+  endDate: DbDateString;
+  includeDrafts: 'include' | 'exclude' | 'only-drafts';
+  groupBy: null | 'center' | 'payer';
+  centers: null | Array<string>;
+};
 
 export type DbAccountingPeriod = {
-  year: number
-  closed: boolean
-}
+  year: number;
+  closed: boolean;
+};
 
-export type AccountingPeriod = FromDbType<DbAccountingPeriod>
+export type AccountingPeriod = FromDbType<DbAccountingPeriod>;
 
 export type PaymentLedgerOptions = {
-  startDate: DbDateString
-  endDate: DbDateString
-  paymentType: null | 'invoice' | 'cash'
-  centers: null | Array<string>
-  eventTypes: null | Array<'created' | 'payment' | 'credited'>
-  groupBy: null | 'center' | 'payer'
-}
+  startDate: DbDateString;
+  endDate: DbDateString;
+  paymentType: null | 'invoice' | 'cash';
+  centers: null | Array<string>;
+  eventTypes: null | Array<'created' | 'payment' | 'credited'>;
+  groupBy: null | 'center' | 'payer';
+};
 
 export type DebtStatusReportOptions = {
-  date: DbDateString
-  groupBy: null | 'center' | 'payer'
-  centers: null | Array<string>
-  includeOnly: null | 'paid' | 'credited' | 'open'
-}
+  date: DbDateString;
+  groupBy: null | 'center' | 'payer';
+  centers: null | Array<string>;
+  includeOnly: null | 'paid' | 'credited' | 'open';
+};
