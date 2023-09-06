@@ -22,11 +22,12 @@ import {
   useGetDebtComponentsByCenterQuery,
   useUpdateDebtComponentMutation,
 } from '../../api/debt';
-import { DebtComponent, euro, NewDebtComponent } from '../../../common/types';
+import { DebtComponent, NewDebtComponent } from '../../../common/types';
 import { pipe } from 'fp-ts/lib/function';
 import { useDialog } from '../../components/dialog';
 import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-center-edit-confirmation-dialog';
 import { contramap } from 'fp-ts/lib/Eq';
+import { euro } from '../../../common/currency';
 
 type FormComponentValue = {
   name: string;

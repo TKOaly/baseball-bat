@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import notificationsSlice, {
+import notificationsSlice, { selectNotification } from '../state/notifications';
+import type {
   NotificationButton,
   NotificationType,
-  selectNotification,
 } from '../state/notifications';
 import { useAppDispatch, useAppSelector } from '../store';
 import { Info, AlertTriangle, CheckCircle, X } from 'react-feather';

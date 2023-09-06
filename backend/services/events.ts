@@ -5,8 +5,6 @@ import {
   ApiEvent,
   ApiRegistration,
   CustomField,
-  euro,
-  EuroValue,
   Event,
   numberFromString,
   Registration,
@@ -18,6 +16,7 @@ import { parseISO } from 'date-fns';
 import * as Either from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
 import { Inject, Service } from 'typedi';
+import { euro, EuroValue } from '../../common/currency';
 
 const getEuro = (value: string): EuroValue | null =>
   pipe(

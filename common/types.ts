@@ -3,12 +3,11 @@ import * as Either from 'fp-ts/lib/Either';
 import * as tt from 'io-ts-types';
 import { flow, pipe } from 'fp-ts/lib/function';
 import { FromDbType } from '../backend/db';
-import { EuroValue, euro, euroValue } from './currency';
+import { EuroValue, euroValue } from './currency';
 import { isMatch } from 'date-fns';
 import { split } from 'fp-ts/lib/string';
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { foldW } from 'fp-ts/lib/Either';
-export { EuroValue, euro };
 
 export type TkoAlyUserId = {
   type: 'upstream';

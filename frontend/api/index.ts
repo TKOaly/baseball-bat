@@ -3,6 +3,7 @@ import {
   DebtCenter,
   EventWithPaymentStatus,
 } from '../../common/types';
+import { BACKEND_URL } from '../config';
 
 type RequestMethods =
   | 'GET'
@@ -32,7 +33,7 @@ const request = async <T>(
   auth = true,
   data?: any,
 ): Promise<T> =>
-  fetch(`${process.env.BACKEND_URL}${url}`, {
+  fetch(`${BACKEND_URL}${url}`, {
     method,
     headers: Object.assign(
       {

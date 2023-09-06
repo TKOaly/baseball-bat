@@ -54,7 +54,7 @@
       "debts": "Velat",
       "settings": "Asetukset",
       "administration": "Hallinta",
-      "logOut": "Kirjaudu ulos",
+      "logOut": "Kirjaudu ulos"
     },
     "selectedDebtCount_zero": "Ei valittuja velkoja.",
     "selectedDebtCount_one": "{{ count }} velka valittu.",

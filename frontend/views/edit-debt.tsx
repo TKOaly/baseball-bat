@@ -1,6 +1,6 @@
 import { Formik } from 'formik';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { euro, NewDebtComponent, PayerIdentity } from '../../common/types';
+import { NewDebtComponent, PayerIdentity } from '../../common/types';
 import * as dfns from 'date-fns';
 import {
   useCreateDebtComponentMutation,
@@ -30,6 +30,7 @@ import { useLocation } from 'wouter';
 import { useGetPayersQuery } from '../api/payers';
 import { DebtAssociatedResourceCreationConfirmationDialog } from '../components/dialogs/debt-associated-resource-creation-confirmation-dialog';
 import { pipe } from 'fp-ts/lib/function';
+import { euro } from '../../common/currency';
 
 type DebtFormValues = {
   name: string;

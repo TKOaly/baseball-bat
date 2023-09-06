@@ -155,7 +155,6 @@ const useManageSession = () => {
             setLocation(redirect);
           });
         } else {
-          console.log(allowUnauthenticated);
           if (!allowUnauthenticated) {
             setLocation('/auth');
           }

@@ -24,5 +24,5 @@
     "experimentalDecorators": true
   },
   "exclude": ["node_modules"],
-  "include": ["backend", "common/types.ts", "tests"]
+  "include": ["backend", "common/types.ts", "tests", "frontend"]
 }

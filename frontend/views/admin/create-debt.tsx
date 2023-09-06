@@ -7,8 +7,6 @@ import { DateField } from '../../components/datetime-field';
 import {
   DbDateString,
   dbDateString,
-  euro,
-  EuroValue,
   PayerIdentity,
 } from '../../../common/types';
 import { groupBy } from 'remeda';
@@ -29,6 +27,7 @@ import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { CreatePayerDialog } from '../../components/dialogs/create-payer-dialog';
 import { useDialog } from '../../components/dialog';
 import { useGetPayersQuery } from '../../api/payers';
+import { EuroValue, euro } from '../../../common/currency';
 
 type DebtFormValues = {
   name: string;

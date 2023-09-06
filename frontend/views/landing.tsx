@@ -18,7 +18,7 @@ export const Landing = () => {
             className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow"
             onClick={() =>
               window.location.replace(
-                `${process.env.BACKEND_URL}/api/session/login`,
+                `${import.meta.env.VITE_BACKEND_URL}/api/session/login`,
               )
             }
             data-cy="login-member-account-button"

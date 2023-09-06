@@ -8,7 +8,7 @@ import { TextareaField } from '../../components/textarea-field';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
 import { useCreateDebtComponentMutation } from '../../api/debt';
-import { euro } from '../../../common/types';
+import { euro } from '../../../common/currency';
 import { useDialog } from '../../components/dialog';
 import { InfoDialog } from '../../components/dialogs/info-dialog';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';

@@ -1,5 +1,4 @@
 import {
-  euro,
   DbDebt,
   DbDebtComponent,
   NewDebtComponent,
@@ -12,7 +11,6 @@ import {
   DbDebtCenter,
   DebtCenter,
   InternalIdentity,
-  EuroValue,
   Email,
   DebtPatch,
   DebtComponentPatch,
@@ -34,7 +32,7 @@ import { Inject, Service } from 'typedi';
 import { formatPayerProfile, PayerService } from './payer';
 import { DebtCentersService, formatDebtCenter } from './debt_centers';
 import { NewInvoice, PaymentService } from './payements';
-import { cents } from '../../common/currency';
+import { EuroValue, cents, euro } from '../../common/currency';
 
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';

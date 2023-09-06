@@ -12,12 +12,8 @@ import { Circle, Search, X } from 'react-feather';
 import { TableView } from '../../components/table-view';
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { Stepper } from '../../components/stepper';
-import {
-  DebtComponent,
-  euro,
-  Event,
-  Registration,
-} from '../../../common/types';
+import { DebtComponent, Event, Registration } from '../../../common/types';
+import { euro } from '../../../common/currency';
 import { TextField } from '../../components/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
 import { addDays, format, isMatch, subYears } from 'date-fns';

@@ -20,7 +20,6 @@ import {
   Debt,
   DebtPatch,
   Email,
-  euro,
   NewDebtTag,
 } from '../../common/types';
 import { PayerService } from '../services/payer';
@@ -34,7 +33,7 @@ import * as A from 'fp-ts/lib/Array';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as T from 'fp-ts/lib/Task';
 import * as S from 'fp-ts/lib/string';
-import { euroValue } from '../../common/currency';
+import { euro, euroValue } from '../../common/currency';
 import { UsersService } from '../services/users';
 import * as EQ from 'fp-ts/lib/Eq';
 import { RedisClientType } from 'redis';

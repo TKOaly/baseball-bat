@@ -8,7 +8,6 @@ import {
   DbPaymentEvent,
   DbPaymentEventTransactionMapping,
   Debt,
-  EuroValue,
   internalIdentity,
   InternalIdentity,
   isPaymentInvoice,
@@ -25,7 +24,7 @@ import * as E from 'fp-ts/lib/Either';
 import { EmailService } from './email';
 import { BankingService } from './banking';
 import { formatPayerProfile, PayerService } from './payer';
-import { cents, euro, sumEuroValues } from '../../common/currency';
+import { EuroValue, cents, euro, sumEuroValues } from '../../common/currency';
 import { format, formatISO, isBefore, parseISO, subDays } from 'date-fns';
 import { ReportService } from './reports';
 import { pipe } from 'fp-ts/lib/function';

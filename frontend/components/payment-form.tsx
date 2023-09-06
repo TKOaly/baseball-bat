@@ -6,6 +6,7 @@ import {
 import { Stripe, StripeElements } from '@stripe/stripe-js';
 import styled from 'styled-components';
 import { Button } from './button';
+import { BACKEND_URL } from '../config';
 
 const CardForm = styled.form`
   width: 80%;
@@ -28,7 +29,7 @@ const handleSubmit =
       redirect: 'always',
       elements,
       confirmParams: {
-        return_url: `${process.env.BACKEND_URL}/api/session/confirm-card-setup`,
+        return_url: `${BACKEND_URL}/api/session/confirm-card-setup`,
       },
     });
 

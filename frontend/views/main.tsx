@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Circle, Info } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Trans, useTranslation } from 'react-i18next';
-import { Debt, euro, isPaymentInvoice } from '../../common/types';
+import { Debt, isPaymentInvoice } from '../../common/types';
 import { TextField } from '../components/text-field';
 import { Dialog } from '../components/dialog';
 import paymentPoolSlice from '../state/payment-pool';
@@ -15,6 +15,7 @@ import {
 } from '../api/payers';
 import {
   cents,
+  euro,
   EuroValue,
   formatEuro,
   sumEuroValues,
@@ -24,6 +25,7 @@ import { Button, SecondaryButton } from '../components/button';
 import { useGetUpstreamUserQuery } from '../api/upstream-users';
 import { useAppDispatch, useAppSelector } from '../store';
 import { useGetOwnPaymentsQuery } from '../api/payments';
+import { BACKEND_URL } from '../config';
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -80,9 +82,9 @@ const WelcomeDialog = () => {
     }
 
     window.location.replace(
-      `${
-        process.env.BACKEND_URL
-      }/api/session/login?target=welcome&token=${encodeURIComponent(token)}`,
+      `${BACKEND_URL}/api/session/login?target=welcome&token=${encodeURIComponent(
+        token,
+      )}`,
     );
   };
 
@@ -187,7 +189,8 @@ const WelcomeDialog = () => {
               className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow w-60 mt-4"
               onClick={() =>
                 window.location.replace(
-                  `${process.env.BACKEND_URL}/api/session/login`,
+                  `${BACKEND_URL}/api/session/login`,
+                  BACKEND_URL,
                 )
               }
             >

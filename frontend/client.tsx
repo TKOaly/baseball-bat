@@ -17,5 +17,4 @@ i18n.use(initReactI18next).init({
 
 const root = document.getElementById('root');
 
-console.log(process.env.NODE_ENV);
 ReactDOM.render(<AppWrapper />, root);
