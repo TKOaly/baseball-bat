@@ -14,36 +14,46 @@ import { map, reduce } from 'fp-ts/lib/Array';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '../../common/types';
-import { formatEuro, sumEuroValues, euro, cents } from '../../common/currency';
+import {
+  formatEuro,
+  sumEuroValues,
+  euro,
+  cents,
+  EuroValue,
+} from '../../common/currency';
+import {
+  formatBarcode,
+  generateBarcodeImage,
+} from '../../common/virtual-barcode';
 import { formatReferenceNumber } from './payements';
 import { JobService } from './jobs';
 import { Job } from 'bullmq';
 
 type SendEmailOptions = {
-  recipient: string
-  subject: string
-  template: string
-  payload: object
-}
+  recipient: string;
+  subject: string;
+  template: string;
+  payload: object;
+};
 
 type EmailTemplate = {
-  html?: { filetype: string, content: string }
-  text?: { filetype: string, content: string }
-}
+  html?: { filetype: string; content: string };
+  text?: { filetype: string; content: string };
+};
 
 type Template = {
-  name: string
-  filetype: string
-  content: string
-}
+  name: string;
+  filetype: string;
+  content: string;
+};
 
 type NewEmail = {
-  recipient: string
-  subject: string
-  template: string
-  payload: object
-  debts?: string[],
-}
+  recipient: string;
+  subject: string;
+  template: string;
+  payload: object;
+  debts?: string[];
+};
 
 const formatEmail = (email: DbEmail): Email => ({
   id: email.id,
@@ -58,19 +68,21 @@ const formatEmail = (email: DbEmail): Email => ({
 });
 
 type EmailTransportOptions = {
-  from: string,
-  replyTo?: string,
-  to: string,
-  subject: string,
-  text: string,
-  html: string | null,
-}
+  from: string;
+  replyTo?: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string | null;
+};
 
 export interface IEmailTransport {
-  sendEmail(options: EmailTransportOptions): Promise<void>
+  sendEmail(options: EmailTransportOptions): Promise<void>;
 }
 
-export const createEmailDispatcherTransport = (config: NonNullable<Config['emailDispatcher']>) => {
+export const createEmailDispatcherTransport = (
+  config: NonNullable<Config['emailDispatcher']>,
+) => {
   const client = axios.create({
     baseURL: config.url,
     headers: {
@@ -80,26 +92,25 @@ export const createEmailDispatcherTransport = (config: NonNullable<Config['email
 
   return {
     async sendEmail(options: EmailTransportOptions) {
-      await client
-        .post('/', {
-          body: {
-            to: options.to,
-            from: options.from,
-            subject: options.subject,
-            body: options.text,
-          },
-        });
+      await client.post('/', {
+        body: {
+          to: options.to,
+          from: options.from,
+          subject: options.subject,
+          body: options.text,
+        },
+      });
     },
   };
 };
 
 type SMTPConfig = {
-  host: string
-  port: number
-  secure: boolean
-  user?: string
-  password?: string
-}
+  host: string;
+  port: number;
+  secure: boolean;
+  user?: string;
+  password?: string;
+};
 
 export const createSMTPTransport = (config: SMTPConfig) => {
   let auth = undefined;
@@ -133,7 +144,7 @@ export const createSMTPTransport = (config: SMTPConfig) => {
 };
 
 type EmailSendJobData = {
-  emailId: string,
+  emailId: string;
 };
 
 type EmailSendJobResult = { result: 'error' } | { result: 'success' };
@@ -147,7 +158,7 @@ type EmailJob = EmailSendJob | EmailBatchSendJob;
 @Service()
 export class EmailService {
   @Inject(() => Config)
-    config: Config;
+  config: Config;
 
   // @Inject(() => PgClient)
   pg: PgClient;
@@ -156,16 +167,24 @@ export class EmailService {
 
   private templates: Record<string, EmailTemplate>;
 
-  constructor(transport: IEmailTransport, pg: PgClient, @Inject() public jobService: JobService) {
+  constructor(
+    transport: IEmailTransport,
+    pg: PgClient,
+    @Inject() public jobService: JobService,
+  ) {
     this.transport = transport;
     this.pg = pg;
     this.loadTemplates();
-    this.jobService.createWorker('emails', this.handleEmailJob.bind(this) as any, {
-      limiter: {
-        max: 1,
-        duration: 1000,
+    this.jobService.createWorker(
+      'emails',
+      this.handleEmailJob.bind(this) as any,
+      {
+        limiter: {
+          max: 1,
+          duration: 1000,
+        },
       },
-    });
+    );
   }
 
   private async handleEmailJob(job: EmailJob) {
@@ -215,21 +234,18 @@ export class EmailService {
       }),
       groupBy((r: Template) => r.name),
       record.map(
-        reduce(
-          {} as EmailTemplate,
-          (acc, { filetype, content }: Template) => {
-            const kind = { mjml: 'html', html: 'html', txt: 'text' }[filetype];
+        reduce({} as EmailTemplate, (acc, { filetype, content }: Template) => {
+          const kind = { mjml: 'html', html: 'html', txt: 'text' }[filetype];
 
-            if (!kind) {
-              return acc;
-            }
+          if (!kind) {
+            return acc;
+          }
 
-            return {
-              ...acc,
-              [kind]: { filetype, content },
-            };
-          },
-        ),
+          return {
+            ...acc,
+            [kind]: { filetype, content },
+          };
+        }),
       ),
     );
   }
@@ -263,20 +279,27 @@ export class EmailService {
       return null;
     }
 
-    const populate = (template: string) => ejs.render(template, {
-      ...payload,
-      dateFns,
-      formatEuro,
-      formatReferenceNumber,
-      sumEuroValues,
-      euro,
-      cents,
-      formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
-    });
+    const populate = (template: string) =>
+      ejs.render(template, {
+        ...payload,
+        dateFns,
+        formatEuro,
+        formatReferenceNumber,
+        sumEuroValues,
+        euro,
+        cents,
+        formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
+        formatBarcode: (
+          iban: string,
+          amount: EuroValue,
+          reference: string,
+          date: Date,
+        ) => formatBarcode(iban, amount.value / 100, reference, date),
+        generateBarcodeImage,
+      });
 
     if (type === 'html') {
-      if (!template.html)
-        return null;
+      if (!template.html) return null;
 
       if (template.html.filetype === 'mjml') {
         return mjml2html(populate(template.html.content)).html;
@@ -284,8 +307,7 @@ export class EmailService {
         return populate(template.html.content);
       }
     } else {
-      if (!template.text)
-        return null;
+      if (!template.text) return null;
 
       return populate(template.text.content);
     }
@@ -298,17 +320,20 @@ export class EmailService {
     try {
       html = this.renderTemplate(email.template, 'html', email.payload);
     } catch (error) {
-      console.error(`Failed to render HTML template '${email.template}': ${error}`);
+      console.error(
+        `Failed to render HTML template '${email.template}': ${error}`,
+      );
     }
 
     try {
       text = this.renderTemplate(email.template, 'text', email.payload);
     } catch (error) {
-      console.error(`Failed to render text template '${email.template}': ${error}`);
+      console.error(
+        `Failed to render text template '${email.template}': ${error}`,
+      );
     }
 
-    const result = await this.pg
-      .one<DbEmail>(sql`
+    const result = await this.pg.one<DbEmail>(sql`
         INSERT INTO emails (recipient, subject, template, html, text)
         VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
         RETURNING *
@@ -319,10 +344,14 @@ export class EmailService {
     }
 
     if (email.debts) {
-      await Promise.all(email.debts.map((debt) => this.pg.any(sql`
+      await Promise.all(
+        email.debts.map(debt =>
+          this.pg.any(sql`
         INSERT INTO email_debt_mapping (email_id, debt_id)
         VALUES (${result.id}, ${debt})
-      `)));
+      `),
+        ),
+      );
     }
 
     return formatEmail(result);
@@ -348,15 +377,16 @@ export class EmailService {
   }
 
   async batchSendEmails(ids: string[], { jobName }: { jobName?: string } = {}) {
-    const jobs = await Promise.all(ids.map((id) => this.createEmailJobDescription(id)));
+    const jobs = await Promise.all(
+      ids.map(id => this.createEmailJobDescription(id)),
+    );
 
-    await this.jobService
-      .createJob({
-        queueName: 'emails',
-        name: 'batch',
-        data: { name: jobName ?? `Send ${ids.length} emails` },
-        children: jobs,
-      });
+    await this.jobService.createJob({
+      queueName: 'emails',
+      name: 'batch',
+      data: { name: jobName ?? `Send ${ids.length} emails` },
+      children: jobs,
+    });
   }
 
   async createEmailJobDescription(id: string) {
@@ -386,29 +416,29 @@ export class EmailService {
   }
 
   async getEmails() {
-    const emails = await this.pg
-      .any<DbEmail>(sql`SELECT * FROM emails`);
+    const emails = await this.pg.any<DbEmail>(sql`SELECT * FROM emails`);
 
     return emails.map(formatEmail);
   }
 
   async getEmail(id: string) {
-    const email = await this.pg
-      .one<DbEmail>(sql`SELECT * FROM emails WHERE id = ${id}`);
+    const email = await this.pg.one<DbEmail>(
+      sql`SELECT * FROM emails WHERE id = ${id}`,
+    );
 
     return email && formatEmail(email);
   }
 
   async getEmailsByAddress(email: string) {
-    const emails = await this.pg
-      .any<DbEmail>(sql`SELECT * FROM emails WHERE recipient = ${email}`);
+    const emails = await this.pg.any<DbEmail>(
+      sql`SELECT * FROM emails WHERE recipient = ${email}`,
+    );
 
     return emails.map(formatEmail);
   }
 
   async getEmailsByPayer(payer: InternalIdentity) {
-    const emails = await this.pg
-      .any<DbEmail>(sql`
+    const emails = await this.pg.any<DbEmail>(sql`
         SELECT emails.*
         FROM payer_emails
         JOIN emails ON emails.recipient = payer_emails.email
@@ -419,8 +449,7 @@ export class EmailService {
   }
 
   async getEmailsByDebt(debt: string) {
-    const emails = await this.pg
-      .any<DbEmail>(sql`
+    const emails = await this.pg.any<DbEmail>(sql`
         SELECT emails.*
         FROM email_debt_mapping edm
         JOIN emails ON emails.id = edm.email_id

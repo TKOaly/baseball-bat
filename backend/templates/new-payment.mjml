@@ -1,117 +1,147 @@
 <mjml>
   <mj-head>
     <mj-style inline="inline">
-      th {
-      	text-align: right;
-      	padding-right: 1em;
-      }
-      
-    	th span {
-      	font-size: 0.8em;
-      	color: gray;
-      	display: block;
-      	margin-top: -0.8em;
-      }
+      th { text-align: right; padding-right: 1em; } th span { font-size: 0.8em;
+      color: gray; display: block; margin-top: -0.8em; }
     </mj-style>
   </mj-head>
   <mj-body background-color="#ffcc33">
-      <mj-section padding-top="40px">
-      	<mj-column vertical-align="middle" width="40%">
-          <mj-image width="144px" src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg" align="center"></mj-image>
-        </mj-column>
-        <mj-column vertical-align="middle">
-          <mj-text font-size="30px" color="#000" font-family="serif" align="center">TKO-äly ry</mj-text>
-          <mj-text font-size="20px" color="#000" font-family="serif" align="center">Maksupalvelu</mj-text>
-        </mj-column>
-      </mj-section>
+    <mj-section padding-top="40px">
+      <mj-column vertical-align="middle" width="40%">
+        <mj-image
+          width="144px"
+          src="https://wiki.tko-aly.fi/images/2/2b/Logo-black-on-transparent.svg"
+          align="center"
+        ></mj-image>
+      </mj-column>
+      <mj-column vertical-align="middle">
+        <mj-text
+          font-size="30px"
+          color="#000"
+          font-family="serif"
+          align="center"
+          >TKO-äly ry</mj-text
+        >
+        <mj-text
+          font-size="20px"
+          color="#000"
+          font-family="serif"
+          align="center"
+          >Maksupalvelu</mj-text
+        >
+      </mj-column>
+    </mj-section>
     <mj-section>
       <mj-column background-color="#FBFBFB" padding="40px 10px">
-        <mj-text font-size="24px">You have new pending invoices from TKO-äly</mj-text>
+        <mj-text font-size="24px"
+          >You have new pending invoices from TKO-äly</mj-text
+        >
 
         <mj-text>
-          This is an automated message regarding a new invoice assigned to you from TKO-äly. Below are the details of the invoice.
+          This is an automated message regarding a new invoice assigned to you
+          from TKO-äly. Below are the details of the invoice.
         </mj-text>
-        
-        <mj-divider border-color="#ffcc33" />
-        
-        <mj-text font-size="24px">Olet saanut uuden laskun TKO-äly ry:ltä</mj-text>
-        
-        <mj-text>
-        	Tämä on automaattinen viesti koskien uutta sinulle osoitettua velkaa.
-          Ole hyvä ja suorita maksu alla olevien tietojen mukaisesti eräpäivään mennessä.
-        </mj-text>
-        
+
         <mj-divider border-color="#ffcc33" />
 
-       	<mj-text><div style="white-space: pre; border-left: 5px solid #00000033; padding: 1em"><%= message %></div></mj-text>
-          
+        <mj-text font-size="24px"
+          >Olet saanut uuden laskun TKO-äly ry:ltä</mj-text
+        >
+
+        <mj-text>
+          Tämä on automaattinen viesti koskien uutta sinulle osoitettua velkaa.
+          Ole hyvä ja suorita maksu alla olevien tietojen mukaisesti eräpäivään
+          mennessä.
+        </mj-text>
+
+        <mj-divider border-color="#ffcc33" />
+
+        <mj-text
+          ><div
+            style="
+              white-space: pre;
+              border-left: 5px solid #00000033;
+              padding: 1em;
+            "
+          >
+            <%= message %>
+          </div></mj-text
+        >
+
         <mj-table>
           <tr>
             <th>
-              Otsikko <br/>
+              Otsikko <br />
               <span>Title</span>
             </th>
             <td><%= title %></td>
           </tr>
           <tr>
             <th>
-              Laskun numero <br/>
+              Laskun numero <br />
               <span>Invoice Number</span>
             </th>
             <td><%= number %></td>
           </tr>
           <tr>
             <th>
-              Laskun päiväys <br/>
+              Laskun päiväys <br />
               <span>Invoice Date</span>
             </th>
             <td><%= dateFns.format(date, 'dd.MM.yyyy') %></td>
           </tr>
           <tr>
             <th>
-              Eräpäivä <br/>
+              Eräpäivä <br />
               <span>Due Date</span>
             </th>
             <td><%= dateFns.format(dueDate, 'dd.MM.yyyy') %></td>
           </tr>
           <tr>
             <th>
-              Summa <br/>
+              Summa <br />
               <span>Total Amount</span>
             </th>
             <td><%= formatEuro(amount) %></td>
           </tr>
           <tr>
             <th>
-              Viitenumero <br/>
+              Viitenumero <br />
               <span>Reference Number</span>
             </th>
             <td><%= formatReferenceNumber(referenceNumber) %></td>
           </tr>
           <tr>
             <th>
-              Vastaanottaja<br/>
+              Vastaanottaja<br />
               <span>Receiver Name</span>
             </th>
             <td>TKO-äly ry</td>
           </tr>
           <tr>
             <th>
-              Tilinumero <br/>
+              Tilinumero <br />
               <span>Recipient Account</span>
             </th>
             <td>FI89 7997 7995 1312 86</td>
           </tr>
           <tr>
             <th>
-              BIC <br/>
+              BIC <br />
               <span>BIC</span>
             </th>
             <td>HOLVFIHH</td>
           </tr>
         </mj-table>
-        
+
         <!-- <mj-button color="black" font-weight="bold" padding-top="30px" background-color="#ffcc33" href="#">View Online</mj-button> -->
+
+        <mj-divider border-color="#fc3" />
+        <mj-text font-size="20px">Virtual bar code</mj-text>
+        <% const barcode = formatBarcode("FI89 7997 7995 1312 86", amount,
+        referenceNumber, dueDate) %>
+        <mj-text><pre><%- barcode %></pre></mj-text>
+        <mj-image src="<%- generateBarcodeImage(barcode) %>" />
       </mj-column>
     </mj-section>
   </mj-body>
