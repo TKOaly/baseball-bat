@@ -25,11 +25,11 @@
             <th colspan=2 style="text-align: left; padding-top: 1em"><%- debt.name %></th>
           </tr>
           <tr>
-            <th style="width: 1%; white-space: nowrap !important; padding: 0 1em; text-align: left; font-weight: normal">Summa</td>
+            <th style="width: 1%; white-space: nowrap !important; padding: 0 1em; text-align: left; font-weight: normal">Summa</th>
             <td><%- formatEuro(debt.total) %></td>
           </tr>
           <tr>
-            <th style="width: 1%; white-space: nowrap !important; padding: 0 1em; font-weight: normal; padding-left: 1em">Eräpäivä</td>
+            <th style="width: 1%; white-space: nowrap !important; padding: 0 1em; font-weight: normal; padding-left: 1em">Eräpäivä</th>
             <td><%- formatDate(debt.dueDate) %></td>
           </tr>
         <% } %>
