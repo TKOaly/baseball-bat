@@ -1,10 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": [
-      "es2019",
-      "dom"
-    ],
+    "lib": ["es2019", "dom"],
     "module": "commonjs",
     "strict": true,
     "strictPropertyInitialization": false,
@@ -21,17 +18,11 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "outDir": "build",
-    "jsxImportSource": "react",
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "exclude": [
-    "node_modules"
-  ],
-  "include": [
-    "backend",
-    "common/types.ts",
-    "tests"
-  ]
+  "exclude": ["node_modules"],
+  "include": ["backend", "common/types.ts", "tests"]
 }
