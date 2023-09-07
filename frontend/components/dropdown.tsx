@@ -17,26 +17,28 @@ type DropdownProps = {
   renderTrigger?: (
     arg: any,
     arg2: { label: React.ReactNode | string | null; open: boolean },
-  ) => React.ReactNode; // eslint-disable-line
+  ) => React.ReactNode;
   showArrow?: boolean;
   value?: string;
-  options: any[]; // eslint-disable-line
+  options: any[];
   onSelect?: (value: string) => void;
   className?: string;
+  disabled?: boolean;
 };
 
 export function Dropdown<P extends DropdownProps>({
   label = null,
   scroll = false,
-  renderTrigger = null,
+  renderTrigger,
   showArrow = true,
   options,
   onSelect,
+  disabled = false,
   ...props
 }: P) {
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const listRef = useRef([]);
+  const [activeIndex, setActiveIndex] = useState<number | null>(0);
+  const listRef = useRef<Array<HTMLElement | null>>([]);
 
   const { x, y, reference, floating, strategy, context } = useFloating({
     open,
@@ -57,7 +59,7 @@ export function Dropdown<P extends DropdownProps>({
     ],
   );
 
-  const dropdownRef = useRef();
+  const dropdownRef = useRef<HTMLElement>(null);
 
   useOutsideEventListener(
     dropdownRef,
@@ -83,7 +85,8 @@ export function Dropdown<P extends DropdownProps>({
         <button
           ref={reference}
           type="button"
-          className="text-gray-600 inline-flex hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          disabled={disabled}
+          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center dark:bg-blue-600 dark:disabled:hover:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           {...getReferenceProps()}
         >
           {(options ?? []).find(
@@ -97,6 +100,7 @@ export function Dropdown<P extends DropdownProps>({
                 strokeWidth: '2px',
                 transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
                 transitionDuration: '200ms',
+                color: disabled ? '#ccc' : undefined,
               }}
             />
           )}
