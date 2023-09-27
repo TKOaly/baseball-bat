@@ -13,7 +13,7 @@
     "coverage": "c8 yarn test",
     "prettier": "prettier --write --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
     "prettier:check": "prettier --check --cache './**/*.{js,jsx,ts,tsx,css,mjml}'",
-    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx .",
+    "lint": "eslint --cache --ext .js,.jsx,.ts,.tsx common frontend backend tests",
     "prepare": "husky install"
   },
   "dependencies": {
