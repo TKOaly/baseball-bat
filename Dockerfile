@@ -26,6 +26,7 @@ RUN apk update && apk add chromium
 
 # node-canvas dependencies
 RUN apk add --no-cache --virtual .build-deps \
+  gcompat \
   git \
   build-base \
   g++ \
