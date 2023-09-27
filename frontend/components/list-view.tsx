@@ -128,8 +128,8 @@ export const ListView = ({ items, actions, onSelected }: Props) => {
       <div className="flex gap-2 items-center mb-5">
         {actions}
         <div className="flex-grow"></div>
-        <Dropdown />
         <ButtonGroupSelector
+          disabled={items.length === 0}
           value={mode}
           onChange={setMode}
           options={[
@@ -150,6 +150,20 @@ export const ListView = ({ items, actions, onSelected }: Props) => {
           mode === 'cards' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'
         } gap-3 w-full`}
       >
+        {items.length === 0 && (
+          <ListViewCard
+            item={{
+              key: 'empty',
+              title: 'No items',
+              description: 'There are no items to display.',
+              label: '',
+              badges: [],
+            }}
+            onSelected={() => {
+              return;
+            }}
+          />
+        )}
         {items.map(item => (
           <ItemComponent
             item={item}

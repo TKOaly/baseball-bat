@@ -5,28 +5,32 @@ export interface Props<V> {
   }[];
   onChange: (value: V) => void;
   value: V;
+  disabled?: boolean;
 }
 
-export function ButtonGroupSelector<V>({ options, onChange, value }: Props<V>) {
+export function ButtonGroupSelector<V>({
+  options,
+  onChange,
+  value,
+  disabled = false,
+}: Props<V>) {
   return (
     <div className="rounded-md border overflow-hidden inline-flex shadow-sm bg-white">
-      {options.map((option, i) => {
-        let rounding = '';
-
-        if (i === 0) {
-          rounding = 'rounding-l-md';
-        } else if (i === options.length - 1) {
-          rounding = 'rounding-r-md';
-        }
-
-        const active = value === option.value ? 'bg-white font-bold' : '';
+      {options.map(option => {
+        const active =
+          value === option.value
+            ? 'bg-white font-bold cursor-default'
+            : 'hover:bg-gray-100 cursor-pointer';
 
         return (
           <button
-            className={`px-4 py-2 text-gray-700 ${rounding} ${active} text-sm border-r focus:ring-4 cursor-pointer hover:bg-gray-100`}
+            className={`px-4 py-2 text-gray-700 ${
+              disabled ? 'text-gray-300' : undefined
+            } ${active} outline-offset-[-2px] text-sm border-r select-none`}
             onClick={() => onChange(option.value)}
             tabIndex={0}
-            key={option.value}
+            key={option.text}
+            disabled={disabled || value === option.value}
           >
             {option.text}
           </button>
