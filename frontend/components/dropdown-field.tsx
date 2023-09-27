@@ -27,7 +27,7 @@ export type DropdownFieldProps<V> = {
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-constraint
 export const DropdownField = memo(
-  <V extends unknown>({
+  <V,>({
     name,
     value,
     onChange,
