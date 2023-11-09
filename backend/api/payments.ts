@@ -16,7 +16,12 @@ import { PaymentService } from '../services/payements';
 import { PayerService } from '../services/payer';
 import { UsersService } from '../services/users';
 import { validateBody } from '../validate-middleware';
-import { euro, formatEuro, sumEuroValues } from '../../common/currency';
+import {
+  euro,
+  euroValue,
+  formatEuro,
+  sumEuroValues,
+} from '../../common/currency';
 import { EmailService } from '../services/email';
 import { Config } from '../config';
 import { BankingService } from '../services/banking';
@@ -100,12 +105,13 @@ export class PaymentsApi {
         validateBody(
           t.type({
             transactionId: t.string,
+            amount: euroValue,
           }),
         ),
       )
       .handler(async ctx => {
         const { id } = ctx.routeParams;
-        const { transactionId } = ctx.body;
+        const { amount, transactionId } = ctx.body;
 
         const transaction =
           await this.bankingService.getTransaction(transactionId);
@@ -117,6 +123,7 @@ export class PaymentsApi {
         const event =
           await this.paymentService.createPaymentEventFromTransaction(
             transaction,
+            amount,
             id,
           );
 
@@ -356,6 +363,46 @@ export class PaymentsApi {
       });
   }
 
+  private deletePaymentEvent() {
+    return route
+      .delete('/events/:id')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async ctx => {
+        const event = await this.paymentService.deletePaymentEvent(
+          ctx.routeParams.id,
+        );
+
+        if (!event) {
+          return notFound();
+        }
+
+        return ok(event);
+      });
+  }
+
+  private updatePaymentEvent() {
+    return route
+      .patch('/events/:id')
+      .use(this.authService.createAuthMiddleware())
+      .use(
+        validateBody(
+          t.type({
+            amount: euroValue,
+          }),
+        ),
+      )
+      .handler(async ctx => {
+        const event = await this.paymentService.updatePaymentEvent(
+          ctx.routeParams.id,
+          {
+            amount: ctx.body.amount,
+          },
+        );
+
+        return ok(event);
+      });
+  }
+
   router() {
     return router(
       this.getPayments(),
@@ -366,6 +413,8 @@ export class PaymentsApi {
       this.registerTransaction(),
       this.createStripePayment(),
       this.stripeWebhook(),
+      this.deletePaymentEvent(),
+      this.updatePaymentEvent(),
     );
   }
 }

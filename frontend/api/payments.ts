@@ -1,11 +1,16 @@
 import rtkApi from './rtk-api';
-import { EuroValue, Payment } from '../../common/types';
+import { EuroValue, Payment, PaymentEvent } from '../../common/types';
 
 export type BankTransactionDetails = {
   accountingId: string;
   time: string;
   amount: EuroValue;
   referenceNumber: string;
+};
+
+export type UpdatePaymentEventOptions = {
+  id: string;
+  amount?: EuroValue;
 };
 
 const paymentsApi = rtkApi.injectEndpoints({
@@ -69,14 +74,37 @@ const paymentsApi = rtkApi.injectEndpoints({
       providesTags: [{ type: 'Payment', id: 'LIST' }],
     }),
 
+    deletePaymentEvent: builder.mutation<PaymentEvent, string>({
+      query: id => ({
+        url: `/payments/events/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ({ id }) => [
+        { type: 'PaymentEvent', id },
+        { type: 'PaymentEvent', id: 'LIST' },
+      ],
+    }),
+
+    updatePaymentEvent: builder.mutation<
+      PaymentEvent,
+      UpdatePaymentEventOptions
+    >({
+      query: ({ id, amount }) => ({
+        url: `/payments/events/${id}`,
+        method: 'PATCH',
+        body: { amount },
+      }),
+      invalidatesTags: ({ id }) => [{ type: 'PaymentEvent', id }],
+    }),
+
     registerTransaction: builder.mutation<
       void,
-      { paymentId: string; transactionId: string }
+      { paymentId: string; transactionId: string; amount: EuroValue }
     >({
-      query: ({ paymentId, transactionId }) => ({
+      query: ({ paymentId, transactionId, amount }) => ({
         method: 'POST',
         url: `/payments/${paymentId}/register`,
-        body: { transactionId },
+        body: { transactionId, amount },
       }),
       invalidatesTags: (_, __, { paymentId, transactionId }) => [
         { type: 'BankTransaction', id: 'LIST' },
@@ -98,6 +126,8 @@ export const {
   useGetPaymentsByReferenceNumbersQuery,
   useRegisterTransactionMutation,
   useCreateStripePaymentMutation,
+  useDeletePaymentEventMutation,
+  useUpdatePaymentEventMutation,
 } = paymentsApi;
 
 export default paymentsApi;

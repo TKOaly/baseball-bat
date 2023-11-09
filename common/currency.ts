@@ -17,6 +17,25 @@ export const cents = (value: number): EuroValue => ({
   value,
 });
 
+export const eurosEqual = (a: EuroValue, b: EuroValue) => a.value === b.value;
+
+export const makeEurosNegative = (value: EuroValue): EuroValue => ({
+  ...value,
+  value: -Math.abs(value.value),
+});
+
+export const compareEuroValues = (a: EuroValue, b: EuroValue): -1 | 0 | 1 => {
+  if (a.value === b.value) {
+    return 0;
+  }
+
+  if (a.value < b.value) {
+    return -1;
+  }
+
+  return 1;
+};
+
 export const subEuroValues = (
   acc: undefined | EuroValue,
   value: EuroValue,

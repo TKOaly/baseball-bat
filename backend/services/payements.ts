@@ -5,6 +5,7 @@ import {
   DbDebt,
   DbEmail,
   DbPayerProfile,
+  DbPayment,
   DbPaymentEvent,
   DbPaymentEventTransactionMapping,
   Debt,
@@ -169,7 +170,7 @@ type StripePayment = {
   type: 'stripe';
 };
 
-export type DbPayment = {
+/*export type DbPayment = {
   id: string;
   human_id: string;
   human_id_nonce?: number;
@@ -186,7 +187,7 @@ export type DbPayment = {
   payment_number: number;
   credited: boolean;
   events: Array<DbPaymentEvent>;
-};
+};*/
 
 type NewPayment<T extends PaymentType, D = null> = {
   type: T['type'];
@@ -216,6 +217,10 @@ export const formatPayment = (db: DbPayment): Payment => ({
   credited: db.credited,
   events: db.events.map(formatPaymentEvent),
 });
+
+type UpdatePaymentEventOptions = {
+  amount?: EuroValue;
+};
 
 @Service()
 export class PaymentService {
@@ -672,6 +677,14 @@ export class PaymentService {
     }
   }
 
+  async getPaymentEvent(id: string) {
+    const row = await this.pg.one<DbPaymentEvent>(sql`
+      SELECT * FROM payment_events WHERE id = ${id}
+    `);
+
+    return row && formatPaymentEvent(row);
+  }
+
   async getPaymentsByReferenceNumbers(rfs: string[]) {
     const payments = await this.pg.any<PaymentWithEvents>(sql`
       SELECT
@@ -694,6 +707,7 @@ export class PaymentService {
 
   async createPaymentEventFromTransaction(
     tx: BankTransaction,
+    amount?: EuroValue,
     pPayment?: string,
   ) {
     const existing_mapping = await this.pg
@@ -723,7 +737,7 @@ export class PaymentService {
 
     return await this.createPaymentEvent(payment.id, {
       type: 'payment',
-      amount: tx.amount,
+      amount: amount ?? tx.amount,
       time: tx.date,
       transaction: tx.id,
     });
@@ -923,5 +937,28 @@ export class PaymentService {
       parent,
       generatedBy,
     });
+  }
+
+  async deletePaymentEvent(id: string) {
+    await this.pg.any(sql`
+      DELETE FROM payment_event_transaction_mapping WHERE payment_event_id = ${id}
+    `);
+
+    const row = await this.pg.one<DbPaymentEvent>(sql`
+      DELETE FROM payment_events WHERE id = ${id} RETURNING *
+    `);
+
+    return row && formatPaymentEvent(row);
+  }
+
+  async updatePaymentEvent(id: string, options: UpdatePaymentEventOptions) {
+    const paymentEvent = await this.pg.one<DbPaymentEvent>(sql`
+      UPDATE payment_events
+      SET amount = COALESCE(${options.amount?.value}, amount)
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    return paymentEvent && formatPaymentEvent(paymentEvent);
   }
 }

@@ -244,7 +244,7 @@ export type Session = {
   preferences: PayerPreferences;
 };
 
-export type DbPayment = {
+/*export type DbPayment = {
   id: string;
   human_id: string;
   human_id_nonce?: number;
@@ -257,6 +257,25 @@ export type DbPayment = {
   payment_number: number;
   data: unknown;
   credited: boolean;
+};*/
+
+export type DbPayment = {
+  id: string;
+  human_id: string;
+  human_id_nonce?: number;
+  accounting_period: number;
+  type: 'invoice';
+  title: string;
+  payer_id: string;
+  data: Record<string, unknown>;
+  message: string;
+  balance: number;
+  status: 'canceled' | 'paid' | 'unpaid' | 'mispaid';
+  updated_at: Date;
+  created_at: Date;
+  payment_number: number;
+  credited: boolean;
+  events: Array<DbPaymentEvent>;
 };
 
 export type DbLineItem = {
@@ -565,12 +584,12 @@ export type DbBankTransaction = {
   other_party_name: string;
   reference: string | null;
   message: string | null;
-  payment?: DbPayment;
+  payments: DbPayment[] | null;
 };
 
 export type BankTransaction = Omit<
   FromDbType<DbBankTransaction>,
-  'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime'
+  'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime' | 'payments'
 > & {
   amount: EuroValue;
   date: Date;
@@ -578,6 +597,7 @@ export type BankTransaction = Omit<
     name: string;
     account: string | null;
   };
+  payments: Payment[];
 };
 
 const newBankTransaction = t.intersection([

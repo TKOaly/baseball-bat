@@ -24,9 +24,9 @@ export const TransactionList = ({ transactions }: Props) => {
         {
           key: 'register',
           text: 'Register',
-          onSelect: async transactions => {
+          onSelect: async ([transaction]) => {
             await showTransactionRegistrationDialog({
-              transactions,
+              transaction,
             });
           },
         },
@@ -74,19 +74,25 @@ export const TransactionList = ({ transactions }: Props) => {
         },
         {
           name: 'Payment',
-          getValue: row => row.payment?.payment_number,
+          getValue: row => row.payments,
           render: (_, row) => {
-            if (!row.payment) return null;
+            if (row.payments.length === 0) return null;
 
-            return (
-              <div
-                className="flex items-center cursor-pointer gap-1"
-                onClick={() => setLocation(`/admin/payments/${row.payment.id}`)}
-              >
-                {row.payment.payment_number}
-                <ExternalLink className="h-4 text-blue-500 relative" />
-              </div>
-            );
+            if (row.payments.length === 1) {
+              const [payment] = row.payments;
+
+              return (
+                <div
+                  className="flex items-center cursor-pointer gap-1"
+                  onClick={() => setLocation(`/admin/payments/${payment.id}`)}
+                >
+                  {payment.paymentNumber}
+                  <ExternalLink className="h-4 text-blue-500 relative" />
+                </div>
+              );
+            }
+
+            return <span>{row.payments.length} payments</span>;
           },
         },
       ]}

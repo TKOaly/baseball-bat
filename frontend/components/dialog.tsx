@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState, createContext } from 'react';
 import { X } from 'react-feather';
 import { createPortal } from 'react-dom';
+import { cva } from 'class-variance-authority';
 
 export type DialogContextValue = {
   dialogs: {
@@ -133,7 +134,22 @@ export const Portal = ({ children, containerId }) => {
   return createPortal(children, element);
 };
 
-export const DialogBase = ({ children, onClose, wide = false, ...rest }) => {
+const dialogCva = cva('rounded-lg flex flex-col bg-white border shadow-lg', {
+  variants: {
+    size: {
+      normal: 'w-[30em]',
+      wide: '',
+    },
+  },
+});
+
+export const DialogBase = ({
+  children,
+  onClose,
+  wide = false,
+  className = '',
+  ...rest
+}) => {
   return (
     <div
       {...rest}
@@ -141,9 +157,7 @@ export const DialogBase = ({ children, onClose, wide = false, ...rest }) => {
       onClick={onClose}
     >
       <div
-        className={`rounded-lg flex flex-col bg-white border shadow-lg ${
-          wide ? '' : 'w-[30em]'
-        }`}
+        className={dialogCva({ size: wide ? 'wide' : 'normal', className })}
         onClick={e => e.stopPropagation()}
       >
         {children}

@@ -9,7 +9,7 @@ import {
 import { PgClient } from '../db';
 import sql from 'sql-template-strings';
 import { cents } from '../../common/currency';
-import { PaymentService } from './payements';
+import { formatPayment, PaymentService } from './payements';
 
 const formatBankStatement = (
   stmt: DbBankStatement,
@@ -39,7 +39,7 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
   },
   message: tx.message,
   reference: tx.reference,
-  payment: tx.payment,
+  payments: (tx.payments ?? []).map(formatPayment),
 });
 
 @Service()
@@ -171,6 +171,7 @@ export class BankingService {
       transactions.map(transaction =>
         this.paymentService.createPaymentEventFromTransaction(
           transaction,
+          undefined,
           paymentId,
         ),
       ),
@@ -192,11 +193,14 @@ export class BankingService {
     const transactions = await this.pg.any<DbBankTransaction>(sql`
       SELECT
         bt.*,
-        TO_JSON(p.*) AS payment
+        (
+          SELECT ARRAY_AGG(TO_JSONB(p.*) || JSONB_BUILD_OBJECT('events', (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id)))
+          FROM payment_event_transaction_mapping petm
+          INNER JOIN payment_events pe ON pe.id = petm.payment_event_id
+          INNER JOIN payments p ON p.id = pe.payment_id
+          WHERE petm.bank_transaction_id = bt.id
+        ) AS payments
       FROM bank_transactions bt
-      LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
-      LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
-      LEFT JOIN payments p ON p.id = pe.payment_id
       WHERE account = ${iban}
     `);
 
@@ -220,6 +224,20 @@ export class BankingService {
     }
 
     return formatBankTransaction(transaction);
+  }
+
+  async getTransactionRegistrations(id: string) {
+    const rows = await this.pg.any<{ payment_event_id: string }>(sql`
+      SELECT m.payment_event_id
+      FROM payment_event_transaction_mapping m
+      WHERE m.bank_transaction_id = ${id}
+    `);
+
+    return await Promise.all(
+      rows.map(row =>
+        this.paymentService.getPaymentEvent(row.payment_event_id),
+      ),
+    );
   }
 
   async getAccountStatements(iban: string) {

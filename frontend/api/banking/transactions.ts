@@ -1,4 +1,4 @@
-import { BankTransaction } from '../../../common/types';
+import { BankTransaction, PaymentEvent } from '../../../common/types';
 import rtkApi from '../rtk-api';
 
 const transactionsApi = rtkApi.injectEndpoints({
@@ -28,6 +28,14 @@ const transactionsApi = rtkApi.injectEndpoints({
         method: 'POST',
       }),
     }),
+
+    getTransactionRegistrations: builder.query<PaymentEvent[], string>({
+      query: id => `/banking/transactions/${id}/registrations`,
+      providesTags: response => [
+        { type: 'PaymentEvent' as const, id: 'LIST' },
+        ...response.map(({ id }) => ({ type: 'PaymentEvent' as const, id })),
+      ],
+    }),
   }),
 });
 
@@ -36,6 +44,7 @@ export const {
   useGetAccountTransactionsQuery,
   useGetStatementTransactionsQuery,
   useAutoregisterMutation,
+  useGetTransactionRegistrationsQuery,
 } = transactionsApi;
 
 export default transactionsApi;

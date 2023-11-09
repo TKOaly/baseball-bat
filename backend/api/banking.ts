@@ -165,6 +165,18 @@ export class BankingApi {
       });
   }
 
+  private getTransactionRegistrations() {
+    return route
+      .get('/transactions/:id/registrations')
+      .use(this.authService.createAuthMiddleware())
+      .handler(async ctx => {
+        const events = await this.bankingService.getTransactionRegistrations(
+          ctx.routeParams.id,
+        );
+        return ok(events);
+      });
+  }
+
   router() {
     return router(
       this.getBankAccounts(),
@@ -176,6 +188,7 @@ export class BankingApi {
       this.getBankStatement(),
       this.getBankStatementTransactions(),
       this.autoregisterTransactions(),
+      this.getTransactionRegistrations(),
     );
   }
 }

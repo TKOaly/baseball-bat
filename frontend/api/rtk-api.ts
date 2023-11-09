@@ -41,5 +41,6 @@ export default createApi({
     'DebtCenter',
     'Report',
     'AccountingPeriod',
+    'PaymentEvent',
   ],
 });
