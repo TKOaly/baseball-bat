@@ -37,6 +37,8 @@ import * as A from 'fp-ts/lib/Array';
 import { DebtCentersService } from './debt_centers';
 import Stripe from 'stripe';
 
+export class RegistrationError extends Error {}
+
 export type PaymentCreditReason = 'manual' | 'paid';
 
 type PaymentCreationOptions = {
