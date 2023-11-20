@@ -59,7 +59,10 @@ export const TransactionRegistrationDialog = ({
             r => existingRegistration.id === r.id,
           );
 
-          return newRegistration === undefined;
+          return (
+            newRegistration === undefined ||
+            newRegistration.payment !== existingRegistration.paymentId
+          );
         })
         .map(async r => {
           const result = await deletePaymentEvent(r.id);
@@ -105,7 +108,12 @@ export const TransactionRegistrationDialog = ({
 
     await Promise.all(
       registrations
-        .filter(r => r.isNew)
+        .filter(
+          r =>
+            r.isNew ||
+            fetchedRegistrations.find(r2 => r.id === r2.id)?.paymentId !==
+              r.payment,
+        )
         .map(async r => {
           let amount: EuroValue;
 
