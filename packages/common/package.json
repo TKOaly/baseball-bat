@@ -1,0 +1,30 @@
+{
+  "name": "@bbat/common",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "canvas": "^2.11.2",
+    "date-fns": "^2.28.0",
+    "finnish-bank-utils": "git+https://github.com/vkomulai/finnish-bank-utils.git#b660a75",
+    "fp-ts": "^2.11.8",
+    "io-ts": "^2.2.16",
+    "io-ts-types": "^0.5.19",
+    "jsbarcode": "^3.11.5",
+    "monocle-ts": "^2.3.13",
+    "xml2js": "^0.4.23",
+    "xml2js-xpath": "^0.13.0"
+  },
+  "devDependencies": {
+    "@types/xml2js": "^0.4.11",
+    "typescript": "5.2.2"
+  },
+  "lint-staged": {
+    "*.{ts,js,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{yml,md,html,json}": "prettier --write"
+  }
+}
