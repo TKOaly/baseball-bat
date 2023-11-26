@@ -4,7 +4,7 @@ import { Stepper } from '../components/stepper';
 import { InputGroup } from '../components/input-group';
 import { Formik, FormikHelpers } from 'formik';
 import { useLocation } from 'wouter';
-import { Dispatch, useEffect, useReducer, useState } from 'react';
+import { Dispatch, JSXElementConstructor, useEffect, useReducer, useState } from 'react';
 import {
   usePollAuthStatusQuery,
   useRequestAuthCodeMutation,
@@ -12,14 +12,9 @@ import {
 } from '../api/auth';
 import { useAppDispatch } from '../store';
 import { authenticateSession } from '../session';
+import { skipToken } from '@reduxjs/toolkit/query';
 
-type SendStepProps = {
-  onCompletion: () => void
-  setLoading: (loading: boolean) => void
-  dispatch: Dispatch<Event> 
-}
-
-const SendStep: React.FC<SendStepProps> = ({ onCompletion, setLoading, dispatch }) => {
+const SendStep = ({ onCompletion, setLoading, dispatch }: StepComponentProps) => {
   const [sendAuthCodeMutation] = useRequestAuthCodeMutation();
 
   type Values = { email: string }
@@ -45,10 +40,10 @@ const SendStep: React.FC<SendStepProps> = ({ onCompletion, setLoading, dispatch 
   };
 
   return (
-    <Formik initialValues={{ email: '' } as Values} onSubmit={sendAuthCode}>
+    <Formik initialValues={{ email: '' }} onSubmit={sendAuthCode}>
       {({ submitForm }) => (
         <div className="w-80 mx-auto py-5">
-          <InputGroup name="email" component={TextField} placeholder="Email" />
+          <InputGroup label="Email" name="email" component={TextField} placeholder="Email" />
           <div className="mt-3 text-right">
             <Button onClick={() => submitForm()}>Send Confirmation</Button>
           </div>
@@ -58,17 +53,12 @@ const SendStep: React.FC<SendStepProps> = ({ onCompletion, setLoading, dispatch 
   );
 };
 
-type ConfirmStepProps = {
-  state: State
-  onCompletion: () => void
-}
-
-const ConfirmStep: React.FC<ConfirmStepProps> = ({ state, onCompletion }) => {
+const ConfirmStep = ({ state, onCompletion }: StepComponentProps) => {
   const [validateAuthCode] = useValidateAuthCodeMutation();
   const [pollingInterval, setPollingInterval] = useState(1);
 
   const authStatus = usePollAuthStatusQuery(
-    { id: state.id ?? '' },
+    state.id ? { id: state.id } : skipToken,
     { pollingInterval },
   );
 
@@ -111,12 +101,13 @@ const ConfirmStep: React.FC<ConfirmStepProps> = ({ state, onCompletion }) => {
         <div className="w-80 mx-auto py-5">
           <InputGroup
             name="code"
+            label="Confirmation Code"
             component={TextField}
             placeholder="Confirmation Code"
-            onChange={(evt: React.KeyboardEvent<HTMLInputElement>) => {
+            onChange={evt => {
               setFieldValue(
                 'code',
-                evt.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/, ''),
+                evt.target.value.toUpperCase().replace(/[^A-Z0-9]/, ''),
               );
             }}
           />
@@ -129,7 +120,7 @@ const ConfirmStep: React.FC<ConfirmStepProps> = ({ state, onCompletion }) => {
   );
 };
 
-const SuccessStep = ({ state }: { state: State }) => {
+const SuccessStep = ({ state }: StepComponentProps) => {
   const dispatch = useAppDispatch();
   const [, setLocation] = useLocation();
 
@@ -173,7 +164,7 @@ export const EmailAuth = () => {
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const StepComponent = [SendStep, ConfirmStep, SuccessStep][stage];
+  const StepComponent: JSXElementConstructor<StepComponentProps> = [SendStep, ConfirmStep, SuccessStep][stage];
 
   return (
     <>
@@ -207,3 +198,10 @@ export const EmailAuth = () => {
     </>
   );
 };
+
+type StepComponentProps = {
+  onCompletion: () => void,
+  setLoading: (loading: boolean) => void,
+  state: State,
+  dispatch: Dispatch<Event>,
+}

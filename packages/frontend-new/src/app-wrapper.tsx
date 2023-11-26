@@ -1,19 +1,19 @@
 import React, { PropsWithChildren, Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
-// import { NewPayment } from './views/new-payment';
+import { NewPayment } from './views/new-payment';
 import { store, useAppDispatch, useAppSelector } from './store';
 import { PaymentSelectionSidebar } from './components/payment-selection-sidebar';
 import { EmailAuth } from './views/email-auth';
-// import { DebtDetails } from './views/debt-details';
+import { DebtDetails } from './views/debt-details';
 // import { InvalidMagicLink } from './views/invalid-magic-link';
-// import { PaymentDetails } from './views/payment-details';
-// import { ConfirmEmailAuth } from './views/confirm-email-auth';
-// import { Settings } from './views/settings';
+import { PaymentDetails } from './views/payment-details';
+import { ConfirmEmailAuth } from './views/confirm-email-auth';
+import { Settings } from './views/settings';
 import { Route, Switch, useLocation, useRoute } from 'wouter';
 import { Loading } from '@bbat/ui/loading';
 import { Landing } from './views/landing';
-// import { Main } from './views/main';
+import { Main } from './views/main';
 import './style.css';
 import {
   authenticateSession,
@@ -24,8 +24,8 @@ import {
 } from './session';
 import { Button } from '@bbat/ui/button';
 import { DialogContextProvider } from './components/dialog';
-// import { StripePaymentFlow } from './views/stripe-payment-flow';
-// import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
+import { StripePaymentFlow } from './views/stripe-payment-flow';
+import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
 
 const Navigation = () => {
   const [, setLocation] = useLocation();
@@ -131,7 +131,7 @@ const useManageSession = () => {
   const dispatch = useAppDispatch();
 
   const [isMagicInvalid] = useRoute('/magic/invalid');
-  const [isAuth] = useRoute('/auth');
+  const [isAuth] = useRoute('/auth/*');
 
   const allowUnauthenticated = isMagicInvalid || isAuth;
 
@@ -200,16 +200,14 @@ const Routes = () => {
       <Switch>
         <Route path="/auth" component={Landing} />
         <Route path="/auth/email" component={EmailAuth} />
-        {/*<Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
-        <Route path="/magic/invalid" component={InvalidMagicLink} />
+        <Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
+        {/*<Route path="/magic/invalid" component={InvalidMagicLink} />*/}
         {session.authenticated && (
           <>
             <Route path="/">
               <Main />
             </Route>
-            <Route path="/settings">
-              <Settings />
-            </Route>
+            <Route path="/settings" component={Settings} />
             <Route path="/debt/:id" component={DebtDetails} />
             <Route path="/payment/new" component={NewPayment} />
             <Route path="/payment/:id" component={PaymentDetails} />
@@ -222,7 +220,7 @@ const Routes = () => {
               component={StripePaymentReturnPage}
             />
           </>
-        )*/}
+        )}
       </Switch>
     </PublicLayout>
   );

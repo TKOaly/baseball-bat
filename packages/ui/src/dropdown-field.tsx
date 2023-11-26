@@ -19,8 +19,8 @@ export type DropdownFieldProps<V> = {
   flushLeft?: boolean;
   onChange: (evt: { target: { name: string; value: V } }) => void;
   options: { text: string; value: V; label?: string }[];
-  createCustomOption: (search: string) => V | Promise<V>;
-  formatCustomOption: (value: V) => string;
+  createCustomOption?: (search: string) => V | Promise<V>;
+  formatCustomOption?: (value: V) => string;
   allowCustom?: boolean;
 };
 
@@ -255,11 +255,13 @@ export const DropdownField = memo(
                       }
                     }}
                     onClick={async () => {
-                      const option = await Promise.resolve(
-                        createCustomOption(search),
-                      );
+                      if (createCustomOption) {
+                        const option = await Promise.resolve(
+                          createCustomOption(search),
+                        );
+                        onChange({ target: { name, value: option } });
+                      }
                       setSearch(null);
-                      onChange({ target: { name, value: option } });
                       setOpen(false);
                     }}
                   >

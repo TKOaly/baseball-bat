@@ -3,6 +3,9 @@
   "scripts": {
     "start:dev": "pnpm run --parallel --stream --recursive start:dev"
   },
+  "resolutions": {
+    "@types/react": "18.2.37"
+  },
   "devDependencies": {
     "buffer": "^5.5.0||^6.0.0",
     "process": "^0.11.10",

@@ -3,6 +3,15 @@ import { Button } from './button'
 export default {
   component: Button,
   title: 'Button',
+  decorators: [
+    (Story) => (
+      <div className="flex items-center justify-center absolute inset-0">
+        <div className="max-w-[20em]">
+          <Story />
+        </div>
+      </div>
+    )
+  ],
 };
 
 export const Default = {

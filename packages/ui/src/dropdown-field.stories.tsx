@@ -6,8 +6,10 @@ const meta: Meta<typeof DropdownField> = {
   title: 'Dropdown Field',
   decorators: [
     (Story) => (
-      <div className="w-[20em]">
-        <Story />
+      <div className="flex items-center justify-center absolute inset-0">
+        <div className="w-[20em]">
+          <Story />
+        </div>
       </div>
     )
   ],
