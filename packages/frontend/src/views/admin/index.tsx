@@ -24,7 +24,7 @@ import { BankAccount } from './bank-account';
 import { CreateBankAccount } from './create-bank-account';
 import { useEffect, useState } from 'react';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { EditDebt } from '../edit-debt';
 import { EditDebtCenter } from './edit-debt-center';
 import { ReportsListing } from './reports-listing';

@@ -4,8 +4,8 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button } from '../../components/button';
-import { TextField } from '../text-field';
+import { Button } from '@bbat/ui/button';
+import { TextField } from '@bbat/ui/text-field';
 import { useSearchQuery } from '../../api/search';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';

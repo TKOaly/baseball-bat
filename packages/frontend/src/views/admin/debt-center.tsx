@@ -22,7 +22,7 @@ import {
   useGetDebtsByCenterQuery,
 } from '../../api/debt';
 import { formatEuro } from '@bbat/common/src/currency';
-import { Button, SecondaryButton } from '../../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { useDialog } from '../../components/dialog';
 import { InfoDialog } from '../../components/dialogs/info-dialog';
 import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';

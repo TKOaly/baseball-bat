@@ -3,7 +3,7 @@ import { useAppSelector } from '../store';
 import { createMultiFetchHook } from '../hooks/create-multi-fetch-hook';
 import debtApi from '../api/debt';
 import { euro, formatEuro, sumEuroValues } from '@bbat/common/src/currency';
-import { Button } from './button';
+import { Button } from '@bbat/ui/button';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 

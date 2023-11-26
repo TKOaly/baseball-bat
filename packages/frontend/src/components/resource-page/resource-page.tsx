@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
-import { Button, SecondaryButton } from '../button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { formatEuro, EuroValue } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
 

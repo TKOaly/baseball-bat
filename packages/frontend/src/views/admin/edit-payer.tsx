@@ -4,10 +4,10 @@ import { RouteComponentProps, useLocation } from 'wouter';
 import { PayerEmailPriority } from '@bbat/common/src/types';
 import { useGetPayerQuery, useUpdatePayerMutation } from '../../api/payers';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { DropdownField } from '../../components/dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 
 type Props = RouteComponentProps<{ id: string }>;
 

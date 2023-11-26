@@ -1,8 +1,8 @@
 import React from 'react';
 import { Formik } from 'formik';
-import { DropdownField } from '../components/dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import { TabularFieldListFormik } from '../components/tabular-field-list';
-import { TextField } from '../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { InputGroup } from '../components/input-group';
 import { useTranslation } from 'react-i18next';
 import {

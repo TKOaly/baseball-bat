@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { Button } from '../components/button';
+import { Button } from '@bbat/ui/button';
 
 export const InvalidMagicLink = () => {
   const [, setLocation] = useLocation();

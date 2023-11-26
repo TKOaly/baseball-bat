@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { InternalIdentity } from '@bbat/common/src/types';
 import { useGetPayerQuery } from '../../api/payers';
 import { useGetReportsQuery, useRefreshReportMutation } from '../../api/report';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { useDialog } from '../../components/dialog';
 import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';
 import { NewDebtStatusReportDialog } from '../../components/dialogs/new-debt-status-report-dialog';

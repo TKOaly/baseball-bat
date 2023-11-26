@@ -8,7 +8,7 @@ import {
   SectionContent,
 } from '../../components/resource-page/resource-page';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { TransactionList } from '../../components/transaction-list';
 import { useLocation } from 'wouter';
 import { TableView } from '../../components/table-view';

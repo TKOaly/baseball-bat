@@ -2,7 +2,7 @@ import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGenerateDebtLedgerMutation } from '../../api/report';
-import { Button } from '../button';
+import { Button } from '@bbat/ui/button';
 import { DateField } from '../datetime-field';
 import {
   DialogBase,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../dialog';
-import { DropdownField } from '../dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import { ResourceSelectField } from '../resource-select-field';
 import { InputGroup } from '../input-group';
 

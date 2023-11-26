@@ -18,7 +18,7 @@ import {
   Event,
   Registration,
 } from '@bbat/common/src/types';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
 import { addDays, format, isMatch, subYears } from 'date-fns';
 import { FilledDisc } from '../../components/filled-disc';
@@ -27,12 +27,12 @@ import { EuroField } from '../../components/euro-field';
 import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
 import { TextareaField } from '../../components/textarea-field';
 import { Formik } from 'formik';
-import { DropdownField } from '../../components/dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import {
   Button,
   DisabledButton,
   SecondaryButton,
-} from '../../components/button';
+} from '@bbat/ui/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
 import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';

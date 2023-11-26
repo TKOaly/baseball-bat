@@ -5,7 +5,7 @@ import {
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js';
-import { Button } from '../components/button';
+import { Button } from '@bbat/ui/button';
 import { useState } from 'react';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
 import { useTranslation } from 'react-i18next';

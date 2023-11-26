@@ -1,7 +1,7 @@
 import { Formik } from 'formik';
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Breadcrumbs } from '../../components/breadcrumbs';
-import { DropdownField } from '../../components/dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { DateField } from '../../components/datetime-field';
 import {
@@ -15,7 +15,7 @@ import { groupBy } from 'remeda';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { TextareaField } from '../../components/textarea-field';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import {
   useCreateDebtMutation,

@@ -3,7 +3,7 @@ import { Breadcrumbs } from '../../components/breadcrumbs';
 import { useCreateDebtCenterMutation } from '../../api/debt-centers';
 import { useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { TextareaField } from '../../components/textarea-field';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
@@ -14,7 +14,7 @@ import { InfoDialog } from '../../components/dialogs/info-dialog';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
 import { useEffect, useState } from 'react';
-import { DropdownField } from '../../components/dropdown-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 
 type FormValues = {
   name: string;

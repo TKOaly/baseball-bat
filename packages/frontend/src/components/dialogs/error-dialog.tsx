@@ -4,7 +4,7 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { AlertTriangle } from 'react-feather';
 
 export const ErrorDialog = ({ onClose, title, content }) => {

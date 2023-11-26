@@ -5,7 +5,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { Stripe, StripeElements } from '@stripe/stripe-js';
 import styled from 'styled-components';
-import { Button } from './button';
+import { Button } from '@bbat/ui/button';
 
 const CardForm = styled.form`
   width: 80%;

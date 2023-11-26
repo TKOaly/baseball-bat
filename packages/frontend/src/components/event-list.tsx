@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import styled from 'styled-components';
 import { EventWithPaymentStatus } from '@bbat/common/src/types';
 import { PaymentPool } from '../state/payment-pool';
-import { Button, RedButton } from './button';
+import { Button, RedButton } from '@bbat/ui/button';
 
 const ConatentWrapper = styled.div`
   display: flex;

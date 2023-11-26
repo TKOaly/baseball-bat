@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@bbat/common": "workspace:*",
+    "@bbat/ui": "workspace:*",
     "@floating-ui/core": "^1.5.0",
     "@floating-ui/react-dom": "^1.0.1",
     "@floating-ui/react-dom-interactions": "^0.11.0",

@@ -22,7 +22,7 @@
     "jsx": "react-jsx",
     "skipLibCheck": true,
     "paths": {
-      "@bbat/*": ["@bbat/*/src"]
+      "@bbat/ui/*": ["./node_modules/@bbat/ui/src/*"]
     }
   },
   "include": ["src"],

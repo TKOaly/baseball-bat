@@ -7,7 +7,7 @@ import {
 } from '../../api/debt-centers';
 import { useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { TextareaField } from '../../components/textarea-field';
 import * as A from 'fp-ts/lib/Array';
 import * as O from 'fp-ts/lib/Option';

@@ -11,7 +11,7 @@ import { useGetPaymentsByDebtQuery } from '../../api/payments';
 import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
 import * as dfns from 'date-fns';
-import { TextField as InputTextField } from '../../components/text-field';
+import { TextField as InputTextField } from '@bbat/ui/text-field';
 import { EuroField } from '../../components/euro-field';
 import {
   Page,

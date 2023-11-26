@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { format, parseISO } from 'date-fns';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
-import { Button, SecondaryButton } from '../../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { TableView } from '../../components/table-view';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 

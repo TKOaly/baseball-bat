@@ -6,7 +6,7 @@ import {
   useRegisterTransactionMutation,
   useUpdatePaymentEventMutation,
 } from '../../api/payments';
-import { Button, SecondaryButton } from '../button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import {
   DialogBase,
   DialogHeader,

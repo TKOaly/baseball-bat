@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import React from 'react';
-import { Button, SecondaryButton } from '../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 
 export const Landing = () => {
   const [, setLocation] = useLocation();

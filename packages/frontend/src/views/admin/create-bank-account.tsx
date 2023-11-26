@@ -1,6 +1,6 @@
 import { Breadcrumbs } from '../../components/breadcrumbs';
 import { useCreateBankAccountMutation } from '../../api/banking/accounts';
-import { TextField } from '../../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { Formik } from 'formik';
 import { useLocation } from 'wouter';
 import { BankAccount } from '@bbat/common/src/types';

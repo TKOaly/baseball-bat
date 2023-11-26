@@ -4,9 +4,9 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button, SecondaryButton } from '../../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { useState } from 'react';
-import { TextField } from '../text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { StandaloneInputGroup } from '../input-group';
 
 type Props = {

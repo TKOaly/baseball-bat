@@ -5,7 +5,7 @@ import {
   DialogHeader,
   useDialog,
 } from '../../components/dialog';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { ResourceSelectField } from '../resource-select-field';
 import { InternalIdentity } from '@bbat/common/src/types';
 import { useState } from 'react';

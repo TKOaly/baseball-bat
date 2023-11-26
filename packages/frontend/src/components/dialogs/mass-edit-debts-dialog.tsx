@@ -6,8 +6,8 @@ import {
   useDialog,
 } from '../../components/dialog';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { Button } from '../../components/button';
-import { TextField } from '../../components/text-field';
+import { Button } from '@bbat/ui/button';
+import { TextField } from '@bbat/ui/text-field';
 import { DateField } from '../../components/datetime-field';
 import { InputGroup } from '../input-group';
 import { Formik } from 'formik';

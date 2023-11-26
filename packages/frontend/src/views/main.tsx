@@ -4,7 +4,7 @@ import { Circle, Info } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Trans, useTranslation } from 'react-i18next';
 import { Debt, euro, isPaymentInvoice } from '@bbat/common/src/types';
-import { TextField } from '../components/text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { Dialog } from '../components/dialog';
 import paymentPoolSlice from '../state/payment-pool';
 import {
@@ -20,7 +20,7 @@ import {
   sumEuroValues,
 } from '@bbat/common/src/currency';
 import { format, isPast } from 'date-fns';
-import { Button, SecondaryButton } from '../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { useGetUpstreamUserQuery } from '../api/upstream-users';
 import { useAppDispatch, useAppSelector } from '../store';
 import { useGetOwnPaymentsQuery } from '../api/payments';

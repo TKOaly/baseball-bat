@@ -4,11 +4,11 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../dialog';
-import { Button } from '../button';
+import { Button } from '@bbat/ui/button';
 import { Formik } from 'formik';
 import { PayerProfile } from '@bbat/common/src/types';
 import { InputGroup } from '../input-group';
-import { TextField } from '../text-field';
+import { TextField } from '@bbat/ui/text-field';
 import { useCreatePayerMutation } from '../../api/payers';
 
 export type Props = {

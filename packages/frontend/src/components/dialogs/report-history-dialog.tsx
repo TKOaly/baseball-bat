@@ -4,7 +4,7 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { TableView } from '../table-view';
 import { InternalIdentity, Report } from '@bbat/common/src/types';
 import { format, parseISO } from 'date-fns';

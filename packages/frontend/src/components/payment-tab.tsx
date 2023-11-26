@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { Session } from '@bbat/common/src/types';
 import { payEvents } from '../api';
 import { PaymentPool, PaymentPoolItem } from '../state/payment-pool';
-import { Button } from './button';
+import { Button } from '@bbat/ui/button';
 import { Loading } from './loading';
 
 const PaymentTabWrapper = styled.div`

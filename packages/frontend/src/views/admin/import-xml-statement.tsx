@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { useCreateBankStatementMutation } from '../../api/banking/statements';
 import { useLocation } from 'wouter';
 import { CamtStatement, parseCamtStatement } from '@bbat/common/src/camt-parser';

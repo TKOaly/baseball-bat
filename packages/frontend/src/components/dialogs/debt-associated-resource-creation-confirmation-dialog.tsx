@@ -4,7 +4,7 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button, SecondaryButton } from '../../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 
 export type Props = {
   onClose: (confirmed: boolean) => void;

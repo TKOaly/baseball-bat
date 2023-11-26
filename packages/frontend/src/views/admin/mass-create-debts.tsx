@@ -13,7 +13,7 @@ import {
   useCreateDebtMutation,
   CreateDebtPayload,
 } from '../../api/debt';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 import { cents, EuroValue } from '@bbat/common/src/currency';
 import { isMatch, parse, format, isValid } from 'date-fns';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';

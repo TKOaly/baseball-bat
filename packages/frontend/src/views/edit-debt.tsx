@@ -10,8 +10,8 @@ import {
 } from '../api/debt';
 import { Breadcrumbs } from '../components/breadcrumbs';
 import { InputGroup } from '../components/input-group';
-import { TextField } from '../components/text-field';
-import { DropdownField } from '../components/dropdown-field';
+import { TextField } from '@bbat/ui/text-field';
+import { DropdownField } from '@bbat/ui/dropdown-field';
 import { TabularFieldListFormik } from '../components/tabular-field-list';
 import { EuroField } from '../components/euro-field';
 import {

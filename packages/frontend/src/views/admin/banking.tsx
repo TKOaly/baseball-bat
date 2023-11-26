@@ -1,5 +1,5 @@
 import { ListView } from '../../components/list-view';
-import { Button, SecondaryButton } from '../../components/button';
+import { Button, SecondaryButton } from '@bbat/ui/button';
 import { useGetBankAccountsQuery } from '../../api/banking/accounts';
 import { useLocation } from 'wouter';
 import { useAutoregisterMutation } from '../../api/banking/transactions';

@@ -1,6 +1,6 @@
 import { ComponentProps, InputHTMLAttributes } from 'react';
 import NumberFormat, { NumberFormatProps } from 'react-number-format';
-import { TextField } from './text-field';
+import { TextField } from '@bbat/ui/text-field';
 
 export type Props = (NumberFormatProps<InputHTMLAttributes<HTMLInputElement>> & {
   plain: true;

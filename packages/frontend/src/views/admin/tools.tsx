@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { SecondaryButton } from '../../components/button';
+import { SecondaryButton } from '@bbat/ui/button';
 
 export const Tools = () => {
   const [, setLocation] = useLocation();

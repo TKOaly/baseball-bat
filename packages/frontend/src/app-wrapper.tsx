@@ -14,7 +14,6 @@ import { Route, Switch, useLocation, useRoute } from 'wouter';
 import { Loading } from './components/loading';
 import { Landing } from './views/landing';
 import { Main } from './views/main';
-import { UpdatePaymentMethod } from './views/update-payment-method';
 import './style.css';
 import {
   authenticateSession,
@@ -23,7 +22,7 @@ import {
   destroySession,
   heartbeat,
 } from './session';
-import { Button } from './components/button';
+import { Button } from '@bbat/ui/button';
 import { DialogContextProvider } from './components/dialog';
 import { StripePaymentFlow } from './views/stripe-payment-flow';
 import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
@@ -222,9 +221,6 @@ const Routes = () => {
               path="/payment/:id/stripe/:secret/return"
               component={StripePaymentReturnPage}
             />
-            <Route path="/update-payment-method">
-              <UpdatePaymentMethod />
-            </Route>
           </>
         )}
       </Switch>

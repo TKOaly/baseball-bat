@@ -7,7 +7,7 @@ import { isMatch } from 'date-fns';
 import { split } from 'fp-ts/lib/string';
 import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { foldW } from 'fp-ts/lib/Either';
-export { EuroValue, euro };
+export type { EuroValue, euro };
 
 type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
   ? FirstItem extends string

@@ -1,5 +1,5 @@
-import { TextField } from '../components/text-field';
-import { Button } from '../components/button';
+import { TextField } from '@bbat/ui/text-field';
+import { Button } from '@bbat/ui/button';
 import { Stepper } from '../components/stepper';
 import { InputGroup } from '../components/input-group';
 import { Formik } from 'formik';

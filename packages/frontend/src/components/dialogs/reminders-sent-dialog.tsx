@@ -4,7 +4,7 @@ import {
   DialogFooter,
   DialogHeader,
 } from '../../components/dialog';
-import { Button } from '../../components/button';
+import { Button } from '@bbat/ui/button';
 
 export const RemindersSentDialog = ({ onClose, payerCount, debtCount }) => {
   return (

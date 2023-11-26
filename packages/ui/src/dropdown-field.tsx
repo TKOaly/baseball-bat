@@ -1,4 +1,3 @@
-import React from 'react';
 import { memo, useMemo, useRef, useState } from 'react';
 import { equals } from 'remeda';
 import { ChevronDown } from 'react-feather';
@@ -11,7 +10,7 @@ import {
   useFocus,
   useInteractions,
   useListNavigation,
-} from '@floating-ui/react-dom-interactions';
+} from '@floating-ui/react';
 
 export type DropdownFieldProps<V> = {
   name: string;
@@ -19,7 +18,7 @@ export type DropdownFieldProps<V> = {
   flushRight?: boolean;
   flushLeft?: boolean;
   onChange: (evt: { target: { name: string; value: V } }) => void;
-  options: { text: string; value: V }[];
+  options: { text: string; value: V; label?: string }[];
   createCustomOption: (search: string) => V | Promise<V>;
   formatCustomOption: (value: V) => string;
   allowCustom?: boolean;
@@ -38,11 +37,11 @@ export const DropdownField = memo(
     formatCustomOption,
     allowCustom,
   }: DropdownFieldProps<V>) => {
-    const inputRef = useRef<HTMLInputElement>();
-    const [search, setSearch] = useState(null);
-    const [activeIndex, setActiveIndex] = useState(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [search, setSearch] = useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-    const itemRefs = useRef([]);
+    const itemRefs = useRef<Array<HTMLElement>>([]);
 
     const visibleOptions = useMemo(
       () =>
@@ -56,7 +55,7 @@ export const DropdownField = memo(
     const [open, setOpen] = useState(false);
     const selectedOption = options.find(opt => equals(opt.value, value));
 
-    const { x, y, reference, floating, strategy, context } = useFloating({
+    const { x, y, refs, strategy, context } = useFloating({
       open,
       onOpenChange: setOpen,
       placement: 'bottom',
@@ -81,9 +80,11 @@ export const DropdownField = memo(
           activeIndex,
           onNavigate: index => {
             setActiveIndex(index);
-            itemRefs.current[index]?.scrollIntoView?.({
-              block: 'nearest',
-            });
+            if (index !== null) {
+              itemRefs.current[index]?.scrollIntoView?.({
+                block: 'nearest',
+              });
+            }
           },
         }),
       ]);
@@ -129,7 +130,7 @@ export const DropdownField = memo(
           items-center
           overflow-hidden
         `}
-          ref={reference}
+          ref={refs.setReference}
           {...getReferenceProps({
             onClick: () => {
               if (allowCustom && inputRef.current) {
@@ -144,7 +145,7 @@ export const DropdownField = memo(
                 ref={inputRef}
                 type="text"
                 className="flex-grow bg-transparent border-0 p-0 outline-0 box-shadow-[none] absolute inset-0 h-full w-full py-2 px-3"
-                onChange={evt => setSearch(evt.target.value)}
+                onChange={evt => setSearch(evt.currentTarget.value)}
                 value={search ?? selectedLabel}
               />
               <div className="flex-grow" />
@@ -161,7 +162,7 @@ export const DropdownField = memo(
             <ChevronDown
               className="text-gray-500 transition"
               style={{
-                transform: open && 'rotate(180deg)',
+                transform: open ? 'rotate(180deg)' : undefined,
               }}
             />
           </div>
@@ -183,7 +184,7 @@ export const DropdownField = memo(
                 top: y ?? 0,
                 left: x ?? 0,
               }}
-              ref={floating}
+              ref={refs.setFloating}
               {...getFloatingProps()}
             >
               <ul
@@ -214,7 +215,11 @@ export const DropdownField = memo(
                     tabIndex={-1}
                     {...getItemProps({
                       ref(node) {
-                        itemRefs.current[optionIndex] = node;
+                        if (node === null) {
+                          delete itemRefs.current[optionIndex];
+                        } else {
+                          itemRefs.current[optionIndex] = node;
+                        }
                       },
                       onClick() {
                         setSearch(null);
@@ -242,9 +247,13 @@ export const DropdownField = memo(
                       text-gray-700
                     `}
                     tabIndex={-1}
-                    ref={node =>
-                      (itemRefs.current[visibleOptions.length] = node)
-                    }
+                    ref={node => {
+                      if (node === null) {
+                        delete itemRefs.current[visibleOptions.length];
+                      } else {
+                        itemRefs.current[visibleOptions.length] = node;
+                      }
+                    }}
                     onClick={async () => {
                       const option = await Promise.resolve(
                         createCustomOption(search),

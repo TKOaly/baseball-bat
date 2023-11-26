@@ -1,4 +1,4 @@
-import { Button } from '../button';
+import { Button } from '@bbat/ui/button';
 import {
   DialogBase,
   DialogContent,
