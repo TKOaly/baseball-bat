@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api';
-import { EuroValue, Payment, PaymentEvent } from '@bbat/common/types';
+import { EuroValue, PayerProfile, Payment, PaymentEvent } from '@bbat/common/types';
 
 export type BankTransactionDetails = {
   accountingId: string;
@@ -15,7 +15,7 @@ export type UpdatePaymentEventOptions = {
 
 const paymentsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getPayments: builder.query<Payment[], void>({
+    getPayments: builder.query<(Payment & { payer: PayerProfile })[], void>({
       query: () => '/payments',
       providesTags: [{ type: 'Payment', id: 'LIST' }],
     }),

@@ -57,7 +57,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
   label,
   error,
   ...props
-}: Props<C> & { error?: string }) => {
+}: Omit<Props<C>, 'name'> & { name?: string, error?: string }) => {
   const Component = component;
 
   return (

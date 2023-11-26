@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState, createContext, PropsWithChildre
 import { X } from 'react-feather';
 import { createPortal } from 'react-dom';
 import { cva } from 'class-variance-authority';
+import { uid } from 'uid';
 
 type DialogResultType<C extends JSXElementConstructor<any>> = React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown
 
@@ -56,19 +57,19 @@ export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
     props: Omit<ComponentProps<C>, 'onClose'>,
   ) =>
     new Promise<DialogResultType<C>>(resolve => {
-      let key: string;
-
-      do {
-        key = Math.floor((1 + Math.random()) * 0x10000)
-          .toString(16)
-          .substring(1);
-      } while (dialogs.findIndex(d => d.key === key) > -1);
+      let key = uid();
 
       setDialogs(prev => [
         ...prev,
         {
           content: (
-            <Component {...props as any} onClose={resolve} />
+            <Component
+              {...props as any}
+              onClose={(value) => {
+                closeDialog(key);
+                resolve(value);
+              }}
+            />
           ),
           key,
           resolve: (v) => {
@@ -148,7 +149,7 @@ export const DialogBase = <T extends unknown>({
   wide = false,
   className = '',
   ...rest
-}: PropsWithChildren<React.HTMLAttributes<HTMLDivElement> & { wide: boolean, onClose: (t: T | null) => void,  }>) => {
+}: PropsWithChildren<React.HTMLAttributes<HTMLDivElement> & { wide?: boolean, onClose: (t: T | null) => void,  }>) => {
   return (
     <div
       {...rest}

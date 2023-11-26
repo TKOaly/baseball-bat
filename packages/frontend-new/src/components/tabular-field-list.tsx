@@ -26,7 +26,7 @@ type Props<
   createNew?: () => T;
   disableRemove?: boolean;
   readOnly?: boolean;
-  onChange: (value: T[]) => void;
+  onChange?: (value: T[]) => void;
   errors?: Record<string, string>;
   name?: string;
 };
@@ -149,16 +149,16 @@ export const TabularFieldList = <
   ];
 
   let tools: Tools<T> = {
-    push: newItem => onChange([...value, newItem]),
+    push: newItem => onChange?.([...value, newItem]),
     remove: index => {
       const copy = [...value];
       copy.splice(index, 1);
-      onChange(copy);
+      onChange?.(copy);
     },
     replace: (index, newValue) => {
       const copy = [...value];
       copy.splice(index, 1, newValue);
-      onChange(copy);
+      onChange?.(copy);
     },
   };
 

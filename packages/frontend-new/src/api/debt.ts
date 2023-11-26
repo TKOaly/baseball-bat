@@ -10,15 +10,17 @@ import {
   DebtPatch,
   DebtComponentPatch,
   MultipleDebtPatchValues,
+  DebtCenter,
 } from '@bbat/common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns';
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>;
+  debtCenter: DebtCenter,
 };
 
-export type CreateDebtPayload = Omit<NewDebt, 'components' | 'center'> & {
+export type CreateDebtPayload = Omit<NewDebt, 'components' | 'centerId'> & {
   components: (string | Omit<NewDebtComponent, 'debtCenterId'>)[];
   center: string | { name: string; url: string; description: string };
 };

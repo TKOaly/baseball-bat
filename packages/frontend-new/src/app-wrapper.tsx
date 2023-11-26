@@ -121,7 +121,7 @@ const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({ chil
   </Provider>
 );
 
-const LazyAdmin = () => <div /> // React.lazy(() => import('./views/admin'));
+const LazyAdmin = React.lazy(() => import('./views/admin'));
 
 const useManageSession = () => {
   const authToken = new URLSearchParams(window.location.search).get('token');
@@ -176,7 +176,7 @@ const useManageSession = () => {
 
 const Routes = () => {
   const { i18n } = useTranslation();
-  const [isAdminRoute] = useRoute('/admin/:rest*');
+  const [isAdminRoute] = useRoute('/admin/*');
   const session = useAppSelector(state => state.session);
 
   useManageSession();

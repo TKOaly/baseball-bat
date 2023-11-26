@@ -722,3 +722,19 @@ export type DebtStatusReportOptions = {
   centers: null | Array<string>;
   includeOnly: null | 'paid' | 'credited' | 'open';
 };
+
+export type JobStatus = 'completed' | 'failed' | 'active' | 'delayed' | 'waiting' | 'waiting-children' | 'unknown'
+
+export type Job = {
+  name: string
+  id: string
+  status: JobStatus 
+  time: Date
+  processedAt: Date | null
+  finishedAt: Date | null
+  duration: number
+  children: Job[]
+  queue: string
+  returnValue: any
+  progress: number
+}

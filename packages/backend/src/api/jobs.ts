@@ -4,11 +4,12 @@ import { route, router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import { AuthService } from '../auth-middleware';
 import { JobService } from '../services/jobs';
+import { Job } from '@bbat/common/src/types';
 
-const formatJob = async (node: JobNode): Promise<any> => {
+const formatJob = async (node: JobNode): Promise<Job> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
 
-  let status = await node.job.getState();
+  let status = await node.job.getState() ?? 'unknown';
 
   if (children.some(c => c.status === 'failed')) {
     status = 'failed';
@@ -18,14 +19,14 @@ const formatJob = async (node: JobNode): Promise<any> => {
   ) {
     status = 'failed';
   }
-
+  
   return {
     name: node.job.data.name ?? node.job.name,
-    id: node.job.id,
+    id: node.job.id!,
     status,
-    time: node.job.timestamp,
-    processedAt: node.job.processedOn,
-    finishedAt: node.job.finishedOn,
+    time: new Date(node.job.timestamp),
+    processedAt: node.job.processedOn ? new Date(node.job.processedOn) : null,
+    finishedAt: node.job.finishedOn ? new Date(node.job.finishedOn) : null,
     duration:
       (children.length > 0
         ? children.map(c => c.duration).reduce((a, b) => a + b)
@@ -34,7 +35,7 @@ const formatJob = async (node: JobNode): Promise<any> => {
       (node.job.processedOn ?? 0),
     children,
     queue: node.job.queueName,
-    returnvalue: node.job.returnvalue,
+    returnValue: node.job.returnvalue,
     progress:
       children.length > 0
         ? children.map(job => job.progress).reduce((a, b) => a + b, 0) /
