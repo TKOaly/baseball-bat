@@ -1,8 +1,9 @@
 import { format, formatDuration } from 'date-fns';
 import { useLocation } from 'wouter';
 import { useGetJobQuery } from '../../api/jobs';
-import { Breadcrumbs } from '../../components/breadcrumbs';
-import { TableView } from '../../components/table-view';
+import { RouteComponentProps, Link } from 'wouter';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
+import { Table } from '@bbat/ui/table';
 import {
   Page,
   Header,
@@ -12,7 +13,13 @@ import {
   DateField,
 } from '../../components/resource-page/resource-page';
 
-export const JobDetails = ({ queue, id }) => {
+type Props = RouteComponentProps<{
+  id: string;
+  queue: string;
+}>;
+
+export const JobDetails = (props: Props) => {
+  const { queue, id } = props.params;
   const { data: job } = useGetJobQuery({ queue, id }, { pollingInterval: 500 });
   const [, setLocation] = useLocation();
 
@@ -25,6 +32,7 @@ export const JobDetails = ({ queue, id }) => {
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               { text: 'Jobs', url: '/admin/jobs' },
               job?.name ?? 'Loading...',
@@ -33,25 +41,28 @@ export const JobDetails = ({ queue, id }) => {
         </Title>
       </Header>
       <Section title="Details" columns={2}>
-        <TextField label="Name" value={job?.name} />
-        <DateField time label="Created at" value={new Date(job?.time)} />
-        <DateField
-          time
-          label="Processed at"
-          value={new Date(job?.processedAt)}
+        <TextField label="Name" value={job.name} />
+        <DateField time label="Created at" value={job.time} />
+        <DateField time label="Processed at" value={job?.processedAt ?? ''} />
+        <TextField
+          label="Finished at"
+          value={
+            job.finishedAt
+              ? format(job.finishedAt, 'd.m.y H:m')
+              : 'Not finished'
+          }
         />
-        <DateField time label="Finished at" value={new Date(job?.finishedAt)} />
         <TextField
           label="Duration"
           value={formatDuration({ seconds: job.duration / 1000 })}
         />
-        <TextField label="Status" value={job?.status} />
+        <TextField label="Status" value={job.status} />
         {job?.status === 'failed' && (
-          <TextField label="Error Message" value={job?.returnvalue?.message} />
+          <TextField label="Error Message" value={job.returnValue.message} />
         )}
       </Section>
       <Section title="Children">
-        <TableView
+        <Table
           rows={(job?.children ?? []).map(job => ({ ...job, key: job.id }))}
           onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
           columns={[

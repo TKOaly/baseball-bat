@@ -12,7 +12,7 @@ type Props = {
   debtCount?: number;
 };
 
-export const SendRemindersDialog = ({ onClose, debtCount = null }: Props) => {
+export const SendRemindersDialog = ({ onClose, debtCount }: Props) => {
   const [send, setSend] = useState(false);
   const [ignoreCooldown, setIgnoreCooldown] = useState(false);
 
@@ -22,8 +22,8 @@ export const SendRemindersDialog = ({ onClose, debtCount = null }: Props) => {
       <DialogContent>
         <p className="mb-4 text-sm">
           You are about to send payment notices for{' '}
-          {debtCount === null ? 'an unspecified amount of' : debtCount} debts.
-          Check your preferences below and click {'"'}Send Notices{'"'}.
+          {debtCount === undefined ? 'an unspecified amount of' : debtCount}{' '}
+          debts. Check your preferences below and click {'"'}Send Notices{'"'}.
         </p>
         <div className="flex items-center mb-4">
           <input

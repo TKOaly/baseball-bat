@@ -3,7 +3,7 @@ import { usePopperTooltip } from 'react-popper-tooltip';
 import { useLocation } from 'wouter';
 import { useFetchResourceDetails } from '../hooks/use-fetch-resource-details';
 
-const RESOURCE_URL_FORMATS = {
+const RESOURCE_URL_FORMATS: Record<string, string> = {
   debt: '/admin/debts/%',
   email: '/admin/emails/%',
   payment: '/admin/payments/%',

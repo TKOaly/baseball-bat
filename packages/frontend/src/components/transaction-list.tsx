@@ -1,7 +1,7 @@
 import { BankTransaction } from '@bbat/common/src/types';
 import { formatEuro, cents } from '@bbat/common/src/currency';
-import { parseISO, format } from 'date-fns';
-import { TableView } from './table-view';
+import { format } from 'date-fns';
+import { Table } from '@bbat/ui/table';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { useDialog } from './dialog';
@@ -18,7 +18,7 @@ export const TransactionList = ({ transactions }: Props) => {
   );
 
   return (
-    <TableView
+    <Table
       rows={transactions.map(tx => ({ ...tx, key: tx.id }))}
       actions={[
         {
@@ -35,23 +35,27 @@ export const TransactionList = ({ transactions }: Props) => {
         {
           name: 'Type',
           getValue: tx => tx.type,
-          render: value =>
-            ({
-              credit: (
+          render: value => {
+            if (value === 'credit') {
+              return (
                 <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">
                   Credit
                 </span>
-              ),
-              debit: (
+              );
+            } else if (value === 'debit') {
+              return (
                 <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">
                   Debit
                 </span>
-              ),
-            })[value],
+              );
+            } else {
+              return null;
+            }
+          },
         },
         {
           name: 'Date',
-          getValue: tx => parseISO(tx.date),
+          getValue: tx => tx.date,
           render: date => format(date, 'dd.MM.yyyy'),
         },
         {

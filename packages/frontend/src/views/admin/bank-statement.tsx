@@ -1,4 +1,4 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   Page,
   Header,
@@ -11,17 +11,18 @@ import { TransactionList } from '../../components/transaction-list';
 import { useGetBankStatementQuery } from '../../api/banking/statements';
 import { useGetStatementTransactionsQuery } from '../../api/banking/transactions';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { formatEuro } from '@bbat/common/src/currency';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 export const BankStatement = ({ id }: { id: string }) => {
   const { data: statement, isLoading } = useGetBankStatementQuery(id);
   const { data: transactions } = useGetStatementTransactionsQuery(id);
-  const { data: account } = useGetBankAccountQuery(statement?.accountIban, {
-    skip: !statement,
-  });
+  const { data: account } = useGetBankAccountQuery(
+    statement?.accountIban ?? skipToken,
+  );
 
-  if (isLoading || !statement) {
+  if (isLoading || !statement || !account) {
     return 'Loading...';
   }
 
@@ -41,10 +42,7 @@ export const BankStatement = ({ id }: { id: string }) => {
       <Section title="Details" columns={2}>
         <TextField
           label="Start Date"
-          value={format(
-            parseISO(statement.openingBalance.date as string),
-            'dd.MM.yyyy',
-          )}
+          value={format(statement.openingBalance.date, 'dd.MM.yyyy')}
         />
         <TextField
           label="Opening Balance"
@@ -52,17 +50,14 @@ export const BankStatement = ({ id }: { id: string }) => {
         />
         <TextField
           label="End Date"
-          value={format(
-            parseISO(statement.closingBalance.date as string),
-            'dd.MM.yyyy',
-          )}
+          value={format(statement.closingBalance.date, 'dd.MM.yyyy')}
         />
         <TextField
           label="Closing Balance"
           value={formatEuro(statement.closingBalance.amount)}
         />
         <TextField label="Account IBAN" value={statement.accountIban} />
-        <TextField label="Account" value={account?.name} />
+        <TextField label="Account" value={account.name} />
       </Section>
       <Section title="Transactions">
         <SectionContent>

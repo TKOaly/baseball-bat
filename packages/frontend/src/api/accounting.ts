@@ -1,4 +1,4 @@
-import { AccountingPeriod } from 'common/types';
+import { AccountingPeriod } from '@bbat/common/types';
 import rtkApi from './rtk-api';
 
 const accountingApi = rtkApi.injectEndpoints({

@@ -1,4 +1,4 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   Page,
   Header,
@@ -10,8 +10,8 @@ import {
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
 import { Button } from '@bbat/ui/button';
 import { TransactionList } from '../../components/transaction-list';
-import { useLocation } from 'wouter';
-import { TableView } from '../../components/table-view';
+import { Link, useLocation } from 'wouter';
+import { Table } from '@bbat/ui/table';
 import { useGetAccountTransactionsQuery } from '../../api/banking/transactions';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
@@ -23,7 +23,7 @@ export const BankAccount = ({ iban }: { iban: string }) => {
   const { data: transactions } = useGetAccountTransactionsQuery(iban);
   const { data: statements } = useGetBankAccountStatementsQuery(iban);
 
-  if (isLoading) {
+  if (isLoading || !account) {
     return 'Loading...';
   }
 
@@ -32,6 +32,7 @@ export const BankAccount = ({ iban }: { iban: string }) => {
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               { text: 'Banking', url: '/admin/banking' },
               { text: 'Accounts', url: '/admin/banking/accounts' },
@@ -51,7 +52,7 @@ export const BankAccount = ({ iban }: { iban: string }) => {
           >
             Import bank statement
           </Button>
-          <TableView
+          <Table
             rows={(statements ?? []).map(tx => ({ ...tx, key: tx.id }))}
             onRowClick={row =>
               setLocation(`/admin/banking/statements/${row.id}`)

@@ -1,16 +1,16 @@
-import { TableView } from '../../components/table-view';
+import { Table } from '@bbat/ui/table';
 import { useGetPaymentsQuery } from '../../api/payments';
 import { useLocation } from 'wouter';
 
 export const PaymentsListing = () => {
-  const { data: payments } = useGetPaymentsQuery(null);
+  const { data: payments } = useGetPaymentsQuery();
   const [, setLocation] = useLocation();
 
   return (
     <>
       <h1 className="text-2xl mt-10 mb-5">Payments</h1>
 
-      <TableView
+      <Table
         selectable
         rows={(payments ?? []).map(p => ({ ...p, key: p.id })) ?? []}
         onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
@@ -30,7 +30,7 @@ export const PaymentsListing = () => {
             name: 'Type',
           },
           {
-            getValue: row => row.name,
+            getValue: row => row.title,
             name: 'Name',
           },
           {
@@ -38,7 +38,7 @@ export const PaymentsListing = () => {
             name: 'Payer',
           },
           {
-            getValue: row => row.payment_number,
+            getValue: row => row.paymentNumber,
             name: 'No.',
           },
         ]}

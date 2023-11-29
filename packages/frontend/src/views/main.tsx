@@ -19,11 +19,12 @@ import {
   formatEuro,
   sumEuroValues,
 } from '@bbat/common/src/currency';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO } from 'date-fns';
 import { Button, SecondaryButton } from '@bbat/ui/button';
 import { useGetUpstreamUserQuery } from '../api/upstream-users';
 import { useAppDispatch, useAppSelector } from '../store';
 import { useGetOwnPaymentsQuery } from '../api/payments';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -45,7 +46,7 @@ const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
 
 const WelcomeDialog = () => {
   const [stage, setStage] = useState(0);
-  const [, setMembership] = useState(null);
+  const [, setMembership] = useState<boolean | null>(null);
   const {
     data: user,
     isError: isUserError,
@@ -56,9 +57,9 @@ const WelcomeDialog = () => {
     isError: isPayerError,
     isLoading: isPayerLoading,
   } = useGetPayerQuery('me');
-  const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value, {
-    skip: !profile,
-  });
+  const { data: emails } = useGetPayerEmailsQuery(
+    profile?.id?.value ?? skipToken,
+  );
   const hasConfirmedMembership = useAppSelector(
     state => state.session.preferences?.hasConfirmedMembership,
   );
@@ -68,9 +69,9 @@ const WelcomeDialog = () => {
   const open = !isUserLoading && !(user || hasConfirmedMembership);
 
   const handleMembershipConfirmation = (isMember: boolean) => {
-    if (!isMember) {
+    if (!isMember && profile) {
       updatePreferences({
-        payerId: profile?.id?.value,
+        payerId: profile.id.value,
         preferences: {
           hasConfirmedMembership: true,
         },
@@ -79,15 +80,17 @@ const WelcomeDialog = () => {
       return;
     }
 
-    window.location.replace(
-      `${
-        process.env.BACKEND_URL
-      }/api/session/login?target=welcome&token=${encodeURIComponent(token)}`,
-    );
+    if (token) {
+      window.location.replace(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/session/login?target=welcome&token=${encodeURIComponent(token)}`,
+      );
+    }
   };
 
   return (
-    <Dialog open={open} noClose>
+    <Dialog title="" open={open} noClose>
       {/*<div className="w-[25em] mx-auto my-5">
         <Stepper
           stages={['Welcome', 'Membership', 'Authentication', 'Name']}
@@ -129,8 +132,8 @@ const WelcomeDialog = () => {
           <>
             <p className="mb-5">
               Is your name <b>{profile?.name}</b> and is your preferred e-mail
-              address <b>{emails.find(e => e.priority === 'primary')?.email}</b>
-              ?
+              address{' '}
+              <b>{emails?.find?.(e => e.priority === 'primary')?.email}</b>?
             </p>
 
             <div className="flex flex-col gap-3 mb-5">
@@ -187,7 +190,7 @@ const WelcomeDialog = () => {
               className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow w-60 mt-4"
               onClick={() =>
                 window.location.replace(
-                  `${process.env.BACKEND_URL}/api/session/login`,
+                  `${import.meta.env.VITE_BACKEND_URL}/api/session/login`,
                 )
               }
             >
@@ -217,7 +220,7 @@ type CardProps = {
   title: string;
   subtitle: string;
   amount: EuroValue;
-  actions: JSX.Element;
+  actions: React.ReactNode;
   status?: { className: string; label: string } | null;
 };
 
@@ -234,7 +237,7 @@ const Card: React.FC<CardProps> = ({
   return (
     <div
       className="rounded-md border group border-gray-300 hover:border-blue-300 mt-5 shadow-sm cursor-pointer"
-      onClick={() => selectable && onChangeSelected(!selected)}
+      onClick={() => selectable && onChangeSelected?.(!selected)}
     >
       <div className="flex items-center p-4">
         {selectable &&
@@ -268,7 +271,7 @@ const Card: React.FC<CardProps> = ({
   );
 };
 
-const CardAction: React.FC<React.HTMLProps<HTMLButtonElement>> = ({
+const CardAction: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   children,
   className,
   onClick,
@@ -315,8 +318,8 @@ const DebtCard: React.FC<DebtCardProps> = ({ debt }) => {
       selected={selected}
       title={debt.name}
       subtitle={t('debtListInfoline', {
-        dated: format(new Date(debt.publishedAt), 'dd.MM.yyyy'),
-        dueDate: format(new Date(debt.dueDate), 'dd.MM.yyyy'),
+        dated: debt.publishedAt ? format(debt.publishedAt, 'dd.MM.yyyy') : '-',
+        dueDate: debt.dueDate ? format(debt.dueDate, 'dd.MM.yyyy') : '-',
       })}
       amount={debt.debtComponents
         .map(c => c.amount)
@@ -389,14 +392,19 @@ export const Main = () => {
       </h3>
       <p className="mt-3">
         {unpaidDepts.length > 0 && (
-          <Trans i18nKey="welcomeSummary">
-            You have{' '}
-            <span className="font-bold">{{ number: unpaidDepts.length }}</span>{' '}
-            unpaid debts, which have a combined value of{' '}
-            <span className="font-bold">
-              {{ total: formatEuro(totalEuros) }}
-            </span>
-            .
+          <Trans
+            i18nKey="welcomeSummary"
+            values={{
+              total: formatEuro(totalEuros),
+              number: unpaidDepts.length,
+            }}
+            components={{
+              bold: <span className="font-bold" />,
+            }}
+          >
+            {`You have <bold>{{ number }}</bold>
+            unpaid debts, which have a combined value of
+            <bold>{{ total }}</bold>.`}
           </Trans>
         )}
         {unpaidDepts.length === 0 && t('welcomeSummaryNoDebts')}
@@ -434,8 +442,12 @@ export const Main = () => {
           key={p.id}
           title={p.title}
           subtitle={t('openInvoiceInfoline', {
-            dated: format(new Date(p.data.date), 'dd.MM.yyyy'),
-            due: format(new Date(p.data.due_date), 'dd.MM.yyyy'),
+            dated: isPaymentInvoice(p)
+              ? format(parseISO(p.data.date), 'dd.MM.yyyy')
+              : '-',
+            due: isPaymentInvoice(p)
+              ? format(new Date(p.data.due_date), 'dd.MM.yyyy')
+              : '-',
           })}
           amount={cents(-p.balance)}
           actions={
@@ -533,7 +545,7 @@ export const Main = () => {
           key={p.id}
           title={p.name}
           subtitle={t('paidDebtInfoline', {
-            dated: format(new Date(p.date), 'dd.MM.yyyy'),
+            dated: p.date ? format(p.date, 'dd.MM.yyyy') : '-',
           })}
           amount={p.debtComponents
             .map(c => c.amount)

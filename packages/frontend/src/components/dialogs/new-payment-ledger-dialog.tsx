@@ -3,7 +3,7 @@ import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGeneratePaymentLedgerMutation } from '../../api/report';
 import { Button } from '@bbat/ui/button';
-import { DateField } from '../datetime-field';
+import { DateField } from '@bbat/ui/datetime-field';
 import {
   DialogBase,
   DialogContent,
@@ -24,7 +24,7 @@ type FormValues = {
 };
 
 type Props = {
-  onClose: (_: Report) => void;
+  onClose: (_: Report | null) => void;
   defaults?: Partial<Omit<FormValues, 'center'> & { center: string }>;
 };
 

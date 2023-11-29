@@ -1,4 +1,4 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   Page,
   Header,
@@ -15,8 +15,8 @@ import {
   useGetDebtCenterQuery,
 } from '../../api/debt-centers';
 import { DebtList } from '../../components/debt-list';
-import { useLocation } from 'wouter';
-import { TableView } from '../../components/table-view';
+import { Link, useLocation } from 'wouter';
+import { Table } from '@bbat/ui/table';
 import {
   useGetDebtComponentsByCenterQuery,
   useGetDebtsByCenterQuery,
@@ -27,7 +27,7 @@ import { useDialog } from '../../components/dialog';
 import { InfoDialog } from '../../components/dialogs/info-dialog';
 import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';
 
-export const DebtCenterDetails = ({ id }) => {
+export const DebtCenterDetails = ({ id }: { id: string }) => {
   const [, setLocation] = useLocation();
   const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id);
   const { data: components } = useGetDebtComponentsByCenterQuery(id);
@@ -35,6 +35,10 @@ export const DebtCenterDetails = ({ id }) => {
   const [deleteDebtCenter] = useDeleteDebtCenterMutation();
   const showInfoDialog = useDialog(InfoDialog);
   const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
+
+  if (isLoading || !debtCenter) {
+    return <div>Loading....</div>;
+  }
 
   const handleDelete = async () => {
     const result = await deleteDebtCenter(id);
@@ -49,15 +53,12 @@ export const DebtCenterDetails = ({ id }) => {
     }
   };
 
-  if (isLoading || !debtCenter) {
-    return <div>Loading....</div>;
-  }
-
   return (
     <Page>
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               { text: 'Debt Centers', url: '/admin' },
               debtCenter.name,
@@ -72,9 +73,9 @@ export const DebtCenterDetails = ({ id }) => {
           )}
           <ActionButton
             secondary
-            onClick={() =>
-              showNewDebtLedgerDialog({ defaults: { center: id } })
-            }
+            onClick={async () => {
+              await showNewDebtLedgerDialog({ defaults: { center: id } });
+            }}
           >
             Generate Report
           </ActionButton>
@@ -96,7 +97,7 @@ export const DebtCenterDetails = ({ id }) => {
       </Section>
       <Section title="Debt Components">
         <SectionContent>
-          <TableView
+          <Table
             rows={(components ?? []).map(component => ({
               ...component,
               key: component.id,

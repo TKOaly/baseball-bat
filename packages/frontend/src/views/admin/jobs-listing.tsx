@@ -1,22 +1,22 @@
 import { format, formatDuration } from 'date-fns';
 import { useLocation } from 'wouter';
 import { useGetJobsQuery } from '../../api/jobs';
-import { TableView } from '../../components/table-view';
+import { Table } from '@bbat/ui/table';
 
 export const JobsListing = () => {
-  const { data: jobs } = useGetJobsQuery(null, { pollingInterval: 100 });
+  const { data: jobs } = useGetJobsQuery(undefined, { pollingInterval: 100 });
   const [, setLocation] = useLocation();
 
   return (
     <div>
       <h1 className="text-2xl mt-10 mb-5">Jobs</h1>
-      <TableView
+      <Table
         rows={(jobs ?? []).map(job => ({ ...job, key: job.id }))}
         onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
         columns={[
           {
             name: 'Time',
-            getValue: job => new Date(job.time),
+            getValue: job => job.time,
             render: time => format(time, 'dd.MM.yyyy HH:mm:ss'),
           },
           {
@@ -45,11 +45,13 @@ export const JobsListing = () => {
               }
 
               const color =
-                {
-                  failed: 'bg-red-400',
-                  completed: 'bg-green-400',
-                  delayed: 'bg-yellow-400',
-                }[job.status] ?? 'bg-green-400';
+                (
+                  {
+                    failed: 'bg-red-400',
+                    completed: 'bg-green-400',
+                    delayed: 'bg-yellow-400',
+                  } as Record<string, string>
+                )[job.status] ?? 'bg-green-400';
 
               return (
                 <div className="w-full">

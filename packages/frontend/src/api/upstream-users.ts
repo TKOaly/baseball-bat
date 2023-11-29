@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api';
-import { UpstreamUser } from 'common/types';
+import { UpstreamUser } from '@bbat/common/types';
 
 const upstreamUsersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -7,7 +7,7 @@ const upstreamUsersApi = rtkApi.injectEndpoints({
       query: () => '/users',
     }),
 
-    getUpstreamUser: builder.query<UpstreamUser, number>({
+    getUpstreamUser: builder.query<UpstreamUser, number | 'me'>({
       query: id => `/users/${id}`,
     }),
   }),

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAppSelector } from '../store';
 import { createMultiFetchHook } from '../hooks/create-multi-fetch-hook';
 import debtApi from '../api/debt';

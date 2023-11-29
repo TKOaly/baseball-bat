@@ -1,8 +1,7 @@
-import React from 'react';
 import { useLocation } from 'wouter';
-import { cents, formatEuro } from '@bbat/common/src/currency';
+import { formatEuro } from '@bbat/common/src/currency';
 import { Payment } from '@bbat/common/src/types';
-import { TableView } from './table-view';
+import { Table } from '@bbat/ui/table';
 
 export type Props = {
   payments: Payment[];
@@ -11,7 +10,7 @@ export type Props = {
 export const PaymentList = ({ payments }: Props) => {
   const [, setLocation] = useLocation();
   return (
-    <TableView
+    <Table
       selectable
       rows={payments.map(p => ({ ...p, key: p.id }))}
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
@@ -31,7 +30,7 @@ export const PaymentList = ({ payments }: Props) => {
         {
           name: 'Total',
           getValue: row => {
-            return formatEuro(cents(row.balance));
+            return formatEuro(row.balance);
           },
         },
       ]}

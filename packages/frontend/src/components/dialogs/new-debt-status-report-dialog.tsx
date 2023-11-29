@@ -3,7 +3,7 @@ import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGenerateDebtStatusReportMutation } from '../../api/report';
 import { Button } from '@bbat/ui/button';
-import { DateField } from '../datetime-field';
+import { DateField } from '@bbat/ui/datetime-field';
 import {
   DialogBase,
   DialogContent,
@@ -25,7 +25,7 @@ export const NewDebtStatusReportDialog = ({
   onClose,
   defaults = {},
 }: {
-  onClose: (result: Report) => void;
+  onClose: (result: Report | null) => void;
   defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string };
 }) => {
   const [generateDebtStatusReportMutation] =

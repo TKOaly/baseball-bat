@@ -18,7 +18,7 @@ export interface Props {
   };
 }
 
-const stripePromise = loadStripe(process.env.STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 type PaymentFormProps = {
   id: string;
@@ -44,13 +44,18 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${process.env.APP_URL}/payment/${id}/stripe/${secret}/return`,
+        return_url: `${
+          import.meta.env.VITE_APP_URL
+        }/payment/${id}/stripe/${secret}/return`,
       },
     });
 
     setIsLoading(false);
 
-    if (error.type === 'card_error' || error.type === 'validation_error') {
+    if (
+      (error.type === 'card_error' || error.type === 'validation_error') &&
+      error.message
+    ) {
       setErrorMessage(error.message);
     } else {
       setErrorMessage(t('unknownStripeErrorMessage'));
@@ -98,7 +103,7 @@ export const StripePaymentFlow = (props: Props) => {
   const options = {
     clientSecret: props.params.secret,
     appearance: {
-      theme: 'stripe',
+      theme: 'stripe' as const,
       rules: {
         '.AccordionItem': { borderColor: 'rgb(209 213 219)' },
         '.Input': { borderColor: 'rgb(209 213 219)' },

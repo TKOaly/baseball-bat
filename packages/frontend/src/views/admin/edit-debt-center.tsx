@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { Formik } from 'formik';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   useGetDebtCenterQuery,
   useUpdateDebtCenterMutation,
 } from '../../api/debt-centers';
-import { useLocation } from 'wouter';
+import { Link, RouteComponentProps, useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
 import { TextField } from '@bbat/ui/text-field';
-import { TextareaField } from '../../components/textarea-field';
+import { Textarea } from '@bbat/ui/textarea';
 import * as A from 'fp-ts/lib/Array';
 import * as O from 'fp-ts/lib/Option';
 import * as TE from 'fp-ts/lib/TaskEither';
@@ -27,6 +27,7 @@ import { pipe } from 'fp-ts/lib/function';
 import { useDialog } from '../../components/dialog';
 import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-center-edit-confirmation-dialog';
 import { contramap } from 'fp-ts/lib/Eq';
+import { uid } from 'uid';
 
 type FormComponentValue = {
   name: string;
@@ -42,7 +43,9 @@ type FormValues = {
   components: FormComponentValue[];
 };
 
-export const EditDebtCenter = ({ params }) => {
+type Props = RouteComponentProps<{ id: string }>;
+
+export const EditDebtCenter = ({ params }: Props) => {
   const { id } = params;
   const { data: debtCenter } = useGetDebtCenterQuery(id);
   const { data: components } = useGetDebtComponentsByCenterQuery(id);
@@ -80,6 +83,10 @@ export const EditDebtCenter = ({ params }) => {
     }
   }, [debtCenter, components]);
 
+  if (!debtCenter || !components) {
+    return;
+  }
+
   const handleSubmit = async (values: FormValues) => {
     const result = await updateDebtCenter({
       id,
@@ -93,16 +100,23 @@ export const EditDebtCenter = ({ params }) => {
       A.filter(c => c.id === null),
     );
 
-    const IdEq = contramap((c: { id: string; name: string }) => c.id)(S.Eq);
+    const IdEq = contramap((c: { id: string | null; name: string }) =>
+      O.fromNullable(c.id),
+    )(O.getEq(S.Eq));
 
     const removedComponents = pipe(
       components,
-      A.difference(IdEq)(
-        pipe(
-          values.components,
-          A.filter(c => c.id !== null),
-        ),
-      ),
+      A.difference(IdEq)(values.components),
+      A.filterMap(c => {
+        if (c.id !== null) {
+          return O.some({
+            ...c,
+            id: c.id!,
+          });
+        } else {
+          return O.none;
+        }
+      }),
     );
 
     const changedComponents = pipe(
@@ -111,6 +125,10 @@ export const EditDebtCenter = ({ params }) => {
       A.filterMap(({ id }) => {
         const existing = components.find(c => c.id === id);
         const modified = values.components.find(c => c.id === id);
+
+        if (!existing || !modified) {
+          return O.none;
+        }
 
         if (
           existing.name !== modified.name ||
@@ -233,6 +251,7 @@ export const EditDebtCenter = ({ params }) => {
     <div>
       <h1 className="text-2xl mb-5 mt-10">
         <Breadcrumbs
+          linkComponent={Link}
           segments={[
             { text: 'Debt Center', url: '/admin' },
             { text: debtCenter?.name ?? id, url: `/admin/debt-centers/${id}` },
@@ -279,7 +298,7 @@ export const EditDebtCenter = ({ params }) => {
               label="Description"
               name="description"
               fullWidth
-              component={TextareaField}
+              component={Textarea}
             />
             <InputGroup
               label="Components"
@@ -288,22 +307,23 @@ export const EditDebtCenter = ({ params }) => {
               component={TabularFieldListFormik}
               columns={[
                 {
-                  key: 'name',
+                  key: 'name' as any,
                   header: 'Name',
                   component: TextField,
                 },
                 {
-                  key: 'amount',
+                  key: 'amount' as any,
                   header: 'Amount',
                   component: EuroField,
                 },
                 {
-                  key: 'description',
+                  key: 'description' as any,
                   component: TextField,
                   header: 'Description',
                 },
               ]}
               createNew={() => ({
+                key: uid(),
                 name: '',
                 amount: 0,
                 description: '',

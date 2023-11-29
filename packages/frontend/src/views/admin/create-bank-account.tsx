@@ -1,8 +1,8 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { useCreateBankAccountMutation } from '../../api/banking/accounts';
 import { TextField } from '@bbat/ui/text-field';
 import { Formik } from 'formik';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { BankAccount } from '@bbat/common/src/types';
 import { InputGroup } from '../../components/input-group';
 
@@ -22,6 +22,7 @@ export const CreateBankAccount = () => {
     <div>
       <h1 className="text-2xl mt-10 mb-5">
         <Breadcrumbs
+          linkComponent={Link}
           segments={[
             {
               text: 'Banking',

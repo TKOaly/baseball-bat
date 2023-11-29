@@ -1,4 +1,3 @@
-import React from 'react';
 import { Formik } from 'formik';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { TabularFieldListFormik } from '../components/tabular-field-list';
@@ -11,15 +10,14 @@ import {
   useUpdatePayerPreferencesMutation,
 } from '../api/payers';
 import { useAppSelector } from '../store';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 export const Settings = () => {
   const { t } = useTranslation([], { keyPrefix: 'settings' });
   const [updatePreferences] = useUpdatePayerPreferencesMutation();
   const [updatePayerEmails] = useUpdatePayerEmailsMutation();
   const session = useAppSelector(state => state.session);
-  const { data } = useGetPayerEmailsQuery(session.payerId, {
-    skip: !session.payerId,
-  });
+  const { data } = useGetPayerEmailsQuery(session.payerId ?? skipToken);
 
   return (
     <div>
@@ -47,7 +45,7 @@ export const Settings = () => {
           });
         }}
       >
-        {({ submitForm, isSubmitting }) => (
+        {({ values, submitForm, isSubmitting }) => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <InputGroup
               component={DropdownField}
@@ -72,17 +70,25 @@ export const Settings = () => {
               fullWidth
               name="emails"
               component={TabularFieldListFormik}
-              createNew={() => ({ email: '', priority: 'secondary' })}
+              createNew={() => ({
+                key: `new-${values.emails.length}`,
+                email: '',
+                priority: 'secondary',
+              })}
+              value={values.emails.map(email => ({
+                ...email,
+                key: email.email,
+              }))}
               columns={[
                 {
                   header: t('emailHeader'),
                   component: TextField,
-                  key: 'email',
+                  key: 'email' as any,
                 },
                 {
                   header: t('emailPriorityHeader'),
                   component: DropdownField,
-                  key: 'priority',
+                  key: 'priority' as any,
                   props: {
                     options: [
                       { value: 'primary', text: t('emailPriority.primary') },

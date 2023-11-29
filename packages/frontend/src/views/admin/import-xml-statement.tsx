@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@bbat/ui/button';
 import { useCreateBankStatementMutation } from '../../api/banking/statements';
 import { useLocation } from 'wouter';
-import { CamtStatement, parseCamtStatement } from '@bbat/common/src/camt-parser';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import {
+  CamtStatement,
+  parseCamtStatement,
+} from '@bbat/common/src/camt-parser';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { format } from 'date-fns';
 import { useGetBankAccountsQuery } from '../../api/banking/accounts';
 import {
@@ -43,7 +46,12 @@ export const ImportXMLStatement = () => {
 
   const handleFileChange = async (evt: Event) => {
     const target = evt.target as HTMLInputElement;
-    const file = target.files[0];
+    const file = target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
     setStatementFile(file);
     const statement = await parseCamtStatementFromFile(file);
     setParsedStatement(statement);

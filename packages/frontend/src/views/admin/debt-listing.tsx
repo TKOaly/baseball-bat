@@ -4,20 +4,20 @@ import {
   useGetDebtsByTagQuery,
   useSendAllRemindersMutation,
 } from '../../api/debt';
-import { useLocationProperty } from 'wouter/use-location';
+import { useSearch } from 'wouter';
 import { useLocation } from 'wouter';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
 import { DebtList } from '../../components/debt-list';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 export const DebtListing = () => {
-  const tag = useLocationProperty(() =>
-    new URLSearchParams(window.location.search).get('tag'),
-  );
+  const search = useSearch();
+  const tag = new URLSearchParams(search).get('tag');
 
-  const { data: allDebts } = useGetDebtsQuery(null, { skip: !!tag });
-  const { data: debtsByTag } = useGetDebtsByTagQuery(tag, { skip: !tag });
+  const { data: allDebts } = useGetDebtsQuery(undefined, { skip: !!tag });
+  const { data: debtsByTag } = useGetDebtsByTagQuery(tag ?? skipToken);
 
   const debts = tag ? debtsByTag : allDebts;
 

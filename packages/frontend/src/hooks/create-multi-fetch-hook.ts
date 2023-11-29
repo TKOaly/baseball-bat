@@ -29,7 +29,10 @@ export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
   );
 
   return params => {
-    const [results, setResults] = useState({ data: [], isLoading: true });
+    const [results, setResults] = useState({
+      data: [] as ResultTypeFrom<EndpointDefinitionFrom<E>>[],
+      isLoading: true,
+    });
 
     const dispatch = useAppDispatch();
 
@@ -47,7 +50,9 @@ export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
         setResults({
-          data: queries.map(query => query.data),
+          data: queries.map(
+            query => query.data as ResultTypeFrom<EndpointDefinitionFrom<E>>,
+          ),
           isLoading: false,
         });
       }

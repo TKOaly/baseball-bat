@@ -1,5 +1,6 @@
-import { BankTransaction, PaymentEvent } from 'common/types';
+import { BankTransaction, PaymentEvent } from '@bbat/common/types';
 import rtkApi from '../rtk-api';
+import { parseISO } from 'date-fns';
 
 const transactionsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -15,11 +16,25 @@ const transactionsApi = rtkApi.injectEndpoints({
     getAccountTransactions: builder.query<BankTransaction[], string>({
       query: iban => `/banking/accounts/${iban}/transactions`,
       providesTags: [{ type: 'BankTransaction', id: 'LIST' }],
+      transformResponse: (
+        response: (Omit<BankTransaction, 'date'> & { date: string })[],
+      ) =>
+        response.map(tx => ({
+          ...tx,
+          date: parseISO(tx.date),
+        })),
     }),
 
     getStatementTransactions: builder.query<BankTransaction[], string>({
       query: id => `/banking/statements/${id}/transactions`,
       providesTags: [{ type: 'BankTransaction', id: 'LIST' }],
+      transformResponse: (
+        response: (Omit<BankTransaction, 'date'> & { date: string })[],
+      ) =>
+        response.map(tx => ({
+          ...tx,
+          date: parseISO(tx.date),
+        })),
     }),
 
     autoregister: builder.mutation<void, void>({
@@ -33,7 +48,10 @@ const transactionsApi = rtkApi.injectEndpoints({
       query: id => `/banking/transactions/${id}/registrations`,
       providesTags: response => [
         { type: 'PaymentEvent' as const, id: 'LIST' },
-        ...response.map(({ id }) => ({ type: 'PaymentEvent' as const, id })),
+        ...(response ?? []).map(({ id }) => ({
+          type: 'PaymentEvent' as const,
+          id,
+        })),
       ],
     }),
   }),

@@ -6,7 +6,11 @@ import {
 } from '../../components/dialog';
 import { Button, SecondaryButton } from '@bbat/ui/button';
 
-export const PublishedDebtEditConfirmation = ({ onClose }) => {
+type Props = {
+  onClose: (value: boolean) => void;
+};
+
+export const PublishedDebtEditConfirmation = ({ onClose }: Props) => {
   return (
     <DialogBase
       onClose={() => onClose(false)}

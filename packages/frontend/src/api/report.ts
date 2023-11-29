@@ -4,7 +4,7 @@ import {
   DebtStatusReportOptions,
   PaymentLedgerOptions,
   Report,
-} from 'common/types';
+} from '@bbat/common/types';
 
 const reportApi = rtkApi.injectEndpoints({
   endpoints: builder => ({

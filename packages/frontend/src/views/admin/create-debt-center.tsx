@@ -1,10 +1,10 @@
 import { Formik } from 'formik';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { useCreateDebtCenterMutation } from '../../api/debt-centers';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
 import { TextField } from '@bbat/ui/text-field';
-import { TextareaField } from '../../components/textarea-field';
+import { Textarea } from '@bbat/ui/textarea';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
 import { useCreateDebtComponentMutation } from '../../api/debt';
@@ -58,6 +58,7 @@ export const CreateDebtCenter = () => {
     <div>
       <h1 className="text-2xl mb-5 mt-10">
         <Breadcrumbs
+          linkComponent={Link}
           segments={[{ text: 'Debt Center', url: '/admin' }, 'Create']}
         />
       </h1>
@@ -85,10 +86,21 @@ export const CreateDebtCenter = () => {
           return errors;
         }}
         onSubmit={async (values, { setFieldError }) => {
-          const res = await createDebtCenter(values);
+          const accountingPeriod =
+            values.accountingPeriod ?? activeAccountingPeriod;
+
+          if (!accountingPeriod) {
+            return;
+          }
+
+          const res = await createDebtCenter({
+            ...values,
+            accountingPeriod,
+          });
 
           if ('error' in res) {
-            setFieldError(res.error.data.field, res.error.data.message);
+            const error = res.error as any;
+            setFieldError(error.data.field, error.data.message);
             return;
           }
 
@@ -96,7 +108,7 @@ export const CreateDebtCenter = () => {
             async (component, i) => {
               const componentRes = await createDebtComponent({
                 ...component,
-                amount: euro(component.amount * 100),
+                amount: euro(component.amount),
                 debtCenterId: res.data.id,
               });
 
@@ -123,7 +135,7 @@ export const CreateDebtCenter = () => {
                   <p>
                     Failed to create debt center due to the following error:
                   </p>
-                  <pre>{e}</pre>
+                  <pre>{`${e}`}</pre>
                 </>
               ),
             });
@@ -138,9 +150,9 @@ export const CreateDebtCenter = () => {
             <p className="col-span-full text-sm mb-2">
               Lorem ipsum dolor sit amet.
             </p>
-            <InputGroup label="Name" name="name" component={TextField} />
+            <InputGroup narrow label="Name" name="name" component={TextField} />
             <InputGroup narrow label="URL" name="url" component={TextField} />
-            {accountingPeriods?.length > 1 && (
+            {(accountingPeriods?.length ?? 0) > 1 && (
               <InputGroup
                 narrow
                 label="Accounting Period"
@@ -150,7 +162,7 @@ export const CreateDebtCenter = () => {
                   .filter(period => !period.closed)
                   .map(period => ({
                     value: period.year,
-                    text: period.year,
+                    text: period.year.toString(),
                   }))}
               />
             )}
@@ -158,7 +170,7 @@ export const CreateDebtCenter = () => {
               label="Description"
               name="description"
               fullWidth
-              component={TextareaField}
+              component={Textarea}
             />
             <InputGroup
               label="Components"
@@ -167,22 +179,27 @@ export const CreateDebtCenter = () => {
               component={TabularFieldListFormik}
               columns={[
                 {
-                  key: 'name',
+                  key: 'name' as any,
                   header: 'Name',
                   component: TextField,
                 },
                 {
-                  key: 'amount',
+                  key: 'amount' as any,
                   header: 'Amount',
                   component: EuroField,
                 },
                 {
-                  key: 'description',
+                  key: 'description' as any,
                   component: TextField,
                   header: 'Description',
                 },
               ]}
-              createNew={() => ({ name: '', amount: 0, description: '' })}
+              createNew={() => ({
+                key: 'new',
+                name: '',
+                amount: 0,
+                description: '',
+              })}
             />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
               <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">

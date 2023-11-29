@@ -9,7 +9,7 @@ import { TextField } from '@bbat/ui/text-field';
 import { useSearchQuery } from '../../api/search';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Dropdown } from '../dropdown';
+import { Dropdown } from '@bbat/ui/dropdown';
 import { useFetchResourceDetails } from '../../hooks/use-fetch-resource-details';
 import { ResourceLink } from '../resource-link';
 
@@ -21,7 +21,19 @@ export type Props = {
   prompt?: string;
 };
 
-const SearchResultItem = ({ type, id, name, onSelect }) => {
+export type SearchResultItemProps = {
+  type: string;
+  id: string;
+  name: string;
+  onSelect: () => void;
+};
+
+const SearchResultItem = ({
+  type,
+  id,
+  name,
+  onSelect,
+}: SearchResultItemProps) => {
   const details = useFetchResourceDetails(type, id);
 
   return (
@@ -76,7 +88,7 @@ export const GlobalSearchDialog = ({
     { skip: term === '' },
   );
   const [, setLocation] = useLocation();
-  const inputRef = useRef<HTMLInputElement>();
+  const inputRef = useRef<HTMLInputElement>(null);
   const results = useMemo(
     () => (fullResults ? [...fullResults].splice(0, 10) : null),
     [fullResults],
@@ -151,7 +163,7 @@ export const GlobalSearchDialog = ({
         </div>
       </DialogContent>
       <DialogFooter>
-        <Button onClick={() => onClose()}>Close</Button>
+        <Button onClick={() => onClose(null)}>Close</Button>
       </DialogFooter>
     </DialogBase>
   );

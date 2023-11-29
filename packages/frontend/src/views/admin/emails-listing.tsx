@@ -2,7 +2,7 @@ import { useGetEmailsQuery } from '../../api/email';
 import { EmailList } from '../../components/email-list';
 
 export const EmailsListing = () => {
-  const { data: emails } = useGetEmailsQuery(null);
+  const { data: emails } = useGetEmailsQuery();
 
   return (
     <>

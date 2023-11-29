@@ -1,4 +1,4 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   useCreditDebtMutation,
   useDeleteDebtMutation,
@@ -29,7 +29,7 @@ import {
   SectionDescription,
   SectionContent,
 } from '../../components/resource-page/resource-page';
-import { useLocation } from 'wouter';
+import { Link, RouteComponentProps, useLocation } from 'wouter';
 import { euro, sumEuroValues } from '@bbat/common/src/currency';
 import React from 'react';
 import { useDialog } from '../../components/dialog';
@@ -37,7 +37,9 @@ import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dia
 import { useGetEmailsByDebtQuery } from '../../api/email';
 import { EmailList } from '../../components/email-list';
 
-export const DebtDetails = ({ params }) => {
+type Props = RouteComponentProps<{ id: string }>;
+
+export const DebtDetails = ({ params }: Props) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
   const { data: payments } = useGetPaymentsByDebtQuery(params.id);
   const { data: emails } = useGetEmailsByDebtQuery(params.id);
@@ -49,7 +51,7 @@ export const DebtDetails = ({ params }) => {
   const [publishDebts] = usePublishDebtsMutation();
   const [sendDebtReminder] = useSendReminderMutation();
 
-  if (isLoading) {
+  if (isLoading || !debt) {
     return <div>Loading...</div>;
   }
 
@@ -117,6 +119,7 @@ export const DebtDetails = ({ params }) => {
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               {
                 text: 'Debts',
@@ -218,6 +221,7 @@ export const DebtDetails = ({ params }) => {
             value={debt.debtComponents.map(c => ({
               ...c,
               amount: c.amount.value / 100,
+              key: c.id,
             }))}
             readOnly
             columns={[

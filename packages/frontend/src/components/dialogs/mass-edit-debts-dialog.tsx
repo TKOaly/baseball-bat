@@ -8,7 +8,7 @@ import {
 import { skipToken } from '@reduxjs/toolkit/query';
 import { Button } from '@bbat/ui/button';
 import { TextField } from '@bbat/ui/text-field';
-import { DateField } from '../../components/datetime-field';
+import { DateField } from '@bbat/ui/datetime-field';
 import { InputGroup } from '../input-group';
 import { Formik } from 'formik';
 import { uniqBy } from 'remeda';
@@ -26,7 +26,7 @@ import {
   useUpdateMultipleDebtsMutation,
 } from '../../api/debt';
 import { ResourceSelectField } from '../resource-select-field';
-import { TableView } from '../table-view';
+import { Table } from '@bbat/ui/table';
 import { AddTagDialog } from './add-tag-dialog';
 import { isRight, left } from 'fp-ts/lib/Either';
 
@@ -88,7 +88,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
   const componentSummary = useMemo<Array<[DebtComponent, number]>>(() => {
     if (!allDebtComponents) {
-      return null;
+      return [];
     }
 
     const components: Record<string, number> = {};
@@ -126,14 +126,19 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
     const dueDates = uniqBy(debts, d =>
-      dfns.format(new Date(d.dueDate), 'dd.MM.yyyy'),
+      d.dueDate ? dfns.format(d.dueDate, 'dd.MM.yyyy') : '',
     );
     const dates = uniqBy(debts, d =>
       d.date === null ? null : dfns.format(new Date(d.date), 'dd.MM.yyyy'),
     );
     const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
-    let components = [];
+    let components = [] as {
+      id: string;
+      name: string;
+      amount: EuroValue;
+      operation: 'include' | 'exclude' | 'noop';
+    }[];
 
     if (componentSummary) {
       components = componentSummary.map(([{ id, name, amount }, count]) => {
@@ -177,11 +182,11 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         : left(null);
 
     return {
-      name: names.length === 1 ? names[0].name : null,
+      name: names.length === 1 ? names[0].name : '',
       date: isRight(date) ? date.right : null,
       dueDate:
-        dueDates.length === 1
-          ? dfns.format(new Date(dueDates[0].dueDate), 'dd.MM.yyyy')
+        dueDates.length === 1 && dueDates[0].dueDate
+          ? dfns.format(dueDates[0].dueDate, 'dd.MM.yyyy')
           : null,
       debtCenter:
         debtCenters.length === 1
@@ -301,7 +306,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                     <span className="text-sm font-bold text-gray-800 mb-1 block">
                       Tags
                     </span>
-                    <TableView
+                    <Table
                       hideTools
                       rows={values.tags.map(c => ({ ...c, key: c.name }))}
                       columns={[
@@ -495,7 +500,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                     <span className="text-sm font-bold text-gray-800 mb-1 block">
                       Components
                     </span>
-                    <TableView
+                    <Table
                       hideTools
                       footer={false}
                       rows={values.components.map(c => ({ ...c, key: c.id }))}
@@ -509,7 +514,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                           getValue: component => {
                             const count = componentSummary.find(
                               ([{ id }]) => id === component.id,
-                            )[1];
+                            )?.[1];
 
                             let noopEq = 'noop';
                             let originalPresence = 'Mixed';

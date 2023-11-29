@@ -6,13 +6,15 @@ import {
   useState,
   useMemo,
   useReducer,
+  PropsWithChildren,
 } from 'react';
 import { produce } from 'immer';
 import { Circle, Search, X } from 'react-feather';
-import { TableView } from '../../components/table-view';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Table } from '@bbat/ui/table';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { Stepper } from '../../components/stepper';
 import {
+  ApiCustomField,
   DebtComponent,
   euro,
   Event,
@@ -21,18 +23,14 @@ import {
 import { TextField } from '@bbat/ui/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
 import { addDays, format, isMatch, subYears } from 'date-fns';
-import { FilledDisc } from '../../components/filled-disc';
+import { FilledDisc } from '@bbat/ui/filled-disc';
 import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';
 import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
-import { TextareaField } from '../../components/textarea-field';
+import { Textarea } from '@bbat/ui/textarea';
 import { Formik } from 'formik';
 import { DropdownField } from '@bbat/ui/dropdown-field';
-import {
-  Button,
-  DisabledButton,
-  SecondaryButton,
-} from '@bbat/ui/button';
+import { Button, DisabledButton, SecondaryButton } from '@bbat/ui/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
 import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
@@ -41,9 +39,13 @@ import {
   ResultTypeFrom,
 } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
-import { DateField } from '../../components/datetime-field';
-import { useLocation } from 'wouter';
-import { EuroValue, formatEuro, sumEuroValues } from '@bbat/common/src/currency';
+import { DateField } from '@bbat/ui/datetime-field';
+import { Link, useLocation } from 'wouter';
+import {
+  EuroValue,
+  formatEuro,
+  sumEuroValues,
+} from '@bbat/common/src/currency';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 
 type EventSelectionViewProps = {
@@ -61,7 +63,7 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(state.eventIds);
 
-  const handleSelect = event =>
+  const handleSelect = (event: Event) =>
     setSelected(prev => {
       const index = prev.indexOf(event.id);
 
@@ -156,7 +158,9 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
   );
 
   return params => {
-    const [results, setResults] = useState(null);
+    const [results, setResults] = useState<
+      ResultTypeFrom<EndpointDefinitionFrom<E>>[] | null
+    >(null);
 
     const dispatch = useAppDispatch();
 
@@ -173,7 +177,7 @@ function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
 
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
-        setResults(queries.map(query => query.data));
+        setResults(queries.map(query => query.data as any));
       }
     }, [queries]);
 
@@ -188,7 +192,11 @@ const useFetchEventRegistrations = createMultiFetchHook(
   eventsApi.endpoints.getEventRegistrations,
 );
 
-const Modal = ({ open, onClose, children }) => {
+const Modal = ({
+  open,
+  onClose,
+  children,
+}: PropsWithChildren<{ open: boolean; onClose: () => void }>) => {
   return (
     <ReactModal
       isOpen={open}
@@ -218,9 +226,36 @@ const Modal = ({ open, onClose, children }) => {
   );
 };
 
-const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
+type PricingRuleModalProps = {
+  events: Event[];
+  fields: Map<number, ApiCustomField[]>;
+};
+
+type PricingRuleModalResult = {
+  eventId: number;
+  customFieldId: number;
+  value: string;
+};
+
+type PricingRuleModalHandle = {
+  prompt: () => Promise<PricingRuleModalResult>;
+  cancel: () => void;
+};
+
+const PricingRuleModal = forwardRef<
+  PricingRuleModalHandle,
+  PricingRuleModalProps
+>(({ events, fields }, ref) => {
+  type Values = {
+    eventId: number | null;
+    customFieldId: number | null;
+    value: string | null;
+  };
+
   const [open, setOpen] = useState(false);
-  const promiseRef = useRef(null);
+  const promiseRef = useRef<
+    [(value: PricingRuleModalResult) => void, () => void] | null
+  >(null);
 
   useImperativeHandle(ref, () => ({
     prompt: () => {
@@ -228,7 +263,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
         return Promise.reject();
       }
 
-      return new Promise((resolve, reject) => {
+      return new Promise<PricingRuleModalResult>((resolve, reject) => {
         promiseRef.current = [resolve, reject];
         setOpen(true);
       });
@@ -252,9 +287,21 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
     }
   };
 
-  const handleSubmit = values => {
+  const handleSubmit = (values: Values) => {
     if (promiseRef.current) {
-      promiseRef.current[0](values);
+      if (
+        values.value === null ||
+        values.eventId === null ||
+        values.customFieldId === null
+      ) {
+        return;
+      }
+
+      promiseRef.current[0]({
+        value: values.value,
+        eventId: values.eventId,
+        customFieldId: values.customFieldId,
+      });
       promiseRef.current = null;
     }
 
@@ -264,11 +311,13 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
   return (
     <Modal open={open} onClose={handleClose}>
       <Formik
-        initialValues={{
-          eventId: null,
-          customFieldId: null,
-          value: null,
-        }}
+        initialValues={
+          {
+            eventId: null,
+            customFieldId: null,
+            value: null,
+          } as Values
+        }
         validate={values => {
           const errors: Record<string, string> = {};
 
@@ -301,7 +350,10 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
                 label="Question"
                 name="customFieldId"
                 component={DropdownField}
-                options={(fields.get(values.eventId) ?? []).map(field => ({
+                options={(
+                  (values.eventId && fields.get(values.eventId)) ||
+                  []
+                ).map(field => ({
                   value: field.id,
                   text: field.name,
                 }))}
@@ -311,7 +363,7 @@ const PricingRuleModal = forwardRef(({ events, fields }, ref) => {
                 name="value"
                 component={DropdownField}
                 options={(
-                  (fields.get(values.eventId) ?? []).find(
+                  ((values.eventId && fields.get(values.eventId)) || []).find(
                     f => f.id === values.customFieldId,
                   )?.options ?? []
                 ).map(option => ({
@@ -397,8 +449,8 @@ const SettingsView = ({
       basePrice: state.basicSettings.basePrice.value
         ? state.basicSettings.basePrice.value / 100
         : events[0].price
-        ? events[0].price.value / 100
-        : 0,
+          ? events[0].price.value / 100
+          : 0,
       description:
         state.basicSettings.description ??
         `Osallistumismaksu tapahtumaan "${events[0].name}" // Fee for the event "${events[0].name}"`,
@@ -423,7 +475,7 @@ const SettingsView = ({
     return map;
   }, [eventCustomFieldsArray, state.eventIds]);
 
-  const promptRef = useRef();
+  const promptRef = useRef<PricingRuleModalHandle>(null);
 
   if (!events?.length) {
     return null;
@@ -444,15 +496,21 @@ const SettingsView = ({
         validate={values => {
           const errors: Partial<Record<keyof Settings, string>> = {};
 
-          if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.dueDate)) {
-            errors.dueDate = 'Date must be in format <day>.<month>.<year>';
-          } else if (!isMatch(values.dueDate, 'dd.MM.yyyy')) {
-            errors.dueDate = 'Invalid date';
+          if (values.dueDate) {
+            if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.dueDate)) {
+              errors.dueDate = 'Date must be in format <day>.<month>.<year>';
+            } else if (!isMatch(values.dueDate, 'dd.MM.yyyy')) {
+              errors.dueDate = 'Invalid date';
+            }
           }
 
           return errors;
         }}
-        onSubmit={values =>
+        onSubmit={values => {
+          if (!values.basePrice || !values.accountingPeriod) {
+            return;
+          }
+
           dispatch({
             type: 'SET_BASIC_SETTINGS',
             payload: {
@@ -463,8 +521,8 @@ const SettingsView = ({
                 accountingPeriod: values.accountingPeriod,
               },
             },
-          })
-        }
+          });
+        }}
       >
         {({ submitForm }) => (
           <>
@@ -478,7 +536,7 @@ const SettingsView = ({
               component={EuroField}
             />
             <InputGroup label="Due Date" name="dueDate" component={DateField} />
-            {accountingPeriods?.length > 1 && (
+            {(accountingPeriods?.length ?? 0) > 1 && (
               <InputGroup
                 label="Accounting Period"
                 name="accountingPeriod"
@@ -487,7 +545,7 @@ const SettingsView = ({
                   .filter(period => !period.closed)
                   .map(period => ({
                     value: period.year,
-                    text: period.year,
+                    text: `${period.year}`,
                   }))}
               />
             )}
@@ -495,7 +553,7 @@ const SettingsView = ({
               label="Description"
               name="description"
               fullWidth
-              component={TextareaField}
+              component={Textarea}
             />
             <div className="col-span-full border-b mb-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
               Answer specific pricing
@@ -533,7 +591,9 @@ const SettingsView = ({
                           payload: {
                             id: componentId,
                             values: {
-                              amount: euro(evt.target.value),
+                              amount: evt.target.value
+                                ? euro(evt.target.value)
+                                : euro(0),
                             },
                           },
                         })
@@ -560,8 +620,11 @@ const SettingsView = ({
                                       events.find(e => e.id === eventId)?.name,
                                     '' +
                                       eventCustomFields
-                                        .get(eventId)
-                                        .find(f => f.id === customFieldId).name,
+                                        ?.get(eventId)
+                                        ?.find(
+                                          (f: ApiCustomField) =>
+                                            f.id === customFieldId,
+                                        )?.name,
                                     '' + value,
                                   ]}
                                 />
@@ -586,17 +649,21 @@ const SettingsView = ({
                         },
                       )}
                       <Button
-                        onClick={() =>
-                          promptRef.current?.prompt?.().then(rule =>
-                            dispatch({
-                              type: 'ADD_COMPONENT_RULE',
-                              payload: {
-                                componentId,
-                                rule: { ...rule, type: 'CUSTOM_FIELD' },
-                              },
-                            }),
-                          )
-                        }
+                        onClick={async () => {
+                          if (!promptRef.current) {
+                            return;
+                          }
+
+                          const rule = await promptRef.current.prompt();
+
+                          dispatch({
+                            type: 'ADD_COMPONENT_RULE',
+                            payload: {
+                              componentId,
+                              rule: { ...rule, type: 'CUSTOM_FIELD' },
+                            },
+                          });
+                        }}
                         className="mb-3"
                       >
                         Add rule
@@ -730,7 +797,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
   actionLabel,
 }) => {
   return (
-    <TableView
+    <Table
       selectable
       rows={registrations.map(r => ({ ...r, key: r.id }))}
       emptyMessage={emptyMessage}
@@ -755,7 +822,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
           name: 'Answers',
           getValue: r => r.answers.filter(answer => answer.answer !== ''),
           compareBy: value => `${value.question_id}:${value.answer}`,
-          render: value => (
+          render: (value: CustomFieldAnswer[]) => (
             <div className="flex flex-col gap-0.5">
               {value.map(question => (
                 <QuestionBadge key={question.question_id} question={question} />
@@ -767,7 +834,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
           name: 'Components',
           getValue: r => r.components,
           compareBy: value => value.name,
-          render: value =>
+          render: (value: EvaluatedDebtComponent[]) =>
             value.map(component => (
               <ComponentBadge key={component.name} component={component} />
             )),
@@ -898,25 +965,34 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({
 }) => {
   const componentStats = participants
     .flatMap(p => p.components)
-    .reduce((acc, { id, name, amount }) => {
-      const entry = acc.find(e => e.id === id);
+    .reduce(
+      (acc, { id, name, amount }) => {
+        const entry = acc.find(e => e.id === id);
 
-      if (entry) {
-        entry.amount = sumEuroValues(entry.amount, amount);
-        entry.count += 1;
-        entry.price = entry.amount;
-      } else {
-        acc.push({
-          id,
-          name,
-          count: 1,
-          amount,
-          price: amount,
-        });
-      }
+        if (entry) {
+          entry.amount = sumEuroValues(entry.amount, amount);
+          entry.count += 1;
+          entry.price = entry.amount;
+        } else {
+          acc.push({
+            id,
+            name,
+            count: 1,
+            amount,
+            price: amount,
+          });
+        }
 
-      return acc;
-    }, []);
+        return acc;
+      },
+      [] as {
+        id: number;
+        name: string;
+        count: number;
+        amount: EuroValue;
+        price: EuroValue;
+      }[],
+    );
 
   return (
     <div className="pt-3">
@@ -931,8 +1007,8 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({
         )}
         . The debts will be due at {state.basicSettings.dueDate}.
       </p>
-      <TableView
-        rows={componentStats}
+      <Table
+        rows={componentStats.map(r => ({ ...r, key: r.id }))}
         columns={[
           {
             name: 'Component',
@@ -1096,9 +1172,11 @@ type Action =
   | SetRegistrationSelectionAction
   | GoToConfirmationAction;
 
-type ActionMap = { [Key in Action['type']]: Action & { type: Key } };
+type ActionPayload<A> = A extends { payload: infer P } ? P : void;
+
+type ActionMap = { [Key in Action['type']]: Extract<Action, { type: Key }> };
 type ActionHandlers = {
-  [Key in keyof ActionMap]: (payload: ActionMap[Key]['payload']) => void;
+  [Key in keyof ActionMap]: (payload: ActionPayload<ActionMap[Key]>) => void;
 };
 
 const createReducer = () => {
@@ -1203,7 +1281,7 @@ const createReducer = () => {
       },
     };
 
-    handlers[action.type](action.payload as any);
+    handlers[action.type]((action as any).payload);
   });
 };
 
@@ -1223,7 +1301,10 @@ export const CreateDebtCenterFromEvent = () => {
   const starting = useMemo(() => subYears(new Date(), 1), []);
   const { data: allEvents } = useGetEventsQuery({ starting });
   const events = useMemo(
-    () => state.eventIds.map(id => (allEvents ?? []).find(e => e.id === id)),
+    () =>
+      state.eventIds.flatMap(
+        id => (allEvents ?? []).find(e => e.id === id) ?? [],
+      ),
     [state.eventIds, allEvents],
   );
 
@@ -1239,7 +1320,10 @@ export const CreateDebtCenterFromEvent = () => {
     const evaluatedRegistrations = (registrations ?? []).flatMap(
       (eventRegistrations, eventIndex) => {
         const event = events[eventIndex];
-        console.log(eventIndex, event);
+
+        if (!event) {
+          return [];
+        }
 
         const registrations = eventRegistrations.map(registration => {
           const components = evaluateRules(state, event, registration);
@@ -1253,12 +1337,14 @@ export const CreateDebtCenterFromEvent = () => {
           } as EvaluatedRegistration;
         });
 
+        const maxParticipants = event.maxParticipants ?? registrations.length;
+
         const participants = registrations
-          .slice(0, event.maxParticipants)
+          .slice(0, maxParticipants)
           .map(r => ({ ...r, queue: false }));
 
         const queue = registrations
-          .slice(event.maxParticipants)
+          .slice(maxParticipants)
           .map(r => ({ ...r, queue: true }));
 
         const all = [...participants, ...queue];
@@ -1325,6 +1411,7 @@ export const CreateDebtCenterFromEvent = () => {
     <>
       <h1 className="text-2xl mt-10 mb-5">
         <Breadcrumbs
+          linkComponent={Link}
           segments={[
             { text: 'Debt Centers', url: '/admin/debt-centers' },
             'Create from Event',

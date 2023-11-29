@@ -18,8 +18,9 @@ const selectResourceDetails = createSelector(
     (_state, _type, id: string) => id,
   ],
   (state, type, id) => {
-    let name: string;
+    let name = '';
     let value: unknown;
+
     const details: Array<
       [
         string,
@@ -53,8 +54,14 @@ const selectResourceDetails = createSelector(
             id: debt.data.payer.id.value,
           },
         ],
-        ['Amount', { type: 'text', value: formatEuro(debt.data.total) }],
       );
+
+      if (debt.data.total) {
+        details.push([
+          'Amount',
+          { type: 'text', value: formatEuro(debt.data.total) },
+        ]);
+      }
 
       if (debt.data.dueDate) {
         details.push([
@@ -102,16 +109,22 @@ const selectResourceDetails = createSelector(
     } else if (type === 'debt_center') {
       const debt_center =
         debtCentersApi.endpoints.getDebtCenter.select(id)(state);
-      name = debt_center.data?.name;
+
+      if (!debt_center.data) {
+        return null;
+      }
+
+      name = debt_center.data.name;
       value = debt_center.data;
     } else if (type === 'payment') {
       const payment = paymentsApi.endpoints.getPayment.select(id)(state);
-      name = payment.data?.title;
-      value = payment.data;
 
       if (!payment.data) {
         return null;
       }
+
+      name = payment.data.title;
+      value = payment.data;
 
       details.push([
         'Number',

@@ -12,7 +12,7 @@ import { TextField } from '@bbat/ui/text-field';
 import { useCreatePayerMutation } from '../../api/payers';
 
 export type Props = {
-  onClose: (result: PayerProfile) => void;
+  onClose: (result: PayerProfile | null) => void;
   name?: string;
   email?: string;
 };
@@ -31,8 +31,8 @@ export const CreatePayerDialog = ({ onClose, name, email }: Props) => {
   return (
     <Formik
       initialValues={{
-        name,
-        email,
+        name: name ?? '',
+        email: email ?? '',
       }}
       onSubmit={handleSubmit}
     >

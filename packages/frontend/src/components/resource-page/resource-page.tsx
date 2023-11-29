@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { MouseEvent, PropsWithChildren, useState } from 'react';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Button, SecondaryButton } from '@bbat/ui/button';
@@ -6,17 +6,20 @@ import { formatEuro, EuroValue } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
 
 export const ActionButton: React.FC<
-  { secondary?: boolean } & React.ComponentProps<
-    typeof Button & typeof SecondaryButton
-  >
+  {
+    secondary?: boolean;
+    onClick: (evt: MouseEvent<HTMLButtonElement>) => void | Promise<void>;
+  } & React.ComponentProps<typeof Button>
 > = ({ secondary, children, ...props }) => {
   const [active, setActive] = useState(false);
   const ButtonComponent = secondary ? SecondaryButton : Button;
 
-  const handle = async () => {
-    setActive(true);
-    await Promise.resolve(props.onClick());
-    setActive(false);
+  const handle: React.MouseEventHandler<HTMLButtonElement> = async evt => {
+    if (props.onClick) {
+      setActive(true);
+      await Promise.resolve(props.onClick(evt));
+      setActive(false);
+    }
   };
 
   return (
@@ -26,11 +29,9 @@ export const ActionButton: React.FC<
   );
 };
 
-export const Section: React.FC<{ title: string; columns?: 1 | 2 }> = ({
-  title,
-  columns = 1,
-  children,
-}) => (
+export const Section: React.FC<
+  PropsWithChildren<{ title: string; columns?: 1 | 2 }>
+> = ({ title, columns = 1, children }) => (
   <div
     className={'mt-5 mb-10'}
     data-cy="resource-section"
@@ -52,17 +53,21 @@ export const Section: React.FC<{ title: string; columns?: 1 | 2 }> = ({
   </div>
 );
 
-export const SectionContent: React.FC = ({ children }) => (
-  <DataWrapper>{children}</DataWrapper>
-);
+export const SectionContent: React.FC<PropsWithChildren<{}>> = ({
+  children,
+}) => <DataWrapper>{children}</DataWrapper>;
 
-const DataWrapper: React.FC = ({ children }) => (
+const DataWrapper: React.FC<PropsWithChildren<{}>> = ({ children }) => (
   <div data-cy="resource-field-content">{children}</div>
 );
 
 export type FieldProps = { label: string; fullWidth?: boolean };
 
-export const Field: React.FC<FieldProps> = ({ label, fullWidth, children }) => (
+export const Field: React.FC<PropsWithChildren<FieldProps>> = ({
+  label,
+  fullWidth,
+  children,
+}) => (
   <div
     className={fullWidth ? 'col-span-full' : ''}
     data-cy="resource-field"
@@ -75,11 +80,11 @@ export const Field: React.FC<FieldProps> = ({ label, fullWidth, children }) => (
   </div>
 );
 
-export const SectionDescription: React.FC = ({ children }) => (
-  <p className="mb-5">{children}</p>
-);
+export const SectionDescription: React.FC<PropsWithChildren<{}>> = ({
+  children,
+}) => <p className="mb-5">{children}</p>;
 
-export const Actions: React.FC = ({ children }) => {
+export const Actions: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return (
     <div className="flex flex-col items-end lg:items-center lg:flex-row gap-2 text-base">
       {children}
@@ -87,15 +92,15 @@ export const Actions: React.FC = ({ children }) => {
   );
 };
 
-export const Title: React.FC = ({ children }) => {
+export const Title: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return <div className="flex-grow">{children}</div>;
 };
 
-export const Header: React.FC = ({ children }) => {
+export const Header: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return <h1 className="text-2xl mt-10 mb-5 flex">{children}</h1>;
 };
 
-export const Page: React.FC = ({ children }) => {
+export const Page: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return <div>{children}</div>;
 };
 

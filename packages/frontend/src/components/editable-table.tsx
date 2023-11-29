@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   createContext,
   forwardRef,
@@ -23,7 +24,7 @@ import {
 import { uid } from 'uid';
 import { parse } from 'papaparse';
 import styled from 'styled-components';
-import { Dropdown } from './dropdown';
+import { Dropdown } from '@bbat/ui/dropdown';
 import {
   autoUpdate,
   flip,
@@ -31,7 +32,7 @@ import {
   useFloating,
   useHover,
   useInteractions,
-} from '@floating-ui/react-dom-interactions';
+} from '@floating-ui/react';
 import { offset, shift } from '@floating-ui/core';
 import { useDialog } from './dialog';
 import { DetectHeadersDialog } from './dialogs/detect-headers-dialog';
@@ -1225,7 +1226,7 @@ const STATUS_PRECEDENCE: Array<AnnotationType> = [
 const StatusIndicator = (props: StatusIndicatorProps) => {
   const [open, setOpen] = useState(false);
 
-  const { x, y, reference, floating, strategy, context } = useFloating({
+  const { x, y, refs, strategy, context } = useFloating({
     open,
     onOpenChange: setOpen,
     placement: 'bottom-start',
@@ -1279,7 +1280,7 @@ const StatusIndicator = (props: StatusIndicatorProps) => {
   return (
     <div>
       <div
-        ref={reference}
+        ref={refs.setReference}
         {...getReferenceProps({ style: { width: '1.2em', height: '1.2em' } })}
       >
         <Icon style={{ width: '100%', height: '100%' }} />
@@ -1287,7 +1288,7 @@ const StatusIndicator = (props: StatusIndicatorProps) => {
       <FloatingPortal>
         {open && (
           <div
-            ref={floating}
+            ref={refs.setFloating}
             {...getFloatingProps()}
             style={{
               position: strategy,

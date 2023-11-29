@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import {
   DialogBase,
   DialogContent,
@@ -6,7 +7,13 @@ import {
 } from '../../components/dialog';
 import { Button } from '@bbat/ui/button';
 
-export const InfoDialog = ({ onClose, title, content }) => {
+type Props = {
+  onClose: () => void;
+  title: string;
+  content: ReactNode;
+};
+
+export const InfoDialog = ({ onClose, title, content }: Props) => {
   return (
     <DialogBase onClose={() => onClose()}>
       <DialogHeader>{title}</DialogHeader>

@@ -29,7 +29,7 @@ const authApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    createSession: builder.mutation<{ token: string }, never>({
+    createSession: builder.mutation<{ token: string }, void>({
       query: () => ({
         url: '/auth/init',
         method: 'POST',

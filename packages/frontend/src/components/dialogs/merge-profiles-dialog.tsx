@@ -25,6 +25,10 @@ export const MergeProfilesDialog = (props: Props) => {
   const showErrorDialog = useDialog(ErrorDialog);
 
   const handleMerge = async () => {
+    if (!primaryId || !secondaryId) {
+      return;
+    }
+
     const result = await mergeProfiles({
       primaryPayerId: primaryId,
       secondaryPayerId: secondaryId,

@@ -1,20 +1,28 @@
 import { Formik } from 'formik';
-import { useMemo, useCallback, useState, useEffect } from 'react';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  ComponentProps,
+} from 'react';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { EuroField } from '../../components/euro-field';
-import { DateField } from '../../components/datetime-field';
+import { DateField } from '@bbat/ui/datetime-field';
 import {
   DbDateString,
   dbDateString,
   euro,
   EuroValue,
   PayerIdentity,
+  PayerProfile,
+  UpstreamUser,
 } from '@bbat/common/src/types';
 import { groupBy } from 'remeda';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
-import { TextareaField } from '../../components/textarea-field';
+import { Textarea } from '@bbat/ui/textarea';
 import { TextField } from '@bbat/ui/text-field';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import {
@@ -29,28 +37,36 @@ import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { CreatePayerDialog } from '../../components/dialogs/create-payer-dialog';
 import { useDialog } from '../../components/dialog';
 import { useGetPayersQuery } from '../../api/payers';
+import { uid } from 'uid';
+import { skipToken } from '@reduxjs/toolkit/query';
+
+type DebtFormComponentValue = {
+  component: string | { name: string };
+  amount: EuroValue;
+};
 
 type DebtFormValues = {
   name: string;
-  center: string | { name: string };
+  center: string | { name: string } | null;
   description: string;
-  components: { component: string | { name: string }; amount: EuroValue }[];
+  components: DebtFormComponentValue[];
   amount: EuroValue;
   payer: PayerIdentity | null;
   date: DbDateString | null;
   dueDate: DbDateString | null;
   paymentCondition: string | 'NOW' | null;
-  accountingPeriod: number;
+  accountingPeriod: number | null;
 };
 
 export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: users } = useGetUpstreamUsersQuery();
   const { data: payers } = useGetPayersQuery();
   const { data: debtCenters } = useGetDebtCentersQuery();
-  const [debtCenterId, setDebtCenterId] = useState(props.debtCenterId);
+  const [debtCenterId, setDebtCenterId] = useState<null | string>(
+    props.debtCenterId ?? null,
+  );
   const { data: centerComponents } = useGetDebtComponentsByCenterQuery(
-    debtCenterId,
-    { skip: !debtCenterId },
+    debtCenterId ?? skipToken,
   );
   const [createDebt] = useCreateDebtMutation();
   const showCreatePayerDialog = useDialog(CreatePayerDialog);
@@ -61,6 +77,24 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
 
   const submitDebtForm = async (values: DebtFormValues) => {
+    if (
+      values.payer === null ||
+      values.accountingPeriod === null ||
+      values.center === null
+    ) {
+      return;
+    }
+
+    let paymentCondition;
+
+    if (values.paymentCondition === 'NOW') {
+      paymentCondition = 0;
+    } else if (values.paymentCondition === null) {
+      paymentCondition = null;
+    } else {
+      paymentCondition = parseInt(values.paymentCondition, 10);
+    }
+
     const result = await createDebt({
       name: values.name,
       description: values.description,
@@ -68,16 +102,12 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       tags: [],
       payer: values.payer,
       date: values.date ?? undefined,
-      dueDate:
-        values.dueDate === '' || !values.dueDate ? undefined : values.dueDate,
-      paymentCondition:
-        values.paymentCondition === 'NOW'
-          ? 0
-          : parseInt(values.paymentCondition),
+      dueDate: values.dueDate === '' || !values.dueDate ? null : values.dueDate,
+      paymentCondition,
       center:
         typeof values.center === 'string'
           ? values.center
-          : { ...values.center, url: '', description: '' },
+          : { name: values.center.name, url: '', description: '' },
       components: values.components.map(({ component, amount }) => {
         if (typeof component === 'string') {
           return component;
@@ -96,7 +126,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     }
   };
 
-  const createCustomPayerOption = useCallback(async input => {
+  const createCustomPayerOption = useCallback(async (input: string) => {
     const result = await showCreatePayerDialog({ name: input });
 
     if (result) {
@@ -106,7 +136,10 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     }
   }, []);
 
-  const formatCustomPayerOption = useCallback(({ value }) => value, []);
+  const formatCustomPayerOption = useCallback(
+    ({ value }: { value: string }) => value,
+    [],
+  );
 
   const payerOptions = useMemo(() => {
     const combined = [
@@ -122,26 +155,44 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
         id: value.id.value,
         value,
       })),
-    ];
+    ] as (
+      | { type: 'tkoaly'; key: string; id: number; value: UpstreamUser }
+      | { type: 'internal'; key: number; id: string; value: PayerProfile }
+    )[];
 
-    const grouped = groupBy(combined, s => s.key);
+    const grouped = groupBy(combined, s => s.key ?? '');
 
     const other = grouped['null'] ?? [];
-    console.log(grouped, other);
     delete grouped['null'];
 
-    const result = Object.values(grouped).map(entries => {
-      const tkoaly = entries.find(entry => entry.type === 'tkoaly');
-      const internal = entries.find(entry => entry.type === 'internal');
+    const result: ComponentProps<typeof DropdownField>['options'] =
+      Object.values(grouped).map(entries => {
+        const tkoaly = entries.find(
+          entry => entry.type === 'tkoaly',
+        ) as Extract<(typeof combined)[0], { type: 'tkoaly' }>;
+        const internal = entries.find(
+          entry => entry.type === 'internal',
+        ) as Extract<(typeof combined)[0], { type: 'internal' }>;
 
-      return {
-        value: internal
-          ? internal.value.id
-          : { type: 'tkoaly', value: tkoaly.value.id },
-        text: internal?.value?.name ?? tkoaly.value.screenName,
-        label: tkoaly?.value?.username ?? '',
-      };
-    });
+        let value;
+        let name;
+
+        if (internal) {
+          value = internal.value.id;
+          name = internal.value.name;
+        } else if (tkoaly) {
+          value = tkoaly.value.id;
+          name = tkoaly.value.screenName;
+        } else {
+          throw new Error('No suitable ID found!');
+        }
+
+        return {
+          value,
+          text: name,
+          label: tkoaly?.value?.username ?? '',
+        };
+      });
 
     result.push(
       ...other.flatMap(other => {
@@ -218,7 +269,10 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
           }
 
           try {
-            if (values.paymentCondition !== 'NOW') {
+            if (
+              values.paymentCondition !== null &&
+              values.paymentCondition !== 'NOW'
+            ) {
               parseInt(values.paymentCondition);
             }
           } catch (e) {
@@ -265,7 +319,9 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   value: center.id,
                 }))}
                 createCustomOption={(name: string) => ({ name })}
-                formatCustomOption={({ name }) => name}
+                formatCustomOption={
+                  (({ name }: { name: string }) => name) as any
+                }
               />
               <InputGroup
                 label="Payer"
@@ -273,7 +329,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 allowCustom
                 component={DropdownField}
                 createCustomOption={createCustomPayerOption}
-                formatCustomOption={formatCustomPayerOption}
+                formatCustomOption={formatCustomPayerOption as any}
                 options={payerOptions}
               />
               <InputGroup
@@ -310,7 +366,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
 
                   try {
                     const matches = /[0-9]+/.exec(value);
-                    const integer = parseInt(matches[0]);
+                    const integer = parseInt(matches?.[0] ?? '');
                     setFieldValue(
                       'paymentCondition',
                       integer === 0 ? 'NOW' : String(integer),
@@ -328,7 +384,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 format="yyyy-MM-dd"
                 component={DateField}
               />
-              {accountingPeriods?.length > 1 && (
+              {(accountingPeriods?.length ?? 0) > 1 && (
                 <InputGroup
                   narrow
                   label="Accounting Period"
@@ -338,14 +394,14 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                     .filter(period => !period.closed)
                     .map(period => ({
                       value: period.year,
-                      text: period.year,
+                      text: `${period.year}`,
                     }))}
                 />
               )}
               <InputGroup
                 label="Description"
                 name="description"
-                component={TextareaField}
+                component={Textarea}
                 fullWidth
               />
               <InputGroup
@@ -354,6 +410,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 fullWidth
                 component={TabularFieldListFormik}
                 createNew={() => ({
+                  key: uid(),
                   component: '',
                   amount: 0,
                 })}
@@ -361,22 +418,22 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   {
                     header: 'Component',
                     component: DropdownField,
-                    key: 'component',
+                    key: 'component' as any,
                     props: {
                       options: (centerComponents ?? []).map(component => ({
                         value: component.id,
                         text: component.name,
                       })),
                       allowCustom: true,
-                      formatCustomOption: ({ name }) => name,
-                      createCustomOption: name => ({ name }),
+                      formatCustomOption: ({ name }: { name: string }) => name,
+                      createCustomOption: (name: string) => ({ name }),
                     },
                   },
                   {
                     header: 'Amount',
                     component: EuroField,
-                    key: 'amount',
-                    props: row => {
+                    key: 'amount' as any,
+                    props: (row: DebtFormComponentValue) => {
                       const component = (centerComponents ?? []).find(
                         c => c.id === row.component,
                       );

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useCallback } from 'react';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import * as uuid from 'uuid';
 import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
@@ -25,8 +25,20 @@ import {
   TableRef,
 } from '../../components/editable-table';
 import payersApi from '../../api/payers';
-import { NewDebtTag, PayerIdentity } from '@bbat/common/src/types';
+import {
+  NewDebtTag,
+  PayerIdentity,
+  dbDateString,
+} from '@bbat/common/src/types';
+import * as E from 'fp-ts/lib/Either';
 import { ExternalLink } from 'react-feather';
+import { skipToken } from '@reduxjs/toolkit/query';
+import { pipe } from 'fp-ts/lib/function';
+import * as t from 'io-ts';
+
+const errorResponse = t.type({
+  message: t.string,
+});
 
 const parseDate = (v: string) => {
   let date = parse(v, 'd.M.y', new Date());
@@ -52,10 +64,12 @@ const parseEuros = (v: string): EuroValue => {
   return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0));
 };
 
-export const MassCreateDebts = ({ params }) => {
-  const debtCenterId = params.id;
+type Props = {
+  debtCenterId?: string;
+};
 
-  const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId);
+export const MassCreateDebts = ({ debtCenterId }: Props) => {
+  const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId ?? skipToken);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector(
     state => state.accountingPeriod.activePeriod,
@@ -94,7 +108,7 @@ export const MassCreateDebts = ({ params }) => {
   const validateDebtCenter = useCallback(async (value: string) => {
     const { data } = await getDebtCenters();
 
-    const match = data.find(c => c.name === value || c.id === value);
+    const match = data?.find(c => c.name === value || c.id === value);
 
     if (!match) {
       return 'Debt center will be created!';
@@ -245,7 +259,7 @@ export const MassCreateDebts = ({ params }) => {
   );
 
   const resolvePayer = useCallback(
-    async (row, dryRun: boolean): Promise<PayerIdentity | null> => {
+    async (row: RowApi, dryRun: boolean): Promise<PayerIdentity | null> => {
       const email = row.columns['email'];
       const name = row.columns['payer-name'];
 
@@ -259,9 +273,19 @@ export const MassCreateDebts = ({ params }) => {
         return null;
       }
 
+      if (!name) {
+        row.setRowAnnotation({
+          id: 'create-debt',
+          type: 'error',
+          message: 'Payer name is required!',
+        });
+
+        return null;
+      }
+
       const { data, isError } = await getPayerByEmail(email);
 
-      if (!isError) {
+      if (!isError && data) {
         return data.id;
       }
 
@@ -356,6 +380,8 @@ export const MassCreateDebts = ({ params }) => {
               message: 'Failed to create debt center!',
             },
           });
+
+          return null;
         } else {
           throw err;
         }
@@ -373,7 +399,7 @@ export const MassCreateDebts = ({ params }) => {
   );
 
   const resolveDebtRow = useCallback(
-    async (row, dryRun): Promise<CreateDebtPayload | null> => {
+    async (row: RowApi, dryRun: boolean): Promise<CreateDebtPayload | null> => {
       let failed = false;
 
       let accountingPeriod: null | number = null;
@@ -397,7 +423,7 @@ export const MassCreateDebts = ({ params }) => {
           } catch (err) {
             row.setColumnAnnotation({
               column: 'accounting-period',
-              annotations: {
+              annotation: {
                 type: 'error',
                 id: 'create-debt',
                 message: 'Accounting period needs to be a valid year.',
@@ -411,7 +437,7 @@ export const MassCreateDebts = ({ params }) => {
 
       const debtCenterId = await resolveDebtCenter(
         row,
-        accountingPeriod,
+        accountingPeriod as number,
         dryRun,
       );
 
@@ -497,7 +523,7 @@ export const MassCreateDebts = ({ params }) => {
       }
 
       const amountValue = row.columns.amount;
-      let amount: EuroValue;
+      let amount: EuroValue | null = null;
 
       if (!amountValue) {
         row.setRowAnnotation({
@@ -511,7 +537,7 @@ export const MassCreateDebts = ({ params }) => {
         amount = parseEuros(amountValue);
       }
 
-      if (failed) {
+      if (failed || !debtCenterId || !amount) {
         return null;
       }
 
@@ -536,14 +562,24 @@ export const MassCreateDebts = ({ params }) => {
         return null;
       }
 
+      const parseDueDate = (dueDate: string) => {
+        const parsed = dbDateString.decode(dueDate);
+
+        if (E.isRight(parsed)) {
+          return parsed.right;
+        } else {
+          return null;
+        }
+      };
+
       return {
-        payer: payerId,
+        payer: payerId!,
         center: debtCenterId,
-        name: title,
-        description,
-        accountingPeriod,
-        dueDate: dueDate ?? undefined,
-        paymentCondition: paymentCondition ?? undefined,
+        name: title!,
+        description: description!,
+        accountingPeriod: accountingPeriod!,
+        dueDate: (dueDate && parseDueDate(dueDate)) || null,
+        paymentCondition: paymentCondition ?? null,
         tags,
         components: [componentResult.data.id],
       };
@@ -552,7 +588,7 @@ export const MassCreateDebts = ({ params }) => {
   );
 
   const createDebt = useCallback(
-    async row => {
+    async (row: RowApi) => {
       /*if (row.isLocked()) {
       return;
     }*/
@@ -560,11 +596,11 @@ export const MassCreateDebts = ({ params }) => {
       row.setLocked(true);
 
       row.clearRowAnnotation({
-        annotationId: 'debt-center',
+        id: 'debt-center',
       });
 
       row.clearColumnAnnotation({
-        annotationId: 'debt-center',
+        id: 'debt-center',
       });
 
       const debtDetails = await resolveDebtRow(row, false);
@@ -584,11 +620,11 @@ export const MassCreateDebts = ({ params }) => {
           message: `Debt ${result.data.humanId} created!`,
         });
       } else {
-        let message = 'Unknown error occurred while creating the debt!';
-
-        if (result.error.message) {
-          message = result.error.message;
-        }
+        let message = pipe(
+          errorResponse.decode(result.error),
+          E.map(response => response.message),
+          E.getOrElse(() => 'Unknown error occurred while creating the debt!'),
+        );
 
         row.setRowAnnotation({
           id: 'create-debt',
@@ -603,7 +639,7 @@ export const MassCreateDebts = ({ params }) => {
   );
 
   const validateRow = useCallback(
-    async row => {
+    async (row: RowApi) => {
       /*const payerEmail = row.columns.email;
     const payerName = row.columns['payer-name'];
 
@@ -668,7 +704,7 @@ export const MassCreateDebts = ({ params }) => {
       {
         key: 'create-debt',
         label: 'Create Debt',
-        execute: async row => {
+        execute: async (row: RowApi) => {
           if (!row.isLocked()) {
             await createDebt(row);
           }

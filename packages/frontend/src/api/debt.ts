@@ -10,15 +10,17 @@ import {
   DebtPatch,
   DebtComponentPatch,
   MultipleDebtPatchValues,
-} from 'common/types';
+  DebtCenter,
+} from '@bbat/common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns';
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>;
+  debtCenter: DebtCenter;
 };
 
-export type CreateDebtPayload = Omit<NewDebt, 'components' | 'center'> & {
+export type CreateDebtPayload = Omit<NewDebt, 'components' | 'centerId'> & {
   components: (string | Omit<NewDebtComponent, 'debtCenterId'>)[];
   center: string | { name: string; url: string; description: string };
 };
@@ -67,7 +69,7 @@ const debtApi = rtkApi.injectEndpoints({
       invalidatesTags: () => [{ type: 'Debt', id: 'LIST' }],
     }),
 
-    getDebtComponents: builder.query<DebtComponent, never>({
+    getDebtComponents: builder.query<DebtComponent, void>({
       query: () => '/debtComponent',
     }),
 
@@ -79,7 +81,7 @@ const debtApi = rtkApi.injectEndpoints({
       query: id => `/debtCenters/${id}/debts`,
       providesTags: result => [
         { type: 'Debt' as const, id: 'LIST' },
-        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
       ],
     }),
 
@@ -87,27 +89,38 @@ const debtApi = rtkApi.injectEndpoints({
       query: tag => `/debt/by-tag/${tag}`,
       providesTags: result => [
         { type: 'Debt' as const, id: 'LIST' },
-        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
       ],
     }),
 
     getDebt: builder.query<DebtResponse, string>({
       query: id => `/debt/${id}`,
-      providesTags: result => [{ type: 'Debt', id: result.id }],
-      transformResponse: result => ({
-        ...result,
-        createdAt: parseISO(result.createdAt),
-        updatedAt: parseISO(result.updatedAt),
-        dueDate: result.dueDate ? parseISO(result.dueDate) : null,
-        date: result.date ? parseISO(result.date) : null,
-      }),
+      providesTags: result => (result ? [{ type: 'Debt', id: result.id }] : []),
+      transformResponse: (
+        result: Omit<
+          DebtResponse,
+          'createdAt' | 'updatedAt' | 'dueDate' | 'date'
+        > & {
+          createdAt: string;
+          updatedAt: string;
+          dueDate: string;
+          date: string;
+        },
+      ) =>
+        result && {
+          ...result,
+          createdAt: parseISO(result.createdAt),
+          updatedAt: parseISO(result.updatedAt),
+          dueDate: result.dueDate ? parseISO(result.dueDate) : null,
+          date: result.date ? parseISO(result.date) : null,
+        },
     }),
 
-    getDebts: builder.query<DebtWithPayer[], never>({
+    getDebts: builder.query<DebtWithPayer[], void>({
       query: () => '/debt',
       providesTags: result => [
         { type: 'Debt' as const, id: 'LIST' },
-        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
       ],
     }),
 
@@ -115,7 +128,7 @@ const debtApi = rtkApi.injectEndpoints({
       query: id => `/debt/by-payment/${id}`,
       providesTags: result => [
         { type: 'Debt' as const, id: 'LIST' },
-        ...result.map(debt => ({ type: 'Debt' as const, id: debt.id })),
+        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
       ],
     }),
 
@@ -216,7 +229,7 @@ const debtApi = rtkApi.injectEndpoints({
       }),
       invalidatesTags: result => [
         { type: 'Debt', id: 'LIST' },
-        { type: 'Debt', id: result.id },
+        { type: 'Debt', id: result?.id },
       ],
     }),
 
@@ -230,7 +243,7 @@ const debtApi = rtkApi.injectEndpoints({
         body,
       }),
       invalidatesTags: result =>
-        result.map(({ id }) => ({ type: 'Debt' as const, id })),
+        (result ?? []).map(({ id }) => ({ type: 'Debt' as const, id })),
     }),
 
     getDebtsByEmail: builder.query<Debt[], string>({
@@ -239,7 +252,7 @@ const debtApi = rtkApi.injectEndpoints({
         url: `/debt/by-email/${id}`,
       }),
       providesTags: result =>
-        result.map(({ id }) => ({ type: 'Debt' as const, id })),
+        (result ?? []).map(({ id }) => ({ type: 'Debt' as const, id })),
     }),
   }),
 });

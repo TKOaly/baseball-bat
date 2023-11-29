@@ -1,4 +1,4 @@
-import { Field } from 'formik';
+import { Field, FieldProps } from 'formik';
 import { ComponentProps } from 'react';
 import { X as Cross, Plus } from 'react-feather';
 
@@ -10,7 +10,7 @@ type ColumnDef<
   ColumnMap extends Record<K, V>,
 > = {
   // eslint-disable-line
-  key: string;
+  key: Extract<keyof T, string>;
   getValue?: (row: T) => V; // eslint-disable-line
   component: C;
   header: string;
@@ -26,8 +26,8 @@ type Props<
   createNew?: () => T;
   disableRemove?: boolean;
   readOnly?: boolean;
-  onChange: (value: T[]) => void;
-  errors?: Record<string, unknown>;
+  onChange?: (value: T[]) => void;
+  errors?: Record<string, string>;
   name?: string;
 };
 
@@ -37,14 +37,17 @@ type Tools<T> = {
   replace: (index: number, value: T) => void;
 };
 
-export const TabularFieldListFormik = <T, C extends Record<string, unknown>>(
+export const TabularFieldListFormik = <
+  T extends { key: string | number },
+  C extends Record<string, unknown>,
+>(
   props: Omit<Props<T, C>, 'onChange'> & {
     name: string;
     onChange: (evt: { target: { value: T[]; name: string } }) => void;
   },
 ) => (
   <Field name={props.name}>
-    {({ field }) => (
+    {({ field }: FieldProps) => (
       <TabularFieldList
         {...props}
         {...field}
@@ -84,7 +87,7 @@ export const TabularFieldList = <
               className={`relative focus-within:z-20 ${
                 !!errors?.[`${rowIndex}.${key}`] && 'z-10'
               } relative`}
-              style={{ marginLeft: i > 0 && '-1px' }}
+              style={{ marginLeft: i > 0 ? '-1px' : 'unset' }}
               key={row.key}
               data-row={rowIndex}
               data-column={key}
@@ -93,7 +96,7 @@ export const TabularFieldList = <
                 name={`${name}.${rowIndex}.${key}`}
                 value={getValue ? getValue(row) : row[key]}
                 error={!!errors?.[`${name}.${rowIndex}.${key}`]}
-                onChange={evt => {
+                onChange={(evt: any) => {
                   tools.replace(rowIndex, {
                     ...row,
                     [key]: evt.target.value,
@@ -128,8 +131,11 @@ export const TabularFieldList = <
             </div>
           );
         }),
-        !(readOnly || disableRemove) && <div />,
       );
+
+      if (!(readOnly || disableRemove)) {
+        fields.push(<div />);
+      }
 
       return fields;
     }),
@@ -146,16 +152,16 @@ export const TabularFieldList = <
   ];
 
   let tools: Tools<T> = {
-    push: newItem => onChange([...value, newItem]),
+    push: newItem => onChange?.([...value, newItem]),
     remove: index => {
       const copy = [...value];
       copy.splice(index, 1);
-      onChange(copy);
+      onChange?.(copy);
     },
     replace: (index, newValue) => {
       const copy = [...value];
       copy.splice(index, 1, newValue);
-      onChange(copy);
+      onChange?.(copy);
     },
   };
 

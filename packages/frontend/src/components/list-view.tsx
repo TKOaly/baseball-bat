@@ -1,22 +1,24 @@
-import { PropsWithChildren, ReactNode, useState } from 'react';
+import { HTMLAttributes, ReactNode, useState } from 'react';
 import { ButtonGroupSelector } from '../components/button-group-selector';
 
 const ListViewCardContainer = ({
   className,
   ...props
-}: PropsWithChildren<HTMLDivElement>) => (
+}: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={`
-  rounded-md
-  p-5
-  bg-white
-  shadow-sm
-  border
-  border-gray-100
-  hover:border
-  hover:border-yellow-300
-  cursor-pointer
-  hover:shadow-sm ${className}`}
+      rounded-md
+      p-5
+      bg-white
+      shadow-sm
+      border
+      border-gray-100
+      hover:border
+      hover:border-yellow-300
+      cursor-pointer
+      hover:shadow-sm
+      ${className}
+    `}
     {...props}
   />
 );
@@ -24,22 +26,24 @@ const ListViewCardContainer = ({
 const ListViewRowContainer = ({
   className,
   ...props
-}: PropsWithChildren<HTMLDivElement>) => (
+}: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={`
-  rounded-md
-  gap-3
-  px-5
-  py-3
-  flex
-  bg-white
-  shadow-sm
-  border
-  hover:border
-  hover:border-blue-200
-  cursor-pointer
-  hover:shadow-sm
-  items-center ${className}`}
+      rounded-md
+      gap-3
+      px-5
+      py-3
+      flex
+      bg-white
+      shadow-sm
+      border
+      hover:border
+      hover:border-blue-200
+      cursor-pointer
+      hover:shadow-sm
+      items-center
+      ${className}
+    `}
     {...props}
   />
 );

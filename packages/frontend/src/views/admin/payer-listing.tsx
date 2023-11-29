@@ -1,4 +1,4 @@
-import { TableView } from '../../components/table-view';
+import { Table } from '@bbat/ui/table';
 import {
   useGetPayersQuery,
   useSendPayerDebtReminderMutation,
@@ -17,6 +17,7 @@ import { pipe } from 'fp-ts/lib/function';
 import { ErrorDialog } from '../../components/dialogs/error-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { useState } from 'react';
+import { PayerProfile } from '@bbat/common/src/types';
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
@@ -52,7 +53,7 @@ export const PayerListing = () => {
         </label>
       </div>
 
-      <TableView
+      <Table
         selectable
         rows={rows}
         onRowClick={({ id }) => setLocation(`/admin/payers/${id.value}`)}
@@ -70,7 +71,7 @@ export const PayerListing = () => {
               }
 
               const sendPayerDebtReminderTask =
-                ({ id }) =>
+                ({ id }: PayerProfile) =>
                 async () => {
                   const result = await sendPayerDebtReminder({
                     payerId: id.value,
@@ -132,7 +133,7 @@ export const PayerListing = () => {
           },
           {
             name: 'Email',
-            getValue: p => p.emails.find(e => e.priority === 'primary').email,
+            getValue: p => p.emails.find(e => e.priority === 'primary')?.email,
           },
           {
             name: 'Membership',
@@ -153,8 +154,8 @@ export const PayerListing = () => {
             : [
                 {
                   name: 'Disabled',
-                  getValue: p => (p.disabled ? 'Yes' : 'No'),
-                  render: (_, p) =>
+                  getValue: (p: PayerProfile) => (p.disabled ? 'Yes' : 'No'),
+                  render: (_: any, p: PayerProfile) =>
                     p.disabled ? (
                       <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-600 text-xs font-bold text-white">
                         Yes
@@ -169,7 +170,7 @@ export const PayerListing = () => {
           {
             name: 'Paid percentage',
             getValue: row =>
-              row.debtCount ? row.paidCount / row.debtCount : 1,
+              row.debtCount ? (row.paidCount ?? 0) / row.debtCount : 1,
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
@@ -186,7 +187,7 @@ export const PayerListing = () => {
           { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
           {
             name: 'Total value',
-            getValue: row => row.total.value,
+            getValue: row => row.total?.value ?? 0,
             align: 'right',
             render: value => formatEuro(cents(value)),
           },

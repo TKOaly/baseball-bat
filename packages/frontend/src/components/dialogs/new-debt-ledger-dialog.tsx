@@ -3,7 +3,7 @@ import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGenerateDebtLedgerMutation } from '../../api/report';
 import { Button } from '@bbat/ui/button';
-import { DateField } from '../datetime-field';
+import { DateField } from '@bbat/ui/datetime-field';
 import {
   DialogBase,
   DialogContent,
@@ -26,7 +26,7 @@ export const NewDebtLedgerDialog = ({
   onClose,
   defaults = {},
 }: {
-  onClose: (result: Report) => void;
+  onClose: (result: Report | null) => void;
   defaults?: Omit<Partial<FormValues>, 'center'> & { center?: string };
 }) => {
   const [generateDebtLedgerReport] = useGenerateDebtLedgerMutation();

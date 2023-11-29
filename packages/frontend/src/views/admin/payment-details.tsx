@@ -1,9 +1,10 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
+import { Link, RouteComponentProps } from 'wouter';
 import {
   useCreditPaymentMutation,
   useGetPaymentQuery,
 } from '../../api/payments';
-import { Timeline } from '../../components/timeline';
+import { Timeline } from '@bbat/ui/timeline';
 import { DebtList } from '../../components/debt-list';
 import { formatEuro } from '@bbat/common/src/currency';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
@@ -23,7 +24,9 @@ import {
 } from '../../components/resource-page/resource-page';
 import { isPaymentInvoice } from '@bbat/common/src/types';
 
-export const PaymentDetails = ({ params }) => {
+type Props = RouteComponentProps<{ id: string }>;
+
+export const PaymentDetails = ({ params }: Props) => {
   const { data: payment, isLoading } = useGetPaymentQuery(params.id);
   const { data: debts } = useGetDebtsByPaymentQuery(params.id);
   const [creditPayment] = useCreditPaymentMutation();
@@ -53,12 +56,13 @@ export const PaymentDetails = ({ params }) => {
 
   const timelineEvents = payment.events.map(e => ({
     time: new Date(e.time),
-    title: {
-      created: 'Payment created',
-      payment: `Payment of ${formatEuro(e.amount)} received`,
-      'stripe.intent-created': 'Stripe payment flow initiated',
-      failed: 'Payment failed',
-    }[e.type],
+    title:
+      {
+        created: 'Payment created',
+        payment: `Payment of ${formatEuro(e.amount)} received`,
+        'stripe.intent-created': 'Stripe payment flow initiated',
+        failed: 'Payment failed',
+      }[e.type] ?? 'Unknown event',
   }));
 
   let invoiceDetailsSection = null;
@@ -81,6 +85,7 @@ export const PaymentDetails = ({ params }) => {
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               {
                 text: 'Payments',
@@ -92,7 +97,12 @@ export const PaymentDetails = ({ params }) => {
         </Title>
         <Actions>
           {!payment.credited && (
-            <ActionButton secondary onClick={() => creditPayment(params.id)}>
+            <ActionButton
+              secondary
+              onClick={async () => {
+                await creditPayment(params.id);
+              }}
+            >
               Credit
             </ActionButton>
           )}

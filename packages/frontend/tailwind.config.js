@@ -1,5 +1,5 @@
 module.exports = {
-  content: ['src/**/*.tsx', './node_modules/flowbite/**/*.js'],
+  content: ['src/**/*.tsx'],
   theme: {
     extend: {
       gridTemplateColumns: {
@@ -27,5 +27,4 @@ module.exports = {
       },
     },
   },
-  plugins: [require('flowbite/plugin')],
 };

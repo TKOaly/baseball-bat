@@ -1,13 +1,14 @@
 import { Formik } from 'formik';
 import { useMemo } from 'react';
-import { RouteComponentProps, useLocation } from 'wouter';
+import { Link, RouteComponentProps, useLocation } from 'wouter';
 import { PayerEmailPriority } from '@bbat/common/src/types';
 import { useGetPayerQuery, useUpdatePayerMutation } from '../../api/payers';
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { InputGroup } from '../../components/input-group';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { TextField } from '@bbat/ui/text-field';
+import { uid } from 'uid';
 
 type Props = RouteComponentProps<{ id: string }>;
 
@@ -47,6 +48,7 @@ export const EditPayer = ({ params }: Props) => {
     <div>
       <h1 className="text-2xl mt-10 mb-5">
         <Breadcrumbs
+          linkComponent={Link}
           segments={[
             {
               text: 'Payers',
@@ -64,7 +66,7 @@ export const EditPayer = ({ params }: Props) => {
         enableReinitialize
         initialValues={initialValues}
         validate={(values: FormValues) => {
-          const errors: Partial<Record<keyof FormValues, string>> = {};
+          const errors: Record<string, string> = {};
 
           const existing = new Set();
           let primaryEncountered = false;
@@ -129,17 +131,21 @@ export const EditPayer = ({ params }: Props) => {
                 fullWidth
                 name="emails"
                 component={TabularFieldListFormik}
-                createNew={() => ({ email: '', priority: 'default' })}
+                createNew={() => ({
+                  key: uid(),
+                  email: '',
+                  priority: 'default',
+                })}
                 columns={[
                   {
                     header: 'Address',
                     component: TextField,
-                    key: 'email',
+                    key: 'email' as any,
                   },
                   {
                     header: 'Priority',
                     component: DropdownField,
-                    key: 'priority',
+                    key: 'priority' as any,
                     props: {
                       options: [
                         { value: 'primary', text: 'Primary' },

@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { useLocation } from 'wouter';
 import { Email } from '@bbat/common/src/types';
 import { useSendEmailsMutation } from '../api/email';
-import { TableView } from './table-view';
+import { Table } from '@bbat/ui/table';
 
 export interface Props {
   emails: Email[];
@@ -13,7 +13,7 @@ export const EmailList = (props: Props) => {
   const [sendEmails] = useSendEmailsMutation();
 
   return (
-    <TableView
+    <Table
       rows={(props.emails ?? []).map(e => ({ ...e, key: e.id })) ?? []}
       columns={[
         {

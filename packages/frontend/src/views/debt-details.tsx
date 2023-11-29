@@ -1,11 +1,12 @@
 import { differenceInDays, format, isPast } from 'date-fns';
-import React from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Loader } from 'react-feather';
 import { useTranslation } from 'react-i18next';
 import { formatEuro, euro, sumEuroValues } from '@bbat/common/src/currency';
 
 import { useGetDebtQuery } from '../api/debt';
 import { useGetPaymentsByDebtQuery } from '../api/payments';
+import { RouteComponentProps } from 'wouter';
+import { isPaymentInvoice } from '@bbat/common/src/types';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
@@ -22,13 +23,17 @@ const formatDateRelative = (date: Date | string) => {
   );
 };
 
-export const DebtDetails = ({ params }) => {
+type Props = RouteComponentProps<{
+  id: string;
+}>;
+
+export const DebtDetails = ({ params }: Props) => {
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
   const { data: payments, isLoading: paymentsAreLoading } =
     useGetPaymentsByDebtQuery(params.id);
 
-  if (isLoading || paymentsAreLoading) {
+  if (!debt || !payments || isLoading || paymentsAreLoading) {
     return <div>Loading...</div>;
   }
 
@@ -53,10 +58,12 @@ export const DebtDetails = ({ params }) => {
           <div>
             <span>{t('amountLabel')}:</span> {formatEuro(total)}
           </div>
-          <div>
-            <span>{t('dueDateLabel')}:</span>{' '}
-            {format(new Date(debt.dueDate), 'yyyy.MM.dd')}
-          </div>
+          {debt.dueDate && (
+            <div>
+              <span>{t('dueDateLabel')}:</span>{' '}
+              {format(debt.dueDate, 'yyyy.MM.dd')}
+            </div>
+          )}
           <p>{debt.description}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -100,13 +107,13 @@ export const DebtDetails = ({ params }) => {
               </tr>
               <tr>
                 <th className="text-right pr-3">{t('invoiceNumberHeader')}</th>
-                <td>{defaultPayment.payment_number}</td>
+                <td>{defaultPayment.paymentNumber}</td>
               </tr>
               <tr>
                 <th className="text-right pr-3">
                   {t('invoiceCreatedAtHeader')}
                 </th>
-                <td>{formatDate(defaultPayment.created_at)}</td>
+                <td>{formatDate(defaultPayment.createdAt)}</td>
               </tr>
               <tr>
                 <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
@@ -119,12 +126,14 @@ export const DebtDetails = ({ params }) => {
                 <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
                 <td>{formatEuro(total)}</td>
               </tr>
-              <tr>
-                <th className="text-right pr-3 h-4">
-                  {t('invoiceReferenceNumberHeader')}
-                </th>
-                <td>{defaultPayment.data?.reference_number}</td>
-              </tr>
+              {isPaymentInvoice(defaultPayment) && (
+                <tr>
+                  <th className="text-right pr-3 h-4">
+                    {t('invoiceReferenceNumberHeader')}
+                  </th>
+                  <td>{defaultPayment.data.reference_number}</td>
+                </tr>
+              )}
               <tr>
                 <th className="text-right pr-3">
                   {t('invoiceBeneficaryNameHeader')}

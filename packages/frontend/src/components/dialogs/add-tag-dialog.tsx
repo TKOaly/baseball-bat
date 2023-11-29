@@ -23,6 +23,7 @@ export const AddTagDialog = ({ onClose }: Props) => {
         <p className="mb-4 text-sm">Create a new tag for the selected debts.</p>
         <div className="flex items-center mb-4">
           <StandaloneInputGroup
+            name="tag-name"
             label="Tag name"
             component={TextField}
             onChange={evt => setName(evt.target.value)}

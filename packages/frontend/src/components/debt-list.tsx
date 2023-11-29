@@ -1,4 +1,4 @@
-import { TableView } from './table-view';
+import { Table } from '@bbat/ui/table';
 import { Debt, DebtWithPayer, PayerProfile } from '@bbat/common/src/types';
 import { Link, useLocation } from 'wouter';
 import {
@@ -10,7 +10,7 @@ import { ExternalLink } from 'react-feather';
 import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';
 import { sortBy } from 'remeda';
-import { isBefore, parseISO } from 'date-fns';
+import { isBefore } from 'date-fns';
 
 export type Props = {
   debts: (DebtWithPayer | Debt)[];
@@ -32,7 +32,7 @@ export const DebtList = (props: Props) => {
   ) as any; // eslint-disable-line
 
   return (
-    <TableView
+    <Table
       onRowClick={row => setLocation(`/admin/debts/${row.id}`)}
       selectable
       rows={rows}
@@ -77,13 +77,13 @@ export const DebtList = (props: Props) => {
               badges.push('Mispaid');
             }
 
-            if (isBefore(parseISO(row.dueDate), new Date())) {
+            if (row.dueDate && isBefore(row.dueDate, new Date())) {
               badges.push('Overdue');
             }
 
             return badges;
           },
-          render: value =>
+          render: (value: string[]) =>
             value.map(value => {
               return {
                 Draft: (
@@ -123,7 +123,7 @@ export const DebtList = (props: Props) => {
           name: 'Components',
           getValue: debt => sortBy(debt.debtComponents, dc => dc.name),
           compareBy: value => value.id,
-          render: value =>
+          render: (value: { name: string; id: string }[]) =>
             value.map(({ name, id }) => (
               <span
                 className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
@@ -137,7 +137,7 @@ export const DebtList = (props: Props) => {
           name: 'Tags',
           getValue: debt => sortBy(debt.tags, dc => dc.name),
           compareBy: value => value.name,
-          render: value =>
+          render: (value: { name: string }[]) =>
             value.map(({ name }) => (
               <span
                 className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"

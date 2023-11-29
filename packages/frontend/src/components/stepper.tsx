@@ -1,5 +1,15 @@
-export const Stepper = ({ stages, currentStage, loading = false }) => {
-  const getStepStyle = i => {
+export type Props = {
+  stages: string[];
+  currentStage: number;
+  loading?: boolean;
+};
+
+export const Stepper: React.FC<Props> = ({
+  stages,
+  currentStage,
+  loading = false,
+}) => {
+  const getStepStyle = (i: number) => {
     if (i < currentStage) return 'h-3 w-3 bg-blue-500';
     else return 'h-3 w-3 bg-gray-300';
   };

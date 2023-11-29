@@ -1,4 +1,4 @@
-import { BankAccount } from 'common/types';
+import { BankAccount } from '@bbat/common/types';
 import rtkApi from '../rtk-api';
 
 const accountsApi = rtkApi.injectEndpoints({
@@ -10,7 +10,8 @@ const accountsApi = rtkApi.injectEndpoints({
 
     getBankAccount: builder.query<BankAccount, string>({
       query: iban => `/banking/accounts/${iban}`,
-      providesTags: ({ iban }) => [{ type: 'BankAccount', id: iban }],
+      providesTags: result =>
+        result ? [{ type: 'BankAccount', id: result.iban }] : [],
     }),
 
     createBankAccount: builder.mutation<BankAccount, BankAccount>({

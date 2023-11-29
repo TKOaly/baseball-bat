@@ -1,7 +1,20 @@
-import React, { useContext, useEffect, useState, createContext } from 'react';
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  createContext,
+  PropsWithChildren,
+  ReactNode,
+  JSXElementConstructor,
+  ComponentProps,
+} from 'react';
 import { X } from 'react-feather';
 import { createPortal } from 'react-dom';
 import { cva } from 'class-variance-authority';
+import { uid } from 'uid';
+
+type DialogResultType<C extends JSXElementConstructor<any>> =
+  React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown;
 
 export type DialogContextValue = {
   dialogs: {
@@ -10,10 +23,10 @@ export type DialogContextValue = {
     resolve: (value: unknown) => void;
   }[];
   closeDialog: (key: string, value: unknown) => void;
-  openDialog: <P extends React.FunctionComponent, V>(
-    component: DialogComponent<any>,
-    props: Omit<React.ComponentProps<P>, 'onClose'>,
-  ) => Promise<V>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  openDialog: <C extends React.JSXElementConstructor<DialogProps<any>>>(
+    Component: C,
+    props: Omit<ComponentProps<C>, 'onClose'>,
+  ) => Promise<DialogResultType<C>>;
 };
 
 export const DialogContext = createContext<DialogContextValue>({
@@ -22,15 +35,14 @@ export const DialogContext = createContext<DialogContextValue>({
   openDialog: () => Promise.reject(),
 });
 
-export const useDialog = <P extends DialogProps<V>, V>(
-  component: DialogComponent<P>,
-) => {
+export const useDialog = <C extends DialogComponent<any>>(component: C) => {
   const { openDialog } = useContext(DialogContext);
-  return (props: Omit<P, 'onClose'>): Promise<Parameters<P['onClose']>[0]> =>
-    openDialog(component, props);
+  return (
+    props: Omit<ComponentProps<C>, 'onClose'>,
+  ): Promise<DialogResultType<C>> => openDialog(component, props);
 };
 
-export const DialogContextProvider = ({ children }) => {
+export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
   const [dialogs, setDialogs] = useState<DialogContextValue['dialogs']>([]);
 
   const closeDialog = (key: string) => {
@@ -49,35 +61,33 @@ export const DialogContextProvider = ({ children }) => {
     });
   };
 
-  const openDialog = <C extends React.FC>(
+  const openDialog = <C extends React.JSXElementConstructor<DialogProps<any>>>(
     Component: C,
-    props: React.ComponentProps<C>,
+    props: Omit<ComponentProps<C>, 'onClose'>,
   ) =>
-    new Promise<
-      React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown
-    >(resolve => {
-      let key: string;
-
-      do {
-        key = Math.floor((1 + Math.random()) * 0x10000)
-          .toString(16)
-          .substring(1);
-      } while (dialogs.findIndex(d => d.key === key) > -1);
+    new Promise<DialogResultType<C>>(resolve => {
+      let key = uid();
 
       setDialogs(prev => [
         ...prev,
         {
           content: (
             <Component
-              {...props}
+              {...(props as any)}
               onClose={value => {
-                resolve(value);
                 closeDialog(key);
+                resolve(value);
               }}
             />
           ),
           key,
-          resolve,
+          resolve: v => {
+            resolve(
+              v as React.ComponentProps<C> extends DialogProps<infer V>
+                ? V
+                : unknown,
+            );
+          },
         },
       ]);
     });
@@ -97,7 +107,7 @@ export type DialogProps<V> = {
   onClose: (value: V) => void;
 };
 
-export type DialogComponent<P extends DialogProps<unknown>> = React.FC<P>;
+export type DialogComponent<P extends DialogProps<any>> = React.FC<P>;
 
 export const DialogTarget = () => {
   const { dialogs } = useContext(DialogContext);
@@ -105,7 +115,10 @@ export const DialogTarget = () => {
   return dialogs.map(({ content }) => content);
 };
 
-export const Portal = ({ children, containerId }) => {
+export const Portal = ({
+  children,
+  containerId,
+}: PropsWithChildren<{ containerId: string }>) => {
   let element = document.getElementById(containerId);
 
   if (!element) {
@@ -127,7 +140,9 @@ export const Portal = ({ children, containerId }) => {
 
   useEffect(() => {
     return () => {
-      document.body.removeChild(element);
+      if (element) {
+        document.body.removeChild(element);
+      }
     };
   }, []);
 
@@ -143,18 +158,23 @@ const dialogCva = cva('rounded-lg flex flex-col bg-white border shadow-lg', {
   },
 });
 
-export const DialogBase = ({
+export const DialogBase = <T extends unknown>({
   children,
   onClose,
   wide = false,
   className = '',
   ...rest
-}) => {
+}: PropsWithChildren<
+  React.HTMLAttributes<HTMLDivElement> & {
+    wide?: boolean;
+    onClose: (t: T | null) => void;
+  }
+>) => {
   return (
     <div
       {...rest}
       className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10"
-      onClick={onClose}
+      onClick={() => onClose(null)}
     >
       <div
         className={dialogCva({ size: wide ? 'wide' : 'normal', className })}
@@ -166,7 +186,7 @@ export const DialogBase = ({
   );
 };
 
-export const DialogContent = ({ children }) => {
+export const DialogContent = ({ children }: PropsWithChildren<{}>) => {
   return (
     <div className="flex-grow max-h-[80vh] overflow-y-auto">
       <div className="p-3">{children}</div>
@@ -174,11 +194,11 @@ export const DialogContent = ({ children }) => {
   );
 };
 
-export const DialogHeader = ({ children }) => {
+export const DialogHeader = ({ children }: PropsWithChildren<{}>) => {
   return <div className="flex gap-3 items-center p-3 border-b">{children}</div>;
 };
 
-export const DialogFooter = ({ children }) => {
+export const DialogFooter = ({ children }: PropsWithChildren<{}>) => {
   return (
     <div className="flex justify-end border-t p-3 text-sm gap-2">
       {children}
@@ -192,8 +212,13 @@ export const Dialog = ({
   closeButton = null,
   open,
   noClose,
-}) => {
-  let close = (
+}: PropsWithChildren<{
+  title: string;
+  closeButton?: ReactNode;
+  open: boolean;
+  noClose?: boolean;
+}>) => {
+  let close: ReactNode | null = (
     <X className="text-gray-400 rounded-full hover:bg-gray-100 p-0.5 h-6 w-6" />
   );
 

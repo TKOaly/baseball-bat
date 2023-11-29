@@ -1,4 +1,4 @@
-import { Breadcrumbs } from '../../components/breadcrumbs';
+import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import {
   useGetPayerDebtsQuery,
   useGetPayerEmailsQuery,
@@ -25,10 +25,12 @@ import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dia
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { internalIdentity } from '@bbat/common/src/types';
-import { useLocation } from 'wouter';
+import { Link, RouteComponentProps, useLocation } from 'wouter';
 import { skipToken } from '@reduxjs/toolkit/dist/query/react';
 
-export const PayerDetails = ({ params }) => {
+type Props = RouteComponentProps<{ id: string }>;
+
+export const PayerDetails = ({ params }: Props) => {
   const [, setLocation] = useLocation();
   const { data: payer } = useGetPayerQuery(params.id);
   const { data: emails } = useGetPayerEmailsQuery(params.id);
@@ -46,7 +48,9 @@ export const PayerDetails = ({ params }) => {
 
   if (!payer || !emails) return 'Loading...';
 
-  const overdue = (debts ?? []).filter(d => dfns.isPast(d.dueDate));
+  const overdue = (debts ?? []).filter(
+    d => d.dueDate && dfns.isPast(d.dueDate),
+  );
 
   const handleSendReminder = async () => {
     const options = await showSendRemindersDialog({});
@@ -74,6 +78,7 @@ export const PayerDetails = ({ params }) => {
       <Header>
         <Title>
           <Breadcrumbs
+            linkComponent={Link}
             segments={[
               { url: '/admin/payers', text: 'Payers' },
               payer?.name ?? '',
@@ -132,10 +137,10 @@ export const PayerDetails = ({ params }) => {
           text={payer?.disabled ? 'Disabled' : 'Active'}
           color={payer?.disabled ? 'red' : 'gray'}
         />
-        {payer?.mergedTo && (
+        {mergedPayer && (
           <LinkField
             label="Merged to"
-            text={mergedPayer?.name}
+            text={mergedPayer.name}
             to={`/admin/payers/${payer?.mergedTo?.value}`}
           />
         )}

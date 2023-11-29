@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '../dialog';
 import { ResourceSelectField } from '../resource-select-field';
-import { TableView } from '../table-view';
+import { Table } from '@bbat/ui/table';
 import { v4 } from 'uuid';
 import {
   compareEuroValues,
@@ -38,7 +38,7 @@ type Registration = {
   id: string;
   isNew: boolean;
   amount: EuroValue;
-  payment: string;
+  payment: string | null;
 };
 
 export const TransactionRegistrationDialog = ({
@@ -52,6 +52,10 @@ export const TransactionRegistrationDialog = ({
   const [updatePaymentEvent] = useUpdatePaymentEventMutation();
 
   const handleRegistration = async () => {
+    if (!fetchedRegistrations) {
+      return;
+    }
+
     await Promise.all(
       fetchedRegistrations
         .filter(existingRegistration => {
@@ -125,7 +129,7 @@ export const TransactionRegistrationDialog = ({
 
           const result = await registerTransaction({
             transactionId: transaction.id,
-            paymentId: r.payment,
+            paymentId: r.payment!,
             amount,
           });
 
@@ -141,7 +145,7 @@ export const TransactionRegistrationDialog = ({
   const [registrations, setRegistrations] = useState<Array<Registration>>([]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && fetchedRegistrations) {
       setRegistrations(
         fetchedRegistrations.map((event: PaymentEvent) => ({
           isNew: false,
@@ -151,7 +155,7 @@ export const TransactionRegistrationDialog = ({
         })),
       );
     }
-  }, [isLoading]);
+  }, [isLoading, fetchedRegistrations]);
 
   const addRow = () => {
     setRegistrations([
@@ -214,7 +218,7 @@ export const TransactionRegistrationDialog = ({
         </p>
         {isLoading && <Loader />}
         {!isLoading && (
-          <TableView
+          <Table
             hideTools
             rows={registrations.map(r => ({ key: r.id, ...r }))}
             columns={[
@@ -238,7 +242,9 @@ export const TransactionRegistrationDialog = ({
                 render: (_, { id, payment }) => (
                   <ResourceSelectField
                     type="payment"
-                    value={payment ? { type: 'payment', id: payment } : null}
+                    value={
+                      payment ? { type: 'payment', id: payment } : undefined
+                    }
                     onChange={(_, { id: payment }) =>
                       setRowPayment(id, payment)
                     }

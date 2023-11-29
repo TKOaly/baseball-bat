@@ -1,11 +1,11 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Timeline } from '../components/timeline';
+import { Timeline } from '@bbat/ui/timeline';
 import { useGetPaymentQuery } from '../api/payments';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
 import { formatEuro, euro, sumEuroValues } from '@bbat/common/src/currency';
 import { isPaymentInvoice, Payment } from '@bbat/common/src/types';
 import { differenceInDays } from 'date-fns';
+import { RouteComponentProps } from 'wouter';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
@@ -82,7 +82,9 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
   );
 };
 
-export const PaymentDetails = ({ params }) => {
+type Props = RouteComponentProps<{ id: string }>;
+
+export const PaymentDetails = ({ params }: Props) => {
   const id = params.id;
   const { t } = useTranslation();
   const { data: payment, isLoading } = useGetPaymentQuery(id);
@@ -91,7 +93,7 @@ export const PaymentDetails = ({ params }) => {
     { skip: !payment },
   );
 
-  if (isLoading) {
+  if (isLoading || !payment || !debts) {
     return <span>Loading...</span>;
   }
 

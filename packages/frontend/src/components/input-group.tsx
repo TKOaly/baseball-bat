@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useField } from 'formik';
-import { ComponentProps, ComponentType } from 'react';
+import { ComponentProps, ComponentType, JSXElementConstructor } from 'react';
 
-export type Props<C extends ComponentType<any>> = {
+export type Props<C extends JSXElementConstructor<any>> = {
   // eslint-disable-line
-  component: ComponentType<C>;
+  component: C;
   label: string;
   fullWidth?: boolean;
   name: string;
   narrow?: boolean;
-} & ComponentProps<C>;
+} & Omit<ComponentProps<C>, 'onChange' | 'value'> &
+  Partial<Pick<ComponentProps<C>, 'onChange' | 'value'>>;
 
 export const InputGroup = <C extends ComponentType<any>>({
   component,
@@ -39,7 +40,7 @@ export const InputGroup = <C extends ComponentType<any>>({
       <div>
         <Component
           {...field}
-          {...props}
+          {...(props as any)}
           error={meta.error}
           placeholder={props.placeholder ?? label}
         />
@@ -57,7 +58,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
   label,
   error,
   ...props
-}: Props<C> & { error?: string }) => {
+}: Omit<Props<C>, 'name'> & { name?: string; error?: string }) => {
   const Component = component;
 
   return (
@@ -71,7 +72,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
       </span>
       <div>
         <Component
-          {...props}
+          {...(props as any)}
           error={error}
           placeholder={props.placeholder ?? label}
         />

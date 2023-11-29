@@ -17,10 +17,23 @@ export type Props = {
 
 export const ResourceSelectField = (props: Props) => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
-  const selected =
+  let selected: { type: string; id: string } | undefined;
+
+  /*=
     props.type && typeof props.value === 'string'
       ? { type: props.type, id: props.value }
-      : props.value;
+      : props.value;*/
+
+  if (typeof props.value === 'string') {
+    if (props.type) {
+      selected = { id: props.value, type: props.type };
+    } else {
+      throw new Error('Invalid value');
+    }
+  } else {
+    selected = props.value;
+  }
+
   const {
     visible,
     getTooltipProps,
@@ -35,8 +48,8 @@ export const ResourceSelectField = (props: Props) => {
     offset: [0, 0],
   });
   const resourceDetails = useFetchResourceDetails(
-    selected?.type,
-    selected?.id,
+    selected?.type ?? '',
+    selected?.id ?? '',
     !selected,
   );
 

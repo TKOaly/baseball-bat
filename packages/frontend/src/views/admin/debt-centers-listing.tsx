@@ -2,11 +2,11 @@ import { useLocation } from 'wouter';
 import { format, parseISO } from 'date-fns';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { Button, SecondaryButton } from '@bbat/ui/button';
-import { TableView } from '../../components/table-view';
+import { Table } from '@bbat/ui/table';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 
 export const DebtCentersListing = () => {
-  const { data } = useGetDebtCentersQuery(null);
+  const { data } = useGetDebtCentersQuery();
 
   const [, setLocation] = useLocation();
 
@@ -35,7 +35,7 @@ export const DebtCentersListing = () => {
           Mass Import
         </SecondaryButton>
       </div>
-      <TableView
+      <Table
         rows={rows}
         onRowClick={item => setLocation(`/admin/debt-centers/${item.id}`)}
         columns={[
@@ -49,7 +49,7 @@ export const DebtCentersListing = () => {
           {
             name: 'Paid percentage',
             getValue: row =>
-              row.debtCount === 0 ? 0 : row.paidCount / row.debtCount,
+              !row.debtCount ? 0 : (row.paidCount ?? 0) / row.debtCount,
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
@@ -66,7 +66,7 @@ export const DebtCentersListing = () => {
           { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
           {
             name: 'Total value',
-            getValue: row => row.total.value,
+            getValue: row => row.total?.value ?? 0,
             align: 'right',
             render: value => formatEuro(cents(value)),
           },

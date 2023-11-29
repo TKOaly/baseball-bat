@@ -1,5 +1,5 @@
 import rtkApi from './rtk-api';
-import { CustomField, Event, Registration } from 'common/types';
+import { CustomField, Event, Registration } from '@bbat/common/types';
 
 const eventsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({

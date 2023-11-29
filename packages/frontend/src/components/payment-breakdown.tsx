@@ -1,5 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { cents, euro, formatEuro, sumEuroValues } from '@bbat/common/src/currency';
+import {
+  cents,
+  euro,
+  formatEuro,
+  sumEuroValues,
+} from '@bbat/common/src/currency';
 import { Debt } from '@bbat/common/src/types';
 
 export type Props = {

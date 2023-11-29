@@ -6,7 +6,17 @@ import {
 } from '../../components/dialog';
 import { Button } from '@bbat/ui/button';
 
-export const RemindersSentDialog = ({ onClose, payerCount, debtCount }) => {
+type Props = {
+  onClose: () => void;
+  payerCount: number;
+  debtCount: number;
+};
+
+export const RemindersSentDialog = ({
+  onClose,
+  payerCount,
+  debtCount,
+}: Props) => {
   return (
     <DialogBase onClose={() => onClose()}>
       <DialogHeader>Reminder set</DialogHeader>

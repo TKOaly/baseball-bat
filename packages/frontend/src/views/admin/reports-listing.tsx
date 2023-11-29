@@ -10,7 +10,8 @@ import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-di
 import { NewDebtStatusReportDialog } from '../../components/dialogs/new-debt-status-report-dialog';
 import { NewPaymentLedgerDialog } from '../../components/dialogs/new-payment-ledger-dialog';
 import { ReportHistoryDialog } from '../../components/dialogs/report-history-dialog';
-import { TableView } from '../../components/table-view';
+import { Table } from '@bbat/ui/table';
+import { ReactNode } from 'react';
 
 const UserLink = ({ id }: { id: InternalIdentity }) => {
   const { data: user } = useGetPayerQuery(id.value);
@@ -27,7 +28,7 @@ const UserLink = ({ id }: { id: InternalIdentity }) => {
 };
 
 export const ReportsListing = () => {
-  const { data: reports } = useGetReportsQuery(null, {
+  const { data: reports } = useGetReportsQuery(undefined, {
     pollingInterval: 3000,
   });
 
@@ -65,7 +66,7 @@ export const ReportsListing = () => {
         </Button>
       </div>
 
-      <TableView
+      <Table
         initialSort={{
           column: 'Identifier',
           direction: 'asc',
@@ -101,13 +102,15 @@ export const ReportsListing = () => {
             render: status => (
               <div className="flex gap-1 items-center">
                 {
-                  {
-                    generating: (
-                      <Loader className="text-blue-600 h-4 animate-[spin_3s_linear_infinite]" />
-                    ),
-                    failed: <XCircle className="text-red-600 h-4" />,
-                    finished: <CheckCircle className="text-green-600 h-4" />,
-                  }[status]
+                  (
+                    {
+                      generating: (
+                        <Loader className="text-blue-600 h-4 animate-[spin_3s_linear_infinite]" />
+                      ),
+                      failed: <XCircle className="text-red-600 h-4" />,
+                      finished: <CheckCircle className="text-green-600 h-4" />,
+                    } as Record<string, ReactNode>
+                  )[status]
                 }
                 {status[0].toUpperCase() + status.substring(1)}
               </div>
