@@ -45,16 +45,17 @@ const buttonCva = cva(commonClasses, {
       normal: '',
     },
   },
-})
+});
 
 const noop = () => {}; // eslint-disable-line
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & React.PropsWithChildren<{
-  secondary?: boolean
-  small?: boolean
-  disabled?: boolean
-  loading?: boolean
-}>
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  React.PropsWithChildren<{
+    secondary?: boolean;
+    small?: boolean;
+    disabled?: boolean;
+    loading?: boolean;
+  }>;
 
 export const Button: React.FC<ButtonProps> = ({
   secondary = false,

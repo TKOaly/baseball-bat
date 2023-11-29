@@ -9,7 +9,7 @@ import { Job } from '@bbat/common/src/types';
 const formatJob = async (node: JobNode): Promise<Job> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
 
-  let status = await node.job.getState() ?? 'unknown';
+  let status = (await node.job.getState()) ?? 'unknown';
 
   if (children.some(c => c.status === 'failed')) {
     status = 'failed';
@@ -19,7 +19,7 @@ const formatJob = async (node: JobNode): Promise<Job> => {
   ) {
     status = 'failed';
   }
-  
+
   return {
     name: node.job.data.name ?? node.job.name,
     id: node.job.id!,
@@ -41,8 +41,8 @@ const formatJob = async (node: JobNode): Promise<Job> => {
         ? children.map(job => job.progress).reduce((a, b) => a + b, 0) /
           children.length
         : ['completed', 'failed'].indexOf(status) === -1
-        ? 0
-        : 1,
+          ? 0
+          : 1,
   };
 };
 

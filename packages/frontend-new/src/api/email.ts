@@ -7,7 +7,10 @@ const emailApi = rtkApi.injectEndpoints({
       query: () => '/emails',
       providesTags: result => [
         { type: 'Email' as const, id: 'LIST' },
-        ...(result ?? []).map(email => ({ type: 'Email' as const, id: email.id })),
+        ...(result ?? []).map(email => ({
+          type: 'Email' as const,
+          id: email.id,
+        })),
       ],
     }),
 
@@ -15,13 +18,17 @@ const emailApi = rtkApi.injectEndpoints({
       query: id => `/emails/by-debt/${id}`,
       providesTags: result => [
         { type: 'Email' as const, id: 'LIST' },
-        ...(result ?? []).map(email => ({ type: 'Email' as const, id: email.id })),
+        ...(result ?? []).map(email => ({
+          type: 'Email' as const,
+          id: email.id,
+        })),
       ],
     }),
 
     getEmail: builder.query<Email, string>({
       query: id => `/emails/${id}`,
-      providesTags: result => result ? [{ type: 'Email', id: result.id }] : [],
+      providesTags: result =>
+        result ? [{ type: 'Email', id: result.id }] : [],
     }),
 
     sendEmails: builder.mutation<void, string[]>({

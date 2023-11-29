@@ -133,7 +133,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
     );
     const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
-    let components = [] as { id: string, name: string, amount: EuroValue, operation: 'include' | 'exclude' | 'noop' }[];
+    let components = [] as {
+      id: string;
+      name: string;
+      amount: EuroValue;
+      operation: 'include' | 'exclude' | 'noop';
+    }[];
 
     if (componentSummary) {
       components = componentSummary.map(([{ id, name, amount }, count]) => {

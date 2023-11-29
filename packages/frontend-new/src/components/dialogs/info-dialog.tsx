@@ -8,10 +8,10 @@ import {
 import { Button } from '@bbat/ui/button';
 
 type Props = {
-  onClose: () => void
-  title: string
-  content: ReactNode
-}
+  onClose: () => void;
+  title: string;
+  content: ReactNode;
+};
 
 export const InfoDialog = ({ onClose, title, content }: Props) => {
   return (

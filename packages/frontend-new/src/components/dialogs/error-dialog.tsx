@@ -9,10 +9,10 @@ import { ReactNode } from 'react';
 import { AlertTriangle } from 'react-feather';
 
 type Props = {
-  onClose: () => void
-  title: string
-  content: ReactNode
-}
+  onClose: () => void;
+  title: string;
+  content: ReactNode;
+};
 
 export const ErrorDialog = ({ onClose, title, content }: Props) => {
   return (

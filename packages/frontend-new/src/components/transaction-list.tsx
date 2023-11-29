@@ -51,7 +51,7 @@ export const TransactionList = ({ transactions }: Props) => {
             } else {
               return null;
             }
-          }
+          },
         },
         {
           name: 'Date',

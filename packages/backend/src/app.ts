@@ -128,7 +128,9 @@ const app = express()
 
 if (process.env.NODE_ENV !== 'production') {
   app.use('/static', express.static('/usr/src/app/packages/frontend/web-dist'));
-  app.use('/', (_req, res) => res.sendFile('/usr/src/app/packages/frontend/web-dist/index.html'));
+  app.use('/', (_req, res) =>
+    res.sendFile('/usr/src/app/packages/frontend/web-dist/index.html'),
+  );
 }
 
 app.use('/', Container.get(MagicLinksApi).router().handler());

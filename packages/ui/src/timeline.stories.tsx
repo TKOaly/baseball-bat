@@ -6,13 +6,13 @@ const meta: Meta<typeof Timeline> = {
   component: Timeline,
   title: 'Timeline',
   decorators: [
-    (Story) => (
+    Story => (
       <div className="flex items-center justify-center absolute inset-0">
         <div className="w-[20em]">
           <Story />
         </div>
       </div>
-    )
+    ),
   ],
 };
 

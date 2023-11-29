@@ -24,7 +24,7 @@ import {
 } from '../../components/resource-page/resource-page';
 import { isPaymentInvoice } from '@bbat/common/src/types';
 
-type Props = RouteComponentProps<{ id: string }>
+type Props = RouteComponentProps<{ id: string }>;
 
 export const PaymentDetails = ({ params }: Props) => {
   const { data: payment, isLoading } = useGetPaymentQuery(params.id);
@@ -56,12 +56,13 @@ export const PaymentDetails = ({ params }: Props) => {
 
   const timelineEvents = payment.events.map(e => ({
     time: new Date(e.time),
-    title: {
-      created: 'Payment created',
-      payment: `Payment of ${formatEuro(e.amount)} received`,
-      'stripe.intent-created': 'Stripe payment flow initiated',
-      failed: 'Payment failed',
-    }[e.type] ?? 'Unknown event',
+    title:
+      {
+        created: 'Payment created',
+        payment: `Payment of ${formatEuro(e.amount)} received`,
+        'stripe.intent-created': 'Stripe payment flow initiated',
+        failed: 'Payment failed',
+      }[e.type] ?? 'Unknown event',
   }));
 
   let invoiceDetailsSection = null;
@@ -96,7 +97,12 @@ export const PaymentDetails = ({ params }: Props) => {
         </Title>
         <Actions>
           {!payment.credited && (
-            <ActionButton secondary onClick={async () => { await creditPayment(params.id) }}>
+            <ActionButton
+              secondary
+              onClick={async () => {
+                await creditPayment(params.id);
+              }}
+            >
               Credit
             </ActionButton>
           )}

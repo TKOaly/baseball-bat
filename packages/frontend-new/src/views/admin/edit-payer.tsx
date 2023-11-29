@@ -131,7 +131,11 @@ export const EditPayer = ({ params }: Props) => {
                 fullWidth
                 name="emails"
                 component={TabularFieldListFormik}
-                createNew={() => ({ key: uid(), email: '', priority: 'default' })}
+                createNew={() => ({
+                  key: uid(),
+                  email: '',
+                  priority: 'default',
+                })}
                 columns={[
                   {
                     header: 'Address',

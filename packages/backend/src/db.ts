@@ -14,8 +14,8 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
       : FirstItem
     : never
   : Items extends string
-  ? Items
-  : '';
+    ? Items
+    : '';
 
 type Split<
   Str,
@@ -23,10 +23,10 @@ type Split<
 > = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
-  ? Str extends ''
-    ? never
-    : [Str]
-  : never;
+    ? Str extends ''
+      ? never
+      : [Str]
+    : never;
 
 export type FromDbType<T extends object> = {
   [K in keyof T as Join<Split<K, '_'>>]: T[K];

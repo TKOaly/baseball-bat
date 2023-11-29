@@ -44,13 +44,18 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${import.meta.env.VITE_APP_URL}/payment/${id}/stripe/${secret}/return`,
+        return_url: `${
+          import.meta.env.VITE_APP_URL
+        }/payment/${id}/stripe/${secret}/return`,
       },
     });
 
     setIsLoading(false);
 
-    if ((error.type === 'card_error' || error.type === 'validation_error') && error.message) {
+    if (
+      (error.type === 'card_error' || error.type === 'validation_error') &&
+      error.message
+    ) {
       setErrorMessage(error.message);
     } else {
       setErrorMessage(t('unknownStripeErrorMessage'));

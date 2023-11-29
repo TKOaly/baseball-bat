@@ -22,13 +22,18 @@ export type Props = {
 };
 
 export type SearchResultItemProps = {
-  type: string,
-  id: string,
-  name: string,
-  onSelect: () => void,
-}
+  type: string;
+  id: string;
+  name: string;
+  onSelect: () => void;
+};
 
-const SearchResultItem = ({ type, id, name, onSelect }: SearchResultItemProps) => {
+const SearchResultItem = ({
+  type,
+  id,
+  name,
+  onSelect,
+}: SearchResultItemProps) => {
   const details = useFetchResourceDetails(type, id);
 
   return (

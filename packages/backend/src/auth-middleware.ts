@@ -1,5 +1,8 @@
 import { Middleware, Response, RequestBase } from 'typera-express';
-import { internalIdentity, InternalIdentity } from '@bbat/common/build/src/types';
+import {
+  internalIdentity,
+  InternalIdentity,
+} from '@bbat/common/build/src/types';
 import { v4 as uuid } from 'uuid';
 import { pipe } from 'fp-ts/lib/function';
 import { Inject, Service } from 'typedi';

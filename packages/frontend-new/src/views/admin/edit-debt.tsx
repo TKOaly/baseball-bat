@@ -1,6 +1,12 @@
 import { Formik } from 'formik';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { dbDateString, euro, EuroValue, NewDebtComponent, PayerIdentity } from '@bbat/common/src/types';
+import {
+  dbDateString,
+  euro,
+  EuroValue,
+  NewDebtComponent,
+  PayerIdentity,
+} from '@bbat/common/src/types';
 import * as dfns from 'date-fns';
 import {
   useCreateDebtComponentMutation,
@@ -37,7 +43,7 @@ import { uid } from 'uid';
 type DebtFormComponentValue = {
   component: string | { name: string };
   amount: number;
-}
+};
 
 type DebtFormValues = {
   name: string;
@@ -59,7 +65,9 @@ export const EditDebt = ({ params }: Props) => {
   const { data: debt } = useGetDebtQuery(id);
   const { data: debtCenters } = useGetDebtCentersQuery();
   const [debtCenterId, setDebtCenterId] = useState(debt?.debtCenterId);
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId ?? skipToken);
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(
+    debtCenterId ?? skipToken,
+  );
   const [updateDebt] = useUpdateDebtMutation();
   const [createDebtCenter] = useCreateDebtCenterMutation();
   const [createDebtComponent] = useCreateDebtComponentMutation();
@@ -96,7 +104,9 @@ export const EditDebt = ({ params }: Props) => {
     const existingComponents = debt?.debtComponents?.map(dc => dc.id) ?? [];
 
     const confirmedRef = { value: false };
-    const newComponentsRef = { value: [] as { name: string, amount: EuroValue }[] };
+    const newComponentsRef = {
+      value: [] as { name: string; amount: EuroValue }[],
+    };
     const existingComponentsRef = { value: existingComponents };
 
     const separateComponents = () => {
@@ -178,11 +188,12 @@ export const EditDebt = ({ params }: Props) => {
       } else {
         throw new Error('Failed to create debt center!');
       }
-    }
+    };
 
-    let centerId = typeof values.center === 'string'
-      ? values.center
-      : await handleDebtCenterCreation();
+    let centerId =
+      typeof values.center === 'string'
+        ? values.center
+        : await handleDebtCenterCreation();
 
     const { left: newComponents, right: components } = separateComponents();
 
@@ -220,7 +231,7 @@ export const EditDebt = ({ params }: Props) => {
       }
     }
 
-    let date = undefined
+    let date = undefined;
 
     if (values.date !== null && values.date !== '') {
       const result = dbDateString.decode(values.date);
@@ -292,7 +303,10 @@ export const EditDebt = ({ params }: Props) => {
     [],
   );
 
-  const formatCustomPayerOption = useCallback(({ value }: { value: string }) => value, []);
+  const formatCustomPayerOption = useCallback(
+    ({ value }: { value: string }) => value,
+    [],
+  );
 
   const payerOptions = useMemo(() => {
     const options = [];
@@ -387,7 +401,9 @@ export const EditDebt = ({ params }: Props) => {
                   value: center.id,
                 }))}
                 createCustomOption={(name: string) => ({ name })}
-                formatCustomOption={(({ name }: { name: string }) => name) as any}
+                formatCustomOption={
+                  (({ name }: { name: string }) => name) as any
+                }
               />
               <InputGroup
                 label="Payer"

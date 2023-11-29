@@ -71,13 +71,17 @@ export const ReportHistoryDialog = ({ onClose, reports }: Params) => {
               render: status => (
                 <div className="flex gap-1 items-center">
                   {
-                    ({
-                      generating: (
-                        <Loader className="text-blue-600 h-4 animate-[spin_3s_linear_infinite]" />
-                      ),
-                      failed: <XCircle className="text-red-600 h-4" />,
-                      finished: <CheckCircle className="text-green-600 h-4" />,
-                    } as Record<string, ReactNode>)[status]
+                    (
+                      {
+                        generating: (
+                          <Loader className="text-blue-600 h-4 animate-[spin_3s_linear_infinite]" />
+                        ),
+                        failed: <XCircle className="text-red-600 h-4" />,
+                        finished: (
+                          <CheckCircle className="text-green-600 h-4" />
+                        ),
+                      } as Record<string, ReactNode>
+                    )[status]
                   }
                   {status[0].toUpperCase() + status.substring(1)}
                 </div>

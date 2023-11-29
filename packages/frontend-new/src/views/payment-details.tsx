@@ -82,7 +82,7 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
   );
 };
 
-type Props = RouteComponentProps<{ id: string }>
+type Props = RouteComponentProps<{ id: string }>;
 
 export const PaymentDetails = ({ params }: Props) => {
   const id = params.id;

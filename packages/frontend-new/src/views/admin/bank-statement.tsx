@@ -18,7 +18,9 @@ import { skipToken } from '@reduxjs/toolkit/query';
 export const BankStatement = ({ id }: { id: string }) => {
   const { data: statement, isLoading } = useGetBankStatementQuery(id);
   const { data: transactions } = useGetStatementTransactionsQuery(id);
-  const { data: account } = useGetBankAccountQuery(statement?.accountIban ?? skipToken);
+  const { data: account } = useGetBankAccountQuery(
+    statement?.accountIban ?? skipToken,
+  );
 
   if (isLoading || !statement || !account) {
     return 'Loading...';
@@ -40,10 +42,7 @@ export const BankStatement = ({ id }: { id: string }) => {
       <Section title="Details" columns={2}>
         <TextField
           label="Start Date"
-          value={format(
-            statement.openingBalance.date,
-            'dd.MM.yyyy',
-          )}
+          value={format(statement.openingBalance.date, 'dd.MM.yyyy')}
         />
         <TextField
           label="Opening Balance"
@@ -51,10 +50,7 @@ export const BankStatement = ({ id }: { id: string }) => {
         />
         <TextField
           label="End Date"
-          value={format(
-            statement.closingBalance.date,
-            'dd.MM.yyyy',
-          )}
+          value={format(statement.closingBalance.date, 'dd.MM.yyyy')}
         />
         <TextField
           label="Closing Balance"

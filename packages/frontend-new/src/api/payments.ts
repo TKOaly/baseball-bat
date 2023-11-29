@@ -1,5 +1,10 @@
 import rtkApi from './rtk-api';
-import { EuroValue, PayerProfile, Payment, PaymentEvent } from '@bbat/common/types';
+import {
+  EuroValue,
+  PayerProfile,
+  Payment,
+  PaymentEvent,
+} from '@bbat/common/types';
 
 export type BankTransactionDetails = {
   accountingId: string;
@@ -23,7 +28,8 @@ const paymentsApi = rtkApi.injectEndpoints({
     getPayment: builder.query<Payment, string>({
       query: id => `/payments/${id}`,
       transformResponse: (response: { payment: Payment }) => response.payment,
-      providesTags: (payment) => payment ? [{ type: 'Payment', id: payment.id }] : [],
+      providesTags: payment =>
+        payment ? [{ type: 'Payment', id: payment.id }] : [],
     }),
 
     getOwnPayments: builder.query<Payment[], void>({
@@ -79,10 +85,13 @@ const paymentsApi = rtkApi.injectEndpoints({
         url: `/payments/events/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (payment) => payment ? [
-        { type: 'PaymentEvent', id: payment.id },
-        { type: 'PaymentEvent', id: 'LIST' },
-      ] : [],
+      invalidatesTags: payment =>
+        payment
+          ? [
+              { type: 'PaymentEvent', id: payment.id },
+              { type: 'PaymentEvent', id: 'LIST' },
+            ]
+          : [],
     }),
 
     updatePaymentEvent: builder.mutation<
@@ -94,7 +103,8 @@ const paymentsApi = rtkApi.injectEndpoints({
         method: 'PATCH',
         body: { amount },
       }),
-      invalidatesTags: (payment) => payment ? [{ type: 'PaymentEvent', id: payment.id }] : [],
+      invalidatesTags: payment =>
+        payment ? [{ type: 'PaymentEvent', id: payment.id }] : [],
     }),
 
     registerTransaction: builder.mutation<

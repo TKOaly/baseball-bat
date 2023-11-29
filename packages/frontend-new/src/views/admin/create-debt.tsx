@@ -1,5 +1,11 @@
 import { Formik } from 'formik';
-import { useMemo, useCallback, useState, useEffect, ComponentProps } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  ComponentProps,
+} from 'react';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { EuroField } from '../../components/euro-field';
@@ -36,8 +42,8 @@ import { skipToken } from '@reduxjs/toolkit/query';
 
 type DebtFormComponentValue = {
   component: string | { name: string };
-  amount: EuroValue
-}
+  amount: EuroValue;
+};
 
 type DebtFormValues = {
   name: string;
@@ -56,8 +62,12 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: users } = useGetUpstreamUsersQuery();
   const { data: payers } = useGetPayersQuery();
   const { data: debtCenters } = useGetDebtCentersQuery();
-  const [debtCenterId, setDebtCenterId] = useState<null | string>(props.debtCenterId ?? null);
-  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(debtCenterId ?? skipToken);
+  const [debtCenterId, setDebtCenterId] = useState<null | string>(
+    props.debtCenterId ?? null,
+  );
+  const { data: centerComponents } = useGetDebtComponentsByCenterQuery(
+    debtCenterId ?? skipToken,
+  );
   const [createDebt] = useCreateDebtMutation();
   const showCreatePayerDialog = useDialog(CreatePayerDialog);
   const [, setLocation] = useLocation();
@@ -67,7 +77,11 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
 
   const submitDebtForm = async (values: DebtFormValues) => {
-    if (values.payer === null || values.accountingPeriod === null || values.center === null) {
+    if (
+      values.payer === null ||
+      values.accountingPeriod === null ||
+      values.center === null
+    ) {
       return;
     }
 
@@ -88,8 +102,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       tags: [],
       payer: values.payer,
       date: values.date ?? undefined,
-      dueDate:
-        values.dueDate === '' || !values.dueDate ? null : values.dueDate,
+      dueDate: values.dueDate === '' || !values.dueDate ? null : values.dueDate,
       paymentCondition,
       center:
         typeof values.center === 'string'
@@ -123,7 +136,10 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     }
   }, []);
 
-  const formatCustomPayerOption = useCallback(({ value }: { value: string }) => value, []);
+  const formatCustomPayerOption = useCallback(
+    ({ value }: { value: string }) => value,
+    [],
+  );
 
   const payerOptions = useMemo(() => {
     const combined = [
@@ -139,36 +155,44 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
         id: value.id.value,
         value,
       })),
-    ] as ({ type: 'tkoaly', key: string, id: number, value: UpstreamUser } | { type: 'internal', key: number, id: string, value: PayerProfile })[];
+    ] as (
+      | { type: 'tkoaly'; key: string; id: number; value: UpstreamUser }
+      | { type: 'internal'; key: number; id: string; value: PayerProfile }
+    )[];
 
     const grouped = groupBy(combined, s => s.key ?? '');
 
     const other = grouped['null'] ?? [];
     delete grouped['null'];
 
-    const result: ComponentProps<typeof DropdownField>['options'] = Object.values(grouped).map(entries => {
-      const tkoaly = entries.find(entry => entry.type === 'tkoaly') as Extract<(typeof combined)[0], { type: 'tkoaly' }>;
-      const internal = entries.find(entry => entry.type === 'internal') as Extract<(typeof combined)[0], { type: 'internal' }>;
+    const result: ComponentProps<typeof DropdownField>['options'] =
+      Object.values(grouped).map(entries => {
+        const tkoaly = entries.find(
+          entry => entry.type === 'tkoaly',
+        ) as Extract<(typeof combined)[0], { type: 'tkoaly' }>;
+        const internal = entries.find(
+          entry => entry.type === 'internal',
+        ) as Extract<(typeof combined)[0], { type: 'internal' }>;
 
-      let value
-      let name
+        let value;
+        let name;
 
-      if (internal) {
-        value = internal.value.id;
-        name = internal.value.name;
-      } else if (tkoaly) {
-        value = tkoaly.value.id;
-        name = tkoaly.value.screenName;
-      } else {
-        throw new Error('No suitable ID found!');
-      }
+        if (internal) {
+          value = internal.value.id;
+          name = internal.value.name;
+        } else if (tkoaly) {
+          value = tkoaly.value.id;
+          name = tkoaly.value.screenName;
+        } else {
+          throw new Error('No suitable ID found!');
+        }
 
-      return {
-        value,
-        text: name,
-        label: tkoaly?.value?.username ?? '',
-      };
-    });
+        return {
+          value,
+          text: name,
+          label: tkoaly?.value?.username ?? '',
+        };
+      });
 
     result.push(
       ...other.flatMap(other => {
@@ -245,7 +269,10 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
           }
 
           try {
-            if (values.paymentCondition !== null && values.paymentCondition !== 'NOW') {
+            if (
+              values.paymentCondition !== null &&
+              values.paymentCondition !== 'NOW'
+            ) {
               parseInt(values.paymentCondition);
             }
           } catch (e) {
@@ -292,7 +319,9 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   value: center.id,
                 }))}
                 createCustomOption={(name: string) => ({ name })}
-                formatCustomOption={(({ name }: { name: string }) => name) as any}
+                formatCustomOption={
+                  (({ name }: { name: string }) => name) as any
+                }
               />
               <InputGroup
                 label="Payer"

@@ -234,7 +234,9 @@ export const TransactionRegistrationDialog = ({
                 render: (_, { id, payment }) => (
                   <ResourceSelectField
                     type="payment"
-                    value={payment ? { type: 'payment', id: payment } : undefined}
+                    value={
+                      payment ? { type: 'payment', id: payment } : undefined
+                    }
                     onChange={(_, { id: payment }) =>
                       setRowPayment(id, payment)
                     }

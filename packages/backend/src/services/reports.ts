@@ -15,7 +15,12 @@ import {
   Report,
 } from '@bbat/common/build/src/types';
 import ejs from 'ejs';
-import { cents, euro, formatEuro, sumEuroValues } from '@bbat/common/build/src/currency';
+import {
+  cents,
+  euro,
+  formatEuro,
+  sumEuroValues,
+} from '@bbat/common/build/src/currency';
 import * as datefns from 'date-fns';
 import { DebtService } from './debt';
 import { PaymentService } from './payements';

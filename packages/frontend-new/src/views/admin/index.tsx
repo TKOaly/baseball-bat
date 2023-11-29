@@ -10,7 +10,10 @@ import { Dropdown } from '@bbat/ui/dropdown';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppDispatch, useAppSelector } from '../../store';
 import accountingPeriodSlice from '../../state/accounting-period';
-import { default as notificationsSlice, selectActiveNotifications } from '../../state/notifications';
+import {
+  default as notificationsSlice,
+  selectActiveNotifications,
+} from '../../state/notifications';
 
 import { DebtCentersListing } from './debt-centers-listing';
 import { DebtCenterDetails } from './debt-center';
@@ -266,7 +269,9 @@ const Admin = () => {
               <MassCreateDebts />
             </Route>
             <Route path="/admin/debt-centers/:id/create-debts-csv">
-              {(params: { id: string }) => <MassCreateDebts debtCenterId={params.id} />}
+              {(params: { id: string }) => (
+                <MassCreateDebts debtCenterId={params.id} />
+              )}
             </Route>
             <Route path="/admin/:rest*">
               <Redirect to="/admin/debt-centers" />
@@ -281,8 +286,15 @@ const Admin = () => {
         {notifications.map(notification => (
           <Notification
             key={notification.id}
-            onDismiss={() => dispatch(notificationsSlice.actions.dismissNotification({ id: notification.id }))}
-            {...notification} />
+            onDismiss={() =>
+              dispatch(
+                notificationsSlice.actions.dismissNotification({
+                  id: notification.id,
+                }),
+              )
+            }
+            {...notification}
+          />
         ))}
       </div>
     </div>

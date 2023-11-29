@@ -7,8 +7,8 @@ import {
 import { Button, SecondaryButton } from '@bbat/ui/button';
 
 type Props = {
-  onClose: (value: boolean) => void,
-}
+  onClose: (value: boolean) => void;
+};
 
 export const PublishedDebtEditConfirmation = ({ onClose }: Props) => {
   return (

@@ -1,4 +1,10 @@
-import { InputHTMLAttributes, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  InputHTMLAttributes,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { DayPicker } from 'react-day-picker';
 import { Calendar } from 'react-feather';
 import { parse, format, isMatch } from 'date-fns';
@@ -13,9 +19,9 @@ import {
 } from '@floating-ui/react';
 
 type DateFieldProps = InputHTMLAttributes<HTMLInputElement> & {
-  allowEmpty?: boolean,
-  format?: string,
-  error?: string,
+  allowEmpty?: boolean;
+  format?: string;
+  error?: string;
 };
 
 export const DateField = ({
@@ -56,7 +62,11 @@ export const DateField = ({
 
   return (
     <div className="flex flex-col items-center relative" ref={ref}>
-      <div ref={refs.setReference} className="relative w-full" {...getReferenceProps()}>
+      <div
+        ref={refs.setReference}
+        className="relative w-full"
+        {...getReferenceProps()}
+      >
         <input
           type="text"
           className={`

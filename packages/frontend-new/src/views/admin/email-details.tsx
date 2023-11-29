@@ -21,7 +21,9 @@ type Props = RouteComponentProps<{ id: string }>;
 
 export const EmailDetails = ({ params }: Props) => {
   const { data: email } = useGetEmailQuery(params.id);
-  const { data: payer } = useGetPayerByEmailQuery(email?.recipient ?? skipToken);
+  const { data: payer } = useGetPayerByEmailQuery(
+    email?.recipient ?? skipToken,
+  );
   const { data: debts } = useGetDebtsByEmailQuery(params.id);
 
   if (!email || !payer) {

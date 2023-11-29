@@ -2,19 +2,19 @@ import { parseISO } from 'date-fns';
 import rtkApi from './rtk-api';
 import { Job, JobStatus } from '@bbat/common/types';
 
-type ResponseJob = { 
-  name: string
-  id: string
-  status: JobStatus 
-  time: string
-  processedAt: string
-  finishedAt: string | null
-  duration: number
-  children: ResponseJob[]
-  queue: string
-  returnValue: any
-  progress: number
-}
+type ResponseJob = {
+  name: string;
+  id: string;
+  status: JobStatus;
+  time: string;
+  processedAt: string;
+  finishedAt: string | null;
+  duration: number;
+  children: ResponseJob[];
+  queue: string;
+  returnValue: any;
+  progress: number;
+};
 
 const transformJob = (job: ResponseJob): Job => ({
   ...job,
@@ -22,13 +22,14 @@ const transformJob = (job: ResponseJob): Job => ({
   processedAt: parseISO(job.processedAt),
   finishedAt: job.finishedAt ? parseISO(job.finishedAt) : null,
   children: job.children.map(transformJob),
-})
+});
 
 const jobsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getJobs: builder.query<Job[], void>({
       query: () => '/jobs/list',
-      transformResponse: (response: ResponseJob[]): Job[] => response.map(transformJob),
+      transformResponse: (response: ResponseJob[]): Job[] =>
+        response.map(transformJob),
     }),
 
     getJob: builder.query<Job, { queue: string; id: string }>({

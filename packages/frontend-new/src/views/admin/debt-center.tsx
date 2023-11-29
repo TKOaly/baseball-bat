@@ -74,7 +74,7 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
           <ActionButton
             secondary
             onClick={async () => {
-              await showNewDebtLedgerDialog({ defaults: { center: id } })
+              await showNewDebtLedgerDialog({ defaults: { center: id } });
             }}
           >
             Generate Report

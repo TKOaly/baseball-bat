@@ -25,7 +25,11 @@ import {
   TableRef,
 } from '../../components/editable-table';
 import payersApi from '../../api/payers';
-import { NewDebtTag, PayerIdentity, dbDateString } from '@bbat/common/src/types';
+import {
+  NewDebtTag,
+  PayerIdentity,
+  dbDateString,
+} from '@bbat/common/src/types';
 import * as E from 'fp-ts/lib/Either';
 import { ExternalLink } from 'react-feather';
 import { skipToken } from '@reduxjs/toolkit/query';
@@ -61,8 +65,8 @@ const parseEuros = (v: string): EuroValue => {
 };
 
 type Props = {
-  debtCenterId?: string
-}
+  debtCenterId?: string;
+};
 
 export const MassCreateDebts = ({ debtCenterId }: Props) => {
   const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId ?? skipToken);
@@ -566,7 +570,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         } else {
           return null;
         }
-      }
+      };
 
       return {
         payer: payerId!,
@@ -574,7 +578,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         name: title!,
         description: description!,
         accountingPeriod: accountingPeriod!,
-        dueDate: dueDate && parseDueDate(dueDate) || null,
+        dueDate: (dueDate && parseDueDate(dueDate)) || null,
         paymentCondition: paymentCondition ?? null,
         tags,
         components: [componentResult.data.id],
@@ -618,9 +622,9 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
       } else {
         let message = pipe(
           errorResponse.decode(result.error),
-          E.map((response) => response.message),
+          E.map(response => response.message),
           E.getOrElse(() => 'Unknown error occurred while creating the debt!'),
-        )
+        );
 
         row.setRowAnnotation({
           id: 'create-debt',

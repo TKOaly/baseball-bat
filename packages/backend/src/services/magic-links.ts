@@ -1,5 +1,8 @@
 import { Inject, Service } from 'typedi';
-import { internalIdentity, InternalIdentity } from '@bbat/common/build/src/types';
+import {
+  internalIdentity,
+  InternalIdentity,
+} from '@bbat/common/build/src/types';
 import { Config } from '../config';
 import * as crypto from 'crypto';
 import { RedisClientType } from 'redis';

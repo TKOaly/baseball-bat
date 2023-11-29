@@ -57,7 +57,10 @@ const selectResourceDetails = createSelector(
       );
 
       if (debt.data.total) {
-        details.push(['Amount', { type: 'text', value: formatEuro(debt.data.total) }]);
+        details.push([
+          'Amount',
+          { type: 'text', value: formatEuro(debt.data.total) },
+        ]);
       }
 
       if (debt.data.dueDate) {
@@ -122,7 +125,6 @@ const selectResourceDetails = createSelector(
 
       name = payment.data.title;
       value = payment.data;
-
 
       details.push([
         'Number',

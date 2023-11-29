@@ -10,7 +10,8 @@ export type Props<C extends JSXElementConstructor<any>> = {
   fullWidth?: boolean;
   name: string;
   narrow?: boolean;
-} & Omit<ComponentProps<C>, 'onChange' | 'value'> & Partial<Pick<ComponentProps<C>, 'onChange' | 'value'>>;
+} & Omit<ComponentProps<C>, 'onChange' | 'value'> &
+  Partial<Pick<ComponentProps<C>, 'onChange' | 'value'>>;
 
 export const InputGroup = <C extends ComponentType<any>>({
   component,
@@ -39,7 +40,7 @@ export const InputGroup = <C extends ComponentType<any>>({
       <div>
         <Component
           {...field}
-          {...props as any}
+          {...(props as any)}
           error={meta.error}
           placeholder={props.placeholder ?? label}
         />
@@ -57,7 +58,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
   label,
   error,
   ...props
-}: Omit<Props<C>, 'name'> & { name?: string, error?: string }) => {
+}: Omit<Props<C>, 'name'> & { name?: string; error?: string }) => {
   const Component = component;
 
   return (
@@ -71,7 +72,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
       </span>
       <div>
         <Component
-          {...props as any}
+          {...(props as any)}
           error={error}
           placeholder={props.placeholder ?? label}
         />

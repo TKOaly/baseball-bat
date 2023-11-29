@@ -57,7 +57,9 @@ const WelcomeDialog = () => {
     isError: isPayerError,
     isLoading: isPayerLoading,
   } = useGetPayerQuery('me');
-  const { data: emails } = useGetPayerEmailsQuery(profile?.id?.value ?? skipToken);
+  const { data: emails } = useGetPayerEmailsQuery(
+    profile?.id?.value ?? skipToken,
+  );
   const hasConfirmedMembership = useAppSelector(
     state => state.session.preferences?.hasConfirmedMembership,
   );
@@ -130,8 +132,8 @@ const WelcomeDialog = () => {
           <>
             <p className="mb-5">
               Is your name <b>{profile?.name}</b> and is your preferred e-mail
-              address <b>{emails?.find?.(e => e.priority === 'primary')?.email}</b>
-              ?
+              address{' '}
+              <b>{emails?.find?.(e => e.priority === 'primary')?.email}</b>?
             </p>
 
             <div className="flex flex-col gap-3 mb-5">
@@ -440,8 +442,12 @@ export const Main = () => {
           key={p.id}
           title={p.title}
           subtitle={t('openInvoiceInfoline', {
-            dated: isPaymentInvoice(p) ? format(parseISO(p.data.date), 'dd.MM.yyyy') : '-',
-            due: isPaymentInvoice(p) ? format(new Date(p.data.due_date), 'dd.MM.yyyy') : '-',
+            dated: isPaymentInvoice(p)
+              ? format(parseISO(p.data.date), 'dd.MM.yyyy')
+              : '-',
+            due: isPaymentInvoice(p)
+              ? format(new Date(p.data.due_date), 'dd.MM.yyyy')
+              : '-',
           })}
           amount={cents(-p.balance)}
           actions={

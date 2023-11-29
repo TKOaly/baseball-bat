@@ -70,8 +70,15 @@ export const Settings = () => {
               fullWidth
               name="emails"
               component={TabularFieldListFormik}
-              createNew={() => ({ key: `new-${values.emails.length}`, email: '', priority: 'secondary' })}
-              value={values.emails.map((email) => ({ ...email, key: email.email }))}
+              createNew={() => ({
+                key: `new-${values.emails.length}`,
+                email: '',
+                priority: 'secondary',
+              })}
+              value={values.emails.map(email => ({
+                ...email,
+                key: email.email,
+              }))}
               columns={[
                 {
                   header: t('emailHeader'),

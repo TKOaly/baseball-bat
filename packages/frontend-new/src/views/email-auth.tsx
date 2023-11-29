@@ -4,7 +4,13 @@ import { Stepper } from '../components/stepper';
 import { InputGroup } from '../components/input-group';
 import { Formik, FormikHelpers } from 'formik';
 import { useLocation } from 'wouter';
-import { Dispatch, JSXElementConstructor, useEffect, useReducer, useState } from 'react';
+import {
+  Dispatch,
+  JSXElementConstructor,
+  useEffect,
+  useReducer,
+  useState,
+} from 'react';
 import {
   usePollAuthStatusQuery,
   useRequestAuthCodeMutation,
@@ -14,12 +20,19 @@ import { useAppDispatch } from '../store';
 import { authenticateSession } from '../session';
 import { skipToken } from '@reduxjs/toolkit/query';
 
-const SendStep = ({ onCompletion, setLoading, dispatch }: StepComponentProps) => {
+const SendStep = ({
+  onCompletion,
+  setLoading,
+  dispatch,
+}: StepComponentProps) => {
   const [sendAuthCodeMutation] = useRequestAuthCodeMutation();
 
-  type Values = { email: string }
+  type Values = { email: string };
 
-  const sendAuthCode = async ({ email }: Values, { setErrors }: FormikHelpers<Values>) => {
+  const sendAuthCode = async (
+    { email }: Values,
+    { setErrors }: FormikHelpers<Values>,
+  ) => {
     setLoading(true);
     const res = await sendAuthCodeMutation(email);
 
@@ -43,7 +56,12 @@ const SendStep = ({ onCompletion, setLoading, dispatch }: StepComponentProps) =>
     <Formik initialValues={{ email: '' }} onSubmit={sendAuthCode}>
       {({ submitForm }) => (
         <div className="w-80 mx-auto py-5">
-          <InputGroup label="Email" name="email" component={TextField} placeholder="Email" />
+          <InputGroup
+            label="Email"
+            name="email"
+            component={TextField}
+            placeholder="Email"
+          />
           <div className="mt-3 text-right">
             <Button onClick={() => submitForm()}>Send Confirmation</Button>
           </div>
@@ -164,7 +182,11 @@ export const EmailAuth = () => {
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const StepComponent: JSXElementConstructor<StepComponentProps> = [SendStep, ConfirmStep, SuccessStep][stage];
+  const StepComponent: JSXElementConstructor<StepComponentProps> = [
+    SendStep,
+    ConfirmStep,
+    SuccessStep,
+  ][stage];
 
   return (
     <>
@@ -200,8 +222,8 @@ export const EmailAuth = () => {
 };
 
 type StepComponentProps = {
-  onCompletion: () => void,
-  setLoading: (loading: boolean) => void,
-  state: State,
-  dispatch: Dispatch<Event>,
-}
+  onCompletion: () => void;
+  setLoading: (loading: boolean) => void;
+  state: State;
+  dispatch: Dispatch<Event>;
+};

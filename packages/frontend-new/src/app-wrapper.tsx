@@ -93,7 +93,10 @@ const Navigation = () => {
   );
 };
 
-const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({ children, sidebars }) => (
+const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({
+  children,
+  sidebars,
+}) => (
   <Provider store={store}>
     <div className="bg-[#fbfbfb] w-screen pb-10 min-h-screen justify-center md:pt-10 gap-5">
       <div className="grid justify-center gap-5 grid-cols-1 md:grid-cols-main">

@@ -17,7 +17,7 @@ import { parseISO } from 'date-fns';
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>;
-  debtCenter: DebtCenter,
+  debtCenter: DebtCenter;
 };
 
 export type CreateDebtPayload = Omit<NewDebt, 'components' | 'centerId'> & {
@@ -95,14 +95,25 @@ const debtApi = rtkApi.injectEndpoints({
 
     getDebt: builder.query<DebtResponse, string>({
       query: id => `/debt/${id}`,
-      providesTags: result => result ? [{ type: 'Debt', id: result.id }] : [],
-      transformResponse: (result: Omit<DebtResponse, 'createdAt' | 'updatedAt' | 'dueDate' | 'date'> & { createdAt: string, updatedAt: string, dueDate: string, date: string }) => result && ({
-        ...result,
-        createdAt: parseISO(result.createdAt),
-        updatedAt: parseISO(result.updatedAt),
-        dueDate: result.dueDate ? parseISO(result.dueDate) : null,
-        date: result.date ? parseISO(result.date) : null,
-      }),
+      providesTags: result => (result ? [{ type: 'Debt', id: result.id }] : []),
+      transformResponse: (
+        result: Omit<
+          DebtResponse,
+          'createdAt' | 'updatedAt' | 'dueDate' | 'date'
+        > & {
+          createdAt: string;
+          updatedAt: string;
+          dueDate: string;
+          date: string;
+        },
+      ) =>
+        result && {
+          ...result,
+          createdAt: parseISO(result.createdAt),
+          updatedAt: parseISO(result.updatedAt),
+          dueDate: result.dueDate ? parseISO(result.dueDate) : null,
+          date: result.date ? parseISO(result.date) : null,
+        },
     }),
 
     getDebts: builder.query<DebtWithPayer[], void>({

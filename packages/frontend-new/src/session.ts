@@ -6,9 +6,12 @@ import { RootState } from './store';
 export const createSession = createAsyncThunk(
   'session/createSession',
   async (): Promise<string> => {
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/init`, {
-      method: 'POST',
-    });
+    const res = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/auth/init`,
+      {
+        method: 'POST',
+      },
+    );
     const body = await res.json();
     window.localStorage.setItem('session-token', body?.token);
     return body?.token;
@@ -19,30 +22,27 @@ export const destroySession = createAsyncThunk<
   void,
   void,
   { state: RootState }
->(
-  'session/destroySession',
-  async (_payload, thunkApi): Promise<void> => {
-    const state = thunkApi.getState();
-    const sessionToken = state.session.token;
+>('session/destroySession', async (_payload, thunkApi): Promise<void> => {
+  const state = thunkApi.getState();
+  const sessionToken = state.session.token;
 
-    const res = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/auth/destroy-session`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
+  const res = await fetch(
+    `${import.meta.env.VITE_BACKEND_URL}/api/auth/destroy-session`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        'Content-Type': 'application/json',
       },
-    );
+    },
+  );
 
-    if (res.ok) {
-      return Promise.resolve();
-    } else {
-      return Promise.reject();
-    }
-  },
-);
+  if (res.ok) {
+    return Promise.resolve();
+  } else {
+    return Promise.reject();
+  }
+});
 
 export const authenticateSession = createAsyncThunk<
   {
@@ -56,26 +56,32 @@ export const authenticateSession = createAsyncThunk<
   const state = thunkApi.getState();
   const sessionToken = state.session.token;
 
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/authenticate`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${sessionToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      id: authToken,
-      remote: false,
-    }),
-  });
-
-  if (res.ok) {
-    const session_res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/session`, {
-      method: 'GET',
+  const res = await fetch(
+    `${import.meta.env.VITE_BACKEND_URL}/api/auth/authenticate`,
+    {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${sessionToken}`,
         'Content-Type': 'application/json',
       },
-    });
+      body: JSON.stringify({
+        id: authToken,
+        remote: false,
+      }),
+    },
+  );
+
+  if (res.ok) {
+    const session_res = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/session`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
 
     return await session_res.json();
   } else {

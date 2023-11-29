@@ -100,7 +100,9 @@ export const EditDebtCenter = ({ params }: Props) => {
       A.filter(c => c.id === null),
     );
 
-    const IdEq = contramap((c: { id: string | null; name: string }) => O.fromNullable(c.id))(O.getEq(S.Eq));
+    const IdEq = contramap((c: { id: string | null; name: string }) =>
+      O.fromNullable(c.id),
+    )(O.getEq(S.Eq));
 
     const removedComponents = pipe(
       components,

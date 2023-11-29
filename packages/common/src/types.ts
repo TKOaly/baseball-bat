@@ -16,8 +16,8 @@ type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
       : FirstItem
     : never
   : Items extends string
-  ? Items
-  : '';
+    ? Items
+    : '';
 
 type Split<
   Str,
@@ -25,10 +25,10 @@ type Split<
 > = Str extends `${infer Head}${Delim}${infer Rest}`
   ? [Head, ...Split<Rest, Delim>]
   : Str extends string
-  ? Str extends ''
-    ? never
-    : [Str]
-  : never;
+    ? Str extends ''
+      ? never
+      : [Str]
+    : never;
 
 export type FromDbType<T extends object> = {
   [K in keyof T as Join<Split<K, '_'>>]: T[K];
@@ -575,7 +575,8 @@ export const isPaymentInvoice = (
     p.data !== null &&
     'reference_number' in p.data &&
     'due_date' in p.data &&
-    (!('date' in p.data) || ('date' in p.data && typeof p.data.date === 'string'))
+    (!('date' in p.data) ||
+      ('date' in p.data && typeof p.data.date === 'string'))
   );
 };
 
@@ -723,18 +724,25 @@ export type DebtStatusReportOptions = {
   includeOnly: null | 'paid' | 'credited' | 'open';
 };
 
-export type JobStatus = 'completed' | 'failed' | 'active' | 'delayed' | 'waiting' | 'waiting-children' | 'unknown'
+export type JobStatus =
+  | 'completed'
+  | 'failed'
+  | 'active'
+  | 'delayed'
+  | 'waiting'
+  | 'waiting-children'
+  | 'unknown';
 
 export type Job = {
-  name: string
-  id: string
-  status: JobStatus 
-  time: Date
-  processedAt: Date | null
-  finishedAt: Date | null
-  duration: number
-  children: Job[]
-  queue: string
-  returnValue: any
-  progress: number
-}
+  name: string;
+  id: string;
+  status: JobStatus;
+  time: Date;
+  processedAt: Date | null;
+  finishedAt: Date | null;
+  duration: number;
+  children: Job[];
+  queue: string;
+  returnValue: any;
+  progress: number;
+};

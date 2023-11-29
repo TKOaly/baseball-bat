@@ -1,17 +1,17 @@
-import { Meta, StoryObj } from "@storybook/react";
-import { DropdownField } from "./dropdown-field";
+import { Meta, StoryObj } from '@storybook/react';
+import { DropdownField } from './dropdown-field';
 
 const meta: Meta<typeof DropdownField> = {
   component: DropdownField,
   title: 'Dropdown Field',
   decorators: [
-    (Story) => (
+    Story => (
       <div className="flex items-center justify-center absolute inset-0">
         <div className="w-[20em]">
           <Story />
         </div>
       </div>
-    )
+    ),
   ],
 };
 
@@ -51,8 +51,8 @@ const custom: StoryObj<typeof DropdownField> = {
       text: `${input}`,
       label: 'New!',
       value: `new`,
-    })
+    }),
   },
 };
 
-export { defaultStory, labels, custom }
+export { defaultStory, labels, custom };

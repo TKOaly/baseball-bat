@@ -16,4 +16,4 @@ export const Default: Story = {
     value: '2022-10-21',
     format: 'y-m-d',
   },
-}
+};

@@ -24,8 +24,8 @@ const formatDateRelative = (date: Date | string) => {
 };
 
 type Props = RouteComponentProps<{
-  id: string,
-}>
+  id: string;
+}>;
 
 export const DebtDetails = ({ params }: Props) => {
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
@@ -126,7 +126,7 @@ export const DebtDetails = ({ params }: Props) => {
                 <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
                 <td>{formatEuro(total)}</td>
               </tr>
-              { isPaymentInvoice(defaultPayment) && (
+              {isPaymentInvoice(defaultPayment) && (
                 <tr>
                   <th className="text-right pr-3 h-4">
                     {t('invoiceReferenceNumberHeader')}

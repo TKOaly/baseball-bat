@@ -29,7 +29,8 @@ const payersApi = rtkApi.injectEndpoints({
 
     getPayer: builder.query<PayerProfile, string>({
       query: id => `/payers/${id}`,
-      providesTags: (payer) => payer ? [{ type: 'Payer', id: payer.id.value }] : [],
+      providesTags: payer =>
+        payer ? [{ type: 'Payer', id: payer.id.value }] : [],
     }),
 
     updatePayer: builder.mutation<PayerProfile, UpdatePayerPayload>({
@@ -38,7 +39,8 @@ const payersApi = rtkApi.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: (payer) => payer ? [{ type: 'Payer', id: payer.id.value }] : [],
+      invalidatesTags: payer =>
+        payer ? [{ type: 'Payer', id: payer.id.value }] : [],
     }),
 
     updatePayerPreferences: builder.mutation<
@@ -83,15 +85,19 @@ const payersApi = rtkApi.injectEndpoints({
 
     getSessionPayer: builder.query<PayerProfile, void>({
       query: () => '/payers/session',
-      providesTags: (payer) => payer ? [
-        { type: 'Payer', id: payer.id.value },
-        { type: 'Session', id: 'CURRENT' },
-      ] : [],
+      providesTags: payer =>
+        payer
+          ? [
+              { type: 'Payer', id: payer.id.value },
+              { type: 'Session', id: 'CURRENT' },
+            ]
+          : [],
     }),
 
     getPayerByTkoalyId: builder.query<PayerProfile, number>({
       query: id => `/payers/by-tkoaly-id/${id}`,
-      providesTags: (payer) => payer ? [{ type: 'Payer', id: payer.id.value }] : [],
+      providesTags: payer =>
+        payer ? [{ type: 'Payer', id: payer.id.value }] : [],
     }),
 
     getPayerDebts: builder.query<
@@ -104,12 +110,18 @@ const payersApi = rtkApi.injectEndpoints({
           includeDrafts: includeDrafts ? 'true' : 'false',
         },
       }),
-      transformResponse: (response: (Omit<Debt & DebtComponentDetails, 'date' | 'publishedAt' | 'dueDate'> & { date: string, publishedAt: string, dueDate: string })[]) => response.map((debt) => ({
-        ...debt,
-        date: parseISO(debt.date),
-        publishedAt: parseISO(debt.publishedAt),
-        dueDate: parseISO(debt.dueDate),
-      })),
+      transformResponse: (
+        response: (Omit<
+          Debt & DebtComponentDetails,
+          'date' | 'publishedAt' | 'dueDate'
+        > & { date: string; publishedAt: string; dueDate: string })[],
+      ) =>
+        response.map(debt => ({
+          ...debt,
+          date: parseISO(debt.date),
+          publishedAt: parseISO(debt.publishedAt),
+          dueDate: parseISO(debt.dueDate),
+        })),
       providesTags: debts =>
         (debts ?? []).flatMap(({ id }) => [
           { type: 'Debt', id: 'LIST' },
@@ -143,16 +155,15 @@ const payersApi = rtkApi.injectEndpoints({
           mergeWith: body.secondaryPayerId,
         },
       }),
-      invalidatesTags: (
-        result,
-        __,
-        { primaryPayerId, secondaryPayerId },
-      ) => [
+      invalidatesTags: (result, __, { primaryPayerId, secondaryPayerId }) => [
         { type: 'Payer', id: primaryPayerId },
         { type: 'Payer', id: secondaryPayerId },
         { type: 'Payer', id: 'LIST' },
         { type: 'Debt', id: 'LIST' },
-        ...(result?.affectedDebts ?? []).map(id => ({ type: 'Debt' as const, id })),
+        ...(result?.affectedDebts ?? []).map(id => ({
+          type: 'Debt' as const,
+          id,
+        })),
       ],
     }),
 

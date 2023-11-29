@@ -6,12 +6,15 @@ import { formatEuro, EuroValue } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
 
 export const ActionButton: React.FC<
-  { secondary?: boolean, onClick: (evt: MouseEvent<HTMLButtonElement>) => void | Promise<void> } & React.ComponentProps<typeof Button>
+  {
+    secondary?: boolean;
+    onClick: (evt: MouseEvent<HTMLButtonElement>) => void | Promise<void>;
+  } & React.ComponentProps<typeof Button>
 > = ({ secondary, children, ...props }) => {
   const [active, setActive] = useState(false);
   const ButtonComponent = secondary ? SecondaryButton : Button;
 
-  const handle: React.MouseEventHandler<HTMLButtonElement> = async (evt) => {
+  const handle: React.MouseEventHandler<HTMLButtonElement> = async evt => {
     if (props.onClick) {
       setActive(true);
       await Promise.resolve(props.onClick(evt));
@@ -26,11 +29,9 @@ export const ActionButton: React.FC<
   );
 };
 
-export const Section: React.FC<PropsWithChildren<{ title: string; columns?: 1 | 2 }>> = ({
-  title,
-  columns = 1,
-  children,
-}) => (
+export const Section: React.FC<
+  PropsWithChildren<{ title: string; columns?: 1 | 2 }>
+> = ({ title, columns = 1, children }) => (
   <div
     className={'mt-5 mb-10'}
     data-cy="resource-section"
@@ -52,9 +53,9 @@ export const Section: React.FC<PropsWithChildren<{ title: string; columns?: 1 | 
   </div>
 );
 
-export const SectionContent: React.FC<PropsWithChildren<{}>> = ({ children }) => (
-  <DataWrapper>{children}</DataWrapper>
-);
+export const SectionContent: React.FC<PropsWithChildren<{}>> = ({
+  children,
+}) => <DataWrapper>{children}</DataWrapper>;
 
 const DataWrapper: React.FC<PropsWithChildren<{}>> = ({ children }) => (
   <div data-cy="resource-field-content">{children}</div>
@@ -62,7 +63,11 @@ const DataWrapper: React.FC<PropsWithChildren<{}>> = ({ children }) => (
 
 export type FieldProps = { label: string; fullWidth?: boolean };
 
-export const Field: React.FC<PropsWithChildren<FieldProps>> = ({ label, fullWidth, children }) => (
+export const Field: React.FC<PropsWithChildren<FieldProps>> = ({
+  label,
+  fullWidth,
+  children,
+}) => (
   <div
     className={fullWidth ? 'col-span-full' : ''}
     data-cy="resource-field"
@@ -75,9 +80,9 @@ export const Field: React.FC<PropsWithChildren<FieldProps>> = ({ label, fullWidt
   </div>
 );
 
-export const SectionDescription: React.FC<PropsWithChildren<{}>> = ({ children }) => (
-  <p className="mb-5">{children}</p>
-);
+export const SectionDescription: React.FC<PropsWithChildren<{}>> = ({
+  children,
+}) => <p className="mb-5">{children}</p>;
 
 export const Actions: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return (

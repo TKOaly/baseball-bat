@@ -17,7 +17,7 @@ export type Props = {
 
 export const ResourceSelectField = (props: Props) => {
   const showSearchDialog = useDialog(GlobalSearchDialog);
-  let selected: { type: string, id: string } | undefined
+  let selected: { type: string; id: string } | undefined;
 
   /*=
     props.type && typeof props.value === 'string'

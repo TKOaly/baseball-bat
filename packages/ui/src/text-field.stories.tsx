@@ -6,13 +6,13 @@ const meta: Meta<typeof TextField> = {
   component: TextField,
   title: 'Text Field',
   decorators: [
-    (Story) => (
+    Story => (
       <div className="flex items-center justify-center absolute inset-0">
         <div className="max-w-[20em] flex">
           <Story />
         </div>
       </div>
-    )
+    ),
   ],
 };
 
@@ -35,11 +35,11 @@ export const WithError = {
 };
 
 export const FlushSides = {
-  render: (args) => (
+  render: args => (
     <div className="flex">
-      <TextField {...args} flushRight placeholder="Left"/>
-      <TextField {...args} flushLeft flushRight placeholder="Center"/>
-      <TextField {...args} flushLeft placeholder="Right"/>
+      <TextField {...args} flushRight placeholder="Left" />
+      <TextField {...args} flushLeft flushRight placeholder="Center" />
+      <TextField {...args} flushLeft placeholder="Right" />
     </div>
   ),
 } satisfies StoryObj<typeof TextField>;

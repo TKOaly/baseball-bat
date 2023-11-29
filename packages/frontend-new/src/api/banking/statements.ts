@@ -2,17 +2,20 @@ import { parseISO } from 'date-fns';
 import rtkApi from '../rtk-api';
 import { BankStatement, EuroValue } from '@bbat/common/types';
 
-type ResponseBankStatement = Omit<BankStatement, 'generatedAt' | 'closingBalance' | 'openingBalance'> & {
-  generatedAt: string,
+type ResponseBankStatement = Omit<
+  BankStatement,
+  'generatedAt' | 'closingBalance' | 'openingBalance'
+> & {
+  generatedAt: string;
   openingBalance: {
-    amount: EuroValue
-    date: string
-  },
+    amount: EuroValue;
+    date: string;
+  };
   closingBalance: {
-    amount: EuroValue
-    date: string
-  },
-}
+    amount: EuroValue;
+    date: string;
+  };
+};
 
 const statementsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -32,18 +35,19 @@ const statementsApi = rtkApi.injectEndpoints({
 
     getBankAccountStatements: builder.query<BankStatement[], string>({
       query: iban => `/banking/accounts/${iban}/statements`,
-      transformResponse: (response: ResponseBankStatement[]) => response.map((statement) => ({
-        ...statement,
-        generatedAt: parseISO(statement.generatedAt),
-        openingBalance: {
-          ...statement.openingBalance,
-          date: parseISO(statement.openingBalance.date),
-        },
-        closingBalance: {
-          ...statement.closingBalance,
-          date: parseISO(statement.closingBalance.date),
-        },
-      })),
+      transformResponse: (response: ResponseBankStatement[]) =>
+        response.map(statement => ({
+          ...statement,
+          generatedAt: parseISO(statement.generatedAt),
+          openingBalance: {
+            ...statement.openingBalance,
+            date: parseISO(statement.openingBalance.date),
+          },
+          closingBalance: {
+            ...statement.closingBalance,
+            date: parseISO(statement.closingBalance.date),
+          },
+        })),
     }),
 
     getBankStatement: builder.query<BankStatement, string>({

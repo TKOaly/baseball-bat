@@ -1,22 +1,22 @@
 import { Info, AlertTriangle, CheckCircle, X } from 'react-feather';
 import { cva } from 'class-variance-authority';
 
-export type NotificationType = 'info' | 'error' | 'success' | 'task'
+export type NotificationType = 'info' | 'error' | 'success' | 'task';
 
 export type NotificationButton = {
-  id: string | number,
-  label: string,
-}
+  id: string | number;
+  label: string;
+};
 
 export type Props = {
-  type: NotificationType,
-  title: string,
-  body?: string,
-  progress?: number,
-  progressMax?: number,
-  onDismiss: () => void,
-  dismissDuration?: number,
-  buttons?: Array<NotificationButton>,
+  type: NotificationType;
+  title: string;
+  body?: string;
+  progress?: number;
+  progressMax?: number;
+  onDismiss: () => void;
+  dismissDuration?: number;
+  buttons?: Array<NotificationButton>;
 };
 
 const HourGlass = () => (
@@ -43,7 +43,7 @@ const NotificationIcon = (props: { type: NotificationType }) => {
   return <IconComponent />;
 };
 
-const NotificationProgress = (props: { value: number, max?: number }) => (
+const NotificationProgress = (props: { value: number; max?: number }) => (
   <div className="flex gap-1.5 pl-3 items-center mr-3 col-[2_/_span_2]">
     <div className="text-sm mr-0.5 relative t-[-1px]">
       {Math.round((props.value / (props.max ?? 1)) * 100)}%
@@ -117,10 +117,7 @@ export const Notification = (props: Props) => {
         </button>
       </div>
       {props.progress !== undefined && (
-        <NotificationProgress
-          value={props.progress}
-          max={props.progressMax}
-        />
+        <NotificationProgress value={props.progress} max={props.progressMax} />
       )}
       <div className="flex justify-end col-span-3 mr-3 mb-2 gap-2">
         {(props.buttons ?? []).map(button => (

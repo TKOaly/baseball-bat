@@ -45,11 +45,13 @@ export const JobsListing = () => {
               }
 
               const color =
-                ({
-                  failed: 'bg-red-400',
-                  completed: 'bg-green-400',
-                  delayed: 'bg-yellow-400',
-                } as Record<string, string>)[job.status] ?? 'bg-green-400';
+                (
+                  {
+                    failed: 'bg-red-400',
+                    completed: 'bg-green-400',
+                    delayed: 'bg-yellow-400',
+                  } as Record<string, string>
+                )[job.status] ?? 'bg-green-400';
 
               return (
                 <div className="w-full">

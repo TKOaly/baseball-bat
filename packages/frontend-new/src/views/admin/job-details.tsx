@@ -14,9 +14,9 @@ import {
 } from '../../components/resource-page/resource-page';
 
 type Props = RouteComponentProps<{
-  id: string
-  queue: string
-}>
+  id: string;
+  queue: string;
+}>;
 
 export const JobDetails = (props: Props) => {
   const { queue, id } = props.params;
@@ -43,12 +43,15 @@ export const JobDetails = (props: Props) => {
       <Section title="Details" columns={2}>
         <TextField label="Name" value={job.name} />
         <DateField time label="Created at" value={job.time} />
-        <DateField
-          time
-          label="Processed at"
-          value={job?.processedAt ?? ''}
+        <DateField time label="Processed at" value={job?.processedAt ?? ''} />
+        <TextField
+          label="Finished at"
+          value={
+            job.finishedAt
+              ? format(job.finishedAt, 'd.m.y H:m')
+              : 'Not finished'
+          }
         />
-        <TextField label="Finished at" value={job.finishedAt ? format(job.finishedAt, 'd.m.y H:m') : 'Not finished'} />
         <TextField
           label="Duration"
           value={formatDuration({ seconds: job.duration / 1000 })}

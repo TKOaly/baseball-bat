@@ -1,16 +1,16 @@
-import { Button } from './button'
+import { Button } from './button';
 
 export default {
   component: Button,
   title: 'Button',
   decorators: [
-    (Story) => (
+    Story => (
       <div className="flex items-center justify-center absolute inset-0">
         <div className="max-w-[20em]">
           <Story />
         </div>
       </div>
-    )
+    ),
   ],
 };
 
@@ -21,7 +21,7 @@ export const Default = {
     small: false,
     children: 'Default Button',
   },
-}
+};
 
 export const Secondary = {
   args: {
@@ -30,7 +30,7 @@ export const Secondary = {
     small: false,
     children: 'Secondary Button',
   },
-}
+};
 
 export const Disabled = {
   args: {
@@ -39,4 +39,4 @@ export const Disabled = {
     small: false,
     children: 'Disabled Button',
   },
-}
+};

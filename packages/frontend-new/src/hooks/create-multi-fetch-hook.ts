@@ -50,7 +50,9 @@ export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(
     useEffect(() => {
       if (queries.every(s => s.isSuccess)) {
         setResults({
-          data: queries.map(query => query.data as ResultTypeFrom<EndpointDefinitionFrom<E>>),
+          data: queries.map(
+            query => query.data as ResultTypeFrom<EndpointDefinitionFrom<E>>,
+          ),
           isLoading: false,
         });
       }

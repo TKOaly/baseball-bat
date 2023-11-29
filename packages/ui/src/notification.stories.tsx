@@ -12,7 +12,7 @@ export default {
 type Story = StoryObj<typeof Notification>;
 
 const Template: StoryObj<Story> = {
-  render: (args) => (
+  render: args => (
     <div className="grid grid-cols-2 gap-10">
       <Notification {...args} type="task" />
       <Notification {...args} type="info" />

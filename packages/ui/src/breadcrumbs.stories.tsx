@@ -17,6 +17,6 @@ export const Default = {
       { text: 'App', url: '#' },
       { text: 'Settings', url: '#' },
       { text: 'Security', url: '#' },
-    ]
+    ],
   },
 } satisfies Story;

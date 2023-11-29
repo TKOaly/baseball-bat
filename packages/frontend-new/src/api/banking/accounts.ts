@@ -10,7 +10,8 @@ const accountsApi = rtkApi.injectEndpoints({
 
     getBankAccount: builder.query<BankAccount, string>({
       query: iban => `/banking/accounts/${iban}`,
-      providesTags: (result) => result ? [{ type: 'BankAccount', id: result.iban }] : [],
+      providesTags: result =>
+        result ? [{ type: 'BankAccount', id: result.iban }] : [],
     }),
 
     createBankAccount: builder.mutation<BankAccount, BankAccount>({

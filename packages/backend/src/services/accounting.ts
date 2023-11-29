@@ -1,7 +1,10 @@
 import { Inject, Service } from 'typedi';
 import { PgClient } from '../db';
 import sql from 'sql-template-strings';
-import { AccountingPeriod, DbAccountingPeriod } from '@bbat/common/build/src/types';
+import {
+  AccountingPeriod,
+  DbAccountingPeriod,
+} from '@bbat/common/build/src/types';
 
 const formatAccountingPeriod = (db: DbAccountingPeriod): AccountingPeriod => ({
   year: db.year,

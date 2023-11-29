@@ -48,7 +48,9 @@ export const PayerDetails = ({ params }: Props) => {
 
   if (!payer || !emails) return 'Loading...';
 
-  const overdue = (debts ?? []).filter(d => d.dueDate && dfns.isPast(d.dueDate));
+  const overdue = (debts ?? []).filter(
+    d => d.dueDate && dfns.isPast(d.dueDate),
+  );
 
   const handleSendReminder = async () => {
     const options = await showSendRemindersDialog({});

@@ -37,7 +37,10 @@ type Tools<T> = {
   replace: (index: number, value: T) => void;
 };
 
-export const TabularFieldListFormik = <T extends { key: string | number }, C extends Record<string, unknown>>(
+export const TabularFieldListFormik = <
+  T extends { key: string | number },
+  C extends Record<string, unknown>,
+>(
   props: Omit<Props<T, C>, 'onChange'> & {
     name: string;
     onChange: (evt: { target: { value: T[]; name: string } }) => void;
@@ -130,7 +133,7 @@ export const TabularFieldList = <
         }),
       );
 
-      if(!(readOnly || disableRemove)) {
+      if (!(readOnly || disableRemove)) {
         fields.push(<div />);
       }
 

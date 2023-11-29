@@ -5,12 +5,12 @@ export type Segment = string | { text: string; url: string };
 
 export type Props = {
   segments: Segment[];
-  linkComponent?: JSXElementConstructor<PropsWithChildren<{ to: string }>>,
+  linkComponent?: JSXElementConstructor<PropsWithChildren<{ to: string }>>;
 };
 
 export const Breadcrumbs = ({
   segments,
-  linkComponent: Link = ({to, children}) => <a href={to}>{children}</a>,
+  linkComponent: Link = ({ to, children }) => <a href={to}>{children}</a>,
 }: Props) => {
   return (
     <div className="flex items-center gap-1">

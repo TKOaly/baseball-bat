@@ -849,6 +849,9 @@ importers:
       eslint-plugin-react-refresh:
         specifier: ^0.4.4
         version: 0.4.4(eslint@8.54.0)
+      prettier:
+        specifier: ^3.0.3
+        version: 3.1.0
       tailwindcss:
         specifier: ^3.0.23
         version: 3.3.5(ts-node@10.9.1)

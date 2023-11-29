@@ -86,7 +86,8 @@ export const CreateDebtCenter = () => {
           return errors;
         }}
         onSubmit={async (values, { setFieldError }) => {
-          const accountingPeriod = values.accountingPeriod ?? activeAccountingPeriod;
+          const accountingPeriod =
+            values.accountingPeriod ?? activeAccountingPeriod;
 
           if (!accountingPeriod) {
             return;
@@ -193,7 +194,12 @@ export const CreateDebtCenter = () => {
                   header: 'Description',
                 },
               ]}
-              createNew={() => ({ key: 'new', name: '', amount: 0, description: '' })}
+              createNew={() => ({
+                key: 'new',
+                name: '',
+                amount: 0,
+                description: '',
+              })}
             />
             <div className="col-span-full flex items-center justify-end gap-3 mt-2">
               <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">

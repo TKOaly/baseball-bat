@@ -88,13 +88,18 @@ type FilterState = {
 };
 
 type FilterDropdownItemProps = {
-  column: Column<any, any, any>,
-  rows: Row[],
-  options: FilterState,
-  onChange: (value: FilterState) => void,
-}
+  column: Column<any, any, any>;
+  rows: Row[];
+  options: FilterState;
+  onChange: (value: FilterState) => void;
+};
 
-const FilterDropdownItem = ({ column, rows, options, onChange }: FilterDropdownItemProps) => {
+const FilterDropdownItem = ({
+  column,
+  rows,
+  options,
+  onChange,
+}: FilterDropdownItemProps) => {
   let containsArrays = false;
 
   const rowValues: [Row, any][] = rows.flatMap((r: Row): [Row, any][] => {
@@ -149,7 +154,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }: FilterDropdownI
             values: new Set() as Set<any>,
           },
         ),
-        (r) => r.list,
+        r => r.list,
         map(([row, value]) => {
           let icon = null;
 
@@ -182,7 +187,7 @@ const FilterDropdownItem = ({ column, rows, options, onChange }: FilterDropdownI
               </div>
             ),
           };
-        })
+        }),
       )}
       onSelect={value => {
         const compareValue = compareBy(value);
@@ -209,21 +214,21 @@ const FilterDropdownItem = ({ column, rows, options, onChange }: FilterDropdownI
 };
 
 type TableRowProps<R extends Row> = {
-  data: R,
-  depth?: number,
-  selectedRows: any[],
-  rowIndex: number,
-  rowCount: number,
-  expandedRows: any[],
-  onRowClick?: (data: R) => void,
-  toggleSelection: (key: R['key']) => void,
-  toggleRowExpanded: (key: R['key']) => void,
-  sorting: [string, 'asc' | 'desc'] | null,
-  filters: Record<string, FilterState>,
-  selectable: boolean,
-  columns: Column<any, any, any>[],
-  actions?: Action<any>[],
-}
+  data: R;
+  depth?: number;
+  selectedRows: any[];
+  rowIndex: number;
+  rowCount: number;
+  expandedRows: any[];
+  onRowClick?: (data: R) => void;
+  toggleSelection: (key: R['key']) => void;
+  toggleRowExpanded: (key: R['key']) => void;
+  sorting: [string, 'asc' | 'desc'] | null;
+  filters: Record<string, FilterState>;
+  selectable: boolean;
+  columns: Column<any, any, any>[];
+  actions?: Action<any>[];
+};
 
 const TableRow = <R extends Row>({
   data,
@@ -262,8 +267,7 @@ const TableRow = <R extends Row>({
       <div
         className="contents"
         onClick={() => (
-          onRowClick && onRowClick(data),
-          toggleRowExpanded(data.key)
+          onRowClick && onRowClick(data), toggleRowExpanded(data.key)
         )}
       >
         {selectable && (

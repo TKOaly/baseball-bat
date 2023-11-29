@@ -123,7 +123,7 @@ export const DebtList = (props: Props) => {
           name: 'Components',
           getValue: debt => sortBy(debt.debtComponents, dc => dc.name),
           compareBy: value => value.id,
-          render: (value: { name: string, id: string }[]) =>
+          render: (value: { name: string; id: string }[]) =>
             value.map(({ name, id }) => (
               <span
                 className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"

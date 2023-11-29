@@ -1,10 +1,20 @@
-import React, { useContext, useEffect, useState, createContext, PropsWithChildren, ReactNode, JSXElementConstructor, ComponentProps } from 'react';
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  createContext,
+  PropsWithChildren,
+  ReactNode,
+  JSXElementConstructor,
+  ComponentProps,
+} from 'react';
 import { X } from 'react-feather';
 import { createPortal } from 'react-dom';
 import { cva } from 'class-variance-authority';
 import { uid } from 'uid';
 
-type DialogResultType<C extends JSXElementConstructor<any>> = React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown
+type DialogResultType<C extends JSXElementConstructor<any>> =
+  React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown;
 
 export type DialogContextValue = {
   dialogs: {
@@ -25,12 +35,11 @@ export const DialogContext = createContext<DialogContextValue>({
   openDialog: () => Promise.reject(),
 });
 
-export const useDialog = <C extends DialogComponent<any>>(
-  component: C,
-) => {
+export const useDialog = <C extends DialogComponent<any>>(component: C) => {
   const { openDialog } = useContext(DialogContext);
-  return (props: Omit<ComponentProps<C>, 'onClose'>): Promise<DialogResultType<C>> =>
-    openDialog(component, props);
+  return (
+    props: Omit<ComponentProps<C>, 'onClose'>,
+  ): Promise<DialogResultType<C>> => openDialog(component, props);
 };
 
 export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
@@ -64,21 +73,24 @@ export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
         {
           content: (
             <Component
-              {...props as any}
-              onClose={(value) => {
+              {...(props as any)}
+              onClose={value => {
                 closeDialog(key);
                 resolve(value);
               }}
             />
           ),
           key,
-          resolve: (v) => {
-            resolve(v as React.ComponentProps<C> extends DialogProps<infer V> ? V : unknown)
+          resolve: v => {
+            resolve(
+              v as React.ComponentProps<C> extends DialogProps<infer V>
+                ? V
+                : unknown,
+            );
           },
         },
       ]);
     });
-
 
   const value: DialogContextValue = {
     dialogs,
@@ -103,7 +115,10 @@ export const DialogTarget = () => {
   return dialogs.map(({ content }) => content);
 };
 
-export const Portal = ({ children, containerId }: PropsWithChildren<{ containerId: string }>) => {
+export const Portal = ({
+  children,
+  containerId,
+}: PropsWithChildren<{ containerId: string }>) => {
   let element = document.getElementById(containerId);
 
   if (!element) {
@@ -149,7 +164,12 @@ export const DialogBase = <T extends unknown>({
   wide = false,
   className = '',
   ...rest
-}: PropsWithChildren<React.HTMLAttributes<HTMLDivElement> & { wide?: boolean, onClose: (t: T | null) => void,  }>) => {
+}: PropsWithChildren<
+  React.HTMLAttributes<HTMLDivElement> & {
+    wide?: boolean;
+    onClose: (t: T | null) => void;
+  }
+>) => {
   return (
     <div
       {...rest}
@@ -192,7 +212,12 @@ export const Dialog = ({
   closeButton = null,
   open,
   noClose,
-}: PropsWithChildren<{ title: string, closeButton?: ReactNode, open: boolean, noClose?: boolean}>) => {
+}: PropsWithChildren<{
+  title: string;
+  closeButton?: ReactNode;
+  open: boolean;
+  noClose?: boolean;
+}>) => {
   let close: ReactNode | null = (
     <X className="text-gray-400 rounded-full hover:bg-gray-100 p-0.5 h-6 w-6" />
   );
