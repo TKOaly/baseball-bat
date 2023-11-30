@@ -14,11 +14,11 @@ FROM builder AS backend-builder
 
 ENV PUPPETEER_SKIP_DOWNLOAD="true"
 
-RUN pnpm --filter @bbat/backend run build
+RUN pnpm --filter @bbat/backend... run build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter @bbat/backend deploy /prod
 
 FROM builder AS frontend-builder
-RUN pnpm --filter @bbat/frontend run build
+RUN pnpm --filter @bbat/frontend... run build
 
 FROM node:18.17-alpine AS alpine-node-base
 
@@ -58,9 +58,9 @@ RUN corepack enable
 WORKDIR /usr/src/app
 COPY . /usr/src/app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
-CMD ["pnpm", "run", "--filter=@bbat/backend...", "--filter=@bbat/frontend-new...", "--recursive", "--stream", "--parallel", "start:dev"]
+CMD ["pnpm", "run", "--filter=@bbat/backend...", "--filter=@bbat/frontend...", "--recursive", "--stream", "--parallel", "start:dev"]
 
 FROM nginx:alpine AS production-nginx 
 
-COPY --from=frontend-builder /usr/src/app/packages/frontend/web-dist /usr/share/nginx/html
-COPY packages/frontend/docker/nginx.conf /etc/nginx/nginx.conf
+COPY --from=frontend-builder /usr/src/app/packages/frontend/dist /usr/share/nginx/html
+COPY ./packages/frontend/docker/nginx.conf /etc/nginx/nginx.conf
