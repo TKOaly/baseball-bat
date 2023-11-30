@@ -208,7 +208,7 @@ export class EmailService {
     const templatesDir = {
       production: '/app/backend/templates',
       development: path.resolve(__dirname, '../../templates'),
-      testing: path.resolve(__dirname, '../../../backend/templates'),
+      testing: path.resolve(__dirname, '../../../../backend/templates'),
     }[process.env.NODE_ENV ?? 'development'];
 
     if (templatesDir === undefined) {

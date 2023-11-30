@@ -1,12 +1,12 @@
-import { PayerService } from '../../backend/services/payer';
+import { PayerService } from '../../src/services/payer';
 import {
   emailIdentity,
   tkoalyIdentity,
   UpstreamUser,
-} from '../../common/types';
+} from '@bbat/common/types';
 import { expect } from 'earl';
 import { createTestFunc } from '../common';
-import { cents } from '../../common/currency';
+import { cents } from '@bbat/common/currency';
 
 const test = createTestFunc();
 

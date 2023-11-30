@@ -6,12 +6,12 @@ import * as redis from 'redis';
 import migrate from 'node-pg-migrate';
 import Stripe from 'stripe';
 import Container, { ContainerInstance } from 'typedi';
-import { Config } from '../backend/config';
-import { PgClient } from '../backend/db';
+import { Config } from '../src/config';
+import { PgClient } from '../src/db';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisClientType } from 'redis';
-import { AppBus } from '../backend/orchestrator';
+import { AppBus } from '../src/orchestrator';
 
 export type AppTestFn = TestFn<{
   container: ContainerInstance;

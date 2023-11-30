@@ -1,7 +1,7 @@
 import { Inject, Service } from 'typedi';
 import { faker } from '@faker-js/faker';
-import { PayerService } from '../backend/services/payer';
-import { emailIdentity } from '../common/types';
+import { PayerService } from '../src/services/payer';
+import { emailIdentity } from '@bbat/common/types';
 
 export type CreatePayerOpts = {
   email?: string;

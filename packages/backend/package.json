@@ -6,6 +6,7 @@
   "scripts": {
     "start:dev": "ts-node-dev -r tsconfig-paths/register ./src/app.ts",
     "start": "node ./build/app.js",
+    "test": "NODE_ENV=testing ava -s --no-worker-threads --timeout=120s",
     "build": "tsc"
   },
   "main": "./build/app.js",
@@ -107,6 +108,7 @@
     "rollup": "^4.5.1",
     "stream-browserify": "^3.0.0",
     "string_decoder": "^1.3.0",
+    "testcontainers": "^10.3.2",
     "timers-browserify": "^2.0.11",
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.9.1",
@@ -115,6 +117,19 @@
     "typescript": "^4.5.5",
     "vm-browserify": "^1.1.2",
     "yargs-parser": "^21.1.1"
+  },
+  "ava": {
+    "failWithoutAssertions": false,
+    "files": [
+      "./tests/unit/**/*"
+    ],
+    "nodeArguments": ["--require=tsconfig-paths/register"],
+    "typescript": {
+      "rewritePaths": {
+        "tests/": "build/tests/"
+      },
+      "compile": "tsc"
+    }
   },
   "lint-staged": {
     "*.{ts,js,tsx,jsx}": [

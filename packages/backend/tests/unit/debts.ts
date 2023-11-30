@@ -2,14 +2,14 @@ import { createTestFunc, uuidValidator } from '../common';
 import { expect, mockObject } from 'earl';
 import { faker } from '@faker-js/faker';
 import { TestHelper } from '../helper';
-import { DebtService } from '../../backend/services/debt';
-import { euro } from '../../common/currency';
-import { DebtCentersService } from '../../backend/services/debt_centers';
+import { DebtService } from '../../src/services/debt';
+import { euro } from '@bbat/common/currency';
+import { DebtCentersService } from '../../src/services/debt_centers';
 import { format, addDays, isSameDay, isToday, subDays } from 'date-fns';
-import { EmailService, IEmailTransport } from '../../backend/services/email';
-import { JobService } from '../../backend/services/jobs';
-import { PgClient } from '../../backend/db';
-import { PaymentService } from '../../backend/services/payements';
+import { EmailService, IEmailTransport } from '../../src/services/email';
+import { JobService } from '../../src/services/jobs';
+import { PgClient } from '../../src/db';
+import { PaymentService } from '../../src/services/payements';
 
 const test = createTestFunc();
 
