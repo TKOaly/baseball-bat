@@ -2,6 +2,7 @@ import { ButtonHTMLAttributes, ComponentProps } from 'react';
 import { Loader } from 'react-feather';
 import styled from 'styled-components';
 import { cva } from 'class-variance-authority';
+import { twMerge } from 'tailwind-merge';
 
 const commonClasses = `
   inline-flex
@@ -70,12 +71,14 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       {...rest}
-      className={buttonCva({
-        style: secondary ? 'secondary' : 'primary',
-        disabled,
-        size: small ? 'small' : 'normal',
-        className,
-      })}
+      className={twMerge(
+        buttonCva({
+          style: secondary ? 'secondary' : 'primary',
+          disabled,
+          size: small ? 'small' : 'normal',
+          className,
+        }),
+      )}
       onClick={onClick}
     >
       <Loader
