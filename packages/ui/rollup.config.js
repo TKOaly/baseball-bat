@@ -15,7 +15,9 @@ export default {
   plugins: [
     commonjs(),
     resolve(),
-    typescript(),
+    typescript({
+      exclude: ['src/**/*.stories.tsx'],
+    }),
     postcss({
       config: {
         path: './.postcssrc',
