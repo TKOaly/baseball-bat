@@ -12,11 +12,18 @@ import {
   TextField,
   DateField,
 } from '../../components/resource-page/resource-page';
+import * as t from 'io-ts';
+import * as E from 'fp-ts/lib/Either';
+import { pipe } from 'fp-ts/lib/function';
 
 type Props = RouteComponentProps<{
   id: string;
   queue: string;
 }>;
+
+const returnValueType = t.type({
+  message: t.string,
+});
 
 export const JobDetails = (props: Props) => {
   const { queue, id } = props.params;
@@ -57,9 +64,17 @@ export const JobDetails = (props: Props) => {
           value={formatDuration({ seconds: job.duration / 1000 })}
         />
         <TextField label="Status" value={job.status} />
-        {job?.status === 'failed' && (
-          <TextField label="Error Message" value={job.returnValue.message} />
-        )}
+        {job?.status === 'failed' &&
+          pipe(
+            job.returnValue,
+            returnValueType.decode,
+            E.fold(
+              () => null,
+              ({ message }) => (
+                <TextField label="Error Message" value={message} />
+              ),
+            ),
+          )}
       </Section>
       <Section title="Children">
         <Table
