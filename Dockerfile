@@ -1,24 +1,24 @@
-FROM node:18.17 AS production-build
+FROM node:18.17 AS base
 
-WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 
-COPY package.json .
-COPY yarn.lock .
-RUN yarn install
+FROM base AS builder
 
-COPY . .
+COPY . /usr/src/app
+WORKDIR /usr/src/app
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-RUN yarn build:server
-RUN yarn build:frontend
+FROM builder AS backend-builder
 
-RUN yarn install --production && yarn cache clean
+ENV PUPPETEER_SKIP_DOWNLOAD="true"
 
-CMD ["yarn start"]
+RUN pnpm --filter @bbat/backend... run build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter @bbat/backend deploy /prod
 
-FROM nginx:alpine AS production-nginx
-
-COPY --from=production-build /app/web-dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
+FROM builder AS frontend-builder
+RUN pnpm --filter @bbat/frontend... run build
 
 FROM node:18.17-alpine AS alpine-node-base
 
@@ -42,11 +42,8 @@ RUN apk add --no-cache --virtual .build-deps \
 
 FROM alpine-node-base AS production-backend
 
-COPY --from=production-build /app/build /app/build
-COPY --from=production-build /app/backend /app/backend
-COPY --from=production-build /app/package.json /app/package.json
-COPY --from=production-build /app/migrations /app/migrations
-COPY --from=production-build /app/node_modules /app/node_modules
+COPY --from=backend-builder /prod /app
+COPY --from=backend-builder /prod/node_modules /app/node_modules
 
 WORKDIR /app
 
@@ -54,7 +51,16 @@ CMD ["yarn", "start"]
 
 FROM alpine-node-base AS development
 
-WORKDIR /app
-COPY . .
-RUN yarn
-CMD ["yarn", "start:dev"]
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+WORKDIR /usr/src/app
+COPY . /usr/src/app
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
+CMD ["pnpm", "run", "--filter=@bbat/backend...", "--filter=@bbat/frontend...", "--recursive", "--stream", "--parallel", "start:dev"]
+
+FROM nginx:alpine AS production-nginx 
+
+COPY --from=frontend-builder /usr/src/app/packages/frontend/dist /usr/share/nginx/html
+COPY ./packages/frontend/docker/nginx.conf /etc/nginx/nginx.conf
