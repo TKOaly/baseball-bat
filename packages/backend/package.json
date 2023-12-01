@@ -7,7 +7,9 @@
     "start:dev": "ts-node-dev -r tsconfig-paths/register ./src/app.ts",
     "start": "node ./build/app.js",
     "test": "NODE_ENV=testing ava -s --no-worker-threads --timeout=120s",
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src && prettier --check src",
+    "pre-commit": "lint-staged"
   },
   "main": "./build/app.js",
   "files": [
@@ -49,7 +51,6 @@
     "jsbarcode": "^3.11.5",
     "jsdom": "^20.0.0",
     "jsonwebtoken": "^8.5.1",
-    "lint-staged": "^14.0.1",
     "mjml": "^4.12.0",
     "mjml-browser": "^4.12.0",
     "monocle-ts": "^2.3.13",
@@ -80,6 +81,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.5",
     "@testcontainers/postgresql": "^10.2.1",
+    "lint-staged": "^14.0.1",
     "@types/chai": "^4.3.5",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
@@ -123,7 +125,9 @@
     "files": [
       "./tests/unit/**/*"
     ],
-    "nodeArguments": ["--require=tsconfig-paths/register"],
+    "nodeArguments": [
+      "--require=tsconfig-paths/register"
+    ],
     "typescript": {
       "rewritePaths": {
         "tests/": "build/tests/"
@@ -132,10 +136,10 @@
     }
   },
   "lint-staged": {
-    "*.{ts,js,tsx,jsx}": [
+    "./**/*.{ts,js,tsx,jsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{yml,md,html,json}": "prettier --write"
+    "./**/*.{yml,md,html,json}": "prettier --write"
   }
 }

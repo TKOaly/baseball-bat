@@ -7,7 +7,9 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "build": "rollup -c",
-    "start:dev": "rollup -c -w"
+    "lint": "eslint src && prettier --check src",
+    "start:dev": "rollup -c -w",
+    "pre-commit": "lint-staged"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +50,20 @@
     "react-feather": "^2.0.9",
     "remeda": "^0.0.32",
     "styled-components": "^5.3.3",
-    "tailwind-merge": "^1.8.1"
+    "tailwind-merge": "^1.8.1",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "prettier": "^3.0.3",
+    "lint-staged": "^14.0.1"
+  },
+  "lint-staged": {
+    "*.{ts,js,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{yml,md,html,json}": "prettier --write"
   }
 }

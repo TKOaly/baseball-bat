@@ -6,8 +6,9 @@
   "scripts": {
     "start:dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "lint": "eslint src && prettier --check src",
+    "preview": "vite preview",
+    "pre-commit": "lint-staged"
   },
   "dependencies": {
     "@bbat/common": "workspace:*",
@@ -58,6 +59,14 @@
     "tailwindcss": "^3.0.23",
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
-    "vite-tsconfig-paths": "^4.2.1"
+    "vite-tsconfig-paths": "^4.2.1",
+    "lint-staged": "^14.0.1"
+  },
+  "lint-staged": {
+    "./**/*.{ts,js,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "./**/*.{yml,md,html,json}": "prettier --write"
   }
 }
