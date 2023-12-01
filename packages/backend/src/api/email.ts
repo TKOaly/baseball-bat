@@ -56,7 +56,13 @@ export class EmailApi {
 
       ctx.res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
 
-      return ok(email.html ?? email.text);
+      if (email.html) {
+        ctx.res.setHeader('Content-Type', 'text/html');
+        return ok(email.html);
+      } else {
+        ctx.res.setHeader('Content-Type', 'text/text');
+        return ok(email.text);
+      }
     });
   }
 
