@@ -19,11 +19,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Install Yarn dependencies
-        run: yarn
+        run: pnpm install --filter=@bbat/backend... --frozen-lockfile
+
+      - name: Build tests
+        run: pnpm run --filter=@bbat/backend... --recursive build
 
       - name: Run tests
-        run: yarn test
+        run: pnpm run --recursive test
 
   build:
     name: Build Docker images
