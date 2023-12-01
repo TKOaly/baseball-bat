@@ -60,10 +60,10 @@
     "lint-staged": "^14.0.1"
   },
   "lint-staged": {
-    "*.{ts,js,tsx,jsx}": [
+    "./src/**/*.{ts,js,tsx,jsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{yml,md,html,json}": "prettier --write"
+    "**/*.{yml,md,html,json}": "prettier --write"
   }
 }
