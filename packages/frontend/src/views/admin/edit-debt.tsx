@@ -190,7 +190,7 @@ export const EditDebt = ({ params }: Props) => {
       }
     };
 
-    let centerId =
+    const centerId =
       typeof values.center === 'string'
         ? values.center
         : await handleDebtCenterCreation();

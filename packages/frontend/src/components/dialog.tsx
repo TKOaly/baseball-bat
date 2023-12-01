@@ -42,7 +42,11 @@ export const useDialog = <C extends DialogComponent<any>>(component: C) => {
   ): Promise<DialogResultType<C>> => openDialog(component, props);
 };
 
-export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
+export const DialogContextProvider = ({
+  children,
+}: {
+  children?: ReactNode;
+}) => {
   const [dialogs, setDialogs] = useState<DialogContextValue['dialogs']>([]);
 
   const closeDialog = (key: string) => {
@@ -66,7 +70,7 @@ export const DialogContextProvider = ({ children }: PropsWithChildren<{}>) => {
     props: Omit<ComponentProps<C>, 'onClose'>,
   ) =>
     new Promise<DialogResultType<C>>(resolve => {
-      let key = uid();
+      const key = uid();
 
       setDialogs(prev => [
         ...prev,
@@ -158,7 +162,7 @@ const dialogCva = cva('rounded-lg flex flex-col bg-white border shadow-lg', {
   },
 });
 
-export const DialogBase = <T extends unknown>({
+export const DialogBase = <T,>({
   children,
   onClose,
   wide = false,
@@ -186,7 +190,7 @@ export const DialogBase = <T extends unknown>({
   );
 };
 
-export const DialogContent = ({ children }: PropsWithChildren<{}>) => {
+export const DialogContent = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex-grow max-h-[80vh] overflow-y-auto">
       <div className="p-3">{children}</div>
@@ -194,11 +198,11 @@ export const DialogContent = ({ children }: PropsWithChildren<{}>) => {
   );
 };
 
-export const DialogHeader = ({ children }: PropsWithChildren<{}>) => {
+export const DialogHeader = ({ children }: { children: ReactNode }) => {
   return <div className="flex gap-3 items-center p-3 border-b">{children}</div>;
 };
 
-export const DialogFooter = ({ children }: PropsWithChildren<{}>) => {
+export const DialogFooter = ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex justify-end border-t p-3 text-sm gap-2">
       {children}

@@ -8,9 +8,9 @@ import { Config } from '../config';
 import { EventsService } from '../services/events';
 import {
   emailIdentity,
-  dateString,
   convertToDbDate,
   Registration,
+  createDebtCenterFromEventBody,
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
@@ -28,25 +28,6 @@ const componentRule = t.type({
 });
 
 type ComponentRule = t.TypeOf<typeof componentRule>;
-
-const createDebtCenterFromEventBody = t.type({
-  events: t.array(t.number),
-  registrations: t.array(t.number),
-  settings: t.type({
-    name: t.string,
-    description: t.string,
-    basePrice: euroValue,
-    accountingPeriod: t.Int,
-    dueDate: dateString,
-    components: t.array(
-      t.type({
-        name: t.string,
-        amount: euroValue,
-        rules: t.array(componentRule),
-      }),
-    ),
-  }),
-});
 
 @Service()
 export class DebtCentersApi {

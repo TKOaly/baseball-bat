@@ -1,5 +1,10 @@
 import rootApi from './rtk-api';
-import { DebtCenter, DebtCenterPatch, NewDebtCenter } from '@bbat/common/types';
+import {
+  DebtCenter,
+  DebtCenterPatch,
+  NewDebtCenter,
+  CreateDebtCenterFromEventBody,
+} from '@bbat/common/types';
 
 const debtCentersApi = rootApi.injectEndpoints({
   endpoints: builder => ({
@@ -28,7 +33,7 @@ const debtCentersApi = rootApi.injectEndpoints({
 
     createDebtCenterFromEvent: builder.mutation<
       DebtCenter,
-      { events: number[]; registrations: number[]; settings: any }
+      CreateDebtCenterFromEventBody
     >({
       query: payload => ({
         url: '/debtCenters/fromEvent',

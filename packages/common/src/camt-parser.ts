@@ -58,7 +58,7 @@ export const parseCamtStatement = async (
 ): Promise<CamtStatement> => {
   const doc = await xml2js.parseStringPromise(content);
 
-  const find = (selector: string, root: any = doc) => {
+  const find = (selector: string, root: typeof doc = doc) => {
     let value;
 
     try {
@@ -74,7 +74,7 @@ export const parseCamtStatement = async (
     }
   };
 
-  const findOrThrow = (selector: string, root: any = doc): string => {
+  const findOrThrow = (selector: string, root: typeof doc = doc): string => {
     const value = find(selector, root);
 
     if (!value) {

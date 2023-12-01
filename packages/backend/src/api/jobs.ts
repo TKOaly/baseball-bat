@@ -20,9 +20,13 @@ const formatJob = async (node: JobNode): Promise<Job> => {
     status = 'failed';
   }
 
+  if (!node.job.id) {
+    throw new Error('Job should have an ID!');
+  }
+
   return {
     name: node.job.data.name ?? node.job.name,
-    id: node.job.id!,
+    id: node.job.id,
     status,
     time: new Date(node.job.timestamp),
     processedAt: node.job.processedOn ? new Date(node.job.processedOn) : null,

@@ -620,7 +620,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
           message: `Debt ${result.data.humanId} created!`,
         });
       } else {
-        let message = pipe(
+        const message = pipe(
           errorResponse.decode(result.error),
           E.map(response => response.message),
           E.getOrElse(() => 'Unknown error occurred while creating the debt!'),

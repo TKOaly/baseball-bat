@@ -250,17 +250,11 @@ const TableRow = <R extends Row>({
 
   const children = useMemo(() => data?.children ?? [], [data]);
 
-  const sortedChildren = useMemo(
-    () =>
-      sortRows(
-        children,
-        columns.find(c => c.name === sorting?.[0])!,
-        sorting?.[1],
-        columns,
-        filters,
-      ),
-    [children, sorting, columns, filters],
-  );
+  const sortedChildren = useMemo(() => {
+    const column = columns.find(c => c.name === sorting?.[0]);
+
+    return sortRows(children, column, sorting?.[1], columns, filters);
+  }, [children, sorting, columns, filters]);
 
   return (
     <>
@@ -386,7 +380,7 @@ const TableRow = <R extends Row>({
 
 const sortRows = <R extends Row<R>>(
   rows: R[],
-  column: Column<R, any, any>,
+  column: Column<R, any, any> | undefined,
   direction: 'desc' | 'asc' | undefined,
   columns: Column<R, any, any>[],
   filters: Record<string, FilterState>,
@@ -488,7 +482,7 @@ export const Table = <
     () =>
       sortRows(
         rows,
-        columns.find(c => c.name === sorting?.[0])!,
+        columns.find(c => c.name === sorting?.[0]),
         sorting?.[1] ?? 'asc',
         columns,
         filters,

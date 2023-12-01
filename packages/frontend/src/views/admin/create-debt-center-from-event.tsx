@@ -15,6 +15,7 @@ import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { Stepper } from '../../components/stepper';
 import {
   ApiCustomField,
+  dateString,
   DebtComponent,
   euro,
   Event,
@@ -47,6 +48,8 @@ import {
   sumEuroValues,
 } from '@bbat/common/src/currency';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
+import * as t from 'io-ts';
+import { isLeft } from 'fp-ts/lib/Either';
 
 type EventSelectionViewProps = {
   state: State;
@@ -511,6 +514,12 @@ const SettingsView = ({
             return;
           }
 
+          const result = t.Int.decode(values.accountingPeriod);
+
+          if (isLeft(result)) {
+            return;
+          }
+
           dispatch({
             type: 'SET_BASIC_SETTINGS',
             payload: {
@@ -518,7 +527,7 @@ const SettingsView = ({
                 name: values.name,
                 basePrice: euro(values.basePrice),
                 dueDate: values.dueDate,
-                accountingPeriod: values.accountingPeriod,
+                accountingPeriod: result.right,
               },
             },
           });
@@ -1048,6 +1057,7 @@ type State = {
     dueDate: string;
     description: string;
     basePrice: EuroValue;
+    accountingPeriod: null | t.Branded<number, t.IntBrand>;
   };
   components: {
     id: number;
@@ -1069,6 +1079,7 @@ const INITIAL_STATE: State = {
     dueDate: '',
     description: '',
     basePrice: euro(0),
+    accountingPeriod: null,
   },
   components: [],
   registrationSelections: [],
@@ -1093,7 +1104,7 @@ type BasicSettings = {
   name: string;
   dueDate: string;
   basePrice: EuroValue;
-  accountingPeriod: number;
+  accountingPeriod: t.Branded<number, t.IntBrand>;
 };
 
 type SetBasicSettingsAction = {
@@ -1367,11 +1378,25 @@ export const CreateDebtCenterFromEvent = () => {
   }, [registrations, state]);
 
   const handleConfirm = () => {
+    const accountingPeriod = state.basicSettings.accountingPeriod;
+
+    if (accountingPeriod === null) {
+      return;
+    }
+
+    const result = dateString.decode(state.basicSettings.dueDate);
+
+    if (isLeft(result)) {
+      return;
+    }
+
     createDebtCenterFromEvent({
       events: events.map(e => e.id),
       registrations: participants.map(r => r.id),
       settings: {
         ...state.basicSettings,
+        accountingPeriod,
+        dueDate: result.right,
         components: state.components,
       },
     }).then(res => {

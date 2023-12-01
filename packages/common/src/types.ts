@@ -743,6 +743,81 @@ export type Job = {
   duration: number;
   children: Job[];
   queue: string;
-  returnValue: any;
+  returnValue: unknown;
   progress: number;
 };
+
+export const massCreateDebtsPayload = t.type({
+  defaults: t.partial({
+    tkoalyUserId: t.number,
+    debtCenter: t.string,
+    title: t.string,
+    description: t.string,
+    email: t.string,
+    amount: euroValue,
+    dueDate: dateString,
+    components: t.array(t.string),
+    tags: t.array(t.string),
+    accountingPeriod: t.Int,
+    //paymentNumber: t.string,
+    //referenceNumber: t.string,
+  }),
+  debts: t.array(
+    t.partial({
+      tkoalyUserId: t.number,
+      debtCenter: t.string,
+      title: t.string,
+      description: t.string,
+      email: t.string,
+      date: dateString,
+      amount: euroValue,
+      dueDate: dateString,
+      publishedAt: dateString,
+      paymentCondition: t.Int,
+      components: t.array(t.string),
+      paymentNumber: t.string,
+      referenceNumber: t.string,
+      tags: t.array(t.string),
+      accountingPeriod: t.Int,
+    }),
+  ),
+  components: t.array(
+    t.type({
+      name: t.string,
+      amount: euroValue,
+    }),
+  ),
+  dryRun: t.boolean,
+});
+
+const componentRule = t.type({
+  type: t.literal('CUSTOM_FIELD'),
+  eventId: t.number,
+  customFieldId: t.number,
+  value: t.string,
+});
+
+export type MassCreateDebtsPayload = t.TypeOf<typeof massCreateDebtsPayload>;
+
+export const createDebtCenterFromEventBody = t.type({
+  events: t.array(t.number),
+  registrations: t.array(t.number),
+  settings: t.type({
+    name: t.string,
+    description: t.string,
+    basePrice: euroValue,
+    accountingPeriod: t.Int,
+    dueDate: dateString,
+    components: t.array(
+      t.type({
+        name: t.string,
+        amount: euroValue,
+        rules: t.array(componentRule),
+      }),
+    ),
+  }),
+});
+
+export type CreateDebtCenterFromEventBody = t.TypeOf<
+  typeof createDebtCenterFromEventBody
+>;

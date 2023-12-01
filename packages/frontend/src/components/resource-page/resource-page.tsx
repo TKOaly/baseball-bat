@@ -1,4 +1,9 @@
-import React, { MouseEvent, PropsWithChildren, useState } from 'react';
+import React, {
+  MouseEvent,
+  PropsWithChildren,
+  ReactNode,
+  useState,
+} from 'react';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Button, SecondaryButton } from '@bbat/ui/button';
@@ -53,11 +58,11 @@ export const Section: React.FC<
   </div>
 );
 
-export const SectionContent: React.FC<PropsWithChildren<{}>> = ({
+export const SectionContent: React.FC<{ children?: ReactNode }> = ({
   children,
 }) => <DataWrapper>{children}</DataWrapper>;
 
-const DataWrapper: React.FC<PropsWithChildren<{}>> = ({ children }) => (
+const DataWrapper: React.FC<{ children?: ReactNode }> = ({ children }) => (
   <div data-cy="resource-field-content">{children}</div>
 );
 
@@ -80,11 +85,11 @@ export const Field: React.FC<PropsWithChildren<FieldProps>> = ({
   </div>
 );
 
-export const SectionDescription: React.FC<PropsWithChildren<{}>> = ({
+export const SectionDescription: React.FC<{ children?: ReactNode }> = ({
   children,
 }) => <p className="mb-5">{children}</p>;
 
-export const Actions: React.FC<PropsWithChildren<{}>> = ({ children }) => {
+export const Actions: React.FC<{ children?: ReactNode }> = ({ children }) => {
   return (
     <div className="flex flex-col items-end lg:items-center lg:flex-row gap-2 text-base">
       {children}
@@ -92,15 +97,15 @@ export const Actions: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   );
 };
 
-export const Title: React.FC<PropsWithChildren<{}>> = ({ children }) => {
+export const Title: React.FC<{ children?: ReactNode }> = ({ children }) => {
   return <div className="flex-grow">{children}</div>;
 };
 
-export const Header: React.FC<PropsWithChildren<{}>> = ({ children }) => {
+export const Header: React.FC<{ children?: ReactNode }> = ({ children }) => {
   return <h1 className="text-2xl mt-10 mb-5 flex">{children}</h1>;
 };
 
-export const Page: React.FC<PropsWithChildren<{}>> = ({ children }) => {
+export const Page: React.FC<{ children?: ReactNode }> = ({ children }) => {
   return <div>{children}</div>;
 };
 
