@@ -18,7 +18,6 @@ WORKDIR /usr/src/app/packages/backend
 
 RUN pnpm --filter @bbat/backend... run build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter @bbat/backend deploy /prod
-RUN rm -r /prod/build/tests && cp -r ./assets ./migrations ./templates /prod
 
 FROM builder AS frontend-builder
 RUN pnpm --filter @bbat/frontend... run build

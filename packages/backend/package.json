@@ -14,7 +14,11 @@
   },
   "main": "./build/app.js",
   "files": [
-    "./build/*"
+    "./tsconfig.json",
+    "./build/src/*",
+    "./assets/*",
+    "./migrations/*",
+    "./templates/*"
   ],
   "dependencies": {
     "@bbat/common": "workspace:*",
