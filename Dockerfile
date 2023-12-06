@@ -42,6 +42,10 @@ RUN apk add --no-cache --virtual .build-deps \
 
 FROM alpine-node-base AS production-backend
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
 COPY --from=backend-builder /prod /app
 COPY --from=backend-builder /prod/node_modules /app/node_modules
 
