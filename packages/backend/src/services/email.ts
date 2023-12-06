@@ -206,7 +206,7 @@ export class EmailService {
 
   loadTemplates() {
     const templatesDir = {
-      production: '/app/backend/templates',
+      production: '/app/templates',
       development: path.resolve(__dirname, '../../templates'),
       testing: path.resolve(__dirname, '../../../../backend/templates'),
     }[process.env.NODE_ENV ?? 'development'];
