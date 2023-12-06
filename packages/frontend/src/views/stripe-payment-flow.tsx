@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
 import { useTranslation } from 'react-i18next';
 import { PaymentBreakdown } from '../components/payment-breakdown';
+import { APP_URL, STRIPE_PUBLIC_KEY } from '../config';
 
 export interface Props {
   params: {
@@ -18,7 +19,7 @@ export interface Props {
   };
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 type PaymentFormProps = {
   id: string;
@@ -44,9 +45,7 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${
-          import.meta.env.VITE_APP_URL
-        }/payment/${id}/stripe/${secret}/return`,
+        return_url: `${APP_URL}/payment/${id}/stripe/${secret}/return`,
       },
     });
 

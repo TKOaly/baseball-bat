@@ -25,6 +25,7 @@ import { useGetUpstreamUserQuery } from '../api/upstream-users';
 import { useAppDispatch, useAppSelector } from '../store';
 import { useGetOwnPaymentsQuery } from '../api/payments';
 import { skipToken } from '@reduxjs/toolkit/query';
+import { BACKEND_URL } from '../config';
 
 const FilledDisc = ({ color = 'currentColor', size = 24, ...rest }) => (
   <svg
@@ -82,9 +83,9 @@ const WelcomeDialog = () => {
 
     if (token) {
       window.location.replace(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/session/login?target=welcome&token=${encodeURIComponent(token)}`,
+        `${BACKEND_URL}/api/session/login?target=welcome&token=${encodeURIComponent(
+          token,
+        )}`,
       );
     }
   };
@@ -189,9 +190,7 @@ const WelcomeDialog = () => {
             <Button
               className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow w-60 mt-4"
               onClick={() =>
-                window.location.replace(
-                  `${import.meta.env.VITE_BACKEND_URL}/api/session/login`,
-                )
+                window.location.replace(`${BACKEND_URL}/api/session/login`)
               }
             >
               Login
