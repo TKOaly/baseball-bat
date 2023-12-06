@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "start:dev": "ts-node-dev -r tsconfig-paths/register ./src/app.ts",
-    "start": "node ./build/app.js",
+    "start": "node -r tsconfig-paths/register ./build/src/app.js",
     "test": "NODE_ENV=testing ava -s --no-worker-threads --timeout=120s",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
     "build": "tsc",
