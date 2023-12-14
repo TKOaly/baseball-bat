@@ -58,6 +58,7 @@ type DebtFormValues = {
   amount: EuroValue;
   payer: PayerIdentity | null;
   date: DbDateString | null;
+  dueDate: undefined;
   paymentCondition:
     | { type: 'date'; value: string }
     | { type: 'interval'; value: number }
@@ -239,9 +240,12 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     center: debtCenterId,
     payer: null,
     date: null,
-    dueDate: null,
+    dueDate: undefined,
     components: [],
-    paymentCondition: '14',
+    paymentCondition: {
+      type: 'interval',
+      value: 14,
+    },
     amount: euro(0),
     accountingPeriod: activeAccountingPeriod,
   });
