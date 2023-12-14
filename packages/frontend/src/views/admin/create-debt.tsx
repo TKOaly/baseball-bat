@@ -7,6 +7,7 @@ import {
   ComponentProps,
 } from 'react';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
+import * as E from 'fp-ts/lib/Either';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { DateField } from '@bbat/ui/datetime-field';
@@ -15,8 +16,11 @@ import {
   dbDateString,
   euro,
   EuroValue,
+  InternalIdentity,
   PayerIdentity,
   PayerProfile,
+  TkoalyIdentity,
+  tkoalyIdentity,
   UpstreamUser,
 } from '@bbat/common/src/types';
 import { groupBy } from 'remeda';
@@ -39,6 +43,7 @@ import { useDialog } from '../../components/dialog';
 import { useGetPayersQuery } from '../../api/payers';
 import { uid } from 'uid';
 import { skipToken } from '@reduxjs/toolkit/query';
+import { pipe } from 'fp-ts/lib/function';
 
 type DebtFormComponentValue = {
   component: string | { name: string };
@@ -53,8 +58,10 @@ type DebtFormValues = {
   amount: EuroValue;
   payer: PayerIdentity | null;
   date: DbDateString | null;
-  dueDate: DbDateString | null;
-  paymentCondition: string | 'NOW' | null;
+  paymentCondition:
+    | { type: 'date'; value: string }
+    | { type: 'interval'; value: number }
+    | null;
   accountingPeriod: number | null;
 };
 
@@ -85,15 +92,24 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       return;
     }
 
-    let paymentCondition;
+    const [dueDate, paymentCondition] = (() => {
+      if (values.paymentCondition?.type === 'date') {
+        return pipe(
+          values.paymentCondition.value,
+          dbDateString.decode,
+          E.foldW(
+            () => [null, null] as const,
+            date => [date, null] as const,
+          ),
+        );
+      }
 
-    if (values.paymentCondition === 'NOW') {
-      paymentCondition = 0;
-    } else if (values.paymentCondition === null) {
-      paymentCondition = null;
-    } else {
-      paymentCondition = parseInt(values.paymentCondition, 10);
-    }
+      if (values.paymentCondition?.type === 'interval') {
+        return [null, values.paymentCondition.value] as const;
+      }
+
+      return [null, null] as const;
+    })();
 
     const result = await createDebt({
       name: values.name,
@@ -102,7 +118,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       tags: [],
       payer: values.payer,
       date: values.date ?? undefined,
-      dueDate: values.dueDate === '' || !values.dueDate ? null : values.dueDate,
+      dueDate,
       paymentCondition,
       center:
         typeof values.center === 'string'
@@ -146,18 +162,23 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       ...(users ?? []).map(value => ({
         type: 'tkoaly',
         key: value.id,
-        id: value.id,
+        id: tkoalyIdentity(value.id),
         value,
       })),
       ...(payers ?? []).map(value => ({
         type: 'internal',
         key: value.tkoalyUserId?.value,
-        id: value.id.value,
+        id: value.id,
         value,
       })),
     ] as (
-      | { type: 'tkoaly'; key: string; id: number; value: UpstreamUser }
-      | { type: 'internal'; key: number; id: string; value: PayerProfile }
+      | { type: 'tkoaly'; key: string; id: TkoalyIdentity; value: UpstreamUser }
+      | {
+          type: 'internal';
+          key: number;
+          id: InternalIdentity;
+          value: PayerProfile;
+        }
     )[];
 
     const grouped = groupBy(combined, s => s.key ?? '');
@@ -178,10 +199,10 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
         let name;
 
         if (internal) {
-          value = internal.value.id;
+          value = internal.id;
           name = internal.value.name;
         } else if (tkoaly) {
-          value = tkoaly.value.id;
+          value = tkoaly.id;
           name = tkoaly.value.screenName;
         } else {
           throw new Error('No suitable ID found!');
@@ -268,18 +289,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
             errors.payer = 'Required field';
           }
 
-          try {
-            if (
-              values.paymentCondition !== null &&
-              values.paymentCondition !== 'NOW'
-            ) {
-              parseInt(values.paymentCondition);
-            }
-          } catch (e) {
-            errors.paymentCondition = 'Must be an integer';
-          }
-
-          if (!values.paymentCondition && !values.dueDate) {
+          if (values.paymentCondition === null) {
             errors.paymentCondition = errors.dueDate =
               'Either payment condition or due date must be specififed';
           }
@@ -338,14 +348,25 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 name="dueDate"
                 component={DateField}
                 format="yyyy-MM-dd"
+                value={
+                  values.paymentCondition?.type === 'date'
+                    ? values.paymentCondition.value
+                    : ''
+                }
                 onChange={evt => {
                   const result = dbDateString.decode(evt.target.value);
 
                   if (isRight(result)) {
-                    setFieldValue('dueDate', result.right);
-                    setFieldValue('paymentCondition', '');
+                    setFieldValue('paymentCondition', {
+                      type: 'date',
+                      value: result.right,
+                    });
                   } else {
-                    setFieldError('dueDate', 'Invalid date value.');
+                    setFieldValue('paymentCondition', null);
+                    setFieldError(
+                      'dueDate',
+                      'Date in the format yyyy-mm-dd expected.',
+                    );
                   }
                 }}
               />
@@ -354,25 +375,40 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                 label="Payment Condition"
                 name="paymentCondition"
                 component={TextField}
+                value={
+                  values.paymentCondition?.type === 'interval'
+                    ? values.paymentCondition.value === 0
+                      ? 'NOW'
+                      : values.paymentCondition.value
+                    : ''
+                }
                 onChange={evt => {
                   const value = evt.target.value;
 
-                  setFieldValue('dueDate', '');
-
                   if (value === 'NOW') {
-                    setFieldValue('paymentCondition', 'NOW');
+                    setFieldValue('paymentCondition', {
+                      type: 'interval',
+                      value: 0,
+                    });
+
                     return;
                   }
 
                   try {
                     const matches = /[0-9]+/.exec(value);
                     const integer = parseInt(matches?.[0] ?? '');
-                    setFieldValue(
-                      'paymentCondition',
-                      integer === 0 ? 'NOW' : String(integer),
-                    );
+
+                    if (isNaN(integer)) {
+                      setFieldValue('paymentCondition', null);
+                      setFieldError('paymentCondition', 'Integer expected');
+                    } else {
+                      setFieldValue('paymentCondition', {
+                        type: 'interval',
+                        value: integer,
+                      });
+                    }
                   } catch (e) {
-                    setFieldValue('paymentCondition', value);
+                    setFieldValue('paymentCondition', null);
                     setFieldError('paymentCondition', 'Integer expected');
                   }
                 }}

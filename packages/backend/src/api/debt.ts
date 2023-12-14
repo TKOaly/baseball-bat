@@ -72,7 +72,7 @@ const createDebtPayload = t.intersection([
   }),
   t.partial({
     date: dbDateString,
-    dueDate: dbDateString,
+    dueDate: t.union([t.null, dbDateString]),
     paymentCondition: t.union([t.null, t.number]),
     tags: t.array(
       t.union([
