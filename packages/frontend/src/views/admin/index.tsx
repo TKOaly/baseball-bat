@@ -237,6 +237,9 @@ const Admin = () => {
             <Route path="/admin/debts/create">
               <CreateDebt />
             </Route>
+            <Route path="/admin/debts/create-debts-csv">
+              <MassCreateDebts />
+            </Route>
             <Route path="/admin/debts/:id" component={DebtDetails} />
             <Route path="/admin/debts/:id/edit" component={EditDebt} />
             <Route path="/admin/payments" component={PaymentsListing} />
@@ -265,9 +268,6 @@ const Admin = () => {
               path="/admin/banking/import-statement"
               component={ImportXMLStatement}
             />
-            <Route path="/admin/debts/create-debts-csv">
-              <MassCreateDebts />
-            </Route>
             <Route path="/admin/debt-centers/:id/create-debts-csv">
               {(params: { id: string }) => (
                 <MassCreateDebts debtCenterId={params.id} />
