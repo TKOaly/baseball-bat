@@ -43,6 +43,8 @@ RUN apk add --no-cache --virtual .build-deps \
   giflib
 
 ENV ASSET_PATH /usr/src/app/packages/backend/assets
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
+ENV PUPPETEER_EXECUTABLE_PATH /usr/bin/chromium-browser
 
 FROM alpine-node-base AS production-backend
 
