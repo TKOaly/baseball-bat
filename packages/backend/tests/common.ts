@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import anyTest, { TestFn } from 'ava';
 import { expect } from 'earl';
+import sql from 'sql-template-strings';
 import path from 'path';
 import * as redis from 'redis';
 import migrate from 'node-pg-migrate';
@@ -35,6 +36,8 @@ export function createTestFunc(): AppTestFn {
     });
 
     const client = PgClient.create(container.getConnectionUri());
+
+    await client.any(sql`set timezone to 'Europe/Helsinki'`);
 
     return {
       container,
