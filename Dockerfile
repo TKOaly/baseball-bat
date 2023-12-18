@@ -42,7 +42,6 @@ RUN apk add --no-cache --virtual .build-deps \
   pango \
   giflib
 
-ENV ASSET_PATH /usr/src/app/packages/backend/assets
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD true
 ENV PUPPETEER_EXECUTABLE_PATH /usr/bin/chromium-browser
 
@@ -50,6 +49,8 @@ FROM alpine-node-base AS production-backend
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV ASSET_PATH /app/assets
+
 RUN corepack enable
 
 COPY --from=backend-builder /prod /app
@@ -63,6 +64,8 @@ FROM alpine-node-base AS development
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV ASSET_PATH /usr/src/app/packages/backend/assets
+
 RUN corepack enable
 
 WORKDIR /usr/src/app
