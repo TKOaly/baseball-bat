@@ -225,6 +225,7 @@ test('Listing payer profiles', async t => {
       paidCount: 0,
       unpaidCount: 0,
       total: cents(0),
+      totalPaid: cents(0),
       disabled: false,
     }),
   );
