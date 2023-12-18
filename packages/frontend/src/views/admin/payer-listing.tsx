@@ -19,6 +19,14 @@ import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dia
 import { useState } from 'react';
 import { PayerProfile } from '@bbat/common/src/types';
 
+const ratio = (a: number | undefined, b: number | undefined) => {
+  if (a === undefined || b === undefined) {
+    return 1;
+  }
+
+  return a / b;
+};
+
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
   const { data: payers } = useGetPayersQuery();
@@ -169,8 +177,7 @@ export const PayerListing = () => {
               ]),
           {
             name: 'Paid percentage',
-            getValue: row =>
-              row.debtCount ? (row.paidCount ?? 0) / row.debtCount : 1,
+            getValue: row => ratio(row.totalPaid?.value, row.total?.value),
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
