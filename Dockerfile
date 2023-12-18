@@ -42,6 +42,8 @@ RUN apk add --no-cache --virtual .build-deps \
   pango \
   giflib
 
+ENV ASSET_PATH /usr/src/app/packages/backend/assets
+
 FROM alpine-node-base AS production-backend
 
 ENV PNPM_HOME="/pnpm"
