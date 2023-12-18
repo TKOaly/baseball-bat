@@ -66,6 +66,10 @@ export const formatPayerProfile = (
     profile.total === undefined
       ? undefined
       : cents(parseInt('' + profile.total)),
+  totalPaid:
+    profile.total_paid === undefined
+      ? undefined
+      : cents(parseInt('' + profile.total_paid)),
 });
 
 const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
@@ -100,7 +104,7 @@ export class PayerService {
           COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
           COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
           COALESCE(SUM(dco.amount), 0) AS total,
-          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
+          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid
         FROM payer_profiles pp
         LEFT JOIN debt d ON d.payer_id = pp.id
         LEFT JOIN debt_statuses ds ON ds.id = d.id

@@ -186,6 +186,12 @@ export const PayerListing = () => {
           { name: 'Paid', getValue: 'paidCount', align: 'right' },
           { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
           {
+            name: 'Paid value',
+            getValue: row => row.totalPaid?.value ?? 0,
+            align: 'right',
+            render: value => formatEuro(cents(value)),
+          },
+          {
             name: 'Total value',
             getValue: row => row.total?.value ?? 0,
             align: 'right',

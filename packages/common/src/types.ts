@@ -195,16 +195,18 @@ export type DbPayerProfile = {
   unpaid_count?: number;
   debt_count?: number;
   total?: number;
+  total_paid?: number;
 };
 export type PayerProfile = Omit<
   FromDbType<DbPayerProfile>,
-  'id' | 'tkoalyUserId' | 'mergedTo' | 'total'
+  'id' | 'tkoalyUserId' | 'mergedTo' | 'total' | 'totalPaid'
 > & {
   id: InternalIdentity;
   tkoalyUserId?: TkoalyIdentity;
   mergedTo?: InternalIdentity;
   emails: PayerEmail[];
   total?: EuroValue;
+  totalPaid?: EuroValue;
 };
 
 export const payerPreferences = t.type({
