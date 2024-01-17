@@ -95,7 +95,7 @@ export function createTestFunc(): AppTestFn {
       },
       redisUrl,
       magicLinkSecret: '',
-      assetPath: '',
+      assetPath: process.env.ASSET_PATH ?? './packages/backend/assets/',
       dataPath: '',
     });
 
