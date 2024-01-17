@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import sql from 'sql-template-strings';
 import mjml2html from 'mjml';
@@ -8,10 +8,6 @@ import ejs from 'ejs';
 import * as dateFns from 'date-fns';
 import { Inject, Service } from 'typedi';
 import { Config } from '../config';
-import { pipe } from 'fp-ts/lib/function';
-import * as record from 'fp-ts/lib/Record';
-import { map, reduce } from 'fp-ts/lib/Array';
-import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { PgClient } from '../db';
 import { DbEmail, Email, InternalIdentity } from '@bbat/common/build/src/types';
 import {
@@ -34,17 +30,6 @@ type SendEmailOptions = {
   subject: string;
   template: string;
   payload: object;
-};
-
-type EmailTemplate = {
-  html?: { filetype: string; content: string };
-  text?: { filetype: string; content: string };
-};
-
-type Template = {
-  name: string;
-  filetype: string;
-  content: string;
 };
 
 type NewEmail = {
@@ -155,26 +140,27 @@ type EmailBatchSendJob = Job<void, EmailBatchSendJobResult, 'batch'>;
 
 type EmailJob = EmailSendJob | EmailBatchSendJob;
 
+const TemplateType = {
+  HTML: 'html',
+  TEXT: 'text',
+};
+
+type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
+
 @Service()
 export class EmailService {
-  @Inject(() => Config)
-  config: Config;
-
-  // @Inject(() => PgClient)
   pg: PgClient;
 
   private transport: IEmailTransport;
-
-  private templates: Record<string, EmailTemplate>;
 
   constructor(
     transport: IEmailTransport,
     pg: PgClient,
     @Inject() public jobService: JobService,
+    private config: Config,
   ) {
     this.transport = transport;
     this.pg = pg;
-    this.loadTemplates();
     this.jobService.createWorker(
       'emails',
       this.handleEmailJob.bind(this) as any,
@@ -204,50 +190,29 @@ export class EmailService {
     }
   }
 
-  loadTemplates() {
-    const templatesDir = {
-      production: '/app/templates',
-      development: path.resolve(__dirname, '../../templates'),
-      testing: path.resolve(__dirname, '../../../../backend/templates'),
-    }[process.env.NODE_ENV ?? 'development'];
+  get templatesDir() {
+    return path.resolve(this.config.assetPath, 'templates/emails');
+  }
 
-    if (templatesDir === undefined) {
-      throw new Error(`Unknown NODE_ENV "${process.env.NODE_ENV}"`);
+  async getTemplatePath(name: string, type: TemplateType) {
+    const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
+
+    for (const ext of exts) {
+      const filepath = path.resolve(this.templatesDir, `${name}.${ext}`);
+      console.log('Trying', filepath);
+
+      try {
+        const result = await fs.stat(filepath);
+
+        if (result.isFile()) {
+          return filepath;
+        }
+      } catch (err) {
+        continue;
+      }
     }
 
-    const files: Array<string> = fs.readdirSync(templatesDir);
-
-    this.templates = pipe(
-      files,
-      map((filename): Template => {
-        const parts = filename.split('.');
-        const filetype = parts.pop() ?? '';
-        const name = parts.join('.');
-        const filepath = path.join(templatesDir, filename);
-        const content = fs.readFileSync(filepath, { encoding: 'utf8' });
-
-        return {
-          name,
-          filetype,
-          content,
-        };
-      }),
-      groupBy((r: Template) => r.name),
-      record.map(
-        reduce({} as EmailTemplate, (acc, { filetype, content }: Template) => {
-          const kind = { mjml: 'html', html: 'html', txt: 'text' }[filetype];
-
-          if (!kind) {
-            return acc;
-          }
-
-          return {
-            ...acc,
-            [kind]: { filetype, content },
-          };
-        }),
-      ),
-    );
+    throw new Error(`Could not find template '${name}' of type '${type}'`);
   }
 
   async sendRawEmail(options: EmailTransportOptions) {
@@ -255,8 +220,16 @@ export class EmailService {
   }
 
   async sendEmailDirect(options: SendEmailOptions) {
-    const html = this.renderTemplate(options.template, 'html', options.payload);
-    const text = this.renderTemplate(options.template, 'text', options.payload);
+    const html = await this.renderTemplate(
+      options.template,
+      TemplateType.HTML,
+      options.payload,
+    );
+    const text = await this.renderTemplate(
+      options.template,
+      TemplateType.TEXT,
+      options.payload,
+    );
 
     if (!text) {
       return Promise.reject();
@@ -272,66 +245,54 @@ export class EmailService {
     });
   }
 
-  renderTemplate(name: string, type: 'html' | 'text', payload: object) {
-    const template = this.templates[name];
+  async renderTemplate(name: string, type: TemplateType, payload: object) {
+    const template = await this.getTemplatePath(name, type);
+    const ext = path.extname(template).substring(1);
 
-    if (!template) {
-      return null;
+    const data = {
+      ...payload,
+      dateFns,
+      formatEuro,
+      formatReferenceNumber,
+      sumEuroValues,
+      euro,
+      cents,
+      formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
+      formatBarcode: (
+        iban: string,
+        amount: EuroValue,
+        reference: string,
+        date: Date,
+      ) => formatBarcode(iban, amount.value / 100, reference, date),
+      generateBarcodeImage,
+    };
+
+    const opts = {
+      filename: template,
+    };
+
+    const rendered = await ejs.renderFile(template, data, opts);
+
+    if (ext === 'mjml') {
+      const result = mjml2html(rendered).html;
+
+      return result;
     }
 
-    const populate = (template: string) =>
-      ejs.render(template, {
-        ...payload,
-        dateFns,
-        formatEuro,
-        formatReferenceNumber,
-        sumEuroValues,
-        euro,
-        cents,
-        formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
-        formatBarcode: (
-          iban: string,
-          amount: EuroValue,
-          reference: string,
-          date: Date,
-        ) => formatBarcode(iban, amount.value / 100, reference, date),
-        generateBarcodeImage,
-      });
-
-    if (type === 'html') {
-      if (!template.html) return null;
-
-      if (template.html.filetype === 'mjml') {
-        return mjml2html(populate(template.html.content)).html;
-      } else {
-        return populate(template.html.content);
-      }
-    } else {
-      if (!template.text) return null;
-
-      return populate(template.text.content);
-    }
+    return rendered;
   }
 
   async createEmail(email: NewEmail) {
-    let html;
-    let text;
-
-    try {
-      html = this.renderTemplate(email.template, 'html', email.payload);
-    } catch (error) {
-      console.error(
-        `Failed to render HTML template '${email.template}': ${error}`,
-      );
-    }
-
-    try {
-      text = this.renderTemplate(email.template, 'text', email.payload);
-    } catch (error) {
-      console.error(
-        `Failed to render text template '${email.template}': ${error}`,
-      );
-    }
+    const html = await this.renderTemplate(
+      email.template,
+      TemplateType.HTML,
+      email.payload,
+    );
+    const text = await this.renderTemplate(
+      email.template,
+      TemplateType.TEXT,
+      email.payload,
+    );
 
     const result = await this.pg.one<DbEmail>(sql`
         INSERT INTO emails (recipient, subject, template, html, text)

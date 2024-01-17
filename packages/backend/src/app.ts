@@ -89,7 +89,7 @@ Container.set(PgClient, pg);
 Container.set('redis', redisClient);
 Container.set(
   EmailService,
-  new EmailService(emailTransport, pg, Container.get(JobService)),
+  new EmailService(emailTransport, pg, Container.get(JobService), config),
 );
 
 if (process.env.NODE_ENV === 'development') {
