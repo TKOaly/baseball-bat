@@ -27,7 +27,7 @@ test('Creating debt', async t => {
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -51,7 +51,7 @@ test('Creating debt', async t => {
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: null,
     paymentCondition: 14,
@@ -120,7 +120,7 @@ test('Publishing debt with payment condition', async t => {
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -144,7 +144,7 @@ test('Publishing debt with payment condition', async t => {
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: null,
     paymentCondition: 14,
@@ -209,7 +209,7 @@ test('Reminders should not be sent for draft debts', async t => {
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -233,7 +233,7 @@ test('Reminders should not be sent for draft debts', async t => {
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: null,
     paymentCondition: 14,
@@ -267,7 +267,7 @@ test('Emails should be sent for published debts', async t => {
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -291,7 +291,7 @@ test('Emails should be sent for published debts', async t => {
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -305,7 +305,7 @@ test('Emails should be sent for published debts', async t => {
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -363,7 +363,7 @@ test('Reminders should only be sent for unpaid and published debts', async t => 
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -387,7 +387,7 @@ test('Reminders should only be sent for unpaid and published debts', async t => 
     name: 'Published Debt',
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -403,7 +403,7 @@ test('Reminders should only be sent for unpaid and published debts', async t => 
     name: 'Unpublished Debt',
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -417,7 +417,7 @@ test('Reminders should only be sent for unpaid and published debts', async t => 
     name: 'Paid Debt',
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -465,7 +465,7 @@ test('Reminders should only be sent for unpaid and published debts', async t => 
     name: 'Credited Debt',
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     dueDate: format(subDays(new Date(), 30), 'yyyy-MM-dd') as any,
     paymentCondition: null,
@@ -514,7 +514,7 @@ test('Emails should not be sent for backdated debts when publishing', async t =>
     name: faker.lorem.words(4),
     description: faker.lorem.words(15),
     url: faker.internet.url(),
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const center = await centers.createDebtCenter(debtCenterOpts);
@@ -538,7 +538,7 @@ test('Emails should not be sent for backdated debts when publishing', async t =>
     name: faker.lorem.word(4),
     description: faker.lorem.word(10),
     components: [component.id],
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
     payer: payer.id,
     date: format(subDays(new Date(), 2), 'yyyy-MM-dd') as any,
     dueDate: format(subDays(new Date(), 1), 'yyyy-MM-dd') as any,

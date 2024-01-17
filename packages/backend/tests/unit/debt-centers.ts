@@ -13,7 +13,7 @@ test('Debt center creation works', async t => {
     name: 'Test Center',
     url: 'https://example.com/',
     description: '',
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const createdCenter = await centers.createDebtCenter(newCenter);
@@ -44,7 +44,7 @@ test('Debt center deletion works', async t => {
     name: 'Test Center',
     url: 'https://example.com/',
     description: '',
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const createdCenter = await centers.createDebtCenter(newCenter);
@@ -74,7 +74,7 @@ test('Querying debt center by name works', async t => {
     name: 'Test Center',
     url: 'https://example.com/',
     description: '',
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const createdCenter = await centers.createDebtCenter(newCenter);
@@ -99,7 +99,7 @@ test('Querying debt center by id works', async t => {
     name: 'Test Center',
     url: 'https://example.com/',
     description: '',
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const createdCenter = await centers.createDebtCenter(newCenter);
@@ -124,7 +124,7 @@ test('Updating debt center works', async t => {
     name: 'Test Center',
     url: 'https://example.com/',
     description: '',
-    accountingPeriod: 2023,
+    accountingPeriod: 2024,
   };
 
   const createdCenter = await centers.createDebtCenter(newCenter);
