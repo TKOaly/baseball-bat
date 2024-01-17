@@ -24,10 +24,7 @@
           <!-- Olet saanut laskun TKO-äly ry:ltä. Erittely laskun sisällöstä ja maksutiedot löydät viestin lopusta. -->
         </mj-text>
         <mj-text>
-          Best regards,<br /><br />
-          <b>Vesa Rautiainen</b><br /><br />
-          Treasurer<br />
-          TKO-äly ry
+          <%- include('signature.mjml') %>
         </mj-text>
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Invoice breakdown</mj-text>

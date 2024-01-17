@@ -29,10 +29,7 @@
           message. <b>Do not pay this invoice.</b>
         </mj-text>
         <mj-text>
-          Best regards,<br /><br />
-          <b>Vesa Rautiainen</b><br /><br />
-          Treasurer<br />
-          TKO-äly ry
+          <%- include('signature.mjml') %>
         </mj-text>
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Invoice breakdown</mj-text>

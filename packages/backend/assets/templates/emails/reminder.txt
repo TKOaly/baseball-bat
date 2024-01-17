@@ -2,10 +2,7 @@ Your invoice <%- number %> from TKO-äly ry was due at <%- formatDate(dueDate) %
 Please pay the amount below as soon as possible. The payment details as well as
 a breakdown of the invoice's contents can be found at the end of this message.
 
-Best regards,
-
-Vesa Rautiainen
-Treasurer // TKO-äly ry
+<%- include('signature.txt') %>
 
 Invoice Breakdown
 =================

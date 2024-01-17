@@ -1,10 +1,7 @@
 You have received an invoice from TKO-äly ry.
 Breakdown of the invoice's contents and the payment information can be found from the end of this message.
 
-Best regards,
-
-Vesa Rautiainen
-Treasurer // TKO-äly ry
+<%- include('signature.txt') %>
 
 Invoice breakdown
 =================
