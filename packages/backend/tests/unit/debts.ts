@@ -10,6 +10,7 @@ import { EmailService, IEmailTransport } from '../../src/services/email';
 import { JobService } from '../../src/services/jobs';
 import { PgClient } from '../../src/db';
 import { PaymentService } from '../../src/services/payements';
+import { Config } from '../../src/config';
 
 const test = createTestFunc();
 
@@ -105,6 +106,7 @@ test('Publishing debt with payment condition', async t => {
       emailMock,
       container.get(PgClient),
       container.get(JobService),
+      container.get(Config),
     ),
   );
 
@@ -193,6 +195,7 @@ test('Reminders should not be sent for draft debts', async t => {
       emailMock,
       container.get(PgClient),
       container.get(JobService),
+      container.get(Config),
     ),
   );
 
