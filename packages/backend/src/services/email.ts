@@ -212,7 +212,9 @@ export class EmailService {
       }
     }
 
-    throw new Error(`Could not find template '${name}' of type '${type}'`);
+    throw new Error(
+      `Could not find template "${name}" of type "${type}" from ${this.templatesDir}`,
+    );
   }
 
   async sendRawEmail(options: EmailTransportOptions) {
