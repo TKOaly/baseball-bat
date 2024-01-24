@@ -1,4 +1,3 @@
-import { Inject, Service } from 'typedi';
 import {
   BankAccount,
   BankTransaction,
@@ -6,10 +5,14 @@ import {
   DbBankStatement,
   BankStatement,
 } from '@bbat/common/types';
-import { PgClient } from '../db';
+import { PgClient } from '@/db';
 import sql from 'sql-template-strings';
+import * as paymentsService from '@/services/payments/definitions';
 import { cents } from '@bbat/common/currency';
-import { formatPayment, PaymentService } from './payements';
+import { formatPayment } from '../payments';
+import { assignTransactionsToPaymentByReferenceNumber, createBankAccount, createBankStatement, getAccountStatements, getAccountTransactions, getBankAccount, getBankAccounts, getBankStatement, getBankStatementTransactions, getTransaction, getTransactionRegistrations, getTransactionsWithoutRegistration } from './definitions';
+import { ModuleDeps } from '@/app';
+import { createPaymentEventFromTransaction } from '../payments/definitions';
 
 const formatBankStatement = (
   stmt: DbBankStatement,
@@ -42,40 +45,33 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
   payments: (tx.payments ?? []).map(formatPayment),
 });
 
-@Service()
-export class BankingService {
-  @Inject(() => PgClient)
-  pg: PgClient;
-
-  @Inject(() => PaymentService)
-  paymentService: PaymentService;
-
-  async createBankAccount(account: BankAccount) {
-    await this.pg.any(sql`
+export default ({ pg, bus }: ModuleDeps) => {
+  bus.register(createBankAccount, async (account) => {
+    await pg.any(sql`
       INSERT INTO bank_accounts (iban, name)
       VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${
         account.name
       })
     `);
-  }
+  });
 
-  async getBankAccounts() {
-    return this.pg.any<BankAccount>(sql`SELECT * FROM bank_accounts`);
-  }
+  bus.register(getBankAccount, async (iban) => {
+      return pg.one<BankAccount>(
+        sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`,
+      );
+  });
 
-  async getBankAccount(iban: string) {
-    return this.pg.one<BankAccount>(
-      sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`,
-    );
-  }
+  bus.register(getBankAccounts, async () => {
+      return pg.any<BankAccount>(sql`SELECT * FROM bank_accounts`);
+  });
 
-  async createBankStatement(details: BankStatement) {
+  bus.register(createBankStatement, async (details) => {
     const dates = details.transactions.map(tx => tx.date).sort();
 
     const start_date = dates[0];
     const end_date = dates[dates.length - 1];
 
-    const statement = await this.pg.one<DbBankStatement>(sql`
+    const statement = await pg.one<DbBankStatement>(sql`
       INSERT INTO bank_statements (id, account, opening_balance_date, opening_balance, closing_balance_date, closing_balance, generated_at, imported_at, start_date, end_date)
       VALUES (
         ${details.id},
@@ -98,7 +94,7 @@ export class BankingService {
 
     const transactions = await Promise.all(
       details.transactions.map(async tx => {
-        const existing = await this.pg.any<DbBankTransaction>(
+        const existing = await pg.any<DbBankTransaction>(
           sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`,
         );
 
@@ -107,7 +103,7 @@ export class BankingService {
         if (existing.length > 0) {
           transaction = formatBankTransaction(existing[0]);
         } else {
-          const created = await this.pg.one<DbBankTransaction>(sql`
+          const created = await pg.one<DbBankTransaction>(sql`
           INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
           VALUES (
             ${details.accountIban},
@@ -134,7 +130,7 @@ export class BankingService {
           throw new Error('Could not create transaction');
         }
 
-        await this.pg.one(sql`
+        await pg.one(sql`
         INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
         VALUES (
           ${statement.id},
@@ -142,9 +138,13 @@ export class BankingService {
         )
       `);
 
-        await this.paymentService.createPaymentEventFromTransaction({
-          ...transaction,
-          account: details.accountIban,
+        await bus.exec(createPaymentEventFromTransaction, {
+          transaction: {
+            ...transaction,
+            account: details.accountIban,
+          },
+          amount: null,
+          paymentId: null,
         });
 
         return transaction;
@@ -155,31 +155,26 @@ export class BankingService {
       statement: formatBankStatement(statement),
       transactions: transactions,
     };
-  }
-
-  async assignTransactionsToPaymentByReferenceNumber(
-    paymentId: string,
-    referenceNumber: string,
-  ) {
-    const dbTransactions = await this.pg.any<DbBankTransaction>(sql`
+  });
+  
+  bus.register(assignTransactionsToPaymentByReferenceNumber, async ({ referenceNumber, paymentId }) => {
+    const dbTransactions = await pg.any<DbBankTransaction>(sql`
       SELECT * FROM bank_transactions WHERE reference = ${referenceNumber}
     `);
 
     const transactions = dbTransactions.map(formatBankTransaction);
 
     await Promise.all(
-      transactions.map(transaction =>
-        this.paymentService.createPaymentEventFromTransaction(
-          transaction,
-          undefined,
-          paymentId,
-        ),
-      ),
+      transactions.map(transaction => bus.exec(createPaymentEventFromTransaction, {
+        transaction,
+        paymentId,
+        amount: null,
+      })),
     );
-  }
-
-  async getTransactionsWithoutRegistration() {
-    const transactions = await this.pg.any<DbBankTransaction>(sql`
+  });
+  
+  bus.register(getTransactionsWithoutRegistration, async () => {
+    const transactions = await pg.any<DbBankTransaction>(sql`
       SELECT t.*
       FROM bank_transactions t
       LEFT JOIN payment_event_transaction_mapping petm ON t.id = petm.bank_transaction_id
@@ -187,10 +182,10 @@ export class BankingService {
     `);
 
     return transactions.map(formatBankTransaction);
-  }
-
-  async getAccountTransactions(iban: string) {
-    const transactions = await this.pg.any<DbBankTransaction>(sql`
+  });
+  
+  bus.register(getAccountTransactions, async (iban) => {
+    const transactions = await pg.any<DbBankTransaction>(sql`
       SELECT
         bt.*,
         (
@@ -205,59 +200,59 @@ export class BankingService {
     `);
 
     return transactions.map(formatBankTransaction);
-  }
+  });
+  
+  bus.register(getTransaction, async (id) => {
+      const transaction = await pg.one<DbBankTransaction>(sql`
+        SELECT
+          bt.*,
+          TO_JSON(p.*) AS payment
+        FROM bank_transactions bt
+        LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
+        LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
+        LEFT JOIN payments p ON p.id = pe.payment_id
+        WHERE bt.id = ${id}
+      `);
 
-  async getTransaction(id: string) {
-    const transaction = await this.pg.one<DbBankTransaction>(sql`
-      SELECT
-        bt.*,
-        TO_JSON(p.*) AS payment
-      FROM bank_transactions bt
-      LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
-      LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
-      LEFT JOIN payments p ON p.id = pe.payment_id
-      WHERE bt.id = ${id}
-    `);
+      if (!transaction) {
+        return null;
+      }
 
-    if (!transaction) {
-      return null;
-    }
+      return formatBankTransaction(transaction);
+  });
 
-    return formatBankTransaction(transaction);
-  }
-
-  async getTransactionRegistrations(id: string) {
-    const rows = await this.pg.any<{ payment_event_id: string }>(sql`
+  bus.register(getTransactionRegistrations, async (id: string) => {
+    const rows = await pg.any<{ payment_event_id: string }>(sql`
       SELECT m.payment_event_id
       FROM payment_event_transaction_mapping m
       WHERE m.bank_transaction_id = ${id}
     `);
 
-    return await Promise.all(
-      rows.map(row =>
-        this.paymentService.getPaymentEvent(row.payment_event_id),
-      ),
-    );
-  }
+    return (await Promise.all(
+      rows
+        .map(row => bus.exec(paymentsService.getPaymentEvent, row.payment_event_id))
+    ))
+        .flatMap(event => event ? [event] : [])
+  });
 
-  async getAccountStatements(iban: string) {
-    const statements = await this.pg.any<DbBankStatement>(sql`
+  bus.register(getAccountStatements, async (iban: string) => {
+    const statements = await pg.any<DbBankStatement>(sql`
       SELECT * FROM bank_statements WHERE account = ${iban}
     `);
 
     return statements.map(formatBankStatement);
-  }
+  });
 
-  async getBankStatement(id: string) {
-    const statement = await this.pg.one<DbBankStatement>(sql`
+  bus.register(getBankStatement, async (id: string) => {
+    const statement = await pg.one<DbBankStatement>(sql`
       SELECT * FROM bank_statements WHERE id = ${id} LIMIT 1
     `);
 
     return statement && formatBankStatement(statement);
-  }
+  });
 
-  async getBankStatementTransactions(id: string) {
-    const transactions = await this.pg.any<DbBankTransaction>(sql`
+  bus.register(getBankStatementTransactions, async (id: string) => {
+    const transactions = await pg.any<DbBankTransaction>(sql`
       SELECT
         bt.*,
         TO_JSON(p.*) AS payment
@@ -270,5 +265,5 @@ export class BankingService {
     `);
 
     return transactions.map(formatBankTransaction);
-  }
+  });
 }

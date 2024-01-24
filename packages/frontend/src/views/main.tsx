@@ -415,7 +415,7 @@ export const Main = () => {
         </Button>
       )}
 
-      <WelcomeDialog />
+      {/*<WelcomeDialog />*/}
 
       <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
         {t('unpaidDebts')}

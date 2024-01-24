@@ -5,7 +5,7 @@ import { redirect } from 'typera-express/response';
 import { emailIdentity } from '@bbat/common/build/src/types';
 import { AuthService } from '../auth-middleware';
 import { MagicLinkService } from '../services/magic-links';
-import { PayerService } from '../services/payer';
+import { PayerService } from '../services/payers';
 
 @Service()
 export class MagicLinksApi {

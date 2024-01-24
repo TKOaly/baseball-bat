@@ -1,36 +1,26 @@
-import 'reflect-metadata';
 import express from 'express';
 import { router } from 'typera-express';
 import healthCheck from './api/health-check';
+import 'reflect-metadata';
+import { RedisClientType } from 'redis';
 import { Config } from './config';
-import { EventsApi } from './api/events';
-import { AuthApi } from './api/auth';
-import { DebtApi } from './api/debt';
-import { DebtCentersApi } from './api/centers';
-import { PaymentsApi } from './api/payments';
+import apiRoutes, { ApiDeps } from './api';
 import cookieParser from 'cookie-parser';
 import Stripe from 'stripe';
 import { PgClient } from './db';
-import { SessionApi } from './api/session';
 import cors from 'cors';
 import helmet, { HelmetOptions } from 'helmet';
-import { Container } from 'typedi';
-import { PayersApi } from './api/payers';
-import { EmailApi } from './api/email';
 import * as redis from 'redis';
 import {
   createEmailDispatcherTransport,
   createSMTPTransport,
-  EmailService,
   IEmailTransport,
 } from './services/email';
 import { MagicLinksApi } from './api/magic-links';
-import { BankingApi } from './api/banking';
-import { SearchApi } from './api/search';
-import { ReportApi } from './api/report';
-import { AccountingApi } from './api/accounting';
-import { JobsApi } from './api/jobs';
 import { JobService } from './services/jobs';
+import { LocalBus } from './bus';
+import initServices from './services';
+import { authServiceFactory } from './auth-middleware';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -83,18 +73,33 @@ if (config.emailDispatcher) {
   emailTransport = createSMTPTransport(config.smtp);
 }
 
-Container.set(Config, config);
-Container.set('stripe', stripeClient);
-Container.set(PgClient, pg);
-Container.set('redis', redisClient);
-Container.set(
-  EmailService,
-  new EmailService(emailTransport, pg, Container.get(JobService), config),
-);
+const bus = new LocalBus();
 
-if (process.env.NODE_ENV === 'development') {
-  //Container.set(EventsService, EventsService.createMock())
-}
+const jobs = new JobService(config, redisClient as RedisClientType);
+
+const moduleDeps = {
+  pg,
+  config,
+  bus,
+  redis: redisClient,
+  stripe: stripeClient,
+  jobs,
+  emailTransport,
+};
+
+const auth = authServiceFactory(moduleDeps);
+
+export type ModuleDeps = typeof moduleDeps;
+
+const apiDeps: ApiDeps = {
+  pg,
+  bus,
+  jobs,
+  redis: redisClient as RedisClientType,
+  config,
+  auth,
+  stripe: stripeClient,
+};
 
 const app = express()
   .use(helmet(helmetConfig))
@@ -104,37 +109,23 @@ const app = express()
       origin: [config.appUrl],
     }),
   )
-  .use(
-    '/api/payments/stripe-webhook',
-    express.raw({ type: 'application/json' }),
-    router(Container.get(PaymentsApi).stripeWebhook()).handler(),
-  )
   .use(express.json())
   .use(cookieParser())
-  .use('/api/session', Container.get(SessionApi).router().handler())
-  .use('/api/events', Container.get(EventsApi).router().handler())
-  .use('/api/debtCenters', Container.get(DebtCentersApi).router().handler())
-  .use('/api/search', Container.get(SearchApi).router().handler())
-  .use('/api/debt', Container.get(DebtApi).router().handler())
-  .use('/api/payers', Container.get(PayersApi).router().handler())
-  .use('/api/payments', Container.get(PaymentsApi).router().handler())
-  .use('/api/emails', Container.get(EmailApi).router().handler())
-  .use('/api/banking', Container.get(BankingApi).router().handler())
-  .use('/api/reports', Container.get(ReportApi).router().handler())
-  .use('/api/accounting', Container.get(AccountingApi).router().handler())
-  .use('/api/jobs', Container.get(JobsApi).router().handler())
-  .use(Container.get(AuthApi).router().handler())
   .use(router(healthCheck).handler());
 
+apiRoutes(apiDeps, app);
+
 if (process.env.NODE_ENV !== 'production') {
-  app.use('/static', express.static('/usr/src/app/packages/frontend/web-dist'));
+  app.use('/static', express.static('/usr/src/app/packages/frontend/dist'));
   app.use('/', (_req, res) =>
-    res.sendFile('/usr/src/app/packages/frontend/web-dist/index.html'),
+    res.sendFile('/usr/src/app/packages/frontend/dist/index.html'),
   );
 }
 
-app.use('/', Container.get(MagicLinksApi).router().handler());
+async function start() {
+  await initServices(moduleDeps);
 
-app.listen(PORT, () => console.log(`backend listening on port ${PORT} 🚀`));
+  app.listen(PORT, () => console.log(`backend listening on port ${PORT} 🚀`));
+}
 
-export default app;
+start();

@@ -26,15 +26,18 @@ import {
   DateString,
   convertToDbDate,
   DebtStatusReportOptions,
+  NewInvoice,
 } from '@bbat/common/build/src/types';
-import { PgClient } from '../db';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
-import { Inject, Service } from 'typedi';
-import { formatPayerProfile, PayerService } from './payer';
-import { DebtCentersService, formatDebtCenter } from './debt_centers';
-import { NewInvoice, PaymentService } from './payements';
-import { cents } from '@bbat/common/build/src/currency';
+import { formatPayerProfile } from '../payers';
+import { formatDebtCenter } from '../debt-centers';
+import { cents, sumEuroValues } from '@bbat/common/build/src/currency';
+import * as defs from './definitions';
+import * as payerService from '@/services/payers/definitions';
+import * as paymentService from '@/services/payments/definitions';
+import * as usersService from '@/services/users/definitions';
+import * as debtCentersService from '@/services/debt-centers/definitions';
 
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
@@ -53,14 +56,18 @@ import {
   subDays,
   subMonths,
 } from 'date-fns';
-import { EmailService } from './email';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
-import { ReportService } from './reports';
-import { JobService } from './jobs';
 import { Job, Queue } from 'bullmq';
 import { validate } from 'uuid';
-import { AccountingService } from './accounting';
-import { UsersService } from './users';
+import { ModuleDeps } from '@/app';
+import { isAccountingPeriodOpen } from '../accounting/definitions';
+import { createReport } from '../reports/definitions';
+import {
+  batchSendEmails,
+  createEmail,
+  getEmail,
+  sendEmail,
+} from '../email/definitions';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -108,7 +115,7 @@ export const formatDebt = (
   defaultPayment: debt.default_payment,
   debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
   credited: debt.credited,
-  total: debt.total === undefined ? undefined : cents(debt.total),
+  total: debt.total === undefined ? cents(0) : cents(debt.total),
   paymentCondition: debt.payment_condition,
   debtComponents: debt.debt_components
     ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
@@ -128,10 +135,10 @@ const formatDebtComponent = (
   id: debtComponent.id,
   name: debtComponent.name,
   amount: euro(debtComponent.amount / 100),
-  description: debtComponent.description,
+  description: debtComponent.description ?? '',
   debtCenterId: debtComponent.debt_center_id,
-  updatedAt: debtComponent.updated_at,
-  createdAt: debtComponent.created_at,
+  createdAt: null,
+  updatedAt: null,
 });
 
 export type CreateDebtOptions = {
@@ -183,43 +190,11 @@ type DebtJobDefinition = {
   }[];
 };
 
-@Service()
-export class DebtService {
-  @Inject(() => PgClient)
-  pg: PgClient;
+export default ({ pg, bus, jobs }: ModuleDeps) => {
+  const jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName> =
+    jobs.getQueue('debts');
 
-  @Inject(() => DebtCentersService)
-  debtCentersService: DebtCentersService;
-
-  @Inject(() => DebtService)
-  debtService: DebtService;
-
-  @Inject(() => AccountingService)
-  accountingService: AccountingService;
-
-  @Inject(() => ReportService)
-  reportService: ReportService;
-
-  @Inject(() => PayerService)
-  payerService: PayerService;
-
-  @Inject(() => PaymentService)
-  paymentService: PaymentService;
-
-  @Inject(() => EmailService)
-  emailService: EmailService;
-
-  @Inject(() => UsersService)
-  usersService: UsersService;
-
-  jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName>;
-
-  constructor(@Inject() public jobService: JobService) {
-    this.jobService.createWorker('debts', this.handleDebtJob.bind(this));
-    this.jobQueue = this.jobService.getQueue('debts');
-  }
-
-  private async resolvePayer(
+  async function resolvePayer(
     {
       email,
       name,
@@ -229,7 +204,8 @@ export class DebtService {
     dryRun: boolean,
   ): Promise<PayerProfile | null> {
     if (tkoalyUserId) {
-      const payer = await this.payerService.getPayerProfileByTkoalyIdentity(
+      const payer = await bus.exec(
+        payerService.getPayerProfileByTkoalyIdentity,
         tkoalyIdentity(tkoalyUserId),
       );
 
@@ -239,7 +215,8 @@ export class DebtService {
     }
 
     if (email) {
-      const payer = await this.payerService.getPayerProfileByEmailIdentity(
+      const payer = await bus.exec(
+        payerService.getPayerProfileByEmailIdentity,
         emailIdentity(email),
       );
 
@@ -247,25 +224,34 @@ export class DebtService {
         return payer;
       }
 
-      const user = await this.usersService.getUpstreamUserByEmail(email, token);
+      const user = await bus.exec(usersService.getUpstreamUserByEmail, {
+        email,
+        token,
+      });
 
       if (user) {
         if (dryRun) {
           return {
             id: internalIdentity(''),
-            email: user.email,
             emails: [],
             name: user.screenName,
-            tkoalyUserId: tkoalyIdentity(user.id),
+            tkoalyUserId: user.id,
             createdAt: new Date(),
             updatedAt: new Date(),
-            stripeCustomerId: '',
             disabled: false,
+            mergedTo: null,
+            paidCount: null,
+            unpaidCount: null,
+            total: null,
+            debtCount: null,
           };
         } else {
-          return await this.payerService.createPayerProfileFromTkoalyIdentity(
-            tkoalyIdentity(user.id),
-            token,
+          return await bus.exec(
+            payerService.createPayerProfileFromTkoalyIdentity,
+            {
+              id: user.id,
+              token,
+            },
           );
         }
       }
@@ -274,20 +260,27 @@ export class DebtService {
         if (dryRun) {
           return {
             id: internalIdentity(''),
-            email,
+            tkoalyUserId: null,
+            total: null,
             name,
             createdAt: new Date(),
             updatedAt: new Date(),
             emails: [],
-            stripeCustomerId: '',
             disabled: false,
+            paidCount: null,
+            debtCount: null,
+            unpaidCount: null,
+            mergedTo: null,
           };
         } else {
-          const payer =
-            await this.payerService.createPayerProfileFromEmailIdentity(
-              emailIdentity(email),
-              { name },
-            );
+          const payer = await bus.exec(
+            payerService.createPayerProfileFromEmailIdentity,
+            {
+              id: emailIdentity(email),
+              name,
+            },
+          );
+
           return payer;
         }
       }
@@ -296,18 +289,20 @@ export class DebtService {
     return null;
   }
 
-  private async resolveDebtCenter(
+  async function resolveDebtCenter(
     debtCenter: string,
     dryRun: boolean,
     accountingPeriod: number,
   ) {
     if (validate(debtCenter)) {
-      const byId = await this.debtCentersService.getDebtCenter(debtCenter);
+      const byId = await bus.exec(debtCentersService.getDebtCenter, debtCenter);
       return byId;
     }
 
-    const byName =
-      await this.debtCentersService.getDebtCenterByName(debtCenter);
+    const byName = await bus.exec(
+      debtCentersService.getDebtCenterByName,
+      debtCenter,
+    );
 
     if (byName) {
       return byName;
@@ -324,7 +319,7 @@ export class DebtService {
         updatedAt: new Date(),
       };
     } else {
-      return await this.debtCentersService.createDebtCenter({
+      return await bus.exec(debtCentersService.createDebtCenter, {
         name: debtCenter,
         accountingPeriod,
         description: '',
@@ -333,7 +328,7 @@ export class DebtService {
     }
   }
 
-  private async handleDebtJob(
+  async function handleDebtJob(
     job: Job<DebtJobDefinition, DebtJobResult, string>,
   ): Promise<DebtJobResult> {
     if (job.name === 'create') {
@@ -351,7 +346,7 @@ export class DebtService {
       try {
         const { details, token, components, dryRun } = job.data;
 
-        const payer = await this.resolvePayer(details, token, dryRun);
+        const payer = await resolvePayer(details, token, dryRun);
 
         if (!payer && !details.email) {
           return {
@@ -366,7 +361,8 @@ export class DebtService {
         let emailSource = 'explicit';
 
         if (!email && payer) {
-          const primary = await this.payerService.getPayerPrimaryEmail(
+          const primary = await bus.exec(
+            payerService.getPayerPrimaryEmail,
             payer.id,
           );
 
@@ -399,10 +395,10 @@ export class DebtService {
           return missingField('accountingPeriod');
         }
 
-        const accountingPeriodOpen =
-          await this.accountingService.isAccountingPeriodOpen(
-            details.accountingPeriod,
-          );
+        const accountingPeriodOpen = await bus.exec(
+          isAccountingPeriodOpen,
+          details.accountingPeriod,
+        );
 
         if (!accountingPeriodOpen) {
           return {
@@ -413,7 +409,7 @@ export class DebtService {
           };
         }
 
-        const debtCenter = await this.resolveDebtCenter(
+        const debtCenter = await resolveDebtCenter(
           details.debtCenter,
           dryRun,
           details.accountingPeriod,
@@ -506,10 +502,10 @@ export class DebtService {
             };
           }
 
-          const existingDebtComponents =
-            await this.debtService.getDebtComponentsByCenter(
-              debtCenter.id as any,
-            );
+          const existingDebtComponents = await bus.exec(
+            defs.getDebtComponentsByCenter,
+            debtCenter.id,
+          );
 
           debtComponents = await Promise.all(
             (details?.components ?? []).map(async c => {
@@ -524,7 +520,7 @@ export class DebtService {
               );
 
               if (componentDetails) {
-                return await this.debtService.createDebtComponent({
+                return await bus.exec(defs.createDebtComponent, {
                   name: c,
                   amount: componentDetails.amount,
                   debtCenterId: debtCenter.id,
@@ -554,7 +550,7 @@ export class DebtService {
               debtComponents.push(existingBasePrice);
             } else {
               debtComponents.push(
-                await this.debtService.createDebtComponent({
+                await bus.exec(defs.createDebtComponent, {
                   name: 'Base Price',
                   amount: details.amount,
                   debtCenterId: debtCenter.id,
@@ -578,21 +574,32 @@ export class DebtService {
             }
           }
 
-          const newDebt: NewDebt = {
+          const accountingPeriod = E.getOrElseW(() => null)(
+            t.Int.decode(details.accountingPeriod),
+          );
+
+          if (!accountingPeriod) {
+            throw new Error('Invalid accounting period!');
+          }
+
+          const newDebt = {
             centerId: debtCenter.id,
-            accountingPeriod: details.accountingPeriod,
+            accountingPeriod,
             description: details.description,
             name: details.title,
             payer: payer.id,
             dueDate,
-            date,
-            publishedAt,
+            date: date ?? undefined,
+            publishedAt: publishedAt ?? undefined,
             paymentCondition: paymentCondition ?? null,
             components: debtComponents.map(c => c.id),
             tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
           };
 
-          createdDebt = await this.debtService.createDebt(newDebt, options);
+          createdDebt = await bus.exec(defs.createDebt, {
+            debt: newDebt,
+            options,
+          });
         } else {
           createdDebt = {
             id: '',
@@ -610,6 +617,9 @@ export class DebtService {
             paymentCondition: paymentCondition ?? null,
             defaultPayment: null,
             accountingPeriod: details.accountingPeriod,
+            total: debtComponents
+              .map(c => c.amount)
+              .reduce(sumEuroValues, cents(0)),
             createdAt: new Date(),
             updatedAt: new Date(),
             debtComponents,
@@ -636,10 +646,11 @@ export class DebtService {
                   } as DebtComponent;
                 }
 
-                const existing =
-                  await this.debtService.getDebtComponentsByCenter(
-                    debtCenter.id,
-                  );
+                const existing = await bus.exec(
+                  defs.getDebtComponentsByCenter,
+                  debtCenter.id,
+                );
+
                 const match = existing.find(ec => ec.name === c);
 
                 if (match) {
@@ -713,31 +724,35 @@ export class DebtService {
     }
   }
 
-  async batchCreateDebts(
-    debts: DebtCreationDetails[],
-    components: { name: string; amount: EuroValue }[],
-    token: string,
-    dryRun: boolean,
-  ) {
-    return await this.jobService.createJob({
-      queueName: 'debts',
-      name: 'batch',
-      data: { name: 'Create debts from CSV' },
-      children: debts.map(details => ({
-        name: 'create',
+  bus.register(
+    defs.batchCreateDebts,
+    async ({ debts, components, token, dryRun }) => {
+      const { job } = await jobs.createJob({
         queueName: 'debts',
-        data: {
-          name: `Create debt for ${(details as any).name}`,
-          details,
-          token,
-          dryRun,
-          components,
-        },
-      })),
-    });
-  }
+        name: 'batch',
+        data: { name: 'Create debts from CSV' },
+        children: debts.map(details => ({
+          name: 'create',
+          queueName: 'debts',
+          data: {
+            name: `Create debt for ${(details as any).name}`,
+            details,
+            token,
+            dryRun,
+            components,
+          },
+        })),
+      });
 
-  private async queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
+      if (job.id === undefined) {
+        throw new Error('Created job has no id!');
+      }
+
+      return job.id;
+    },
+  );
+
+  async function queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
     let query = sql`
       SELECT
         debt.*,
@@ -767,51 +782,51 @@ export class DebtService {
       sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`,
     );
 
-    return this.pg.any<DbDebt>(query).then(debts => debts.map(formatDebt));
+    return pg.any<DbDebt>(query).then(debts => debts.map(formatDebt));
   }
 
-  async getDebt(id: string): Promise<Debt | null> {
-    const [debts] = await this.queryDebts(sql`debt.id = ${id}`);
+  bus.register(defs.getDebt, async (id: string) => {
+    const [debts] = await queryDebts(sql`debt.id = ${id}`);
     return debts;
-  }
+  });
 
-  async getDebtsByCenter(id: string): Promise<Debt[]> {
-    return this.queryDebts(sql`debt.debt_center_id = ${id}`);
-  }
+  bus.register(defs.getDebtsByCenter, async id => {
+    return queryDebts(sql`debt.debt_center_id = ${id}`);
+  });
 
-  async getDebtsByTag(tagName: string): Promise<Debt[]> {
-    return this.queryDebts(
+  async function getDebtsByTag(tagName: string): Promise<Debt[]> {
+    return queryDebts(
       sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`,
     );
   }
 
-  async getDebts(): Promise<Debt[]> {
-    return this.queryDebts();
-  }
+  bus.register(defs.getDebts, () => queryDebts());
 
-  async getDebtComponentsByCenter(id: string): Promise<DebtComponent[]> {
-    const components = await this.pg.any<DbDebtComponent>(sql`
+  bus.register(defs.getDebtComponentsByCenter, async id => {
+    const components = await pg.any<DbDebtComponent>(sql`
       SELECT * FROM debt_component WHERE debt_center_id = ${id}
     `);
 
     return components.map(formatDebtComponent);
-  }
+  });
 
-  private async createDefaultPaymentFor(debt: Debt): Promise<Payment> {
-    const created = await this.paymentService.createInvoice(
-      {
+  async function createDefaultPaymentFor(debt: Debt): Promise<Payment> {
+    const created = await bus.exec(paymentService.createInvoice, {
+      invoice: {
         title: debt.name,
         message: debt.description,
         series: 1,
         debts: [debt.id],
-        date: debt.date ?? undefined,
+        date: debt.date,
+        referenceNumber: null,
+        paymentNumber: null,
       },
-      {
+      options: {
         sendNotification: false,
       },
-    );
+    });
 
-    await this.debtService.setDefaultPayment(debt.id, created.id);
+    await setDefaultPayment(debt.id, created.id);
 
     if (!created) {
       return Promise.reject('Could not create invoice for debt');
@@ -820,14 +835,14 @@ export class DebtService {
     return created;
   }
 
-  async publishDebt(debtId: string): Promise<void> {
-    const debt = await this.getDebt(debtId);
+  bus.register(defs.publishDebt, async (debtId: string) => {
+    const debt = await bus.exec(defs.getDebt, debtId);
 
     if (!debt) {
       throw new Error('No such debt');
     }
 
-    await this.pg.any(sql`
+    await pg.any(sql`
       UPDATE debt
       SET
         published_at = NOW(),
@@ -837,8 +852,8 @@ export class DebtService {
     `);
 
     const defaultPayment = debt.defaultPayment
-      ? await this.paymentService.getPayment(debt.defaultPayment)
-      : await this.createDefaultPaymentFor(debt);
+      ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
+      : await createDefaultPaymentFor(debt);
 
     if (!defaultPayment) {
       throw new Error('No default invoice exists for payment');
@@ -856,7 +871,8 @@ export class DebtService {
     );
 
     if (debt.status === 'unpaid' && !isBackdated) {
-      const message = await this.paymentService.sendNewPaymentNotification(
+      const message = await bus.exec(
+        paymentService.sendNewPaymentNotification,
         defaultPayment.id,
       );
 
@@ -864,18 +880,19 @@ export class DebtService {
         throw new Error('Could not send invoice notification.');
       }
 
-      await this.emailService.sendEmail(message.right.id);
+      await bus.exec(sendEmail, message.right.id);
     }
-  }
+  });
 
-  async setDefaultPayment(debtId: string, paymentId: string) {
-    await this.pg.any(sql`
+  async function setDefaultPayment(debtId: string, paymentId: string) {
+    await pg.any(sql`
       UPDATE debt SET default_payment = ${paymentId} WHERE id = ${debtId}
     `);
   }
 
-  async createDebt(debt: NewDebt, options?: CreateDebtOptions): Promise<Debt> {
-    const payerProfile = await this.payerService.getPayerProfileByIdentity(
+  bus.register(defs.createDebt, async ({ debt, options }) => {
+    const payerProfile = await bus.exec(
+      payerService.getPayerProfileByIdentity,
       debt.payer,
     );
 
@@ -883,7 +900,7 @@ export class DebtService {
       throw new Error('No such payer: ' + debt.payer.value);
     }
 
-    const created = await this.pg.tx(async tx => {
+    const created = await pg.tx(async tx => {
       const [created] = await tx.do<DbDebt>(sql`
           INSERT INTO debt (
             name,
@@ -931,7 +948,7 @@ export class DebtService {
 
     await Promise.all(
       debt.components.map(async component => {
-        await this.pg.any(sql`
+        await pg.any(sql`
               INSERT INTO debt_component_mapping (debt_id, debt_component_id)
               VALUES (${created.id}, ${component})
           `);
@@ -939,41 +956,44 @@ export class DebtService {
     );
 
     if (options?.defaultPayment) {
-      const payment = await this.paymentService.createInvoice(
-        {
+      const payment = await bus.exec(paymentService.createInvoice, {
+        invoice: {
           series: 1,
           message: debt.description,
           debts: [created.id],
           title: debt.name,
-          date: debt.date ? parseISO(debt.date) : undefined,
+          date: debt.date ? parseISO(debt.date) : null,
+          referenceNumber: null,
+          paymentNumber: null,
           ...options.defaultPayment,
         },
-        {
+        options: {
           sendNotification: false,
         },
-      );
+      });
 
-      await this.setDefaultPayment(created.id, payment.id);
+      await setDefaultPayment(created.id, payment.id);
     }
 
-    const createdDebt = await this.getDebt(created.id);
+    const createdDebt = await bus.exec(defs.getDebt, created.id);
 
     if (createdDebt === null) {
       throw new Error('Could not fetch just created debt from the database!');
     }
 
     return createdDebt;
-  }
+  });
 
-  async updateDebt(debt: DebtPatch): Promise<E.Either<Error, Debt>> {
-    const existingDebt = await this.getDebt(debt.id);
+  bus.register(defs.updateDebt, async debt => {
+    const existingDebt = await bus.exec(defs.getDebt, debt.id);
 
     if (!existingDebt) {
       return E.left(new Error('No such debt'));
     }
 
     if (debt.payerId) {
-      const payer = await this.payerService.getPayerProfileByIdentity(
+      const payer = await bus.exec(
+        payerService.getPayerProfileByIdentity,
         debt.payerId,
       );
 
@@ -1048,7 +1068,7 @@ export class DebtService {
 
       const addComponents = A.traverse(TE.ApplicativePar)(
         id => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(sql`
+          await pg.one(sql`
             INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
           `);
 
@@ -1058,7 +1078,7 @@ export class DebtService {
 
       const removeComponents = A.traverse(TE.ApplicativePar)(
         id => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(
+          await pg.one(
             sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`,
           );
 
@@ -1095,7 +1115,7 @@ export class DebtService {
 
       const addTags = A.traverse(TE.ApplicativePar)(
         name => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(sql`
+          await pg.one(sql`
             INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${debt.id}, ${name}, false)
           `);
 
@@ -1105,7 +1125,7 @@ export class DebtService {
 
       const removeTags = A.traverse(TE.ApplicativePar)(
         name => async (): Promise<E.Either<Error, null>> => {
-          await this.pg.one(
+          await pg.one(
             sql`DELETE FROM debt_tags WHERE debt_id = ${debt.id} AND name = ${name}`,
           );
 
@@ -1121,7 +1141,7 @@ export class DebtService {
     }
 
     return pipe(
-      this.pg.oneTask<DbDebt>(query),
+      pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
       TE.map(debt => ({
         ...debt,
@@ -1130,13 +1150,13 @@ export class DebtService {
       TE.map(formatDebt),
       TE.chainFirst(() => handleComponents),
       TE.chainFirst(() => handleTags),
+      TE.map(debt => debt.id),
+      TE.flatMapTask(bus.execT(defs.getDebt)),
     )();
-  }
+  });
 
-  async createDebtComponent(
-    debtComponent: NewDebtComponent,
-  ): Promise<DebtComponent> {
-    return this.pg
+  bus.register(defs.createDebtComponent, async debtComponent => {
+    return pg
       .one<DbDebtComponent>(
         sql`
         INSERT INTO debt_component (name, amount, debt_center_id)
@@ -1151,11 +1171,13 @@ export class DebtService {
 
         return formatDebtComponent(dbDebtComponent);
       });
-  }
+  });
 
-  async deleteDebtComponent(debtCenterId: string, debtComponentId: string) {
-    return await this.pg.tx(async tx => {
-      const [{ exists }] = await tx.do<{ exists: boolean }>(sql`
+  bus.register(
+    defs.deleteDebtComponent,
+    async ({ debtCenterId, debtComponentId }) => {
+      return await pg.tx(async tx => {
+        const [{ exists }] = await tx.do<{ exists: boolean }>(sql`
         SELECT
           EXISTS(
             SELECT *
@@ -1165,33 +1187,32 @@ export class DebtService {
           ) AS exists
       `);
 
-      if (!exists) {
-        return E.left(new Error('No such debt component'));
-      }
+        if (!exists) {
+          return E.left(new Error('No such debt component'));
+        }
 
-      const result = await tx.do<{ debt_id: string }>(sql`
+        const result = await tx.do<{ debt_id: string }>(sql`
         DELETE FROM debt_component_mapping
         WHERE debt_component_id = ${debtComponentId}
         RETURNING debt_id 
       `);
 
-      await tx.do(sql`
+        await tx.do(sql`
         DELETE FROM debt_component
         WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
       `);
 
-      return E.right({
-        affectedDebts: result.map(r => r.debt_id),
+        return E.right({
+          affectedDebts: result.map(r => r.debt_id),
+        });
       });
-    });
-  }
+    },
+  );
 
-  async updateDebtComponent(
-    debtCenterId: string,
-    debtComponentId: string,
-    patch: DebtComponentPatch,
-  ) {
-    const updated = await this.pg.one<DbDebtComponent>(sql`
+  bus.register(
+    defs.updateDebtComponent,
+    async ({ debtCenterId, debtComponentId, debtComponent: patch }) => {
+      const updated = await pg.one<DbDebtComponent>(sql`
       UPDATE debt_component
       SET
         name = COALESCE(${patch.name}, name),
@@ -1200,15 +1221,16 @@ export class DebtService {
       RETURNING *
     `);
 
-    if (!updated) {
-      return null;
-    }
+      if (!updated) {
+        return null;
+      }
 
-    return formatDebtComponent(updated);
-  }
+      return formatDebtComponent(updated);
+    },
+  );
 
-  async getDebtsByPayment(paymentId: string): Promise<Array<Debt>> {
-    return this.pg
+  bus.register(defs.getDebtsByPayment, async (paymentId: string) => {
+    return pg
       .any<DbDebt>(
         sql`
         SELECT
@@ -1235,19 +1257,19 @@ export class DebtService {
       `,
       )
       .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
-  }
+  });
 
-  async getDebtsByPayer(
-    id: InternalIdentity,
-    { includeDrafts = false, includeCredited = false } = {},
-  ) {
-    return this.queryDebts(
-      sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`,
-    );
-  }
+  bus.register(
+    defs.getDebtsByPayer,
+    async ({ id, includeCredited, includeDrafts }) => {
+      return queryDebts(
+        sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`,
+      );
+    },
+  );
 
-  async getDebtTotal(id: string): Promise<EuroValue> {
-    const result = await this.pg.one<{ total: number }>(sql`
+  bus.register(defs.getDebtTotal, async (id: string) => {
+    const result = await pg.one<{ total: number }>(sql`
       SELECT SUM(dc.amount) AS total
       FROM debt_component_mapping dcm
       JOIN debt_component dc ON dc.id = dcm.debt_component_id
@@ -1259,10 +1281,10 @@ export class DebtService {
     }
 
     return cents(result.total);
-  }
+  });
 
-  async deleteDebt(id: string) {
-    const debt = await this.getDebt(id);
+  bus.register(defs.deleteDebt, async (id: string) => {
+    const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
       throw new Error('Debt not found');
@@ -1272,16 +1294,16 @@ export class DebtService {
       throw new Error('Cannot delete published debts');
     }
 
-    await this.pg.tx(async tx => {
+    await pg.tx(async tx => {
       await tx.do(
         sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`,
       );
       await tx.do(sql`DELETE FROM debt WHERE id = ${id}`);
     });
-  }
+  });
 
-  async creditDebt(id: string) {
-    const debt = await this.getDebt(id);
+  bus.register(defs.creditDebt, async (id: string) => {
+    const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
       throw new Error('Debt not found');
@@ -1291,20 +1313,20 @@ export class DebtService {
       throw new Error('Cannot credit unpublished debts');
     }
 
-    await this.pg.tx(async tx => {
+    await pg.tx(async tx => {
       await tx.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `);
       await tx.do(
         sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
       );
     });
-  }
+  });
 
-  async getOverdueDebts() {
-    return this.queryDebts(
+  async function getOverdueDebts() {
+    return queryDebts(
       sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
     );
 
-    /*const debts = await this.pg.any<DbDebt>(sql`
+    /*const debts = await pg.any<DbDebt>(sql`
       SELECT
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
@@ -1330,8 +1352,8 @@ export class DebtService {
     return debts.map(formatDebt);*/
   }
 
-  async getDebtsPendingReminder() {
-    const debts = await this.pg.any<DbDebt>(sql`
+  async function getDebtsPendingReminder() {
+    const debts = await pg.any<DbDebt>(sql`
       SELECT
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
@@ -1360,22 +1382,29 @@ export class DebtService {
     return debts.map(formatDebt);
   }
 
-  async setDebtLastReminded(id: string, lastReminded: Date) {
-    await this.pg.any(sql`
+  async function setDebtLastReminded(id: string, lastReminded: Date) {
+    await pg.any(sql`
       UPDATE debt SET last_reminded = ${lastReminded} WHERE id = ${id}
     `);
   }
 
-  async sendReminder(
-    debt: Debt,
-    draft = true,
-  ): Promise<E.Either<string, Email>> {
+  bus.register(defs.sendReminder, async ({ debtId, draft = true }) => {
+    const debt = await bus.exec(defs.getDebt, debtId);
+
+    if (debt == null) {
+      return E.left('Debt not found');
+    }
+
     if (debt.draft) {
       return E.left('Debt is a draft');
     }
 
-    const email = await this.payerService.getPayerPrimaryEmail(debt.payerId);
-    const payer = await this.payerService.getPayerProfileByInternalIdentity(
+    const email = await bus.exec(
+      payerService.getPayerPrimaryEmail,
+      debt.payerId,
+    );
+    const payer = await bus.exec(
+      payerService.getPayerProfileByInternalIdentity,
       debt.payerId,
     );
 
@@ -1383,7 +1412,8 @@ export class DebtService {
       return E.left('No primary email for payer');
     }
 
-    const payment = await this.paymentService.getDefaultInvoicePaymentForDebt(
+    const payment = await bus.exec(
+      paymentService.getDefaultInvoicePaymentForDebt,
       debt.id,
     );
 
@@ -1397,7 +1427,7 @@ export class DebtService {
       return E.left('Debt not due yet');
     }
 
-    const createdEmail = await this.emailService.createEmail({
+    const createdEmail = await bus.exec(createEmail, {
       recipient: email.email,
       subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
       template: 'reminder',
@@ -1420,51 +1450,57 @@ export class DebtService {
     }
 
     if (!draft) {
-      await this.emailService.sendEmail(createdEmail.id);
-      const refreshed = await this.emailService.getEmail(createdEmail.id);
+      await bus.exec(sendEmail, createdEmail.id);
+      const refreshed = await bus.exec(getEmail, createdEmail.id);
 
       return E.fromNullable('Could not fetch new email details')(refreshed);
     }
 
-    await this.setDebtLastReminded(debt.id, createdEmail.createdAt);
+    await setDebtLastReminded(debt.id, createdEmail.createdAt);
 
     return E.right(createdEmail);
-  }
+  });
 
-  async sendAllReminders(
-    draft = true,
-    ignoreReminderCooldown = false,
-    _debts: null | Debt[] = null,
-  ) {
-    let debts = _debts;
+  bus.register(
+    defs.sendAllReminders,
+    async ({ draft = true, ignoreReminderCooldown = false, debts: pDebts }) => {
+      let debts: string[];
 
-    if (debts === null) {
-      debts = ignoreReminderCooldown
-        ? await this.getOverdueDebts()
-        : await this.getDebtsPendingReminder();
-    }
+      if (!pDebts) {
+        debts = (
+          ignoreReminderCooldown
+            ? await getOverdueDebts()
+            : await getDebtsPendingReminder()
+        ).map(d => d.id);
+      } else {
+        debts = pDebts;
+      }
 
-    const sendReminder = (debt: Debt) =>
-      T.map(E.map(e => [e, debt] as [Email, Debt]))(() =>
-        this.sendReminder(debt, true),
-      );
+      const result = await flow(
+        A.traverse(T.ApplicativePar)((debtId: string) =>
+          pipe(
+            { debtId, draft: true },
+            bus.execT(defs.sendReminder),
+            TE.map(email => ({ debtId, email })),
+          ),
+        ),
+        T.map(A.separate),
+      )(debts)();
 
-    const result = await flow(
-      A.traverse(T.ApplicativePar)(sendReminder),
-      T.map(A.separate),
-    )(debts)();
+      if (!draft) {
+        await bus.exec(
+          batchSendEmails,
+          result.right.map(({ email }) => email.id),
+        );
+      }
 
-    if (!draft) {
-      await this.emailService.batchSendEmails(
-        result.right.map(([email]) => email.id),
-      );
-    }
+      return result;
+    },
+  );
 
-    return result;
-  }
-
-  async onDebtPaid(debt: Debt, payment: Payment, _event: PaymentEvent) {
-    const payments = await this.paymentService.getPaymentsContainingDebt(
+  bus.register(defs.onDebtPaid, async ({ debt, payment }) => {
+    const payments = await bus.exec(
+      paymentService.getPaymentsContainingDebt,
       debt.id,
     );
 
@@ -1472,122 +1508,124 @@ export class DebtService {
       .filter(p => p.id !== payment.id)
       .map(async payment => {
         if (payment.type === 'invoice') {
-          await this.paymentService.creditPayment(payment.id, 'paid');
+          await bus.exec(paymentService.creditPayment, {
+            id: payment.id,
+            reason: 'paid',
+          });
         }
       });
 
     await Promise.all(promises);
-  }
+  });
 
-  async generateDebtLedger(
-    options: DebtLedgerOptions,
-    generatedBy: InternalIdentity,
-    parent?: string,
-  ) {
-    let criteria;
+  bus.register(
+    defs.generateDebtLedger,
+    async ({ options, generatedBy, parent }) => {
+      let criteria;
 
-    if (options.includeDrafts === 'include') {
-      criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-    } else if (options.includeDrafts === 'exclude') {
-      criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-    } else {
-      criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
-    }
-
-    if (options.centers !== null) {
-      console.log(options.centers);
-      criteria = sql`(`
-        .append(criteria)
-        .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
-      console.log(criteria.sql, criteria.values);
-    }
-
-    const debts = await this.queryDebts(criteria);
-    let groups;
-
-    if (options.groupBy) {
-      let getGroupKey;
-      let getGroupDetails;
-
-      if (options.groupBy === 'center') {
-        getGroupKey = (debt: Debt) => debt.debtCenterId;
-        getGroupDetails = async (id: string) => {
-          const center = await this.debtCentersService.getDebtCenter(id);
-          const name = center?.name ?? 'Unknown debt center';
-          const displayId = center?.humanId ?? '???';
-          return { name, id: displayId };
-        };
+      if (options.includeDrafts === 'include') {
+        criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+      } else if (options.includeDrafts === 'exclude') {
+        criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
       } else {
-        getGroupKey = (debt: Debt) => debt.payerId.value;
-        getGroupDetails = async (id: string) => {
-          const payer =
-            await this.payerService.getPayerProfileByInternalIdentity(
-              internalIdentity(id),
-            );
-          const name = payer?.name ?? 'Unknown payer';
-          const displayId = payer?.id?.value ?? '???';
-          return { name, id: displayId };
-        };
+        criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
       }
 
-      const createGroupUsing =
-        (nameResolver: (id: string) => Promise<{ name: string; id: string }>) =>
-        ([key, debts]: [string, Debt[]]) =>
-        async () => {
-          const { name, id } = await nameResolver(key);
-          return { name, debts, id };
-        };
+      if (options.centers !== null) {
+        console.log(options.centers);
+        criteria = sql`(`
+          .append(criteria)
+          .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
+        console.log(criteria.sql, criteria.values);
+      }
 
-      groups = await pipe(
-        debts,
-        groupBy(getGroupKey),
-        toArray,
-        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-      )();
-    } else {
-      groups = [{ debts }];
-    }
+      const debts = await queryDebts(criteria);
+      let groups;
 
-    const name = `Debt Ledger ${format(
-      options.startDate,
-      'dd.MM.yyyy',
-    )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+      if (options.groupBy) {
+        let getGroupKey;
+        let getGroupDetails;
 
-    const report = await this.reportService.createReport({
-      name,
-      template: 'debt-ledger',
-      options,
-      payload: { options, groups },
-      parent,
-      generatedBy,
-    });
+        if (options.groupBy === 'center') {
+          getGroupKey = (debt: Debt) => debt.debtCenterId;
+          getGroupDetails = async (id: string) => {
+            const center = await bus.exec(debtCentersService.getDebtCenter, id);
+            const name = center?.name ?? 'Unknown debt center';
+            const displayId = center?.humanId ?? '???';
+            return { name, id: displayId };
+          };
+        } else {
+          getGroupKey = (debt: Debt) => debt.payerId.value;
+          getGroupDetails = async (id: string) => {
+            const payer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
+              internalIdentity(id),
+            );
+            const name = payer?.name ?? 'Unknown payer';
+            const displayId = payer?.id?.value ?? '???';
+            return { name, id: displayId };
+          };
+        }
 
-    return report;
-  }
+        const createGroupUsing =
+          (
+            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
+          ) =>
+          ([key, debts]: [string, Debt[]]) =>
+          async () => {
+            const { name, id } = await nameResolver(key);
+            return { name, debts, id };
+          };
 
-  async generateDebtStatusReport(
-    options: Omit<DebtStatusReportOptions, 'date'> & { date: Date },
-    generatedBy: InternalIdentity,
-    parent?: string,
-  ) {
-    let statusFilter = sql``;
+        groups = await pipe(
+          debts,
+          groupBy(getGroupKey),
+          toArray,
+          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+        )();
+      } else {
+        groups = [{ debts }];
+      }
 
-    if (options.includeOnly === 'paid') {
-      statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
-    } else if (options.includeOnly === 'credited') {
-      statusFilter = sql` HAVING debt.credited `;
-    } else if (options.includeOnly === 'open') {
-      statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
-    }
+      const name = `Debt Ledger ${format(
+        options.startDate,
+        'dd.MM.yyyy',
+      )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
-    const dbResults = await this.pg.many<
-      DbDebt &
-        (
-          | { status: 'paid'; paid_at: Date }
-          | { status: 'open'; paid_at: null }
-        ) & { payment_id: string }
-    >(
-      sql`
+      const report = await bus.exec(createReport, {
+        name,
+        template: 'debt-ledger',
+        options,
+        payload: { options, groups },
+        parent: parent ?? undefined,
+        generatedBy,
+      });
+
+      return report;
+    },
+  );
+
+  bus.register(
+    defs.generateDebtStatusReport,
+    async ({ options, generatedBy, parent }) => {
+      let statusFilter = sql``;
+
+      if (options.includeOnly === 'paid') {
+        statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
+      } else if (options.includeOnly === 'credited') {
+        statusFilter = sql` HAVING debt.credited `;
+      } else if (options.includeOnly === 'open') {
+        statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
+      }
+
+      const dbResults = await pg.many<
+        DbDebt &
+          (
+            | { status: 'paid'; paid_at: Date }
+            | { status: 'open'; paid_at: null }
+          ) & { payment_id: string }
+      >(
+        sql`
       WITH payment_agg AS (
         SELECT
           payment_id,
@@ -1651,141 +1689,152 @@ export class DebtService {
       LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
       WHERE debt.published_at IS NOT NULL
     `
-        .append(
-          options.centers
-            ? sql` AND debt_center.id = ANY (${options.centers})`
-            : sql``,
-        )
-        .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
-        .append(statusFilter)
-        .append(sql` ORDER BY MIN(ps.paid_at)`),
-    );
+          .append(
+            options.centers
+              ? sql` AND debt_center.id = ANY (${options.centers})`
+              : sql``,
+          )
+          .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+          .append(statusFilter)
+          .append(sql` ORDER BY MIN(ps.paid_at)`),
+      );
 
-    const results = await Promise.all(
-      dbResults.map(
-        async row =>
-          [
-            formatDebt(row),
-            row.status,
-            row.paid_at,
-            row.payment_id
-              ? await this.paymentService.getPayment(row.payment_id)
-              : null,
-          ] as [Debt, 'open' | 'paid', Date, Payment | null],
-      ),
-    );
+      const results = await Promise.all(
+        dbResults.map(
+          async row =>
+            [
+              formatDebt(row),
+              row.status,
+              row.paid_at,
+              row.payment_id
+                ? await bus.exec(paymentService.getPayment, row.payment_id)
+                : null,
+            ] as [Debt, 'open' | 'paid', Date, Payment | null],
+        ),
+      );
 
-    let groups;
+      let groups;
 
-    if (options.groupBy) {
-      let getGroupKey: (debt: Debt) => string;
-      let getGroupDetails;
+      if (options.groupBy) {
+        let getGroupKey: (debt: Debt) => string;
+        let getGroupDetails;
 
-      if (options.groupBy === 'center') {
-        getGroupKey = (debt: Debt) => debt.debtCenterId;
-        getGroupDetails = async (id: string) => {
-          const center = await this.debtCentersService.getDebtCenter(id);
-          const name = center?.name ?? 'Unknown debt center';
-          const displayId = center?.humanId ?? '???';
-          return { name, id: displayId };
-        };
-      } else {
-        getGroupKey = (debt: Debt) => debt.payerId.value;
-        getGroupDetails = async (id: string) => {
-          const payer =
-            await this.payerService.getPayerProfileByInternalIdentity(
+        if (options.groupBy === 'center') {
+          getGroupKey = (debt: Debt) => debt.debtCenterId;
+          getGroupDetails = async (id: string) => {
+            const center = await bus.exec(debtCentersService.getDebtCenter, id);
+            const name = center?.name ?? 'Unknown debt center';
+            const displayId = center?.humanId ?? '???';
+            return { name, id: displayId };
+          };
+        } else {
+          getGroupKey = (debt: Debt) => debt.payerId.value;
+          getGroupDetails = async (id: string) => {
+            const payer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
               internalIdentity(id),
             );
-          const name = payer?.name ?? 'Unknown payer';
-          const displayId = payer?.id?.value ?? '???';
-          return { name, id: displayId };
-        };
+            const name = payer?.name ?? 'Unknown payer';
+            const displayId = payer?.id?.value ?? '???';
+            return { name, id: displayId };
+          };
+        }
+
+        const createGroupUsing =
+          (
+            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
+          ) =>
+          ([key, debts]: [
+            string,
+            [Debt, 'open' | 'paid', Date | null, Payment | null][],
+          ]) =>
+          async () => {
+            const { name, id } = await nameResolver(key);
+            return { name, debts, id };
+          };
+
+        groups = await pipe(
+          results,
+          groupBy(([debt]) => getGroupKey(debt)),
+          toArray,
+          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+        )();
+      } else {
+        groups = [{ debts: results }];
       }
 
-      const createGroupUsing =
-        (nameResolver: (id: string) => Promise<{ name: string; id: string }>) =>
-        ([key, debts]: [
-          string,
-          [Debt, 'open' | 'paid', Date | null, Payment | null][],
-        ]) =>
-        async () => {
-          const { name, id } = await nameResolver(key);
-          return { name, debts, id };
-        };
+      const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
 
-      groups = await pipe(
-        results,
-        groupBy(([debt]) => getGroupKey(debt)),
-        toArray,
-        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-      )();
-    } else {
-      groups = [{ debts: results }];
-    }
+      const report = await bus.exec(createReport, {
+        name,
+        template: 'debt-status-report',
+        options,
+        payload: { options, groups },
+        scale: 0.7,
+        parent: parent ?? undefined,
+        generatedBy,
+      });
 
-    const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
+      return report;
+    },
+  );
 
-    const report = await this.reportService.createReport({
-      name,
-      template: 'debt-status-report',
-      options,
-      payload: { options, groups },
-      scale: 0.7,
-      parent,
-      generatedBy,
-    });
-
-    return report;
-  }
-
-  async getDebtsByEmail(emailId: string) {
-    const debts = await this.queryDebts(
+  async function getDebtsByEmail(emailId: string) {
+    const debts = await queryDebts(
       sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
     );
 
     return debts;
   }
 
-  async sendPaymentRemindersByPayer(
-    payerId: InternalIdentity,
-    opts: { send: boolean; ignoreCooldown: boolean },
-  ) {
-    const debts = await this.debtService.getDebtsByPayer(payerId);
-    const email = await this.payerService.getPayerPrimaryEmail(payerId);
+  bus.register(
+    defs.sendPaymentRemindersByPayer,
+    async ({ payer, send, ignoreCooldown }) => {
+      const debts = await bus.exec(defs.getDebtsByPayer, {
+        id: payer,
+        includeCredited: false,
+        includeDrafts: false,
+      });
 
-    if (!email) {
-      throw new Error(
-        'No such user or no primary email for user ' + payerId.value,
-      );
-    }
+      const email = await bus.exec(payerService.getPayerPrimaryEmail, payer);
 
-    const overdue = debts.filter(
-      debt =>
-        !!debt.publishedAt &&
-        debt.status != 'paid' &&
-        debt.dueDate &&
-        isPast(debt.dueDate) &&
-        (opts.ignoreCooldown ||
-          !debt.lastReminded ||
-          isBefore(debt.lastReminded, subMonths(new Date(), 1))),
-    );
+      if (!email) {
+        throw new Error(
+          'No such user or no primary email for user ' + payer.value,
+        );
+      }
 
-    const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
-    const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
-    const sendReminder = (debt: Debt) =>
-      T.map(E.map(e => [e, debt] as [Email, Debt]))(() =>
-        this.debtService.sendReminder(debt, !opts.send),
+      const overdue = debts.filter(
+        debt =>
+          !!debt.publishedAt &&
+          debt.status != 'paid' &&
+          debt.dueDate &&
+          isPast(debt.dueDate) &&
+          (ignoreCooldown ||
+            !debt.lastReminded ||
+            isBefore(debt.lastReminded, subMonths(new Date(), 1))),
       );
 
-    return pipe(
-      overdue,
-      A.traverse(T.ApplicativePar)(sendReminder),
-      T.map(A.separate),
-      T.map(({ left, right }) => ({
-        messageCount: right.length,
-        payerCount: A.uniq(EmailPayerEq)(right).length,
-        errors: left,
-      })),
-    )();
-  }
-}
+      const getEmailPayerId = ([, debt]: [Email, Debt]) => debt.payerId.value;
+      const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
+      const _sendReminder = (debt: Debt) =>
+        pipe(
+          bus.execT(defs.sendReminder)({ debtId: debt.id, draft: !send }),
+          TE.map(e => [e, debt] as [Email, Debt]),
+        );
+
+      return pipe(
+        overdue,
+        A.traverse(T.ApplicativePar)(_sendReminder),
+        T.map(A.separate),
+        T.map(({ left, right }) => ({
+          messageCount: right.length,
+          payerCount: A.uniq(EmailPayerEq)(right).length,
+          errors: left,
+        })),
+      )();
+    },
+  );
+
+  jobs.createWorker('debts', handleDebtJob);
+};

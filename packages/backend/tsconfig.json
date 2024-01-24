@@ -23,7 +23,8 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "paths": {
-      "@bbat/common/*": ["./node_modules/@bbat/common/build/src/*"]
+      "@bbat/common/*": ["./node_modules/@bbat/common/build/src/*"],
+      "@/*": ["./src/*"]
     }
   },
   "exclude": ["node_modules"],

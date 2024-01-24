@@ -1,4 +1,3 @@
-import { Service, Inject } from 'typedi';
 import { RedisClientType } from 'redis';
 import {
   ConnectionOptions,
@@ -11,25 +10,21 @@ import {
   WorkerOptions,
 } from 'bullmq';
 import { Config } from '../config';
-import { AppBus } from '../orchestrator';
+import process from 'process';
 
-@Service()
 export class JobService {
-  @Inject('redis')
-  redis: RedisClientType;
-
   queues: Record<string, Queue> = {};
 
   constructor(
     public config: Config,
-    private bus: AppBus,
+    private redis: RedisClientType,
   ) {
     const events = new QueueEvents('main', {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
 
-    bus.onClose(() => events.close());
+    process.on('exit', () => events.close());
   }
 
   private getConnectionConfig(): ConnectionOptions {
@@ -50,7 +45,7 @@ export class JobService {
         prefix: 'bbat-jobs',
       }));
 
-      this.bus.onClose(() => queue.close());
+      process.on('exit', () => queue.close());
     }
 
     return this.queues[name] as any;
@@ -64,7 +59,8 @@ export class JobService {
         connection: this.getConnectionConfig(),
         prefix: 'bbat-jobs',
       }));
-      this.bus.onClose(() => producer.close());
+
+      process.on('exit', () => producer.close());
     }
 
     return this.flowProducer;
@@ -94,7 +90,7 @@ export class JobService {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
-    this.bus.onClose(() => worker.close());
+    process.on('exit', () => worker.close());
     return worker;
   }
 

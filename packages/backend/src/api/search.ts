@@ -4,28 +4,21 @@ import { PgClient } from '../db';
 import { AuthService } from '../auth-middleware';
 import { Inject, Service } from 'typedi';
 import { ok } from 'typera-express/response';
+import { ApiDeps } from '.';
 
 export type ResultRow = {
   type: 'payer' | 'debt' | 'debt_center';
   id: string;
 };
 
-@Service()
-export class SearchApi {
-  @Inject(() => PgClient)
-  pg: PgClient;
+export default ({ pg, auth }: ApiDeps) => {
+  const search = route
+    .get('/')
+    .use(auth.createAuthMiddleware())
+    .handler(async ctx => {
+      const { term, type } = ctx.req.query;
 
-  @Inject(() => AuthService)
-  authService: AuthService;
-
-  private search() {
-    return route
-      .get('/')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ctx => {
-        const { term, type } = ctx.req.query;
-
-        const results = await this.pg.any<ResultRow>(sql`
+      const results = await pg.any<ResultRow>(sql`
           SELECT *
           FROM resource_ts rts
           WHERE ${term} <% rts.text AND (${
@@ -35,11 +28,8 @@ export class SearchApi {
           LIMIT 50
         `);
 
-        return ok(results);
-      });
-  }
+      return ok(results);
+    });
 
-  router() {
-    return router(this.search());
-  }
-}
+  return router(search);
+};

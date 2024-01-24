@@ -1,4 +1,4 @@
-import { PayerService } from '../../src/services/payer';
+import { PayerService } from '../../src/services/payers';
 import {
   emailIdentity,
   tkoalyIdentity,

@@ -4,13 +4,13 @@ import {
   DebtCenter,
   DebtCenterPatch,
 } from '@bbat/common/build/src/types';
-import { PgClient } from '../db';
-import { Service, Inject } from 'typedi';
+import { isAccountingPeriodOpen } from '../accounting/definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
-import { DebtService } from './debt';
 import * as E from 'fp-ts/lib/Either';
-import { AccountingService } from './accounting';
+import { ModuleDeps } from '@/app';
+import * as defs from './definitions';
+import { pipe } from 'fp-ts/lib/function';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
@@ -20,29 +20,19 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   description: debtCenter.description,
   createdAt: debtCenter.created_at,
   updatedAt: debtCenter.updated_at,
-  debtCount: debtCenter.debt_count,
-  paidCount: debtCenter.paid_count,
-  unpaidCount: debtCenter.unpaid_count,
+  debtCount: debtCenter.debt_count ?? null,
+  paidCount: debtCenter.paid_count ?? null,
+  unpaidCount: debtCenter.unpaid_count ?? null,
   total:
     debtCenter.total === undefined
-      ? undefined
+      ? null
       : cents(parseInt('' + debtCenter.total)),
   url: debtCenter.url,
 });
 
-@Service()
-export class DebtCentersService {
-  @Inject(() => PgClient)
-  pg: PgClient;
-
-  @Inject(() => DebtService)
-  debtService: DebtService;
-
-  @Inject(() => AccountingService)
-  accountingService: AccountingService;
-
-  getDebtCenters() {
-    return this.pg
+export default ({ pg, bus }: ModuleDeps) => {
+  bus.register(defs.getDebtCenters, async () => {
+    return pg
       .any<DbDebtCenter>(
         sql`
         SELECT
@@ -62,37 +52,37 @@ export class DebtCentersService {
       `,
       )
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter));
-  }
+  });
 
-  getDebtCenterByName(name: string) {
-    return this.pg
+  bus.register(defs.getDebtCenterByName, name => {
+    return pg
       .one<DbDebtCenter>(
         sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`,
       )
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
-  }
+  });
 
-  getDebtCenter(id: string) {
-    return this.pg
+  bus.register(defs.getDebtCenter, async id => {
+    return pg
       .one<DbDebtCenter>(
         sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`,
       )
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
-  }
+  });
 
-  async createDebtCenter(center: NewDebtCenter) {
-    const isAccountingPeriodOpen =
-      await this.accountingService.isAccountingPeriodOpen(
-        center.accountingPeriod,
-      );
+  bus.register(defs.createDebtCenter, async center => {
+    const isAccountingPeriodOpenResult = await bus.exec(
+      isAccountingPeriodOpen,
+      center.accountingPeriod,
+    );
 
-    if (!isAccountingPeriodOpen) {
+    if (!isAccountingPeriodOpenResult) {
       throw new Error(
         `Accounting period ${center.accountingPeriod} is not open.`,
       );
     }
 
-    return this.pg
+    const result = await pg
       .one<DbDebtCenter>(
         sql`
         INSERT INTO debt_center (name, url, description, accounting_period)
@@ -106,16 +96,24 @@ export class DebtCentersService {
       `,
       )
       .then(dbDebtCenter => dbDebtCenter && formatDebtCenter(dbDebtCenter));
-  }
 
-  async deleteDebtCenter(id: string) {
-    return await this.pg.one<{ id: string }>(sql`
+    if (!result) {
+      throw new Error('Failed to create debt center!');
+    }
+
+    return result;
+  });
+
+  bus.register(defs.deleteDebtCenter, async id => {
+    const center = await pg.one<DbDebtCenter>(sql`
         UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
       `);
-  }
 
-  async updateDebtCenter(center: DebtCenterPatch) {
-    const existing = await this.getDebtCenter(center.id);
+    return center && formatDebtCenter(center);
+  });
+
+  bus.register(defs.updateDebtCenter, async center => {
+    const existing = await bus.exec(defs.getDebtCenter, center.id);
 
     if (!existing) {
       return E.left(new Error('No such debt center'));
@@ -129,10 +127,11 @@ export class DebtCentersService {
         url = ${center.url}
       WHERE
         id = ${center.id}
+      RETURNING *
     `;
 
-    await this.pg.one(query);
+    const result = await pg.one<DbDebtCenter>(query);
 
-    return E.right(null);
-  }
-}
+    return pipe(E.fromNullable(null)(result), E.map(formatDebtCenter));
+  });
+};

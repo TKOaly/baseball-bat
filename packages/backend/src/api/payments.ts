@@ -1,4 +1,3 @@
-import { Inject, Service } from 'typedi';
 import { route, router } from 'typera-express';
 import {
   badRequest,
@@ -9,412 +8,376 @@ import {
   unauthorized,
 } from 'typera-express/response';
 import * as t from 'io-ts';
+import * as paymentService from '@/services/payments/definitions';
+import * as payerService from '@/services/payers/definitions';
+import * as debtService from '@/services/debts/definitions';
+import * as bankingService from '@/services/banking/definitions';
 import { internalIdentity } from '@bbat/common/build/src/types';
-import { AuthService } from '../auth-middleware';
-import { DebtService } from '../services/debt';
-import { PaymentService } from '../services/payements';
-import { PayerService } from '../services/payer';
-import { UsersService } from '../services/users';
 import { validateBody } from '../validate-middleware';
 import {
+  cents,
   euro,
   euroValue,
   formatEuro,
   sumEuroValues,
 } from '@bbat/common/build/src/currency';
-import { EmailService } from '../services/email';
-import { Config } from '../config';
-import { BankingService } from '../services/banking';
 import { headers } from 'typera-express/parser';
 import Stripe from 'stripe';
+import { ApiDeps } from '.';
 
-@Service()
-export class PaymentsApi {
-  @Inject(() => Config)
-  config: Config;
+export default ({ auth, bus, config, stripe }: ApiDeps) => {
+  const getPayments = route
+    .get('/')
+    .use(auth.createAuthMiddleware())
+    .handler(async () => {
+      const payments = await bus.exec(paymentService.getPayments);
+      return ok(payments);
+    });
 
-  @Inject('stripe')
-  stripe: Stripe;
+  const getPayment = route
+    .get('/:id')
+    .use(
+      auth.createAuthMiddleware({
+        accessLevel: 'normal',
+      }),
+    )
+    .handler(async ctx => {
+      const payment = await bus.exec(
+        paymentService.getPayment,
+        ctx.routeParams.id,
+      );
+      const debts = await bus.exec(
+        debtService.getDebtsByPayment,
+        ctx.routeParams.id,
+      );
 
-  @Inject(() => PaymentService)
-  paymentService: PaymentService;
+      if (
+        ctx.session.accessLevel !== 'admin' &&
+        ctx.session.payerId.value !== payment?.payerId?.value
+      ) {
+        return unauthorized();
+      }
 
-  @Inject(() => BankingService)
-  bankingService: BankingService;
-
-  @Inject(() => UsersService)
-  usersService: UsersService;
-
-  @Inject(() => PayerService)
-  payerService: PayerService;
-
-  @Inject(() => AuthService)
-  authService: AuthService;
-
-  @Inject(() => DebtService)
-  debtService: DebtService;
-
-  @Inject(() => EmailService)
-  emailService: EmailService;
-
-  private getPayments() {
-    return route
-      .get('/')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async () => {
-        const payments = await this.paymentService.getPayments();
-        return ok(payments);
+      return ok({
+        payment,
+        debts,
       });
-  }
+    });
 
-  private getPayment() {
-    return route
-      .get('/:id')
-      .use(
-        this.authService.createAuthMiddleware({
-          accessLevel: 'normal',
+  const registerTransaction = route
+    .post('/:id/register')
+    .use(auth.createAuthMiddleware())
+    .use(
+      validateBody(
+        t.type({
+          transactionId: t.string,
+          amount: euroValue,
         }),
-      )
-      .handler(async ctx => {
-        const payment = await this.paymentService.getPayment(
-          ctx.routeParams.id,
-        );
-        const debts = await this.debtService.getDebtsByPayment(
-          ctx.routeParams.id,
-        );
+      ),
+    )
+    .handler(async ctx => {
+      const { id } = ctx.routeParams;
+      const { amount, transactionId } = ctx.body;
 
-        if (
-          ctx.session.accessLevel !== 'admin' &&
-          ctx.session.payerId !== payment?.payerId?.value
-        ) {
-          return unauthorized();
-        }
+      const transaction = await bus.exec(
+        bankingService.getTransaction,
+        transactionId,
+      );
 
-        return ok({
-          payment,
-          debts,
-        });
-      });
-  }
+      if (!transaction) {
+        return notFound('No such transaction found');
+      }
 
-  private registerTransaction() {
-    return route
-      .post('/:id/register')
-      .use(this.authService.createAuthMiddleware())
-      .use(
-        validateBody(
-          t.type({
-            transactionId: t.string,
-            amount: euroValue,
-          }),
-        ),
-      )
-      .handler(async ctx => {
-        const { id } = ctx.routeParams;
-        const { amount, transactionId } = ctx.body;
+      const event = await bus.exec(
+        paymentService.createPaymentEventFromTransaction,
+        {
+          transaction,
+          amount,
+          paymentId: id,
+        },
+      );
 
-        const transaction =
-          await this.bankingService.getTransaction(transactionId);
+      return ok(event);
+    });
 
-        if (!transaction) {
-          return notFound('No such transaction found');
-        }
-
-        const event =
-          await this.paymentService.createPaymentEventFromTransaction(
-            transaction,
-            amount,
-            id,
-          );
-
-        return ok(event);
-      });
-  }
-
-  private createInvoice() {
-    return route
-      .post('/create-invoice')
-      .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
-      .use(
-        validateBody(
-          t.type({
-            debts: t.array(t.string),
-            sendEmail: t.boolean,
-          }),
-        ),
-      )
-      .handler(async ctx => {
-        const debts = await Promise.all(
-          ctx.body.debts.map(async id => {
-            const debt = await this.debtService.getDebt(id);
-
-            if (!debt) {
-              return Promise.reject(badRequest());
-            }
-
-            if (
-              ctx.session.accessLevel !== 'admin' &&
-              debt.payerId.value !== ctx.session.payerId
-            ) {
-              return Promise.reject(unauthorized());
-            }
-
-            return debt;
-          }),
-        );
-
-        if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
-          return badRequest('All debts do not have the same payer');
-        }
-
-        const email = await this.payerService.getPayerPrimaryEmail(
-          debts[0].payerId,
-        );
-
-        if (!email) {
-          throw new Error(
-            `Payer ${debts[0].payerId} does not have a primary email`,
-          );
-        }
-
-        const payment = await this.paymentService.createInvoice(
-          {
-            series: 9,
-            debts: debts.map(d => d.id),
-            title: 'Combined invoice',
-            message:
-              'Invoice for the following debts:\n' +
-              debts
-                .map(
-                  d =>
-                    ` - ${d.name} (${formatEuro(
-                      d.debtComponents
-                        .map(dc => dc.amount)
-                        .reduce(sumEuroValues, euro(0)),
-                    )})`,
-                )
-                .join('\n'),
-          },
-          {
-            sendNotification: ctx.body.sendEmail,
-          },
-        );
-
-        return ok(payment);
-      });
-  }
-
-  private createStripePayment() {
-    return route
-      .post('/create-stripe-payment')
-      .use(this.authService.createAuthMiddleware({ accessLevel: 'normal' }))
-      .use(
-        validateBody(
-          t.type({
-            debts: t.array(t.string),
-          }),
-        ),
-      )
-      .handler(async ctx => {
-        if (process.env.NODE_ENV !== 'development') {
-          console.log(process.env.NODE_ENV);
-          return forbidden();
-        }
-
-        const debts = await Promise.all(
-          ctx.body.debts.map(async id => {
-            const debt = await this.debtService.getDebt(id);
-
-            if (!debt) {
-              return Promise.reject(badRequest());
-            }
-
-            if (
-              ctx.session.accessLevel !== 'admin' &&
-              debt.payerId.value !== ctx.session.payerId
-            ) {
-              return Promise.reject(unauthorized());
-            }
-
-            return debt;
-          }),
-        );
-
-        if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
-          return badRequest('All debts do not have the same payer');
-        }
-
-        const result = await this.paymentService.createStripePayment({
-          debts: debts.map(d => d.id),
-        });
-
-        return ok(result);
-      });
-  }
-
-  private getOwnPayments() {
-    return route
-      .get('/my')
-      .use(
-        this.authService.createAuthMiddleware({
-          accessLevel: 'normal',
+  const createInvoice = route
+    .post('/create-invoice')
+    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(
+      validateBody(
+        t.type({
+          debts: t.array(t.string),
+          sendEmail: t.boolean,
         }),
-      )
-      .handler(async ({ session }) => {
-        const payments = await this.paymentService.getPayerPayments(
-          internalIdentity(session.payerId),
-        );
-        return ok(payments);
-      });
-  }
+      ),
+    )
+    .handler(async ctx => {
+      const debts = await Promise.all(
+        ctx.body.debts.map(async id => {
+          const debt = await bus.exec(debtService.getDebt, id);
 
-  private creditPayment() {
-    return route
-      .post('/:id/credit')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ctx => {
-        await this.paymentService.creditPayment(ctx.routeParams.id, 'manual');
-        return ok();
-      });
-  }
-
-  public stripeWebhook() {
-    return route
-      .post('/')
-      .use(
-        headers(
-          t.type({
-            'stripe-signature': t.string,
-          }),
-        ),
-      )
-      .handler(async ctx => {
-        const secret = this.config.stripeWebhookSecret;
-
-        let event;
-
-        try {
-          event = this.stripe.webhooks.constructEvent(
-            ctx.req.body,
-            ctx.headers['stripe-signature'],
-            secret,
-          );
-        } catch (err) {
-          console.log(
-            err,
-            typeof ctx.req.body,
-            ctx.headers['stripe-signature'],
-          );
-          return badRequest({
-            error: `Webhook Error: ${err}`,
-          });
-        }
-
-        let intent;
-
-        if (event.type === 'payment_intent.succeeded') {
-          intent = event.data.object as any as Stripe.PaymentIntent;
-
-          const paymentId = intent.metadata.paymentId;
-
-          if (intent.currency !== 'eur') {
-            return internalServerError(
-              'Currencies besides EUR are not supported!',
-            );
+          if (!debt) {
+            return Promise.reject(badRequest());
           }
 
-          await this.paymentService.createPaymentEvent(paymentId, {
-            type: 'payment',
-            amount: {
-              currency: 'eur',
-              value: intent.amount,
-            },
-          });
-        } else if (event.type === 'payment_intent.payment_failed') {
-          intent = event.data.object as any as Stripe.PaymentIntent;
+          if (
+            ctx.session.accessLevel !== 'admin' &&
+            debt.payerId.value !== ctx.session.payerId.value
+          ) {
+            return Promise.reject(unauthorized());
+          }
 
-          await this.paymentService.createPaymentEvent(
-            intent.metadata.paymentId,
-            {
-              type: 'failed',
-              amount: euro(0),
-            },
-          );
-        } else if (event.type === 'payment_intent.processing') {
-          intent = event.data.object as any as Stripe.PaymentIntent;
+          return debt;
+        }),
+      );
 
-          await this.paymentService.createPaymentEvent(
-            intent.metadata.paymentId,
-            {
-              type: 'other',
-              amount: euro(0),
-              data: {
-                stripe: {
-                  type: 'processing',
-                },
-              },
-            },
-          );
-        } else {
-          console.log('Other Stripe event: ' + event.type, event);
-        }
+      if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
+        return badRequest('All debts do not have the same payer');
+      }
 
-        return ok();
-      });
-  }
+      const email = await bus.exec(
+        payerService.getPayerPrimaryEmail,
+        debts[0].payerId,
+      );
 
-  private deletePaymentEvent() {
-    return route
-      .delete('/events/:id')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ctx => {
-        const event = await this.paymentService.deletePaymentEvent(
-          ctx.routeParams.id,
+      if (!email) {
+        throw new Error(
+          `Payer ${debts[0].payerId} does not have a primary email`,
         );
+      }
 
-        if (!event) {
-          return notFound();
+      const payment = await bus.exec(paymentService.createInvoice, {
+        invoice: {
+          series: 9,
+          debts: debts.map(d => d.id),
+          title: 'Combined invoice',
+          date: null,
+          referenceNumber: null,
+          paymentNumber: null,
+          message:
+            'Invoice for the following debts:\n' +
+            debts
+              .map(
+                d =>
+                  ` - ${d.name} (${formatEuro(
+                    d.debtComponents
+                      .map(dc => dc.amount)
+                      .reduce(sumEuroValues, euro(0)),
+                  )})`,
+              )
+              .join('\n'),
+        },
+        options: {
+          sendNotification: ctx.body.sendEmail,
+        },
+      });
+
+      return ok(payment);
+    });
+
+  const createStripePayment = route
+    .post('/create-stripe-payment')
+    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(
+      validateBody(
+        t.type({
+          debts: t.array(t.string),
+        }),
+      ),
+    )
+    .handler(async ctx => {
+      if (process.env.NODE_ENV !== 'development') {
+        console.log(process.env.NODE_ENV);
+        return forbidden();
+      }
+
+      const debts = await Promise.all(
+        ctx.body.debts.map(async id => {
+          const debt = await bus.exec(debtService.getDebt, id);
+
+          if (!debt) {
+            return Promise.reject(badRequest());
+          }
+
+          if (
+            ctx.session.accessLevel !== 'admin' &&
+            debt.payerId.value !== ctx.session.payerId.value
+          ) {
+            return Promise.reject(unauthorized());
+          }
+
+          return debt;
+        }),
+      );
+
+      if (!debts.every(d => d.payerId.value === debts[0].payerId.value)) {
+        return badRequest('All debts do not have the same payer');
+      }
+
+      const result = await bus.exec(paymentService.createStripePayment, {
+        debts: debts.map(d => d.id),
+      });
+
+      return ok(result);
+    });
+
+  const getOwnPayments = route
+    .get('/my')
+    .use(
+      auth.createAuthMiddleware({
+        accessLevel: 'normal',
+      }),
+    )
+    .handler(async ({ session }) => {
+      const payments = await bus.exec(
+        paymentService.getPayerPayments,
+        session.payerId,
+      );
+      return ok(payments);
+    });
+
+  const creditPayment = route
+    .post('/:id/credit')
+    .use(auth.createAuthMiddleware())
+    .handler(async ctx => {
+      await bus.exec(paymentService.creditPayment, {
+        id: ctx.routeParams.id,
+        reason: 'manual',
+      });
+
+      return ok();
+    });
+
+  const stripeWebhook = route
+    .post('/')
+    .use(
+      headers(
+        t.type({
+          'stripe-signature': t.string,
+        }),
+      ),
+    )
+    .handler(async ctx => {
+      const secret = config.stripeWebhookSecret;
+
+      let event;
+
+      try {
+        event = stripe.webhooks.constructEvent(
+          ctx.req.body,
+          ctx.headers['stripe-signature'],
+          secret,
+        );
+      } catch (err) {
+        console.log(err, typeof ctx.req.body, ctx.headers['stripe-signature']);
+        return badRequest({
+          error: `Webhook Error: ${err}`,
+        });
+      }
+
+      let intent;
+
+      if (event.type === 'payment_intent.succeeded') {
+        intent = event.data.object as any as Stripe.PaymentIntent;
+
+        const paymentId = intent.metadata.paymentId;
+
+        if (intent.currency !== 'eur') {
+          return internalServerError(
+            'Currencies besides EUR are not supported!',
+          );
         }
 
-        return ok(event);
-      });
-  }
+        await bus.exec(paymentService.createPaymentEvent, {
+          paymentId,
+          type: 'payment',
+          amount: cents(intent.amount),
+          data: {},
+          time: undefined,
+          transaction: null,
+        });
+      } else if (event.type === 'payment_intent.payment_failed') {
+        intent = event.data.object as any as Stripe.PaymentIntent;
 
-  private updatePaymentEvent() {
-    return route
-      .patch('/events/:id')
-      .use(this.authService.createAuthMiddleware())
-      .use(
-        validateBody(
-          t.type({
-            amount: euroValue,
-          }),
-        ),
-      )
-      .handler(async ctx => {
-        const event = await this.paymentService.updatePaymentEvent(
-          ctx.routeParams.id,
-          {
-            amount: ctx.body.amount,
+        const { paymentId } = intent.metadata;
+
+        await bus.exec(paymentService.createPaymentEvent, {
+          paymentId,
+          type: 'failed',
+          amount: euro(0),
+          data: {},
+          time: undefined,
+          transaction: null,
+        });
+      } else if (event.type === 'payment_intent.processing') {
+        intent = event.data.object as any as Stripe.PaymentIntent;
+
+        const { paymentId } = intent.metadata;
+
+        await bus.exec(paymentService.createPaymentEvent, {
+          paymentId,
+          type: 'other',
+          amount: euro(0),
+          data: {
+            stripe: {
+              type: 'processing',
+            },
           },
-        );
+          time: undefined,
+          transaction: null,
+        });
+      } else {
+        console.log('Other Stripe event: ' + event.type, event);
+      }
 
-        return ok(event);
+      return ok();
+    });
+
+  const deletePaymentEvent = route
+    .delete('/events/:id')
+    .use(auth.createAuthMiddleware())
+    .handler(async ctx => {
+      const event = await bus.exec(
+        paymentService.deletePaymentEvent,
+        ctx.routeParams.id,
+      );
+
+      if (!event) {
+        return notFound();
+      }
+
+      return ok(event);
+    });
+
+  const updatePaymentEvent = route
+    .patch('/events/:id')
+    .use(auth.createAuthMiddleware())
+    .use(
+      validateBody(
+        t.type({
+          amount: euroValue,
+        }),
+      ),
+    )
+    .handler(async ctx => {
+      const event = await bus.exec(paymentService.updatePaymentEvent, {
+        id: ctx.routeParams.id,
+        amount: ctx.body.amount,
       });
-  }
 
-  router() {
-    return router(
-      this.getPayments(),
-      this.getOwnPayments(),
-      this.createInvoice(),
-      this.getPayment(),
-      this.creditPayment(),
-      this.registerTransaction(),
-      this.createStripePayment(),
-      this.stripeWebhook(),
-      this.deletePaymentEvent(),
-      this.updatePaymentEvent(),
-    );
-  }
-}
+      return ok(event);
+    });
+
+  return router(
+    getPayments,
+    getOwnPayments,
+    createInvoice,
+    getPayment,
+    creditPayment,
+    registerTransaction,
+    createStripePayment,
+    stripeWebhook,
+    deletePaymentEvent,
+    updatePaymentEvent,
+  );
+};

@@ -7,8 +7,12 @@ import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import * as dateFns from 'date-fns';
 import { Inject, Service } from 'typedi';
-import { Config } from '../config';
-import { PgClient } from '../db';
+import { Config } from '../../config';
+import { pipe } from 'fp-ts/lib/function';
+import * as record from 'fp-ts/lib/Record';
+import { map, reduce } from 'fp-ts/lib/Array';
+import { groupBy } from 'fp-ts/lib/NonEmptyArray';
+import { PgClient } from '../../db';
 import { DbEmail, Email, InternalIdentity } from '@bbat/common/build/src/types';
 import {
   formatEuro,
@@ -21,15 +25,17 @@ import {
   formatBarcode,
   generateBarcodeImage,
 } from '@bbat/common/build/src/virtual-barcode';
-import { formatReferenceNumber } from './payements';
-import { JobService } from './jobs';
+import { formatReferenceNumber } from '../payments';
+import { JobService } from '../jobs';
 import { Job } from 'bullmq';
+import { ModuleDeps } from '@/app';
+import * as defs from './definitions';
 
 type SendEmailOptions = {
   recipient: string;
   subject: string;
   template: string;
-  payload: object;
+  payload: Record<string, unknown>;
 };
 
 type NewEmail = {
@@ -140,43 +146,19 @@ type EmailBatchSendJob = Job<void, EmailBatchSendJobResult, 'batch'>;
 
 type EmailJob = EmailSendJob | EmailBatchSendJob;
 
-const TemplateType = {
-  HTML: 'html',
-  TEXT: 'text',
-};
+export default ({
+  jobs,
+  config,
+  bus,
+  pg,
+  emailTransport: transport,
+}: ModuleDeps) => {
+  let templates: Record<string, EmailTemplate>;
 
-type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
-
-@Service()
-export class EmailService {
-  pg: PgClient;
-
-  private transport: IEmailTransport;
-
-  constructor(
-    transport: IEmailTransport,
-    pg: PgClient,
-    @Inject() public jobService: JobService,
-    private config: Config,
-  ) {
-    this.transport = transport;
-    this.pg = pg;
-    this.jobService.createWorker(
-      'emails',
-      this.handleEmailJob.bind(this) as any,
-      {
-        limiter: {
-          max: 1,
-          duration: 1000,
-        },
-      },
-    );
-  }
-
-  private async handleEmailJob(job: EmailJob) {
+  async function handleEmailJob(job: EmailJob) {
     if (job.name === 'send') {
       try {
-        await this._sendEmail(job.data.emailId);
+        await _sendEmail(job.data.emailId);
       } catch (err) {
         return {
           result: 'error',
@@ -217,11 +199,11 @@ export class EmailService {
     );
   }
 
-  async sendRawEmail(options: EmailTransportOptions) {
-    return this.transport.sendEmail(options);
+  async function sendRawEmail(options: EmailTransportOptions) {
+    return transport.sendEmail(options);
   }
 
-  async sendEmailDirect(options: SendEmailOptions) {
+  bus.register(defs.sendEmailDirect, async options => {
     const html = await this.renderTemplate(
       options.template,
       TemplateType.HTML,
@@ -237,7 +219,7 @@ export class EmailService {
       return Promise.reject();
     }
 
-    return this.sendRawEmail({
+    return sendRawEmail({
       to: options.recipient,
       from: 'velat@tko-aly.fi',
       replyTo: 'rahastonhoitaja@tko-aly.fi',
@@ -245,7 +227,7 @@ export class EmailService {
       text,
       html,
     });
-  }
+  });
 
   async renderTemplate(name: string, type: TemplateType, payload: object) {
     const template = await this.getTemplatePath(name, type);
@@ -284,7 +266,8 @@ export class EmailService {
     return rendered;
   }
 
-  async createEmail(email: NewEmail) {
+<<<<<<< HEAD:packages/backend/src/services/email.ts
+  bus.register(defs.createEmail, async email => {
     const html = await this.renderTemplate(
       email.template,
       TemplateType.HTML,
@@ -296,20 +279,20 @@ export class EmailService {
       email.payload,
     );
 
-    const result = await this.pg.one<DbEmail>(sql`
+    const result = await pg.one<DbEmail>(sql`
         INSERT INTO emails (recipient, subject, template, html, text)
         VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
         RETURNING *
      `);
 
     if (!result) {
-      return null;
+      throw new Error('Failed to create email!');
     }
 
     if (email.debts) {
       await Promise.all(
         email.debts.map(debt =>
-          this.pg.any(sql`
+          pg.any(sql`
         INSERT INTO email_debt_mapping (email_id, debt_id)
         VALUES (${result.id}, ${debt})
       `),
@@ -318,16 +301,16 @@ export class EmailService {
     }
 
     return formatEmail(result);
-  }
+  });
 
-  async _sendEmail(id: string) {
-    const email = await this.getEmail(id);
+  async function _sendEmail(id: string) {
+    const email = await getEmail(id);
 
     if (!email) {
       throw 'No such email';
     }
 
-    await this.sendRawEmail({
+    await sendRawEmail({
       to: email.recipient,
       from: 'velat@tko-aly.fi',
       replyTo: 'rahastonhoitaja@tko-aly.fi',
@@ -336,24 +319,29 @@ export class EmailService {
       html: email.html,
     });
 
-    await this.pg.any(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
+    await pg.any(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
   }
 
-  async batchSendEmails(ids: string[], { jobName }: { jobName?: string } = {}) {
-    const jobs = await Promise.all(
-      ids.map(id => this.createEmailJobDescription(id)),
+  async function batchSendEmails(
+    ids: string[],
+    { jobName }: { jobName?: string } = {},
+  ) {
+    const children = await Promise.all(
+      ids.map(id => createEmailJobDescription(id)),
     );
 
-    await this.jobService.createJob({
+    await jobs.createJob({
       queueName: 'emails',
       name: 'batch',
       data: { name: jobName ?? `Send ${ids.length} emails` },
-      children: jobs,
+      children,
     });
   }
 
-  async createEmailJobDescription(id: string) {
-    const email = await this.getEmail(id);
+  bus.register(defs.batchSendEmails, batchSendEmails);
+
+  async function createEmailJobDescription(id: string) {
+    const email = await getEmail(id);
 
     return {
       queueName: 'emails',
@@ -372,36 +360,38 @@ export class EmailService {
     };
   }
 
-  async sendEmail(id: string) {
-    const description = await this.createEmailJobDescription(id);
+  async function sendEmail(id: string) {
+    const description = await createEmailJobDescription(id);
 
-    await this.jobService.createJob(description);
+    await jobs.createJob(description);
   }
 
-  async getEmails() {
-    const emails = await this.pg.any<DbEmail>(sql`SELECT * FROM emails`);
+  bus.register(defs.getEmails, async () => {
+    const emails = await pg.any<DbEmail>(sql`SELECT * FROM emails`);
 
     return emails.map(formatEmail);
-  }
+  });
 
-  async getEmail(id: string) {
-    const email = await this.pg.one<DbEmail>(
+  async function getEmail(id: string) {
+    const email = await pg.one<DbEmail>(
       sql`SELECT * FROM emails WHERE id = ${id}`,
     );
 
     return email && formatEmail(email);
   }
 
-  async getEmailsByAddress(email: string) {
-    const emails = await this.pg.any<DbEmail>(
+  bus.register(defs.getEmail, getEmail);
+
+  async function getEmailsByAddress(email: string) {
+    const emails = await pg.any<DbEmail>(
       sql`SELECT * FROM emails WHERE recipient = ${email}`,
     );
 
     return emails.map(formatEmail);
   }
 
-  async getEmailsByPayer(payer: InternalIdentity) {
-    const emails = await this.pg.any<DbEmail>(sql`
+  async function getEmailsByPayer(payer: InternalIdentity) {
+    const emails = await pg.any<DbEmail>(sql`
         SELECT emails.*
         FROM payer_emails
         JOIN emails ON emails.recipient = payer_emails.email
@@ -411,8 +401,8 @@ export class EmailService {
     return emails.map(formatEmail);
   }
 
-  async getEmailsByDebt(debt: string) {
-    const emails = await this.pg.any<DbEmail>(sql`
+  bus.register(defs.getEmailsByDebt, async debt => {
+    const emails = await pg.any<DbEmail>(sql`
         SELECT emails.*
         FROM email_debt_mapping edm
         JOIN emails ON emails.id = edm.email_id
@@ -420,5 +410,13 @@ export class EmailService {
       `);
 
     return emails.map(formatEmail);
-  }
-}
+  });
+
+  loadTemplates();
+  jobs.createWorker('emails', handleEmailJob.bind(this) as any, {
+    limiter: {
+      max: 1,
+      duration: 1000,
+    },
+  });
+};

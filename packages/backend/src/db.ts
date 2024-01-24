@@ -1,6 +1,5 @@
 import pg from 'pg';
 import sql, { SQLStatement } from 'sql-template-strings';
-import { Service } from 'typedi';
 import * as O from 'fp-ts/lib/Option';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
@@ -36,7 +35,6 @@ export type TxClient = {
   do: <A>(query: SQLStatement) => Promise<A[]>;
 };
 
-@Service()
 export class PgClient {
   conn: pg.Pool;
 

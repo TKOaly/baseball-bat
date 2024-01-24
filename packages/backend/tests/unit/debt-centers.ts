@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { DebtCentersService } from '../../src/services/debt_centers';
+import { DebtCentersService } from '../../src/services/debt-centers';
 import * as uuid from 'uuid';
 import { isLeft, isRight } from 'fp-ts/lib/Either';
 import { createTestFunc } from '../common';

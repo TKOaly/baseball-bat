@@ -5,6 +5,7 @@ import { notFound, ok } from 'typera-express/response';
 import { AuthService } from '../auth-middleware';
 import { JobService } from '../services/jobs';
 import { Job } from '@bbat/common/src/types';
+import { ApiDeps } from '.';
 
 const formatJob = async (node: JobNode): Promise<Job> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
@@ -50,64 +51,43 @@ const formatJob = async (node: JobNode): Promise<Job> => {
   };
 };
 
-@Service()
-export class JobsApi {
-  @Inject(() => JobService)
-  jobService: JobService;
+export default ({ jobs, auth }: ApiDeps) => {
+  const getJobs = route
+    .get('/list')
+    .use(auth.createAuthMiddleware())
+    .handler(async _ctx => {
+      const allJobs = await jobs.getJobs();
 
-  @Inject(() => AuthService)
-  authService: AuthService;
+      return ok(await Promise.all(allJobs.map(formatJob)));
+    });
 
-  private getJobs() {
-    return route
-      .get('/list')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async _ctx => {
-        const jobs = await this.jobService.getJobs();
+  const getJob = route
+    .get('/queue/:queue/:id')
+    .use(auth.createAuthMiddleware())
+    .handler(async ctx => {
+      const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
 
-        return ok(await Promise.all(jobs.map(formatJob)));
-      });
-  }
+      if (!node) {
+        return notFound();
+      }
 
-  private getJob() {
-    return route
-      .get('/queue/:queue/:id')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ctx => {
-        const node = await this.jobService.getJob(
-          ctx.routeParams.queue,
-          ctx.routeParams.id,
-        );
+      return ok(await formatJob(node));
+    });
 
-        if (!node) {
-          return notFound();
-        }
+  const retryJob = route
+    .post('/queue/:queue/:id/retry')
+    .use(auth.createAuthMiddleware())
+    .handler(async ctx => {
+      const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
 
-        return ok(await formatJob(node));
-      });
-  }
+      if (!node) {
+        return notFound();
+      }
 
-  private retryJob() {
-    return route
-      .post('/queue/:queue/:id/retry')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ctx => {
-        const node = await this.jobService.getJob(
-          ctx.routeParams.queue,
-          ctx.routeParams.id,
-        );
+      await node.job.retry('failed');
 
-        if (!node) {
-          return notFound();
-        }
+      return ok();
+    });
 
-        await node.job.retry('failed');
-
-        return ok();
-      });
-  }
-
-  router() {
-    return router(this.getJobs(), this.getJob(), this.retryJob());
-  }
-}
+  return router(getJobs, getJob, retryJob);
+};

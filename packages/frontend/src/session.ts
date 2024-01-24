@@ -41,7 +41,7 @@ export const destroySession = createAsyncThunk<
 
 export const authenticateSession = createAsyncThunk<
   {
-    accessLevel: 'normal' | 'admin';
+    accessLevel: AccessLevel;
     payerProfile: PayerProfile;
     preferences: PayerPreferences;
   },
@@ -78,16 +78,19 @@ export const authenticateSession = createAsyncThunk<
   }
 });
 
-export const bootstrapSession = createAsyncThunk(
-  'session/bootstrap',
-  async (): Promise<{
-    token: string;
-    payerId: string;
-    authLevel: string;
-    accessLevel: 'admin' | 'normal';
-    preferences: PayerPreferences;
-  }> => {
-    const token = window.localStorage.getItem('session-token');
+type RefreshSessionResponse = {
+  token: string;
+  payerId: string;
+  authLevel: string;
+  accessLevel: AccessLevel;
+  preferences: PayerPreferences;
+}
+
+export const refreshSession = createAsyncThunk<RefreshSessionResponse, void, { state: RootState }>(
+  'session/refresh',
+  async (_, thunkApi) => {
+    const state = thunkApi.getState();
+    const { token } = state.session;
 
     if (!token) {
       return Promise.reject();
@@ -116,107 +119,103 @@ export const bootstrapSession = createAsyncThunk(
   },
 );
 
-export const heartbeat = createAsyncThunk('session/heartbeat', async () => {
-  const token = window.localStorage.getItem('session-token');
+export enum SessionStatus {
+  INVALID = 'invalid',
+  CREATING = 'creating',
+  REFRESHING = 'refreshing',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+}
 
-  if (!token) {
-    return Promise.reject();
-  }
+export enum AccessLevel {
+  NORMAL = 'normal',
+  ADMIN = 'admin',
+}
 
-  const res = await fetch(`${BACKEND_URL}/api/session`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (res.ok) {
-    return Promise.resolve();
-  } else {
-    return Promise.reject();
-  }
-});
+export type SessionData = {
+  userId: string,
+  accessLevel: AccessLevel,
+  preferences: PayerPreferences,
+};
 
 type SessionState = {
+  status: SessionStatus;
   token: string | null;
-  authenticated: boolean;
-  payerId: null | string;
-  bootstrapping: 'pending' | 'active' | 'completed';
-  accessLevel: 'normal' | 'admin';
-  preferences: null | PayerPreferences;
-  creatingSession: boolean;
+  data: SessionData | null;
+};
+
+const SESSION_TOKEN_KEY = 'session-token';
+
+const getInitialToken = () => {
+  return window.localStorage.getItem(SESSION_TOKEN_KEY);
 };
 
 const sessionSlice = createSlice({
   name: 'session',
   initialState: {
-    token: null,
-    authenticated: false,
-    payerId: null,
-    bootstrapping: 'pending',
-    preferences: null,
-    creatingSession: false,
+    token: getInitialToken(),
+    status: SessionStatus.INVALID,
+    data: null,
   } as SessionState,
   reducers: {
     resetSession: state => {
       state.token = null;
-      state.authenticated = false;
+      state.data = null;
+      state.status = SessionStatus.INVALID;
     },
   },
   extraReducers: builder => {
     builder.addCase(destroySession.pending, state => {
+      state.status = SessionStatus.REFRESHING;
+    });
+
+    builder.addCase(destroySession.fulfilled, state => {
       state.token = null;
-      state.authenticated = false;
+      state.data = null;
+      state.status = SessionStatus.INVALID;
+      window.localStorage.removeItem(SESSION_TOKEN_KEY);
     });
 
     builder.addCase(createSession.pending, state => {
-      state.token = null;
-      state.creatingSession = true;
+      state.status = SessionStatus.CREATING;
     });
 
     builder.addCase(createSession.fulfilled, (state, action) => {
       state.token = action.payload;
-      state.creatingSession = false;
-    });
-
-    builder.addCase(createSession.rejected, state => {
-      state.creatingSession = false;
+      state.status = SessionStatus.COMPLETED;
     });
 
     builder.addCase(authenticateSession.fulfilled, (state, action) => {
-      state.authenticated = true;
-      state.accessLevel = action.payload.accessLevel;
-      state.payerId = action.payload.payerProfile.id.value;
-      state.preferences = action.payload.preferences;
+      state.data = {
+        accessLevel: action.payload.accessLevel,
+        userId: action.payload.payerProfile.id.value,
+        preferences: action.payload.preferences,
+      };
 
       api.util.invalidateTags([{ type: 'Session', id: 'CURRENT' }]);
     });
 
-    builder.addCase(bootstrapSession.pending, state => {
-      state.bootstrapping = 'active';
+    builder.addCase(refreshSession.pending, state => {
+      state.status = SessionStatus.REFRESHING;
     });
 
-    builder.addCase(bootstrapSession.fulfilled, (state, action) => {
-      const { token, authLevel, payerId, accessLevel, preferences } =
+    builder.addCase(refreshSession.fulfilled, (state, action) => {
+      const { payerId, accessLevel, preferences } =
         action.payload;
-      state.bootstrapping = 'completed';
-      state.authenticated = authLevel !== 'unauthenticated';
-      state.token = token;
-      state.accessLevel = accessLevel;
-      state.preferences = preferences;
-      state.payerId = payerId;
+
+      state.status = SessionStatus.COMPLETED;
+      state.data = {
+        userId: payerId,
+        accessLevel,
+        preferences,
+      };
     });
 
-    builder.addCase(bootstrapSession.rejected, state => {
-      state.bootstrapping = 'completed';
-      state.authenticated = false;
+    builder.addCase(refreshSession.rejected, state => {
       state.token = null;
-      window.localStorage.removeItem('session-token');
-    });
-
-    builder.addCase(heartbeat.rejected, state => {
-      state.authenticated = false;
-      state.token = null;
+      state.status = SessionStatus.FAILED;
+      state.data = null;
+      window.localStorage.removeItem(SESSION_TOKEN_KEY);
     });
   },
 });

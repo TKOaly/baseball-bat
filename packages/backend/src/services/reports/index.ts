@@ -1,11 +1,9 @@
-import { Inject, Service } from 'typedi';
-import { PgClient } from '../db';
 import * as t from 'io-ts';
 import * as puppeteer from 'puppeteer';
 import { Browser } from 'puppeteer';
 import sql from 'sql-template-strings';
-import { Config } from '../config';
 import * as path from 'path';
+import * as paymentService from '@/services/payments/definitions';
 import * as fs from 'fs';
 import * as uuid from 'uuid';
 import {
@@ -22,9 +20,13 @@ import {
   sumEuroValues,
 } from '@bbat/common/build/src/currency';
 import * as datefns from 'date-fns';
-import { DebtService } from './debt';
-import { PaymentService } from './payements';
 import { isRight } from 'fp-ts/lib/Either';
+import { ModuleDeps } from '@/app';
+import {
+  generateDebtLedger,
+  generateDebtStatusReport,
+} from '@/services/debts/definitions';
+import * as defs from './definitions';
 
 export type CreateReportOptions = {
   template: string;
@@ -64,36 +66,23 @@ const formatReportWithHistory = (db: DbReport): Report => ({
   history: db.history.map(formatReport),
 });
 
-@Service()
-export class ReportService {
-  @Inject(() => PgClient)
-  pg: PgClient;
+export default ({ pg, config, bus }: ModuleDeps) => {
+  let _browser: Browser | null = null;
 
-  @Inject(() => Config)
-  config: Config;
-
-  @Inject(() => DebtService)
-  debtService: DebtService;
-
-  @Inject(() => PaymentService)
-  paymentService: PaymentService;
-
-  _browser: Browser | null = null;
-
-  private async getBrowser() {
-    if (this._browser === null) {
-      this._browser = await puppeteer.launch({
-        executablePath: this.config.chromiumBinaryPath ?? undefined,
+  async function getBrowser() {
+    if (_browser === null) {
+      _browser = await puppeteer.launch({
+        executablePath: config.chromiumBinaryPath ?? undefined,
         headless: true,
         args: ['--no-sandbox'],
       });
     }
 
-    return this._browser;
+    return _browser;
   }
 
-  private async render(source: string, scale = 0.8) {
-    const browser = await this.getBrowser();
+  async function render(source: string, scale = 0.8) {
+    const browser = await getBrowser();
     const page = await browser.newPage();
 
     await page.setContent(source, {
@@ -120,14 +109,14 @@ export class ReportService {
 
     await page.close();
     await browser.close();
-    this._browser = null;
+    _browser = null;
 
     return pdf;
   }
 
-  private async loadTemplate(name: string): Promise<string> {
+  async function loadTemplate(name: string): Promise<string> {
     const templateBasePath = path.join(
-      this.config.assetPath,
+      config.assetPath,
       'templates',
       'reports',
     );
@@ -136,14 +125,12 @@ export class ReportService {
     return content;
   }
 
-  async reserveReport(
+  async function reserveReport(
     options: SaveReportOptions,
   ): Promise<Omit<Report, 'history'> | null> {
     const id = uuid.v4();
 
-    console.log(options.generatedBy);
-
-    const report = await this.pg.one<Omit<DbReport, 'history'>>(
+    const report = await pg.one<Omit<DbReport, 'history'>>(
       sql`
       INSERT INTO reports (id, name, generated_at, options, type, generated_by, revision)
       VALUES (
@@ -164,7 +151,7 @@ export class ReportService {
     );
 
     if (report && options.parent) {
-      await this.pg.any(
+      await pg.any(
         sql`UPDATE reports SET superseded_by = ${report.id} WHERE id = ${options.parent}`,
       );
     }
@@ -172,11 +159,11 @@ export class ReportService {
     return report && formatReport(report);
   }
 
-  async updateReportStatus(
+  async function updateReportStatus(
     id: string,
     status: 'finished' | 'failed',
   ): Promise<Omit<Report, 'history'> | null> {
-    const report = await this.pg.one<Omit<DbReport, 'history'>>(sql`
+    const report = await pg.one<Omit<DbReport, 'history'>>(sql`
       UPDATE reports
       SET status = ${status}
       WHERE id = ${id}
@@ -186,8 +173,8 @@ export class ReportService {
     return report && formatReport(report);
   }
 
-  async saveReport(id: string, content: Buffer) {
-    const reportDir = path.join(this.config.dataPath, 'reports');
+  async function saveReport(id: string, content: Buffer) {
+    const reportDir = path.join(config.dataPath, 'reports');
     const reportPath = path.join(reportDir, `${id}.pdf`);
 
     try {
@@ -202,13 +189,11 @@ export class ReportService {
     });
   }
 
-  async createReport(
-    options: CreateReportOptions,
-  ): Promise<Omit<Report, 'history'> | null> {
-    const template = await this.loadTemplate(options.template);
+  bus.register(defs.createReport, async options => {
+    const template = await loadTemplate(options.template);
     const generatedAt = new Date();
 
-    const report = await this.reserveReport({
+    const report = await reserveReport({
       generatedAt,
       name: options.name,
       options: options.options,
@@ -218,8 +203,10 @@ export class ReportService {
     });
 
     if (!report) {
-      return null;
+      throw new Error('Failed to create report!');
     }
+
+    let result;
 
     try {
       const source = ejs.render(template, {
@@ -240,18 +227,23 @@ export class ReportService {
         },
       });
 
-      const pdf = await this.render(source, options.scale ?? 0.8);
+      const pdf = await render(source, options.scale ?? 0.8);
 
-      await this.saveReport(report.id, pdf);
+      await saveReport(report.id, pdf);
+      result = await updateReportStatus(report.id, 'finished');
     } catch (err) {
-      return await this.updateReportStatus(report.id, 'failed');
+      result = await updateReportStatus(report.id, 'failed');
     }
 
-    return await this.updateReportStatus(report.id, 'finished');
-  }
+    if (!result) {
+      throw new Error('Failed to fetch report!');
+    }
 
-  async getReport(id: string): Promise<Report | null> {
-    const report = await this.pg.one<DbReport>(sql`
+    return result;
+  });
+
+  bus.register(defs.getReport, async id => {
+    const report = await pg.one<DbReport>(sql`
       WITH RECURSIVE report_history AS (
         SELECT reports.id, generated_by, status, revision, name, generated_at, human_id, options, type, superseded_by, cast(NULL as UUID) as head FROM reports WHERE id = ${id}
         UNION
@@ -269,15 +261,16 @@ export class ReportService {
     `);
 
     return report && formatReportWithHistory(report);
-  }
+  });
 
-  async getReportContent(id: string): Promise<Buffer | null> {
-    const reportPath = path.join(this.config.dataPath, 'reports', `${id}.pdf`);
-    return fs.promises.readFile(reportPath);
-  }
+  bus.register(defs.getReportContent, async id => {
+    const reportPath = path.join(config.dataPath, 'reports', `${id}.pdf`);
+    const buffer = await fs.promises.readFile(reportPath);
+    return buffer.toString('utf-8');
+  });
 
-  async getReports() {
-    const reports = await this.pg.any<DbReport>(sql`
+  bus.register(defs.getReports, async () => {
+    const reports = await pg.any<DbReport>(sql`
       WITH RECURSIVE report_history AS (
         SELECT reports.id, generated_by, status, revision, name, generated_at, human_id, options, type, superseded_by, cast(NULL as UUID) as head FROM reports WHERE superseded_by IS NULL
         UNION
@@ -295,13 +288,13 @@ export class ReportService {
     `);
 
     return reports.map(formatReportWithHistory);
-  }
+  });
 
-  async refreshReport(id: string, generatedBy: InternalIdentity) {
-    const report = await this.getReport(id);
+  bus.register(defs.refreshReport, async ({ reportId, generatedBy }) => {
+    const report = await bus.exec(defs.getReport, reportId);
 
     if (!report) {
-      return;
+      throw new Error('No such report.');
     }
 
     if (report.type === 'debt-ledger') {
@@ -322,8 +315,8 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.debtService.generateDebtLedger(
-          {
+        return await bus.exec(generateDebtLedger, {
+          options: {
             startDate: new Date(options.startDate),
             endDate: new Date(options.endDate),
             centers: options.centers,
@@ -331,10 +324,10 @@ export class ReportService {
             includeDrafts: options.includeDrafts,
           },
           generatedBy,
-          report.id,
-        );
+          parent: report.id,
+        });
       } else {
-        return;
+        throw new Error('Invalid report options!');
       }
     } else if (report.type === 'payment-ledger') {
       const optionsType = t.type({
@@ -360,8 +353,8 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.paymentService.generatePaymentLedger(
-          {
+        return await bus.exec(paymentService.generatePaymentLedger, {
+          options: {
             startDate: new Date(options.startDate),
             endDate: new Date(options.endDate),
             centers: options.centers,
@@ -370,10 +363,10 @@ export class ReportService {
             paymentType: options.paymentType,
           },
           generatedBy,
-          report.id,
-        );
+          parent: report.id,
+        });
       } else {
-        return;
+        throw new Error('Invalid report options.');
       }
     } else if (report.type === 'debt-status-report') {
       const optionsType = t.intersection([
@@ -397,23 +390,21 @@ export class ReportService {
       if (isRight(result)) {
         const options = result.right;
 
-        return await this.debtService.generateDebtStatusReport(
-          {
+        return await bus.exec(generateDebtStatusReport, {
+          options: {
             date: new Date(options.date),
             centers: options.centers,
             groupBy: options.groupBy,
             includeOnly: options.includeOnly ?? null,
           },
           generatedBy,
-          report.id,
-        );
+          parent: report.id,
+        });
       } else {
-        console.log('Upps');
-        return;
+        throw new Error('Failed to refresh debt status report!');
       }
     } else {
-      console.log('Unknown report type.');
-      return;
+      throw new Error(`Unkown report type '${report.type}'.`);
     }
-  }
-}
+  });
+};
