@@ -7,7 +7,7 @@ import { Config } from './config';
 import apiRoutes, { ApiDeps } from './api';
 import cookieParser from 'cookie-parser';
 import Stripe from 'stripe';
-import { PgClient } from './db';
+import { PgClient, PoolConnection } from './db';
 import cors from 'cors';
 import helmet, { HelmetOptions } from 'helmet';
 import * as redis from 'redis';
@@ -16,7 +16,7 @@ import {
   createSMTPTransport,
   IEmailTransport,
 } from './services/email';
-import { MagicLinksApi } from './api/magic-links';
+// import { MagicLinksApi } from './api/magic-links';
 import { JobService } from './services/jobs';
 import { LocalBus } from './bus';
 import initServices from './services';
@@ -73,9 +73,18 @@ if (config.emailDispatcher) {
   emailTransport = createSMTPTransport(config.smtp);
 }
 
-const bus = new LocalBus();
+export type BusContext = {
+  pg: PoolConnection;
+};
 
-const jobs = new JobService(config, redisClient as RedisClientType);
+const bus = new LocalBus<BusContext>();
+
+const jobs = new JobService(
+  config,
+  redisClient as RedisClientType,
+  bus,
+  pg.conn,
+);
 
 const moduleDeps = {
   pg,

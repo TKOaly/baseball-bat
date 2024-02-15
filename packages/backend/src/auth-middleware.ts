@@ -11,9 +11,10 @@ import * as t from 'io-ts';
 import { range, reduce, map } from 'fp-ts/lib/NonEmptyArray';
 import { randomElem } from 'fp-ts/lib/Random';
 import { split } from 'fp-ts/lib/string';
-import { ModuleDeps } from './app';
+import { BusContext, ModuleDeps } from './app';
 import { getPayerProfileByIdentity } from './services/payers/definitions';
 import { getUpstreamUserById } from './services/users/definitions';
+import { ExecutionContext } from './bus';
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
   (O['unauthenticated'] extends true
@@ -23,10 +24,12 @@ type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
       ? Record<string, never>
       : { accessLevel: 'admin' });
 
-type AuthMiddleware<O extends AuthMiddlewareOptions> = Middleware.Middleware<
-  { session: AuthMiddlewareSession<O> },
-  Response.Unauthorized<string>
->;
+type AuthMiddleware<O extends AuthMiddlewareOptions> =
+  Middleware.ChainedMiddleware<
+    { bus: ExecutionContext<BusContext> },
+    { session: AuthMiddlewareSession<O> },
+    Response.Unauthorized<string>
+  >;
 
 const accessLevel = t.union([t.literal('normal'), t.literal('admin')]);
 
@@ -52,7 +55,7 @@ type AuthMiddlewareOptions = {
   allowQueryToken?: boolean;
 };
 
-export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
+export const authServiceFactory = ({ redis, config }: ModuleDeps) => {
   async function getSession<R extends RequestBase>(
     { req }: R,
     allowQueryToken: boolean,
@@ -105,12 +108,15 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
       return [null, token];
     }
 
-    return [{
-      ...data,
-      payerId: internalIdentity(data.payerId),
+    return [
+      {
+        ...data,
+        payerId: internalIdentity(data.payerId),
+        token,
+      },
       token,
-    }, token];
-  };
+    ];
+  }
 
   return {
     config,
@@ -119,7 +125,7 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
     createAuthMiddleware<O extends AuthMiddlewareOptions>(
       options?: O,
     ): AuthMiddleware<O> {
-      return (async (ctx: RequestBase) => {
+      const middleware = (async ctx => {
         const [session, token] = await getSession(
           ctx,
           options?.allowQueryToken === true,
@@ -155,7 +161,9 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
         }
 
         return Middleware.next({ session });
-      }) as any;
+      }) as AuthMiddleware<O>;
+
+      return middleware;
 
       /*return async ({ req }) => pipe(
         getToken(req.header('Authorization')),
@@ -244,6 +252,7 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
 
     async createSession() {
       const token = uuid();
+      console.log('session:' + token);
       await this.redis.set(
         `session:${token}`,
         JSON.stringify({ authLevel: 'unauthenticated' }),
@@ -256,6 +265,7 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
     },
 
     async authenticate(
+      bus: ExecutionContext<BusContext>,
       token: string,
       payerId: InternalIdentity,
       method: string,
@@ -265,8 +275,7 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
       let accessLevel = pAccessLevel;
 
       if (accessLevel === undefined) {
-        const profile =
-          await bus.exec(getPayerProfileByIdentity, payerId);
+        const profile = await bus.exec(getPayerProfileByIdentity, payerId);
 
         if (!profile) {
           throw new Error('Profile does not exist');
@@ -295,6 +304,8 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
         accessLevel,
       };
 
+      console.log('? session:' + token);
+
       const exists = await this.redis.exists(`session:${token}`);
 
       if (!exists) {
@@ -304,8 +315,8 @@ export const authServiceFactory = ({ redis, bus, config }: ModuleDeps) => {
       await this.redis.set(`session:${token}`, JSON.stringify(session));
 
       return Promise.resolve();
-    }
+    },
   };
-}
+};
 
 export type AuthService = ReturnType<typeof authServiceFactory>;

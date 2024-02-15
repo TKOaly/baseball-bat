@@ -75,6 +75,7 @@
     "sql-template-strings": "^2.2.2",
     "stripe": "^8.202.0",
     "typedi": "^0.10.0",
+    "typera-common": "^2.4.3",
     "typera-express": "^2.4.1",
     "uid": "^2.0.2",
     "uuid": "^8.3.2",

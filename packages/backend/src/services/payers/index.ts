@@ -1,7 +1,6 @@
 import {
   DbPayerProfile,
   EmailIdentity,
-  ExternalIdentity,
   InternalIdentity,
   isEmailIdentity,
   isInternalIdentity,
@@ -22,7 +21,8 @@ import * as usersService from '@/services/users/definitions';
 import * as defs from './definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
-import { ModuleDeps } from '@/app';
+import { BusContext, ModuleDeps } from '@/app';
+import { ExecutionContext } from '@/bus';
 
 export type DbPayerProfileWithEmails = DbPayerProfile & {
   emails: DbPayerEmail[];
@@ -56,10 +56,7 @@ export const formatPayerProfile = (
   debtCount: profile.debt_count ?? null,
   paidCount: profile.paid_count ?? null,
   unpaidCount: profile.unpaid_count ?? null,
-  total:
-    profile.total === null
-      ? null
-      : cents(parseInt('' + profile.total)),
+  total: profile.total === null ? null : cents(parseInt('' + profile.total)),
   totalPaid:
     profile.total_paid === null
       ? null
@@ -152,7 +149,7 @@ export default ({ pg, bus }: ModuleDeps) => {
           preferences = await createDefaultPayerPreferences(id);
         }
 
-        Object.assign(preferences);
+        Object.assign(preferences, newValues);
 
         const results = await tx.do<{ preferences: PayerPreferences }>(
           sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`,
@@ -221,7 +218,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     },
   );
 
-  bus.register(defs.updatePayerName, async ({ payerId, name }) => {
+  bus.register(defs.updatePayerName, async ({ payerId, name }, _, bus) => {
     const updated = await pg.one<DbPayerProfileWithEmails>(sql`
       UPDATE payer_profiles
       SET name = ${name}
@@ -241,7 +238,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.updatePayerDisabledStatus,
-    async ({ payerId, disabled }) => {
+    async ({ payerId, disabled }, _, bus) => {
       const updated = await pg.one<DbPayerProfileWithEmails>(sql`
       UPDATE payer_profiles
       SET disabled = ${disabled}
@@ -260,23 +257,25 @@ export default ({ pg, bus }: ModuleDeps) => {
     },
   );
 
-  bus.register(defs.addPayerEmail, async (params: AddPayerEmailOptions) => {
-    const currentPrimary = await bus.exec(
-      defs.getPayerPrimaryEmail,
-      params.payerId,
-    );
+  bus.register(
+    defs.addPayerEmail,
+    async (params: AddPayerEmailOptions, _, bus) => {
+      const currentPrimary = await bus.exec(
+        defs.getPayerPrimaryEmail,
+        params.payerId,
+      );
 
-    let priority = params.priority;
+      let priority = params.priority;
 
-    if (!currentPrimary) {
-      if (priority && priority !== 'primary') {
-        throw new Error('payer profile already has a primary email address');
+      if (!currentPrimary) {
+        if (priority && priority !== 'primary') {
+          throw new Error('payer profile already has a primary email address');
+        }
+
+        priority = 'primary';
       }
 
-      priority = 'primary';
-    }
-
-    const row = await pg.one<DbPayerEmail>(sql`
+      const row = await pg.one<DbPayerEmail>(sql`
         INSERT INTO payer_emails (payer_id, email, priority, source)
         VALUES (${params.payerId.value}, ${params.email}, ${priority}, ${
           params.source ?? 'other'
@@ -284,12 +283,13 @@ export default ({ pg, bus }: ModuleDeps) => {
         RETURNING *
       `);
 
-    if (!row) {
-      throw 'Could not create payer email.';
-    }
+      if (!row) {
+        throw 'Could not create payer email.';
+      }
 
-    return formatPayerEmail(row);
-  });
+      return formatPayerEmail(row);
+    },
+  );
 
   async function getPayerProfileByTkoalyIdentity(id: TkoalyIdentity) {
     const dbProfile = await pg.one<DbPayerProfileWithEmails>(sql`
@@ -340,7 +340,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.getOrCreatePayerProfileForIdentity,
-    async ({ id, token }) => {
+    async ({ id, token }, _, bus) => {
       const existingPayerProfile = await getPayerProfileByIdentity(id);
 
       if (existingPayerProfile) {
@@ -351,55 +351,48 @@ export default ({ pg, bus }: ModuleDeps) => {
         return null;
       }
 
-      return createPayerProfileForExternalIdentity({ id, token });
+      return bus.exec(defs.createPayerProfileForExternalIdentity, {
+        id,
+        token,
+      });
     },
   );
 
-  async function createPayerProfileForExternalIdentity({
-    id,
-    token,
-    name,
-  }: {
-    id: ExternalIdentity;
-    token?: string;
-    name?: string;
-  }): Promise<PayerProfile | null> {
-    const existingPayerProfile = await getPayerProfileByIdentity(id);
-
-    if (existingPayerProfile) {
-      return existingPayerProfile;
-    }
-
-    if (isTkoalyIdentity(id)) {
-      if (token) {
-        return bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
-          id,
-          token,
-        });
-      }
-
-      throw new Error('Not authorized for user information');
-    }
-
-    if (isEmailIdentity(id)) {
-      if (!name) {
-        throw new Error('Name required for payment profile');
-      }
-
-      return createPayerProfileFromEmailIdentity(id, { name });
-    }
-
-    return assertNever(id) as any; // eslint-disable-line
-  }
-
   bus.register(
     defs.createPayerProfileForExternalIdentity,
-    createPayerProfileForExternalIdentity,
+    async ({ id, token, name }, _, bus) => {
+      const existingPayerProfile = await getPayerProfileByIdentity(id);
+
+      if (existingPayerProfile) {
+        return existingPayerProfile;
+      }
+
+      if (isTkoalyIdentity(id)) {
+        if (token) {
+          return bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
+            id,
+            token,
+          });
+        }
+
+        throw new Error('Not authorized for user information');
+      }
+
+      if (isEmailIdentity(id)) {
+        if (!name) {
+          throw new Error('Name required for payment profile');
+        }
+
+        return createPayerProfileFromEmailIdentity(id, { name });
+      }
+
+      return assertNever(id) as any; // eslint-disable-line
+    },
   );
 
   bus.register(
     defs.createPayerProfileFromTkoalyIdentity,
-    async ({ id, token }) => {
+    async ({ id, token }, _, bus) => {
       const upstreamUser = await bus.exec(usersService.getUpstreamUserById, {
         id,
         token,
@@ -409,7 +402,7 @@ export default ({ pg, bus }: ModuleDeps) => {
         throw new Error('Upstream user not found!');
       }
 
-      return createPayerProfileFromTkoalyUser(upstreamUser);
+      return createPayerProfileFromTkoalyUser(bus, upstreamUser);
     },
   );
 
@@ -457,6 +450,7 @@ export default ({ pg, bus }: ModuleDeps) => {
   }
 
   async function createPayerProfileFromTkoalyUser(
+    bus: ExecutionContext<BusContext>,
     user: UpstreamUser,
   ): Promise<PayerProfile> {
     const existingPayerProfile = await bus.exec(
@@ -473,11 +467,11 @@ export default ({ pg, bus }: ModuleDeps) => {
       if (!emails.some(({ email }) => email === user.email)) {
         await replacePrimaryEmail(existingPayerProfile.id, user.email);
 
-        if (existingPayerProfile.stripeCustomerId) {
-          /*await stripe.customers.update(existingPayerProfile.stripeCustomerId, {
+        //if (existingPayerProfile.stripeCustomerId) {
+        /*await stripe.customers.update(existingPayerProfile.stripeCustomerId, {
             email: user.email,
           })*/
-        }
+        //}
       }
 
       return existingPayerProfile;

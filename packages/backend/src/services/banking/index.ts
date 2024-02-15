@@ -5,12 +5,24 @@ import {
   DbBankStatement,
   BankStatement,
 } from '@bbat/common/types';
-import { PgClient } from '@/db';
 import sql from 'sql-template-strings';
 import * as paymentsService from '@/services/payments/definitions';
 import { cents } from '@bbat/common/currency';
 import { formatPayment } from '../payments';
-import { assignTransactionsToPaymentByReferenceNumber, createBankAccount, createBankStatement, getAccountStatements, getAccountTransactions, getBankAccount, getBankAccounts, getBankStatement, getBankStatementTransactions, getTransaction, getTransactionRegistrations, getTransactionsWithoutRegistration } from './definitions';
+import {
+  assignTransactionsToPaymentByReferenceNumber,
+  createBankAccount,
+  createBankStatement,
+  getAccountStatements,
+  getAccountTransactions,
+  getBankAccount,
+  getBankAccounts,
+  getBankStatement,
+  getBankStatementTransactions,
+  getTransaction,
+  getTransactionRegistrations,
+  getTransactionsWithoutRegistration,
+} from './definitions';
 import { ModuleDeps } from '@/app';
 import { createPaymentEventFromTransaction } from '../payments/definitions';
 
@@ -46,7 +58,7 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
 });
 
 export default ({ pg, bus }: ModuleDeps) => {
-  bus.register(createBankAccount, async (account) => {
+  bus.register(createBankAccount, async account => {
     await pg.any(sql`
       INSERT INTO bank_accounts (iban, name)
       VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${
@@ -55,17 +67,17 @@ export default ({ pg, bus }: ModuleDeps) => {
     `);
   });
 
-  bus.register(getBankAccount, async (iban) => {
-      return pg.one<BankAccount>(
-        sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`,
-      );
+  bus.register(getBankAccount, async iban => {
+    return pg.one<BankAccount>(
+      sql`SELECT * FROM bank_accounts WHERE iban = ${iban}`,
+    );
   });
 
   bus.register(getBankAccounts, async () => {
-      return pg.any<BankAccount>(sql`SELECT * FROM bank_accounts`);
+    return pg.any<BankAccount>(sql`SELECT * FROM bank_accounts`);
   });
 
-  bus.register(createBankStatement, async (details) => {
+  bus.register(createBankStatement, async (details, { pg }, bus) => {
     const dates = details.transactions.map(tx => tx.date).sort();
 
     const start_date = dates[0];
@@ -94,7 +106,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
     const transactions = await Promise.all(
       details.transactions.map(async tx => {
-        const existing = await pg.any<DbBankTransaction>(
+        const existing = await pg.many<DbBankTransaction>(
           sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`,
         );
 
@@ -130,13 +142,13 @@ export default ({ pg, bus }: ModuleDeps) => {
           throw new Error('Could not create transaction');
         }
 
-        await pg.one(sql`
-        INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
-        VALUES (
-          ${statement.id},
-          ${transaction.id}
-        )
-      `);
+        await pg.do(sql`
+          INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
+          VALUES (
+            ${statement.id},
+            ${transaction.id}
+          )
+        `);
 
         await bus.exec(createPaymentEventFromTransaction, {
           transaction: {
@@ -156,23 +168,28 @@ export default ({ pg, bus }: ModuleDeps) => {
       transactions: transactions,
     };
   });
-  
-  bus.register(assignTransactionsToPaymentByReferenceNumber, async ({ referenceNumber, paymentId }) => {
-    const dbTransactions = await pg.any<DbBankTransaction>(sql`
+
+  bus.register(
+    assignTransactionsToPaymentByReferenceNumber,
+    async ({ referenceNumber, paymentId }, { pg }, bus) => {
+      const dbTransactions = await pg.many<DbBankTransaction>(sql`
       SELECT * FROM bank_transactions WHERE reference = ${referenceNumber}
     `);
 
-    const transactions = dbTransactions.map(formatBankTransaction);
+      const transactions = dbTransactions.map(formatBankTransaction);
 
-    await Promise.all(
-      transactions.map(transaction => bus.exec(createPaymentEventFromTransaction, {
-        transaction,
-        paymentId,
-        amount: null,
-      })),
-    );
-  });
-  
+      await Promise.all(
+        transactions.map(transaction =>
+          bus.exec(createPaymentEventFromTransaction, {
+            transaction,
+            paymentId,
+            amount: null,
+          }),
+        ),
+      );
+    },
+  );
+
   bus.register(getTransactionsWithoutRegistration, async () => {
     const transactions = await pg.any<DbBankTransaction>(sql`
       SELECT t.*
@@ -183,8 +200,8 @@ export default ({ pg, bus }: ModuleDeps) => {
 
     return transactions.map(formatBankTransaction);
   });
-  
-  bus.register(getAccountTransactions, async (iban) => {
+
+  bus.register(getAccountTransactions, async iban => {
     const transactions = await pg.any<DbBankTransaction>(sql`
       SELECT
         bt.*,
@@ -201,9 +218,9 @@ export default ({ pg, bus }: ModuleDeps) => {
 
     return transactions.map(formatBankTransaction);
   });
-  
-  bus.register(getTransaction, async (id) => {
-      const transaction = await pg.one<DbBankTransaction>(sql`
+
+  bus.register(getTransaction, async id => {
+    const transaction = await pg.one<DbBankTransaction>(sql`
         SELECT
           bt.*,
           TO_JSON(p.*) AS payment
@@ -214,25 +231,27 @@ export default ({ pg, bus }: ModuleDeps) => {
         WHERE bt.id = ${id}
       `);
 
-      if (!transaction) {
-        return null;
-      }
+    if (!transaction) {
+      return null;
+    }
 
-      return formatBankTransaction(transaction);
+    return formatBankTransaction(transaction);
   });
 
-  bus.register(getTransactionRegistrations, async (id: string) => {
-    const rows = await pg.any<{ payment_event_id: string }>(sql`
+  bus.register(getTransactionRegistrations, async (id: string, { pg }, bus) => {
+    const rows = await pg.many<{ payment_event_id: string }>(sql`
       SELECT m.payment_event_id
       FROM payment_event_transaction_mapping m
       WHERE m.bank_transaction_id = ${id}
     `);
 
-    return (await Promise.all(
-      rows
-        .map(row => bus.exec(paymentsService.getPaymentEvent, row.payment_event_id))
-    ))
-        .flatMap(event => event ? [event] : [])
+    return (
+      await Promise.all(
+        rows.map(row =>
+          bus.exec(paymentsService.getPaymentEvent, row.payment_event_id),
+        ),
+      )
+    ).flatMap(event => (event ? [event] : []));
   });
 
   bus.register(getAccountStatements, async (iban: string) => {
@@ -266,4 +285,4 @@ export default ({ pg, bus }: ModuleDeps) => {
 
     return transactions.map(formatBankTransaction);
   });
-}
+};

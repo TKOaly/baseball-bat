@@ -10,7 +10,6 @@ import {
 } from '@bbat/common/types';
 import * as t from 'io-ts';
 import * as types from '@bbat/common/types';
-import internal from 'stream';
 
 const scope = createScope('payers');
 
@@ -58,11 +57,15 @@ export const createPayerProfileFromEmailIdentity = scope.defineProcedure({
 
 export const createPayerProfileForExternalIdentity = scope.defineProcedure({
   name: 'createPayerProfileFromEmailIdentity',
-  payload: t.type({
-    id: t.union([emailIdentityT, tkoalyIdentityT]),
-    name: t.string,
-    token: t.string,
-  }),
+  payload: t.intersection([
+    t.type({
+      id: t.union([emailIdentityT, tkoalyIdentityT]),
+      token: t.string,
+    }),
+    t.partial({
+      name: t.string,
+    }),
+  ]),
   response: t.union([t.null, payerProfile]),
 });
 

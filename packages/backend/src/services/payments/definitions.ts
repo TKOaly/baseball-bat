@@ -1,7 +1,6 @@
 import { createScope } from '@/bus';
 import { euroValue } from '@bbat/common/currency';
 import * as types from '@bbat/common/types';
-import { toThrow } from 'earl/dist/cjs/validators/other/toThrow';
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
 
@@ -67,7 +66,7 @@ export const paymentCreationOptions = t.partial({
 
 export const createInvoice = scope.defineProcedure({
   name: 'createInvoice',
-  payload: t.union([
+  payload: t.intersection([
     t.type({
       invoice: types.newInvoice,
     }),

@@ -1,4 +1,4 @@
-import { Parser, route, router } from 'typera-express';
+import { Parser, router } from 'typera-express';
 import { notFound, ok, unauthorized } from 'typera-express/response';
 import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
@@ -11,13 +11,13 @@ import {
 } from '@bbat/common/build/src/types';
 import { validateBody } from '../validate-middleware';
 import { body } from 'typera-express/parser';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
-export default ({ auth, bus }: ApiDeps) => {
+const factory: ApiFactory = ({ auth }, route) => {
   const getPayer = route
     .get('/:id')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       let id;
 
       if (ctx.routeParams.id === 'me') {
@@ -53,7 +53,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const result = await bus.exec(
         payerService.createPayerProfileFromEmailIdentity,
         {
@@ -68,7 +68,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getPayers = route
     .get('/')
     .use(auth.createAuthMiddleware())
-    .handler(async () => {
+    .handler(async ({ bus }) => {
       const payers = await bus.exec(payerService.getPayerProfiles);
       return ok(payers);
     });
@@ -76,7 +76,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getPayerByEmail = route
     .get('/by-email/:email')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByEmailIdentity,
         emailIdentity(ctx.routeParams.email),
@@ -100,7 +100,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
         return unauthorized('Not authorized');
       }
@@ -121,7 +121,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getPayerByTkoalyId = route
     .get('/by-tkoaly-id/:id(int)')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByTkoalyIdentity,
         tkoalyIdentity(ctx.routeParams.id),
@@ -137,7 +137,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getPayerDebts = route
     .get('/:id/debts')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       let id;
 
       if (ctx.routeParams.id === 'me') {
@@ -166,7 +166,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getSessionPayer = route
     .get('/session')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByInternalIdentity,
         ctx.session.payerId,
@@ -186,7 +186,7 @@ export default ({ auth, bus }: ApiDeps) => {
         accessLevel: 'normal',
       }),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       if (
         ctx.session.accessLevel !== 'admin' &&
         ctx.session.payerId.value !== ctx.routeParams.id
@@ -218,7 +218,7 @@ export default ({ auth, bus }: ApiDeps) => {
         ),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       let id;
 
       if (ctx.routeParams.id === 'me') {
@@ -281,7 +281,7 @@ export default ({ auth, bus }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payer = internalIdentity(ctx.routeParams.id);
       const res = await bus.exec(debtService.sendPaymentRemindersByPayer, {
         payer,
@@ -301,7 +301,7 @@ export default ({ auth, bus }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const primary = internalIdentity(ctx.routeParams.id);
       const secondary = internalIdentity(ctx.body.mergeWith);
 
@@ -335,7 +335,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByInternalIdentity,
         internalIdentity(ctx.routeParams.id),
@@ -434,3 +434,5 @@ export default ({ auth, bus }: ApiDeps) => {
     createPayer,
   );
 };
+
+export default factory;

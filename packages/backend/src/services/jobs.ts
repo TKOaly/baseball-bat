@@ -1,16 +1,27 @@
 import { RedisClientType } from 'redis';
+import pg from 'pg';
 import {
   ConnectionOptions,
   FlowJob,
   FlowProducer,
-  Processor,
+  Processor as BaseProcessor,
   Queue,
   QueueEvents,
   Worker,
   WorkerOptions,
+  Job,
 } from 'bullmq';
 import { Config } from '../config';
 import process from 'process';
+import { ExecutionContext, LocalBus } from '@/bus';
+import { BusContext } from '@/app';
+import { PoolConnection } from '@/db';
+
+export type Processor<T = any, R = any, N extends string = string> = (
+  bus: ExecutionContext<BusContext>,
+  job: Job<T, R, N>,
+  token?: string,
+) => Promise<R>;
 
 export class JobService {
   queues: Record<string, Queue> = {};
@@ -18,6 +29,8 @@ export class JobService {
   constructor(
     public config: Config,
     private redis: RedisClientType,
+    private bus: LocalBus<BusContext>,
+    private pool: pg.Pool,
   ) {
     const events = new QueueEvents('main', {
       connection: this.getConnectionConfig(),
@@ -82,9 +95,17 @@ export class JobService {
 
   createWorker(
     queue: string,
-    callback: Processor,
+    processor: Processor,
     options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
+    const callback: BaseProcessor = async (job, token) => {
+      const conn = await this.pool.connect();
+
+      const ctx = this.bus.createContext({ pg: new PoolConnection(conn) });
+
+      return processor(ctx, job, token);
+    };
+
     const worker = new Worker(queue, callback, {
       ...options,
       connection: this.getConnectionConfig(),

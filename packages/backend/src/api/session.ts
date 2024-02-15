@@ -1,18 +1,17 @@
-import { route, router } from 'typera-express';
-import { internalIdentity } from '@bbat/common/build/src/types';
+import { router } from 'typera-express';
 import { ok, redirect, unauthorized } from 'typera-express/response';
 import base64url from 'base64url';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 import {
   getPayerPreferences,
   getPayerProfileByInternalIdentity,
 } from '@/services/payers/definitions';
 
-const init = ({ auth, bus, config }: ApiDeps) => {
+const factory: ApiFactory = ({ auth, config }, route) => {
   const getSession = route
     .use(auth.createAuthMiddleware({ unauthenticated: true }))
     .get('/')
-    .handler(async ({ session, req }) => {
+    .handler(async ({ session, req, bus }) => {
       if (session.authLevel === 'unauthenticated') {
         return ok({
           authLevel: 'unauthenticated',
@@ -80,4 +79,4 @@ const init = ({ auth, bus, config }: ApiDeps) => {
   return router(getSession, login);
 };
 
-export default init;
+export default factory;

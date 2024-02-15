@@ -1,10 +1,10 @@
-import { route, router } from 'typera-express';
+import { router } from 'typera-express';
 import { ok } from 'typera-express/response';
 import * as eventsService from '@/services/events/definitions';
 import * as dfn from 'date-fns';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
-export default ({ auth, bus }: ApiDeps) => {
+const factory: ApiFactory = ({ auth }, route) => {
   /*getEvents() {
     return route
       .get('/')
@@ -30,7 +30,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getEventRegistrations = route
     .get('/:id(int)/registrations')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const registrations = await bus.exec(
         eventsService.getEventRegistrations,
         ctx.routeParams.id,
@@ -41,7 +41,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getEventCustomFields = route
     .get('/:id(int)/fields')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const fields = await bus.exec(
         eventsService.getEventCustomFields,
         ctx.routeParams.id,
@@ -52,7 +52,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getAllEvents = route
     .get('/all')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const events = await bus.exec(eventsService.getEvents, {
         starting:
           typeof ctx.req.query.starting === 'string'
@@ -65,3 +65,5 @@ export default ({ auth, bus }: ApiDeps) => {
 
   return router(getEventRegistrations, getEventCustomFields, getAllEvents);
 };
+
+export default factory;

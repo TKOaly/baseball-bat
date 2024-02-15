@@ -1,4 +1,4 @@
-import { Middleware, route, router } from 'typera-express';
+import { Middleware, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount } from '@bbat/common/build/src/types';
 import * as bankingService from '@/services/banking/definitions';
@@ -6,9 +6,9 @@ import * as paymentService from '@/services/payments/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '../validate-middleware';
 import multer from 'multer';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
-export default ({ auth, bus }: ApiDeps) => {
+const factory: ApiFactory = ({ auth }, route) => {
   const upload = multer({
     storage: multer.memoryStorage(),
   });
@@ -16,7 +16,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getBankAccounts = route
     .get('/accounts')
     .use(auth.createAuthMiddleware())
-    .handler(async () => {
+    .handler(async ({ bus }) => {
       const accounts = await bus.exec(bankingService.getBankAccounts);
       return ok(accounts);
     });
@@ -25,15 +25,15 @@ export default ({ auth, bus }: ApiDeps) => {
     .post('/accounts')
     .use(auth.createAuthMiddleware())
     .use(validateBody(bankAccount))
-    .handler(async ctx => {
-      await bus.exec(bankingService.createBankAccount, ctx.body);
+    .handler(async ({ bus, body }) => {
+      await bus.exec(bankingService.createBankAccount, body);
       return ok();
     });
 
   const getBankAccount = route
     .get('/accounts/:iban')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const account = await bus.exec(
         bankingService.getBankAccount,
         ctx.routeParams.iban,
@@ -44,7 +44,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getBankAccountStatements = route
     .get('/accounts/:iban/statements')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const statements = await bus.exec(
         bankingService.getAccountStatements,
         ctx.routeParams.iban,
@@ -60,7 +60,7 @@ export default ({ auth, bus }: ApiDeps) => {
         file: req.file,
       })),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       if (!ctx.file) {
         return badRequest('File `statement` required.');
       }
@@ -91,7 +91,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getAccountTransactions = route
     .get('/accounts/:iban/transactions')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getAccountTransactions,
         ctx.routeParams.iban,
@@ -103,7 +103,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getBankStatement = route
     .get('/statements/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const statement = await bus.exec(
         bankingService.getBankStatement,
         ctx.routeParams.id,
@@ -115,7 +115,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getBankStatementTransactions,
         ctx.routeParams.id,
@@ -127,7 +127,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const autoregisterTransactions = route
     .post('/autoregister')
     .use(auth.createAuthMiddleware())
-    .handler(async _ctx => {
+    .handler(async ({ bus }) => {
       const transactions = await bus.exec(
         bankingService.getTransactionsWithoutRegistration,
       );
@@ -146,7 +146,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getTransactionRegistrations = route
     .get('/transactions/:id/registrations')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const events = await bus.exec(
         bankingService.getTransactionRegistrations,
         ctx.routeParams.id,
@@ -167,3 +167,5 @@ export default ({ auth, bus }: ApiDeps) => {
     getTransactionRegistrations,
   );
 };
+
+export default factory;

@@ -1,10 +1,10 @@
-import { Encode, Encoder, Type, TypeOf } from 'io-ts';
+import { Decode, Encode, Type, TypeOf } from 'io-ts';
 import EventEmitter from 'eventemitter2';
 import { flow, pipe } from 'fp-ts/lib/function';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
-import * as T from 'fp-ts/lib/Task';
 import { Task } from 'fp-ts/lib/Task';
+import { Middleware } from 'typera-express';
 
 export type EventType<PT extends Type<any, any, any>> = {
   name: string | string[];
@@ -21,7 +21,7 @@ export type ResponseOf<PT extends ProcedureType<any, any>> = TypeOf<
 export type ProcedureArgs<PT extends ProcedureType<any, any>> =
   PayloadOf<PT> extends void ? [] : [PayloadOf<PT>];
 
-export type EventHandler<T> = (payload: T) => void;
+export type EventHandler<T, C> = (payload: T, context: C) => void;
 
 export const defineEvent = <T extends Type<any, any, any>>(
   name: string | string[],
@@ -66,8 +66,10 @@ export const createScope = (scope: string) => ({
   },
 });
 
-export type ProcedureHandler<PT extends ProcedureType<any, any>> = (
+export type ProcedureHandler<PT extends ProcedureType<any, any>, C> = (
   payload: PayloadOf<PT>,
+  context: C,
+  bus: ExecutionContext<C>,
 ) => Promise<ResponseOf<PT>>;
 
 export type ProcedureType<
@@ -79,25 +81,69 @@ export type ProcedureType<
   responseType: RT;
 };
 
-export abstract class ApplicationBus {
+export abstract class ApplicationBus<C = void> {
+  createContext(context: C): ExecutionContext<C> {
+    return new ExecutionContext(this, context);
+  }
+
   abstract on<ET extends EventType<any>>(
     eventType: ET,
-    handler: EventHandler<EventOf<ET>>,
+    handler: EventHandler<EventOf<ET>, C>,
   ): void;
+
   abstract emit<ET extends EventType<any>>(
+    ctx: C,
     eventType: ET,
     payload: EventOf<ET>,
   ): void;
+
   abstract exec<
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,
     ResponseType extends Type<any, any, any>,
-  >(procedure: PT, ...payload: ProcedureArgs<PT>): Promise<ResponseOf<PT>>;
+  >(
+    ctx: C,
+    procedure: PT,
+    ...payload: ProcedureArgs<PT>
+  ): Promise<ResponseOf<PT>>;
+
   abstract register<
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,
     ResponseType extends Type<any, any, any>,
-  >(procedure: PT, handler: ProcedureHandler<PT>): void;
+  >(procedure: PT, handler: ProcedureHandler<PT, C>): void;
+
+  execT<
+    PT extends ProcedureType<PayloadType, ResponseType>,
+    PayloadType extends Type<any, any, any>,
+    ResponseType extends Type<any, any, any>,
+  >(
+    ctx: C,
+    procedure: PT,
+  ): (...payload: ProcedureArgs<PT>) => Task<ResponseOf<PT>> {
+    return (...payload: ProcedureArgs<PT>) =>
+      () =>
+        this.exec(ctx, procedure, ...payload);
+  }
+}
+
+export class ExecutionContext<C> {
+  constructor(
+    private bus: ApplicationBus<C>,
+    private context: C,
+  ) {}
+
+  emit<ET extends EventType<any>>(eventType: ET, payload: EventOf<ET>): void {
+    this.bus.emit(this.context, eventType, payload);
+  }
+
+  exec<
+    PT extends ProcedureType<PayloadType, ResponseType>,
+    PayloadType extends Type<any, any, any>,
+    ResponseType extends Type<any, any, any>,
+  >(procedure: PT, ...payload: ProcedureArgs<PT>): Promise<ResponseOf<PT>> {
+    return this.bus.exec(this.context, procedure, ...payload);
+  }
 
   execT<
     PT extends ProcedureType<PayloadType, ResponseType>,
@@ -110,25 +156,32 @@ export abstract class ApplicationBus {
   }
 }
 
-export class LocalBus extends ApplicationBus {
+export class LocalBus<C> extends ApplicationBus<C> {
   private emitter = new EventEmitter();
 
-  private procedures = new Map<string, ProcedureHandler<any>>();
+  private procedures = new Map<string, ProcedureHandler<any, C>>();
 
   on<ET extends EventType<any>>(
     eventType: ET,
-    handler: EventHandler<EventOf<ET>>,
+    handler: EventHandler<EventOf<ET>, C>,
   ) {
-    const fn = flow(eventType.payloadType.decode, E.map(handler));
+    const fn = (context: C) =>
+      flow(
+        eventType.payloadType.decode,
+        E.map(payload => handler(payload, context)),
+      );
 
-    this.emitter.on(eventType.name, fn);
+    this.emitter.on(eventType.name, (event: unknown, context: C) =>
+      fn(context)(event),
+    );
   }
 
-  emit<ET extends EventType<any>>(eventType: ET, payload: EventOf<ET>) {
-    this.emitter.emit(eventType.name, payload);
+  emit<ET extends EventType<any>>(ctx: C, eventType: ET, payload: EventOf<ET>) {
+    this.emitter.emit(eventType.name, payload, ctx);
   }
 
   async exec<PT extends ProcedureType<any, any>>(
+    ctx: C,
     procedure: PT,
     ...payload: ProcedureArgs<PT>
   ): Promise<ResponseOf<PT>> {
@@ -143,15 +196,20 @@ export class LocalBus extends ApplicationBus {
     const execHandler =
       (payload: PayloadOf<PT>): Task<unknown> =>
       () =>
-        handler(payload);
+        handler(payload, ctx, this.createContext(ctx));
 
-    procedure.payloadType.encode;
-
-    const encodePayload: Encode<any, PayloadOf<PT>> = procedure.payloadType
+    const responseType = procedure.responseType as Type<
+      PayloadOf<PT>,
+      unknown,
+      unknown
+    >;
+    const encodePayload: Encode<PayloadOf<PT>, unknown> = procedure.payloadType
       .encode;
+    const decodePayload: Decode<any, PayloadOf<PT>> = procedure.payloadType
+      .decode;
 
     const decodeResponse = flow(
-      procedure.responseType.decode,
+      procedure.responseType.decode as Decode<unknown, ResponseOf<PT>>,
       E.mapLeft(validation => ({
         validation,
         message: `Failed to decode response for procedure call '${procedure.name}'.`,
@@ -161,8 +219,23 @@ export class LocalBus extends ApplicationBus {
     const result = await pipe(
       payload[0],
       encodePayload,
-      TE.of,
+      flow(
+        decodePayload,
+        E.mapLeft(validation => ({
+          validation,
+          message: `Failed to decode payload for procedure call '${procedure.name}'.`,
+        })),
+      ),
+      TE.fromEither,
       TE.flatMapTask(execHandler),
+      TE.map(value => {
+        if (!responseType.is(value)) {
+          console.log(value, responseType.name);
+        }
+
+        return value;
+      }),
+      TE.map(procedure.responseType.encode),
       TE.flatMapEither(decodeResponse),
     )();
 
@@ -179,14 +252,26 @@ export class LocalBus extends ApplicationBus {
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,
     ResponseType extends Type<any, any, any>,
-  >(procedure: PT, handler: ProcedureHandler<PT>) {
-    const fn = flow(
-      procedure.payloadType.decode,
-      TE.fromEither,
-      TE.chain(p => () => handler(p)),
-      a => a(),
-    );
+  >(procedure: PT, handler: ProcedureHandler<PT, C>) {
+    const fn = (payload: unknown, context: C) =>
+      pipe(
+        payload,
+        procedure.payloadType.decode,
+        TE.fromEither,
+        TE.chain(p => () => handler(p, context, this.createContext(context))),
+        a => a(),
+      );
 
     this.procedures.set(procedure.name, fn);
+  }
+
+  middleware(
+    ctx: C,
+  ): Middleware.Middleware<{ bus: ExecutionContext<C> }, never> {
+    return async () => {
+      return Middleware.next({
+        bus: this.createContext(ctx),
+      });
+    };
   }
 }

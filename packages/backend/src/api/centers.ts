@@ -1,4 +1,4 @@
-import { route, router } from 'typera-express';
+import { router } from 'typera-express';
 import { ok, badRequest, notFound } from 'typera-express/response';
 import {
   emailIdentity,
@@ -15,7 +15,7 @@ import * as payerService from '@/services/payers/definitions';
 import { validateBody } from '../validate-middleware';
 import { pipe } from 'fp-ts/lib/function';
 import { euroValue } from '@bbat/common/build/src/currency';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
 const componentRule = t.type({
   type: t.literal('CUSTOM_FIELD'),
@@ -26,11 +26,11 @@ const componentRule = t.type({
 
 type ComponentRule = t.TypeOf<typeof componentRule>;
 
-export default ({ bus, auth, config }: ApiDeps) => {
+const factory: ApiFactory = ({ auth }, route) => {
   const getDebtCenters = route
     .get('/')
     .use(auth.createAuthMiddleware())
-    .handler(async () => {
+    .handler(async ({ bus }) => {
       const centers = await bus.exec(debtCentersService.getDebtCenters);
       return ok(centers);
     });
@@ -38,7 +38,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const getDebtCenter = route
     .get('/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const center = await bus.exec(
         debtCentersService.getDebtCenter,
         ctx.routeParams.id,
@@ -54,7 +54,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const getDebtsByCenter = route
     .get('/:id/debts')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByCenter,
         ctx.routeParams.id,
@@ -65,7 +65,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const getDebtComponentsByCenter = route
     .get('/:id/components')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const components = await bus.exec(
         debtService.getDebtComponentsByCenter,
         ctx.routeParams.id,
@@ -76,7 +76,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const createDebtCenter = route
     .post('/')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       try {
         const center = await bus.exec(
           debtCentersService.createDebtCenter,
@@ -104,7 +104,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const deleteDebtCenter = route
     .delete('/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByCenter,
         ctx.routeParams.id,
@@ -142,7 +142,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       await bus.exec(debtCentersService.updateDebtCenter, {
         id: ctx.routeParams.id,
         ...ctx.body,
@@ -184,7 +184,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
     .post('/fromEvent')
     .use(auth.createAuthMiddleware())
     .use(validateBody(createDebtCenterFromEventBody))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const body = ctx.body;
 
       const registrations = await Promise.all(
@@ -319,7 +319,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
   const deleteDebtComponent = route
     .delete('/:debtCenterId/components/:debtComponentId')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const { debtCenterId, debtComponentId } = ctx.routeParams;
 
       return pipe(
@@ -345,7 +345,7 @@ export default ({ bus, auth, config }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const { debtCenterId, debtComponentId } = ctx.routeParams;
 
       const component = await bus.exec(debtService.updateDebtComponent, {
@@ -374,3 +374,5 @@ export default ({ bus, auth, config }: ApiDeps) => {
     updateDebtComponent,
   );
 };
+
+export default factory;

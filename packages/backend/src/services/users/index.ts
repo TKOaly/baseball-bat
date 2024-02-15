@@ -1,9 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import {
   TkoalyIdentityFromNumber,
-  UpstreamUser,
-  UpstreamUserRole,
-  tkoalyIdentity,
   upstreamUserRole,
 } from '@bbat/common/build/src/types';
 import { ModuleDeps } from '@/app';
@@ -12,7 +9,6 @@ import * as t from 'io-ts';
 import * as T from 'fp-ts/lib/Task';
 import * as E from 'fp-ts/lib/Either';
 import * as O from 'fp-ts/lib/Option';
-import * as TO from 'fp-ts/lib/TaskOption';
 import { flow, pipe } from 'fp-ts/lib/function';
 
 const apiUpstreamUser = t.type({
@@ -54,7 +50,7 @@ export default ({ config, bus }: ModuleDeps) => {
   bus.register(defs.getTokenUpstreamUser, async ({ token }) => {
     const handler = pipe(
       fetchT('/api/users/me', token),
-      T.tap(a => async () => console.log(a)),
+      // T.tap(a => async () => console.log(a)),
       T.map(decodeResponse(apiUpstreamUser)),
       T.map(O.toNullable),
     );
@@ -82,8 +78,11 @@ export default ({ config, bus }: ModuleDeps) => {
     return handler();
   });
 
-  bus.register(defs.getUpstreamUserByEmail, async ({ token, email }) => {
-    const users = await bus.exec(defs.getUpstreamUsers, { token });
-    return users.find(user => user.email === email) ?? null;
-  });
+  bus.register(
+    defs.getUpstreamUserByEmail,
+    async ({ token, email }, _, bus) => {
+      const users = await bus.exec(defs.getUpstreamUsers, { token });
+      return users.find(user => user.email === email) ?? null;
+    },
+  );
 };

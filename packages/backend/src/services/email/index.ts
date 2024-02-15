@@ -6,14 +6,8 @@ import mjml2html from 'mjml';
 import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import * as dateFns from 'date-fns';
-import { Inject, Service } from 'typedi';
 import { Config } from '../../config';
-import { pipe } from 'fp-ts/lib/function';
-import * as record from 'fp-ts/lib/Record';
-import { map, reduce } from 'fp-ts/lib/Array';
-import { groupBy } from 'fp-ts/lib/NonEmptyArray';
-import { PgClient } from '../../db';
-import { DbEmail, Email, InternalIdentity } from '@bbat/common/build/src/types';
+import { DbEmail, Email } from '@bbat/common/build/src/types';
 import {
   formatEuro,
   sumEuroValues,
@@ -26,25 +20,9 @@ import {
   generateBarcodeImage,
 } from '@bbat/common/build/src/virtual-barcode';
 import { formatReferenceNumber } from '../payments';
-import { JobService } from '../jobs';
 import { Job } from 'bullmq';
 import { ModuleDeps } from '@/app';
 import * as defs from './definitions';
-
-type SendEmailOptions = {
-  recipient: string;
-  subject: string;
-  template: string;
-  payload: Record<string, unknown>;
-};
-
-type NewEmail = {
-  recipient: string;
-  subject: string;
-  template: string;
-  payload: object;
-  debts?: string[];
-};
 
 const formatEmail = (email: DbEmail): Email => ({
   id: email.id,
@@ -146,6 +124,13 @@ type EmailBatchSendJob = Job<void, EmailBatchSendJobResult, 'batch'>;
 
 type EmailJob = EmailSendJob | EmailBatchSendJob;
 
+const TemplateType = {
+  HTML: 'html',
+  TEXT: 'text',
+};
+
+type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
+
 export default ({
   jobs,
   config,
@@ -153,8 +138,6 @@ export default ({
   pg,
   emailTransport: transport,
 }: ModuleDeps) => {
-  let templates: Record<string, EmailTemplate>;
-
   async function handleEmailJob(job: EmailJob) {
     if (job.name === 'send') {
       try {
@@ -172,16 +155,13 @@ export default ({
     }
   }
 
-  get templatesDir() {
-    return path.resolve(this.config.assetPath, 'templates/emails');
-  }
+  const templatesDir = path.resolve(config.assetPath, 'templates/emails');
 
-  async getTemplatePath(name: string, type: TemplateType) {
+  async function getTemplatePath(name: string, type: TemplateType) {
     const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
 
     for (const ext of exts) {
-      const filepath = path.resolve(this.templatesDir, `${name}.${ext}`);
-      console.log('Trying', filepath);
+      const filepath = path.resolve(templatesDir, `${name}.${ext}`);
 
       try {
         const result = await fs.stat(filepath);
@@ -195,7 +175,7 @@ export default ({
     }
 
     throw new Error(
-      `Could not find template "${name}" of type "${type}" from ${this.templatesDir}`,
+      `Could not find template "${name}" of type "${type}" from ${templatesDir}`,
     );
   }
 
@@ -204,12 +184,12 @@ export default ({
   }
 
   bus.register(defs.sendEmailDirect, async options => {
-    const html = await this.renderTemplate(
+    const html = await renderTemplate(
       options.template,
       TemplateType.HTML,
       options.payload,
     );
-    const text = await this.renderTemplate(
+    const text = await renderTemplate(
       options.template,
       TemplateType.TEXT,
       options.payload,
@@ -229,8 +209,12 @@ export default ({
     });
   });
 
-  async renderTemplate(name: string, type: TemplateType, payload: object) {
-    const template = await this.getTemplatePath(name, type);
+  async function renderTemplate(
+    name: string,
+    type: TemplateType,
+    payload: object,
+  ) {
+    const template = await getTemplatePath(name, type);
     const ext = path.extname(template).substring(1);
 
     const data = {
@@ -266,14 +250,13 @@ export default ({
     return rendered;
   }
 
-<<<<<<< HEAD:packages/backend/src/services/email.ts
   bus.register(defs.createEmail, async email => {
-    const html = await this.renderTemplate(
+    const html = await renderTemplate(
       email.template,
       TemplateType.HTML,
       email.payload,
     );
-    const text = await this.renderTemplate(
+    const text = await renderTemplate(
       email.template,
       TemplateType.TEXT,
       email.payload,
@@ -322,10 +305,7 @@ export default ({
     await pg.any(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
   }
 
-  async function batchSendEmails(
-    ids: string[],
-    { jobName }: { jobName?: string } = {},
-  ) {
+  bus.register(defs.batchSendEmails, async ids => {
     const children = await Promise.all(
       ids.map(id => createEmailJobDescription(id)),
     );
@@ -333,12 +313,10 @@ export default ({
     await jobs.createJob({
       queueName: 'emails',
       name: 'batch',
-      data: { name: jobName ?? `Send ${ids.length} emails` },
+      data: { name: `Send ${ids.length} emails` },
       children,
     });
-  }
-
-  bus.register(defs.batchSendEmails, batchSendEmails);
+  });
 
   async function createEmailJobDescription(id: string) {
     const email = await getEmail(id);
@@ -360,11 +338,11 @@ export default ({
     };
   }
 
-  async function sendEmail(id: string) {
+  bus.register(defs.sendEmail, async id => {
     const description = await createEmailJobDescription(id);
 
     await jobs.createJob(description);
-  }
+  });
 
   bus.register(defs.getEmails, async () => {
     const emails = await pg.any<DbEmail>(sql`SELECT * FROM emails`);
@@ -382,7 +360,7 @@ export default ({
 
   bus.register(defs.getEmail, getEmail);
 
-  async function getEmailsByAddress(email: string) {
+  /*async function getEmailsByAddress(email: string) {
     const emails = await pg.any<DbEmail>(
       sql`SELECT * FROM emails WHERE recipient = ${email}`,
     );
@@ -399,7 +377,7 @@ export default ({
       `);
 
     return emails.map(formatEmail);
-  }
+  }*/
 
   bus.register(defs.getEmailsByDebt, async debt => {
     const emails = await pg.any<DbEmail>(sql`
@@ -412,8 +390,7 @@ export default ({
     return emails.map(formatEmail);
   });
 
-  loadTemplates();
-  jobs.createWorker('emails', handleEmailJob.bind(this) as any, {
+  jobs.createWorker('emails', handleEmailJob as any, {
     limiter: {
       max: 1,
       duration: 1000,

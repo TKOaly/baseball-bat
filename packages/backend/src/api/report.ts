@@ -1,19 +1,19 @@
-import { route, router } from 'typera-express';
+import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
-import { dbDateString, internalIdentity } from '@bbat/common/build/src/types';
+import { dbDateString } from '@bbat/common/build/src/types';
 import { validateBody } from '../validate-middleware';
 import * as t from 'io-ts';
 import { parse } from 'date-fns';
 import * as reportService from '@/services/reports/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as paymentService from '@/services/payments/definitions';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
-export default ({ auth, bus }: ApiDeps) => {
+const factory: ApiFactory = ({ auth }, route) => {
   const getReport = route
     .get('/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(
         reportService.getReport,
         ctx.routeParams.id,
@@ -31,7 +31,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getReportContent = route
     .get('/:id/content')
     //.use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(
         reportService.getReportContent,
         ctx.routeParams.id,
@@ -49,7 +49,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const getReports = route
     .get('/')
     .use(auth.createAuthMiddleware())
-    .handler(async _ctx => {
+    .handler(async ({ bus }) => {
       const reports = await bus.exec(reportService.getReports);
       return ok(reports);
     });
@@ -72,7 +72,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       /*const report = await */ bus.exec(debtService.generateDebtLedger, {
         options: {
           startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
@@ -117,7 +117,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       /*const report = await */ bus.exec(paymentService.generatePaymentLedger, {
         options: {
           startDate: parse(ctx.body.startDate, 'yyyy-MM-dd', new Date()),
@@ -153,7 +153,7 @@ export default ({ auth, bus }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       /*const report = await */ bus.exec(debtService.generateDebtStatusReport, {
         options: {
           date: parse(ctx.body.date, 'yyyy-MM-dd', new Date()),
@@ -172,7 +172,7 @@ export default ({ auth, bus }: ApiDeps) => {
   const refreshReport = route
     .post('/:id/refresh')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(reportService.refreshReport, {
         reportId: ctx.routeParams.id,
         generatedBy: ctx.session.payerId,
@@ -197,3 +197,5 @@ export default ({ auth, bus }: ApiDeps) => {
     refreshReport,
   );
 };
+
+export default factory;

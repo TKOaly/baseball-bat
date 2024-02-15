@@ -1,4 +1,4 @@
-import { route, router, Parser } from 'typera-express';
+import { router, Parser } from 'typera-express';
 import {
   badRequest,
   internalServerError,
@@ -14,7 +14,6 @@ import {
   dbDateString,
   Debt,
   DebtPatch,
-  Email,
   euro,
   NewDebtTag,
   tkoalyIdentity,
@@ -35,9 +34,7 @@ import * as paymentService from '@/services/payments/definitions';
 import * as accountingService from '@/services/accounting/definitions';
 import { euroValue } from '@bbat/common/build/src/currency';
 import * as EQ from 'fp-ts/lib/Eq';
-import { ApiDeps } from '.';
-import { lookup } from 'fp-ts/lib/Record';
-import { not } from 'fp-ts/lib/Refinement';
+import { ApiFactory } from '.';
 
 const debtCenter = t.type({
   name: t.string,
@@ -84,11 +81,11 @@ const createDebtPayload = t.intersection([
   }),
 ]);
 
-export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
+const factory: ApiFactory = ({ auth, jobs }, route) => {
   const createDebtComponent = route
     .post('/component')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const component = await bus.exec(
         debtService.createDebtComponent,
         ctx.req.body,
@@ -99,7 +96,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getDebt = route
     .get('/:id')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
       if (!debt) {
@@ -119,7 +116,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getDebts = route
     .get('/')
     .use(auth.createAuthMiddleware())
-    .handler(async () => {
+    .handler(async ({ bus }) => {
       const debts = await bus.exec(debtService.getDebts);
       return ok(debts);
     });
@@ -127,7 +124,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getDebtsByTag = route
     .get('/by-tag/:name')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByTag,
         ctx.routeParams.name,
@@ -138,7 +135,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getDebtsByPayment = route
     .get('/by-payment/:id')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payment = await bus.exec(
         paymentService.getPayment,
         ctx.routeParams.id,
@@ -163,7 +160,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
     .post('/publish')
     .use(auth.createAuthMiddleware())
     .use(validateBody(t.type({ ids: t.array(t.string) })))
-    .handler(async ({ body }) => {
+    .handler(async ({ body, bus }) => {
       await Promise.all(
         body.ids.map(async (id): Promise<void> => {
           const debt = await bus.exec(debtService.getDebt, id);
@@ -196,7 +193,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
     .post('/')
     .use(auth.createAuthMiddleware())
     .use(validateBody(createDebtPayload))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payload = ctx.body;
 
       const payer = await bus.exec(
@@ -342,7 +339,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const { dueDate, paymentCondition } = ctx.body.values;
 
       if (
@@ -451,7 +448,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       if (ctx.body.paymentCondition && ctx.body.dueDate) {
         return badRequest({
           message:
@@ -505,7 +502,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getPaymentsContainingDebt = route
     .get('/:id/payments')
     .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
       if (!debt) {
@@ -576,7 +573,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const { debts, defaults, dryRun, components } = ctx.body;
 
       defaults.tags = [
@@ -641,7 +638,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const deleteDebt = route
     .delete('/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       await bus.exec(debtService.deleteDebt, ctx.routeParams.id);
 
       return ok();
@@ -650,7 +647,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const creditDebt = route
     .post('/:id/credit')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       await bus.exec(debtService.creditDebt, ctx.routeParams.id);
 
       return ok();
@@ -659,7 +656,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const markPaidWithCash = route
     .post('/:id/mark-paid-with-cash')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
       if (!debt) {
@@ -712,10 +709,10 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const getEmailPayerId = (debt: Debt) => debt.payerId.value;
       const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
-      let debts = ctx.body.debts;
+      // let debts = ctx.body.debts;
 
       const fetchDebts = flow(
         ({ right }: { left: string[]; right: { debtId: string }[] }) => right,
@@ -753,7 +750,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
       ),
     )
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const result = await bus.exec(debtService.sendReminder, {
         debtId: ctx.routeParams.id,
         draft: ctx.query.draft === 'yes',
@@ -769,7 +766,7 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
   const getDebtsByEmail = route
     .get('/by-email/:email')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByEmail,
         ctx.routeParams.email,
@@ -799,3 +796,5 @@ export default ({ auth, redis, config, bus, jobs }: ApiDeps) => {
     getDebtsByTag,
   );
 };
+
+export default factory;

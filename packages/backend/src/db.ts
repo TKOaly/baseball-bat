@@ -3,6 +3,7 @@ import sql, { SQLStatement } from 'sql-template-strings';
 import * as O from 'fp-ts/lib/Option';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
+import { Middleware } from 'typera-express';
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
@@ -35,8 +36,76 @@ export type TxClient = {
   do: <A>(query: SQLStatement) => Promise<A[]>;
 };
 
+export interface Connection {
+  do(query: SQLStatement): Promise<void>;
+  one<A>(query: SQLStatement): Promise<A | null>;
+  many<A>(query: SQLStatement): Promise<A[]>;
+}
+
+let counter = 1;
+
+export class PoolConnection implements Connection {
+  private id = counter++;
+
+  constructor(private conn: pg.PoolClient) {}
+
+  async one<T>(query: SQLStatement): Promise<T | null> {
+    const result = await this.many<T>(query);
+
+    if (result.length === 0) {
+      throw new Error('No rows returned!');
+    }
+
+    return result[0];
+  }
+
+  async do(query: SQLStatement): Promise<void> {
+    await this.many(query);
+  }
+
+  async many<T>(query: SQLStatement): Promise<T[]> {
+    //console.log(`[${this.id}] => ${query.sql.replace(/ +/g, ' ').replace(/\n/g, '\n       ')}`, query.values)
+    const result = await this.conn.query(query);
+
+    /*const value = (result.rowCount ?? 0) > 0
+      ? result.rows
+      : Promise.reject(new Error('No rows returned'));*/
+
+    //console.log(`[${this.id}] <=`, value)
+
+    return result.rows;
+  }
+}
+
+export type DatabaseMiddleware = Middleware.Middleware<
+  { pg: PoolConnection },
+  never
+>;
+
 export class PgClient {
   conn: pg.Pool;
+
+  middleware(): DatabaseMiddleware {
+    return async ({ res }) => {
+      const conn = await this.conn.connect();
+
+      res.on('finish', async () => {
+        if (res.statusCode !== 500) {
+          await conn.query('COMMIT');
+        } else {
+          await conn.query('ROLLBACK');
+        }
+
+        conn.release();
+      });
+
+      await conn.query('BEGIN');
+
+      return Middleware.next({
+        pg: new PoolConnection(conn),
+      });
+    };
+  }
 
   constructor(conn: pg.Pool) {
     this.conn = conn;
@@ -74,7 +143,7 @@ export class PgClient {
 
     return (result.rowCount ?? 0) > 0
       ? result.rows
-      : Promise.reject('No rows returned');
+      : Promise.reject(new Error('No rows returned'));
   }
 
   async tx<T>(fn: (client: TxClient) => Promise<T>): Promise<T> {

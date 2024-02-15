@@ -1,9 +1,4 @@
-import {
-  NewDebtCenter,
-  DbDebtCenter,
-  DebtCenter,
-  DebtCenterPatch,
-} from '@bbat/common/build/src/types';
+import { DbDebtCenter, DebtCenter } from '@bbat/common/build/src/types';
 import { isAccountingPeriodOpen } from '../accounting/definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
@@ -70,7 +65,7 @@ export default ({ pg, bus }: ModuleDeps) => {
       .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
   });
 
-  bus.register(defs.createDebtCenter, async center => {
+  bus.register(defs.createDebtCenter, async (center, _, bus) => {
     const isAccountingPeriodOpenResult = await bus.exec(
       isAccountingPeriodOpen,
       center.accountingPeriod,
@@ -112,7 +107,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     return center && formatDebtCenter(center);
   });
 
-  bus.register(defs.updateDebtCenter, async center => {
+  bus.register(defs.updateDebtCenter, async (center, _, bus) => {
     const existing = await bus.exec(defs.getDebtCenter, center.id);
 
     if (!existing) {

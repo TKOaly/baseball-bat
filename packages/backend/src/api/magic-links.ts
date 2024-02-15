@@ -1,4 +1,4 @@
-import { toNullable } from 'fp-ts/lib/Option';
+/*import { toNullable } from 'fp-ts/lib/Option';
 import { Inject, Service } from 'typedi';
 import { route, router } from 'typera-express';
 import { redirect } from 'typera-express/response';
@@ -79,4 +79,4 @@ export class MagicLinksApi {
   router() {
     return router(this.handleMagicLink());
   }
-}
+}*/

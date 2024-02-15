@@ -2,30 +2,23 @@ import {
   euro,
   DbDebt,
   DbDebtComponent,
-  NewDebtComponent,
   DebtComponent,
   Debt,
-  NewDebt,
   internalIdentity,
   DbPayerProfile,
   PayerProfile,
   DbDebtCenter,
   DebtCenter,
-  InternalIdentity,
   EuroValue,
   Email,
-  DebtPatch,
-  DebtComponentPatch,
   isPaymentInvoice,
   Payment,
-  PaymentEvent,
   DbDebtTag,
   DebtTag,
   tkoalyIdentity,
   emailIdentity,
   DateString,
   convertToDbDate,
-  DebtStatusReportOptions,
   NewInvoice,
 } from '@bbat/common/build/src/types';
 import sql, { SQLStatement } from 'sql-template-strings';
@@ -57,9 +50,9 @@ import {
   subMonths,
 } from 'date-fns';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
-import { Job, Queue } from 'bullmq';
+import { Job } from 'bullmq';
 import { validate } from 'uuid';
-import { ModuleDeps } from '@/app';
+import { BusContext, ModuleDeps } from '@/app';
 import { isAccountingPeriodOpen } from '../accounting/definitions';
 import { createReport } from '../reports/definitions';
 import {
@@ -68,6 +61,7 @@ import {
   getEmail,
   sendEmail,
 } from '../email/definitions';
+import { ExecutionContext } from '@/bus';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -170,6 +164,7 @@ type DebtCreationDetails = Partial<{
   tags: string[];
   accountingPeriod: number;
 }>;
+
 type DebtJobResult =
   | { result: 'success'; data: any }
   | {
@@ -179,7 +174,7 @@ type DebtJobResult =
       code: string;
       stack?: string;
     };
-type DebtJobName = 'create' | 'batch';
+
 type DebtJobDefinition = {
   details: DebtCreationDetails;
   token: string;
@@ -191,10 +186,11 @@ type DebtJobDefinition = {
 };
 
 export default ({ pg, bus, jobs }: ModuleDeps) => {
-  const jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName> =
-    jobs.getQueue('debts');
+  /*const jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName> =
+    jobs.getQueue('debts');*/
 
   async function resolvePayer(
+    bus: ExecutionContext<BusContext>,
     {
       email,
       name,
@@ -244,6 +240,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
             unpaidCount: null,
             total: null,
             debtCount: null,
+            totalPaid: null,
           };
         } else {
           return await bus.exec(
@@ -269,6 +266,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
             disabled: false,
             paidCount: null,
             debtCount: null,
+            totalPaid: null,
             unpaidCount: null,
             mergedTo: null,
           };
@@ -290,6 +288,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
   }
 
   async function resolveDebtCenter(
+    bus: ExecutionContext<BusContext>,
     debtCenter: string,
     dryRun: boolean,
     accountingPeriod: number,
@@ -329,6 +328,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
   }
 
   async function handleDebtJob(
+    bus: ExecutionContext<BusContext>,
     job: Job<DebtJobDefinition, DebtJobResult, string>,
   ): Promise<DebtJobResult> {
     if (job.name === 'create') {
@@ -346,7 +346,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       try {
         const { details, token, components, dryRun } = job.data;
 
-        const payer = await resolvePayer(details, token, dryRun);
+        const payer = await resolvePayer(bus, details, token, dryRun);
 
         if (!payer && !details.email) {
           return {
@@ -410,6 +410,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
         }
 
         const debtCenter = await resolveDebtCenter(
+          bus,
           details.debtCenter,
           dryRun,
           details.accountingPeriod,
@@ -794,11 +795,11 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return queryDebts(sql`debt.debt_center_id = ${id}`);
   });
 
-  async function getDebtsByTag(tagName: string): Promise<Debt[]> {
+  /*async function getDebtsByTag(tagName: string): Promise<Debt[]> {
     return queryDebts(
       sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`,
     );
-  }
+  }*/
 
   bus.register(defs.getDebts, () => queryDebts());
 
@@ -810,7 +811,10 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return components.map(formatDebtComponent);
   });
 
-  async function createDefaultPaymentFor(debt: Debt): Promise<Payment> {
+  async function createDefaultPaymentFor(
+    bus: ExecutionContext<BusContext>,
+    debt: Debt,
+  ): Promise<Payment> {
     const created = await bus.exec(paymentService.createInvoice, {
       invoice: {
         title: debt.name,
@@ -835,7 +839,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return created;
   }
 
-  bus.register(defs.publishDebt, async (debtId: string) => {
+  bus.register(defs.publishDebt, async (debtId: string, _, bus) => {
     const debt = await bus.exec(defs.getDebt, debtId);
 
     if (!debt) {
@@ -853,7 +857,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
 
     const defaultPayment = debt.defaultPayment
       ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
-      : await createDefaultPaymentFor(debt);
+      : await createDefaultPaymentFor(bus, debt);
 
     if (!defaultPayment) {
       throw new Error('No default invoice exists for payment');
@@ -890,7 +894,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     `);
   }
 
-  bus.register(defs.createDebt, async ({ debt, options }) => {
+  bus.register(defs.createDebt, async ({ debt, options }, _, bus) => {
     const payerProfile = await bus.exec(
       payerService.getPayerProfileByIdentity,
       debt.payer,
@@ -984,7 +988,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return createdDebt;
   });
 
-  bus.register(defs.updateDebt, async debt => {
+  bus.register(defs.updateDebt, async (debt, _, bus) => {
     const existingDebt = await bus.exec(defs.getDebt, debt.id);
 
     if (!existingDebt) {
@@ -1140,7 +1144,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       );
     }
 
-    return pipe(
+    const result = await pipe(
       pg.oneTask<DbDebt>(query),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
       TE.map(debt => ({
@@ -1152,7 +1156,12 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       TE.chainFirst(() => handleTags),
       TE.map(debt => debt.id),
       TE.flatMapTask(bus.execT(defs.getDebt)),
+      TE.chainEitherK(
+        E.fromNullable(new Error('Failed to fetch updated debt!')),
+      ),
     )();
+
+    return result;
   });
 
   bus.register(defs.createDebtComponent, async debtComponent => {
@@ -1283,7 +1292,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return cents(result.total);
   });
 
-  bus.register(defs.deleteDebt, async (id: string) => {
+  bus.register(defs.deleteDebt, async (id: string, _, bus) => {
     const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
@@ -1302,7 +1311,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     });
   });
 
-  bus.register(defs.creditDebt, async (id: string) => {
+  bus.register(defs.creditDebt, async (id, _, bus) => {
     const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
@@ -1388,7 +1397,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     `);
   }
 
-  bus.register(defs.sendReminder, async ({ debtId, draft = true }) => {
+  bus.register(defs.sendReminder, async ({ debtId, draft = true }, _, bus) => {
     const debt = await bus.exec(defs.getDebt, debtId);
 
     if (debt == null) {
@@ -1463,7 +1472,11 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
 
   bus.register(
     defs.sendAllReminders,
-    async ({ draft = true, ignoreReminderCooldown = false, debts: pDebts }) => {
+    async (
+      { draft = true, ignoreReminderCooldown = false, debts: pDebts },
+      _,
+      bus,
+    ) => {
       let debts: string[];
 
       if (!pDebts) {
@@ -1498,7 +1511,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     },
   );
 
-  bus.register(defs.onDebtPaid, async ({ debt, payment }) => {
+  bus.register(defs.onDebtPaid, async ({ debt, payment }, _, bus) => {
     const payments = await bus.exec(
       paymentService.getPaymentsContainingDebt,
       debt.id,
@@ -1520,7 +1533,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
 
   bus.register(
     defs.generateDebtLedger,
-    async ({ options, generatedBy, parent }) => {
+    async ({ options, generatedBy, parent }, _, bus) => {
       let criteria;
 
       if (options.includeDrafts === 'include') {
@@ -1607,7 +1620,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
 
   bus.register(
     defs.generateDebtStatusReport,
-    async ({ options, generatedBy, parent }) => {
+    async ({ options, generatedBy, parent }, _, bus) => {
       let statusFilter = sql``;
 
       if (options.includeOnly === 'paid') {
@@ -1779,17 +1792,17 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     },
   );
 
-  async function getDebtsByEmail(emailId: string) {
+  /*async function getDebtsByEmail(emailId: string) {
     const debts = await queryDebts(
       sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
     );
 
     return debts;
-  }
+  }*/
 
   bus.register(
     defs.sendPaymentRemindersByPayer,
-    async ({ payer, send, ignoreCooldown }) => {
+    async ({ payer, send, ignoreCooldown }, _, bus) => {
       const debts = await bus.exec(defs.getDebtsByPayer, {
         id: payer,
         includeCredited: false,

@@ -1,4 +1,4 @@
-import { router, route, Router } from 'typera-express';
+import { router } from 'typera-express';
 import {
   internalServerError,
   redirect,
@@ -17,7 +17,7 @@ import {
 } from '@bbat/common/build/src/types';
 import { validateBody } from '../validate-middleware';
 import * as t from 'io-ts';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 import { getTokenUpstreamUser } from '@/services/users/definitions';
 import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
 
@@ -30,10 +30,10 @@ const validateAuthCodeBody = t.type({
   code: t.string,
 });
 
-export default ({ config, bus, auth }: ApiDeps) => {
+const factory: ApiFactory = ({ config, auth }, route) => {
   const authCompleted = route
     .get('/auth/auth-completed')
-    .handler(async ({ req }) => {
+    .handler(async ({ req, bus }) => {
       const upstreamUser = await bus.exec(getTokenUpstreamUser, {
         token: req.cookies.token,
       });
@@ -67,7 +67,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
   const getUsers = route
     .get('/users')
     .use(auth.createAuthMiddleware())
-    .handler(async ({ req }) => {
+    .handler(async ({ req, bus }) => {
       const users = await bus.exec(usersService.getUpstreamUsers, {
         token: req.cookies.token,
       });
@@ -83,6 +83,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
       }),
     )
     .handler(async ctx => {
+      const { bus } = ctx;
       let userId: TkoalyIdentity;
 
       if (ctx.session.accessLevel !== 'admin' && ctx.routeParams.id !== 'me') {
@@ -133,7 +134,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
         allowQueryToken: true,
       }),
     )
-    .handler(async ({ req, session }) => {
+    .handler(async ({ req, session, bus }) => {
       const upstreamUser = await bus.exec(usersService.getTokenUpstreamUser, {
         token: req.cookies.token,
       });
@@ -184,7 +185,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
         unauthenticated: true,
       }),
     )
-    .handler(async ({ body, session, req }) => {
+    .handler(async ({ body, session, bus, req }) => {
       const authenticated = await auth.getAuthTokenStatus(body.id);
 
       if (!authenticated) {
@@ -233,7 +234,10 @@ export default ({ config, bus, auth }: ApiDeps) => {
         return badRequest();
       }
 
+      console.log('authenticate');
+
       await auth.authenticate(
+        bus,
         sessionToken,
         payerId,
         'email',
@@ -268,7 +272,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
       }),
     )
     .use(validateBody(sendAuthCodeBody))
-    .handler(async ({ body, session }) => {
+    .handler(async ({ body, session, bus }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByEmailIdentity,
         emailIdentity(body.email),
@@ -278,7 +282,7 @@ export default ({ config, bus, auth }: ApiDeps) => {
         return notFound();
       }
 
-      const { token, code, secret } = await auth.createAuthToken(
+      const { token, code } = await auth.createAuthToken(
         payer.id,
         session.token,
       );
@@ -384,3 +388,5 @@ export default ({ config, bus, auth }: ApiDeps) => {
     mergeSession,
   );
 };
+
+export default factory;

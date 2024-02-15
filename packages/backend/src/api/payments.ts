@@ -1,4 +1,4 @@
-import { route, router } from 'typera-express';
+import { router } from 'typera-express';
 import {
   badRequest,
   forbidden,
@@ -12,7 +12,6 @@ import * as paymentService from '@/services/payments/definitions';
 import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as bankingService from '@/services/banking/definitions';
-import { internalIdentity } from '@bbat/common/build/src/types';
 import { validateBody } from '../validate-middleware';
 import {
   cents,
@@ -23,13 +22,13 @@ import {
 } from '@bbat/common/build/src/currency';
 import { headers } from 'typera-express/parser';
 import Stripe from 'stripe';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
-export default ({ auth, bus, config, stripe }: ApiDeps) => {
+const factory: ApiFactory = ({ auth, config, stripe }, route) => {
   const getPayments = route
     .get('/')
     .use(auth.createAuthMiddleware())
-    .handler(async () => {
+    .handler(async ({ bus }) => {
       const payments = await bus.exec(paymentService.getPayments);
       return ok(payments);
     });
@@ -41,7 +40,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         accessLevel: 'normal',
       }),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const payment = await bus.exec(
         paymentService.getPayment,
         ctx.routeParams.id,
@@ -75,7 +74,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const { id } = ctx.routeParams;
       const { amount, transactionId } = ctx.body;
 
@@ -111,7 +110,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const debts = await Promise.all(
         ctx.body.debts.map(async id => {
           const debt = await bus.exec(debtService.getDebt, id);
@@ -185,7 +184,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       if (process.env.NODE_ENV !== 'development') {
         console.log(process.env.NODE_ENV);
         return forbidden();
@@ -228,7 +227,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         accessLevel: 'normal',
       }),
     )
-    .handler(async ({ session }) => {
+    .handler(async ({ session, bus }) => {
       const payments = await bus.exec(
         paymentService.getPayerPayments,
         session.payerId,
@@ -239,7 +238,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
   const creditPayment = route
     .post('/:id/credit')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       await bus.exec(paymentService.creditPayment, {
         id: ctx.routeParams.id,
         reason: 'manual',
@@ -257,7 +256,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const secret = config.stripeWebhookSecret;
 
       let event;
@@ -336,7 +335,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
   const deletePaymentEvent = route
     .delete('/events/:id')
     .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const event = await bus.exec(
         paymentService.deletePaymentEvent,
         ctx.routeParams.id,
@@ -359,7 +358,7 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
         }),
       ),
     )
-    .handler(async ctx => {
+    .handler(async ({ bus, ...ctx }) => {
       const event = await bus.exec(paymentService.updatePaymentEvent, {
         id: ctx.routeParams.id,
         amount: ctx.body.amount,
@@ -381,3 +380,5 @@ export default ({ auth, bus, config, stripe }: ApiDeps) => {
     updatePaymentEvent,
   );
 };
+
+export default factory;

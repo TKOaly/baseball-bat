@@ -1,31 +1,26 @@
-import axios, { AxiosResponse } from 'axios';
-import { Config } from '../../config';
+import axios from 'axios';
 import * as defs from './definitions';
 import {
   ApiCustomField,
   ApiEvent,
   ApiRegistration,
-  CustomField,
   euro,
   EuroValue,
   Event,
   numberFromString,
   Registration,
   tkoalyIdentity,
-  TkoalyIdentity,
 } from '@bbat/common/types';
-import { readFileSync } from 'fs';
 import { parseISO } from 'date-fns';
 import * as Either from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
-import { Inject, Service } from 'typedi';
 import { ModuleDeps } from '@/app';
 
-const getEuro = (value: string): EuroValue | null =>
+const getEuro = (value: string): EuroValue | undefined =>
   pipe(
     value.replace('€', '').trim(),
     numberFromString.decode,
-    Either.fold(() => null, euro),
+    Either.fold(() => undefined, euro),
   );
 
 const parseApiEvent = (apiEvent: ApiEvent): Event => ({
@@ -36,11 +31,11 @@ const parseApiEvent = (apiEvent: ApiEvent): Event => ({
   registrationEnds: parseISO(apiEvent.registration_ends),
   cancellationStarts: parseISO(apiEvent.cancellation_starts),
   cancellationEnds: parseISO(apiEvent.cancellation_ends),
-  maxParticipants: apiEvent.max_participants,
+  maxParticipants: apiEvent.max_participants ?? undefined,
   registrationCount: apiEvent.registration_count,
   location: apiEvent.location,
   deleted: apiEvent.deleted === 1,
-  price: apiEvent.price ? getEuro(apiEvent.price) : euro(0),
+  price: getEuro(apiEvent.price),
 });
 
 const formatRegistration = (registration: ApiRegistration): Registration => ({
@@ -58,7 +53,7 @@ const formatRegistration = (registration: ApiRegistration): Registration => ({
 });
 
 export default ({ config, bus }: ModuleDeps) => {
-  let client = axios.create({
+  const client = axios.create({
     baseURL: config.eventServiceUrl,
     headers: {
       'X-Token': config.eventServiceToken,

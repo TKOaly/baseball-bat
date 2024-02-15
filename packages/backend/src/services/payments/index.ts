@@ -1,42 +1,26 @@
 import sql from 'sql-template-strings';
 import {
-  DbDebt,
-  DbPayerProfile,
   DbPayment,
   DbPaymentEvent,
   Debt,
-  Email,
   EuroValue,
   internalIdentity,
-  InternalIdentity,
   isPaymentInvoice,
-  NewInvoice,
   Payment,
   PaymentEvent,
-  PaymentLedgerOptions,
   PaymentStatus,
 } from '@bbat/common/build/src/types';
-import * as R from 'remeda';
-import { FromDbType } from '../../db';
-import { formatDebt } from '../debts';
-import { Either } from 'fp-ts/lib/Either';
+import { Connection } from '../../db';
 import * as E from 'fp-ts/lib/Either';
-import { formatPayerProfile } from '../payers';
 import { cents, euro, sumEuroValues } from '@bbat/common/build/src/currency';
-import { format, formatISO, isBefore, parseISO, subDays } from 'date-fns';
-import { pipe } from 'fp-ts/lib/function';
-import { groupBy } from 'fp-ts/lib/NonEmptyArray';
-import { toArray } from 'fp-ts/lib/Record';
-import * as T from 'fp-ts/lib/Task';
-import * as A from 'fp-ts/lib/Array';
-import { ModuleDeps } from '@/app';
+import { formatISO, isBefore, parseISO, subDays } from 'date-fns';
+import { BusContext, ModuleDeps } from '@/app';
 import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as defs from './definitions';
 import { assignTransactionsToPaymentByReferenceNumber } from '../banking/definitions';
-import { getDebtCenter } from '../debt-centers/definitions';
-import { createReport } from '../reports/definitions';
 import { createEmail, sendEmail } from '../email/definitions';
+import { ExecutionContext } from '@/bus';
 
 export class RegistrationError extends Error {}
 
@@ -113,7 +97,7 @@ const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
   paymentId: db.payment_id,
   type: db.type,
   amount: cents(db.amount),
-  time: db.time,
+  time: new Date(db.time),
   data: db.data as any,
 });
 
@@ -124,72 +108,6 @@ export type NewStripePayment = {
 export type StripePaymentResult = {
   payment: Payment;
   clientSecret: string;
-};
-
-type BankTransactionDetails = {
-  accountingId: string;
-  referenceNumber: string;
-  amount: EuroValue;
-  time: Date;
-};
-
-type NewPaymentEvent = {
-  amount: EuroValue;
-  type:
-    | 'created'
-    | 'payment'
-    | 'stripe.intent-created'
-    | 'failed'
-    | 'canceled'
-    | 'other';
-  data?: Record<string, any>;
-  time?: Date;
-  transaction?: string;
-};
-
-type PaymentType = Invoice | CashPayment | StripePayment;
-
-type Invoice = {
-  type: 'invoice';
-  data: Record<string, never>;
-};
-
-type CashPayment = {
-  type: 'cash';
-  data: Record<string, never>;
-};
-
-type StripePayment = {
-  type: 'stripe';
-};
-
-/*export type DbPayment = {
-  id: string;
-  human_id: string;
-  human_id_nonce?: number;
-  accounting_period: number;
-  type: 'invoice';
-  title: string;
-  payer_id: string;
-  data: Record<string, unknown>;
-  message: string;
-  balance: number;
-  status: 'canceled' | 'paid' | 'unpaid' | 'mispaid';
-  updated_at: Date;
-  created_at: Date;
-  payment_number: number;
-  credited: boolean;
-  events: Array<DbPaymentEvent>;
-};*/
-
-type NewPayment<T extends PaymentType, D = null> = {
-  type: T['type'];
-  title: string;
-  message: string;
-  data: D | ((p: Omit<Payment, 'data'>) => D);
-  debts: Array<string>;
-  paymentNumber?: string;
-  createdAt?: Date;
 };
 
 export const formatPayment = (db: DbPayment): Payment => ({
@@ -211,13 +129,9 @@ export const formatPayment = (db: DbPayment): Payment => ({
   events: db.events.map(formatPaymentEvent),
 });
 
-type UpdatePaymentEventOptions = {
-  amount?: EuroValue;
-};
-
-export default ({ pg, bus, stripe }: ModuleDeps) => {
-  async function getPayments() {
-    const payments = await pg.any<DbPayment>(sql`
+export default ({ stripe, bus }: ModuleDeps) => {
+  bus.register(defs.getPayments, async (_, { pg }) => {
+    const payments = await pg.many<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
@@ -231,11 +145,9 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       `);
 
     return payments.map(formatPayment);
-  }
+  });
 
-  bus.register(defs.getPayments, getPayments);
-
-  async function getPayment(id: string): Promise<Payment | null> {
+  bus.register(defs.getPayment, async (id, { pg }) => {
     const result = await pg.one<DbPayment>(sql`
         SELECT
           p.*,
@@ -251,12 +163,10 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       `);
 
     return result && formatPayment(result);
-  }
+  });
 
-  bus.register(defs.getPayment, getPayment);
-
-  async function getPaymentsByReferenceNumbers(rfs: string[]) {
-    const payments = await pg.any<PaymentWithEvents>(sql`
+  async function getPaymentsByReferenceNumbers(pg: Connection, rfs: string[]) {
+    const payments = await pg.many<PaymentWithEvents>(sql`
       SELECT
         p.*,
         s.balance,
@@ -275,8 +185,12 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     return payments;
   }
 
-  async function onPaymentPaid(id: string, event: PaymentEvent) {
-    const payment = await getPayment(id);
+  async function onPaymentPaid(
+    bus: ExecutionContext<BusContext>,
+    id: string,
+    event: PaymentEvent,
+  ) {
+    const payment = await bus.exec(defs.getPayment, id);
     const debts = await bus.exec(debtService.getDebtsByPayment, id);
 
     if (!payment) {
@@ -290,60 +204,71 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     );
   }
 
-  bus.register(defs.createPaymentEvent, async ({ paymentId: id, ...event }) => {
-    const [created, oldStatus, newStatus] = await pg.tx(async tx => {
-      const [{ status: initialStatus }] = await tx.do<{
+  bus.register(
+    defs.createPaymentEvent,
+    async ({ paymentId: id, ...event }, { pg }, bus) => {
+      // const [created, oldStatus, newStatus] = await pg.tx(async tx => {
+
+      const { status: oldStatus } = await pg.one<{
         status: PaymentStatus;
       }>(sql`
-        SELECT status FROM payment_statuses WHERE id = ${id}
-      `);
+      SELECT status FROM payment_statuses WHERE id = ${id}
+    `);
 
-      const [created] = await tx.do<DbPaymentEvent>(sql`
-        INSERT INTO payment_events (payment_id, type, amount, data, time)
-        VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${
-          event.time ?? new Date()
-        })
-        RETURNING *
-      `);
+      const created = await pg.one<DbPaymentEvent>(sql`
+      INSERT INTO payment_events (payment_id, type, amount, data, time)
+      VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${
+        event.time ?? new Date()
+      })
+      RETURNING *
+    `);
 
       if (!created) {
         throw new Error('Could not create payment event');
       }
 
       if (event.transaction) {
-        await tx.do(sql`
-          INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
-          VALUES (${created.id}, ${event.transaction})
-        `);
+        await pg.do(sql`
+        INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
+        VALUES (${created.id}, ${event.transaction})
+      `);
       }
 
-      const [{ status: newStatus }] = await tx.do<{
+      const statusRow = await pg.one<{
         status: PaymentStatus;
       }>(sql`
-        SELECT status FROM payment_statuses WHERE id = ${id}
-      `);
+      SELECT status FROM payment_statuses WHERE id = ${id}
+    `);
 
-      return [formatPaymentEvent(created), initialStatus, newStatus];
-    });
-
-    if (oldStatus !== newStatus) {
-      if (newStatus === 'paid') {
-        await onPaymentPaid(id, created);
+      if (!statusRow) {
+        throw new Error('Failed to fetch payment status!');
       }
-    }
 
-    return created;
-  });
+      const newStatus = statusRow.status;
+
+      // })
+
+      const createdEvent = formatPaymentEvent(created);
+
+      if (oldStatus !== newStatus) {
+        if (newStatus === 'paid') {
+          await onPaymentPaid(bus, id, createdEvent);
+        }
+      }
+
+      return createdEvent;
+    },
+  );
 
   bus.register(
     defs.createPaymentEventFromTransaction,
-    async ({ transaction: tx, amount, paymentId }) => {
+    async ({ transaction: tx, amount, paymentId }, { pg }, bus) => {
       const existing_mapping =
-        await pg.one<DbPaymentEventTransactionMapping>(sql`
-      SELECT *
-      FROM payment_event_transaction_mapping
-      WHERE bank_transaction_id = ${tx.id}
-    `);
+        await pg.many<DbPaymentEventTransactionMapping>(sql`
+          SELECT *
+          FROM payment_event_transaction_mapping
+          WHERE bank_transaction_id = ${tx.id}
+        `);
 
       if (existing_mapping) {
         return null;
@@ -352,9 +277,9 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       let payment;
 
       if (paymentId) {
-        payment = await getPayment(paymentId);
+        payment = await bus.exec(defs.getPayment, paymentId);
       } else if (tx.reference) {
-        [payment] = await getPaymentsByReferenceNumbers([tx.reference]);
+        [payment] = await getPaymentsByReferenceNumbers(pg, [tx.reference]);
       } else {
         return null;
       }
@@ -374,13 +299,14 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     },
   );
 
-  bus.register(defs.getPayerPayments, async id => {
-    const payments = await pg.any<DbPayment>(sql`
+  bus.register(defs.getPayerPayments, async (id, { pg }) => {
+    const payments = await pg.many<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
           s.status,
           s.payer,
+          s.payer->>'id' AS payer_id,
           (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
@@ -396,13 +322,14 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     return payments.map(formatPayment);
   });
 
-  bus.register(defs.getPaymentsContainingDebt, async debtId => {
-    const payments = await pg.any<DbPayment>(sql`
+  bus.register(defs.getPaymentsContainingDebt, async (debtId, { pg }) => {
+    const payments = await pg.many<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
           s.status,
           s.payer,
+          s.payer->>'id' AS payer_id,
           (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
@@ -414,13 +341,14 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     return payments.map(formatPayment);
   });
 
-  bus.register(defs.getDefaultInvoicePaymentForDebt, async (debtId: string) => {
+  bus.register(defs.getDefaultInvoicePaymentForDebt, async (debtId, { pg }) => {
     const payment = await pg.one<DbPayment>(sql`
         SELECT
           p.*,
           s.balance,
           s.status,
           s.payer,
+          s.payer->>'id' AS payer_id,
           (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
@@ -433,7 +361,8 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     return payment && formatPayment(payment);
   });
 
-  async function logPaymentEvent(
+  /*async function logPaymentEvent(
+    pg: Connection,
     paymentId: string,
     amount: EuroValue,
     data: object,
@@ -445,75 +374,82 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
      `);
 
     return result;
-  }
+  }*/
 
-  async function updatePaymentData(id: string, data: Record<string, unknown>) {
-    pg.any(sql`
+  async function updatePaymentData(
+    pg: Connection,
+    id: string,
+    data: Record<string, unknown>,
+  ) {
+    pg.do(sql`
       UPDATE payments SET data = ${data} WHERE id = ${id}
     `);
   }
 
-  bus.register(defs.createInvoice, async ({ invoice, options }) => {
-    const results = await Promise.all(
-      invoice.debts.map(id => bus.exec(debtService.getDebt, id)),
-    );
-
-    if (results.some(d => d === null)) {
-      throw new Error('Debt does not exist');
-    }
-
-    const debts = results as Array<Debt>;
-
-    if (
-      debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
-    ) {
-      throw Error('Not all debts have due dates or are published!');
-    }
-
-    const due_dates = debts
-      .flatMap(debt => (debt.dueDate ? [new Date(debt.dueDate)] : []))
-      .sort();
-    const due_date = due_dates[0];
-
-    const payment = await bus.exec(defs.createPayment, {
-      payment: {
-        type: 'invoice',
-        message: invoice.message,
-        debts: invoice.debts,
-        paymentNumber: invoice.paymentNumber ?? undefined,
-        title: invoice.title,
-        data: {},
-      },
-      options,
-    });
-
-    if (payment.humanIdNonce === undefined) {
-      throw new Error(
-        'Generated payment does not have automatically assigned id',
+  bus.register(
+    defs.createInvoice,
+    async ({ invoice, options }, { pg }, bus) => {
+      const results = await Promise.all(
+        invoice.debts.map(id => bus.exec(debtService.getDebt, id)),
       );
-    }
 
-    const data = {
-      reference_number: invoice.referenceNumber
-        ? normalizeReferenceNumber(invoice.referenceNumber)
-        : createReferenceNumber(
-            invoice.series ?? 0,
-            payment.accountingPeriod,
-            payment.humanIdNonce ?? 0,
-          ),
-      due_date: formatISO(due_date),
-      date: invoice.date ?? new Date(),
-    };
+      if (results.some(d => d === null)) {
+        throw new Error('Debt does not exist');
+      }
 
-    await updatePaymentData(payment.id, data);
+      const debts = results as Array<Debt>;
 
-    return {
-      ...payment,
-      data,
-    };
-  });
+      if (
+        debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
+      ) {
+        throw Error('Not all debts have due dates or are published!');
+      }
 
-  bus.register(defs.createStripePayment, async options => {
+      const due_dates = debts
+        .flatMap(debt => (debt.dueDate ? [new Date(debt.dueDate)] : []))
+        .sort();
+      const due_date = due_dates[0];
+
+      const payment = await bus.exec(defs.createPayment, {
+        payment: {
+          type: 'invoice',
+          message: invoice.message,
+          debts: invoice.debts,
+          paymentNumber: invoice.paymentNumber ?? undefined,
+          title: invoice.title,
+          data: {},
+        },
+        options,
+      });
+
+      if (payment.humanIdNonce === undefined) {
+        throw new Error(
+          'Generated payment does not have automatically assigned id',
+        );
+      }
+
+      const data = {
+        reference_number: invoice.referenceNumber
+          ? normalizeReferenceNumber(invoice.referenceNumber)
+          : createReferenceNumber(
+              invoice.series ?? 0,
+              payment.accountingPeriod,
+              payment.humanIdNonce ?? 0,
+            ),
+        due_date: formatISO(due_date),
+        date: invoice.date ?? new Date(),
+      };
+
+      await updatePaymentData(pg, payment.id, data);
+
+      return {
+        ...payment,
+        data,
+      };
+    },
+  );
+
+  bus.register(defs.createStripePayment, async (options, _, bus) => {
     const results = await Promise.all(
       options.debts.map(id => bus.exec(debtService.getDebt, id)),
     );
@@ -540,7 +476,7 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       },
     });
 
-    let payment = await getPayment(id);
+    let payment = await bus.exec(defs.getPayment, id);
 
     if (payment === null) {
       throw new Error('Failed to create payment.');
@@ -573,7 +509,7 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       },
     });
 
-    payment = await getPayment(id);
+    payment = await bus.exec(defs.getPayment, id);
 
     if (payment === null) {
       throw new Error('Failed to create payment.');
@@ -585,9 +521,11 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     };
   });
 
-  bus.register(defs.createPayment, async ({ payment, options = {} }) => {
-    const created = await pg.tx(async tx => {
-      const [createdPayment] = await tx.do<DbPayment>(sql`
+  bus.register(
+    defs.createPayment,
+    async ({ payment, options = {} }, { pg }, bus) => {
+      // const created = await pg.tx(async tx => {
+      const { id: createdPaymentId } = await pg.one<DbPayment>(sql`
         INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
@@ -596,47 +534,51 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
           ${payment.title},
           COALESCE(${payment.createdAt}, NOW())
         )
-        RETURNING *
+        RETURNING id
       `);
-
-      createdPayment.events = [];
-
-      if (!createdPayment) {
-        throw new Error('Could not create payment');
-      }
 
       await Promise.all(
         payment.debts.map(debt =>
-          tx.do(sql`
+          pg.do(sql`
             INSERT INTO payment_debt_mappings (payment_id, debt_id)
-            VALUES (${createdPayment.id}, ${debt})
+            VALUES (${createdPaymentId}, ${debt})
           `),
         ),
       );
 
-      const [{ total }] = await tx.do<{ total: number }>(sql`
+      const { total } = await pg.one<{ total: number }>(sql`
         SELECT SUM(c.amount) AS total
         FROM debt_component_mapping m
         JOIN debt_component c ON c.id = m.debt_component_id
         WHERE m.debt_id = ANY (${payment.debts})
       `);
 
-      await tx.do(sql`
+      await pg.do(sql`
         INSERT INTO payment_events (payment_id, type, amount)
-        VALUES (${createdPayment.id}, 'created', ${-total})
+        VALUES (${createdPaymentId}, 'created', ${-total})
       `);
 
-      const formated = formatPayment(createdPayment as any) as any;
+      //const formated = formatPayment(createdPayment as any) as any;
 
-      return formated;
-    });
+      //console.log(formated)
 
-    await onPaymentCreated(created, options);
+      const created = await bus.exec(defs.getPayment, createdPaymentId);
 
-    return created;
-  });
+      if (!created) {
+        throw new Error('Failed to retrieve the created payment!');
+      }
+
+      // return created;
+      // });
+
+      await onPaymentCreated(bus, created, options);
+
+      return created;
+    },
+  );
 
   async function onPaymentCreated(
+    bus: ExecutionContext<BusContext>,
     payment: Payment,
     options: PaymentCreationOptions,
   ) {
@@ -647,7 +589,10 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       );
 
       if (!isBackdated && options.sendNotification !== false) {
-        const email = await sendNewPaymentNotification(payment.id);
+        const email = await bus.exec(
+          defs.sendNewPaymentNotification,
+          payment.id,
+        );
 
         if (E.isRight(email)) {
           await bus.exec(sendEmail, email.right.id);
@@ -665,8 +610,8 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     }
   }
 
-  bus.register(defs.creditPayment, async ({ id, reason }) => {
-    const payment = await getPayment(id);
+  bus.register(defs.creditPayment, async ({ id, reason }, { pg }, bus) => {
+    const payment = await bus.exec(defs.getPayment, id);
 
     if (!payment) {
       throw new Error('Payment not found');
@@ -683,7 +628,7 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     const debts = await bus.exec(debtService.getDebtsByPayment, id);
     const amount = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
 
-    await pg.any(sql`
+    await pg.do(sql`
       UPDATE payments
       SET credited = true
       WHERE id = ${id}
@@ -713,23 +658,23 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       throw new Error('Failed to credit payment!');
     }
 
-    return getPayment(id);
+    return bus.exec(defs.getPayment, id);
   });
 
-  async function getPaymentEvent(id: string) {
+  bus.register(defs.getPaymentEvent, async (id, { pg }) => {
     const row = await pg.one<DbPaymentEvent>(sql`
       SELECT * FROM payment_events WHERE id = ${id}
     `);
 
     return row && formatPaymentEvent(row);
-  }
+  });
 
-  bus.register(defs.getPaymentEvent, getPaymentEvent);
-
-  async function createBankTransactionPaymentEvent(
+  /*async function createBankTransactionPaymentEvent(
+    pg: Connection,
+    bus: ExecutionContext<BusContext>,
     details: BankTransactionDetails,
   ) {
-    const payments = await getPaymentsByReferenceNumbers([
+    const payments = await getPaymentsByReferenceNumbers(pg, [
       details.referenceNumber,
     ]);
 
@@ -756,12 +701,10 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       },
       transaction: details.accountingId,
     });
-  }
+  }*/
 
-  async function sendNewPaymentNotification(
-    id: string,
-  ): Promise<Either<string, Email>> {
-    const payment = await getPayment(id);
+  bus.register(defs.sendNewPaymentNotification, async (id, _, bus) => {
+    const payment = await bus.exec(defs.getPayment, id);
 
     if (!payment) {
       return E.left('No such payment');
@@ -805,17 +748,17 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     });
 
     return E.fromNullable('Could not create email')(created);
-  }
+  });
 
-  bus.register(defs.sendNewPaymentNotification, sendNewPaymentNotification);
-
-  async function generatePaymentLedger(
+  /*async function generatePaymentLedger(
+    pg: Connection,
+    bus: ExecutionContext<BusContext>,
     options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> &
       Record<'startDate' | 'endDate', Date>,
     generatedBy: InternalIdentity,
     parent?: string,
   ) {
-    const results = await pg.any<{
+    const results = await pg.many<{
       event: DbPaymentEvent;
       debt: DbDebt;
       payment: DbPayment;
@@ -927,10 +870,10 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
       parent,
       generatedBy,
     });
-  }
+  }*/
 
-  bus.register(defs.deletePaymentEvent, async id => {
-    await pg.any(sql`
+  bus.register(defs.deletePaymentEvent, async (id, { pg }) => {
+    await pg.do(sql`
       DELETE FROM payment_event_transaction_mapping WHERE payment_event_id = ${id}
     `);
 
@@ -941,7 +884,7 @@ export default ({ pg, bus, stripe }: ModuleDeps) => {
     return row && formatPaymentEvent(row);
   });
 
-  bus.register(defs.updatePaymentEvent, async ({ id, amount }) => {
+  bus.register(defs.updatePaymentEvent, async ({ id, amount }, { pg }) => {
     const paymentEvent = await pg.one<DbPaymentEvent>(sql`
       UPDATE payment_events
       SET amount = COALESCE(${amount.value}, amount)

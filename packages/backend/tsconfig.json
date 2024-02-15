@@ -28,9 +28,7 @@
     }
   },
   "exclude": ["node_modules"],
-  "include": ["src", "tests"],
+  "include": ["src"],
   "composite": true,
-  "references": [
-    { "path": "../common" }
-  ]
+  "references": [{ "path": "../common" }]
 }
