@@ -463,7 +463,14 @@ export type DebtCenterPatch = t.TypeOf<typeof debtCenterPatch>;
 
 export type NewDebtCenter = Omit<
   DebtCenter,
-  'id' | 'createdAt' | 'updatedAt' | 'humanId'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'humanId'
+  | 'paidCount'
+  | 'unpaidCount'
+  | 'debtCount'
+  | 'total'
 >;
 
 export type DbDebtComponent = {
@@ -611,7 +618,7 @@ export type NewDebtTag = { name: string; hidden: boolean };
 export type NewDebt = {
   centerId: string;
   description: string;
-  accountingPeriod: t.TypeOf<typeof t.Int>;
+  accountingPeriod: number;
   components: string[];
   publishedAt?: DbDateString | null;
   name: string;
