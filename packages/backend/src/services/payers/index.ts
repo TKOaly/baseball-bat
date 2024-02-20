@@ -1,13 +1,10 @@
 import {
   DbPayerProfile,
-  EmailIdentity,
   InternalIdentity,
   isEmailIdentity,
   isInternalIdentity,
   isTkoalyIdentity,
-  PayerIdentity,
   PayerProfile,
-  TkoalyIdentity,
   internalIdentity,
   tkoalyIdentity,
   UpstreamUser,
@@ -23,6 +20,7 @@ import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
 import { BusContext, ModuleDeps } from '@/app';
 import { ExecutionContext } from '@/bus';
+import { PoolConnection } from '@/db';
 
 export type DbPayerProfileWithEmails = DbPayerProfile & {
   emails: DbPayerEmail[];
@@ -72,8 +70,8 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
   updatedAt: email.updated_at,
 });
 
-export default ({ pg, bus }: ModuleDeps) => {
-  bus.register(defs.getPayerProfiles, async () => {
+export default ({ bus }: ModuleDeps) => {
+  bus.register(defs.getPayerProfiles, async (_, { pg }) => {
     const dbProfiles = await pg.many<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
@@ -94,23 +92,21 @@ export default ({ pg, bus }: ModuleDeps) => {
     return dbProfiles.map(formatPayerProfile);
   });
 
-  async function getPayerProfileByIdentity(id: PayerIdentity) {
+  bus.register(defs.getPayerProfileByIdentity, async (id, _, bus) => {
     if (isTkoalyIdentity(id)) {
-      return await getPayerProfileByTkoalyIdentity(id);
+      return await bus.exec(defs.getPayerProfileByTkoalyIdentity, id);
     }
 
     if (isInternalIdentity(id)) {
-      return await getPayerProfileByInternalIdentity(id);
+      return await bus.exec(defs.getPayerProfileByInternalIdentity, id);
     }
 
     if (isEmailIdentity(id)) {
-      return await getPayerProfileByEmailIdentity(id);
+      return await bus.exec(defs.getPayerProfileByEmailIdentity, id);
     }
 
     return null;
-  }
-
-  bus.register(defs.getPayerProfileByIdentity, getPayerProfileByIdentity);
+  });
 
   // eslint-disable-next-line
   async function createDefaultPayerPreferences(
@@ -123,7 +119,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     };
   }
 
-  bus.register(defs.getPayerPreferences, async id => {
+  bus.register(defs.getPayerPreferences, async (id, { pg }) => {
     const row = await pg.one<{ preferences: PayerPreferences }>(
       sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`,
     );
@@ -137,34 +133,32 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.updatePayerPreferences,
-    async ({ id, preferences: newValues }) => {
-      return await pg.tx(async tx => {
-        const rows = await tx.do<{ preferences: PayerPreferences }>(
-          sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`,
-        );
+    async ({ id, preferences: newValues }, { pg }) => {
+      const rows = await pg.many<{ preferences: PayerPreferences }>(
+        sql`SELECT preferences FROM payer_profiles WHERE id = ${id.value}`,
+      );
 
-        let preferences = rows.length > 0 ? rows[0].preferences : null;
+      let preferences = rows.length > 0 ? rows[0].preferences : null;
 
-        if (preferences === null) {
-          preferences = await createDefaultPayerPreferences(id);
-        }
+      if (preferences === null) {
+        preferences = await createDefaultPayerPreferences(id);
+      }
 
-        Object.assign(preferences, newValues);
+      Object.assign(preferences, newValues);
 
-        const results = await tx.do<{ preferences: PayerPreferences }>(
-          sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`,
-        );
+      const results = await pg.one<{ preferences: PayerPreferences }>(
+        sql`UPDATE payer_profiles SET preferences = ${preferences} WHERE id = ${id.value} RETURNING preferences`,
+      );
 
-        if (results.length === 0) {
-          throw new Error('could not update payer preferences');
-        }
+      if (results === null) {
+        throw new Error('could not update payer preferences');
+      }
 
-        return results[0].preferences;
-      });
+      return results.preferences;
     },
   );
 
-  bus.register(defs.getPayerPrimaryEmail, async (id: InternalIdentity) => {
+  bus.register(defs.getPayerPrimaryEmail, async (id, { pg }) => {
     const email = await pg
       .one<DbPayerEmail>(
         sql`
@@ -178,9 +172,9 @@ export default ({ pg, bus }: ModuleDeps) => {
     return email;
   });
 
-  bus.register(defs.getPayerEmails, async id => {
+  bus.register(defs.getPayerEmails, async (id, { pg }) => {
     const emails = await pg
-      .any<DbPayerEmail>(
+      .many<DbPayerEmail>(
         sql`
         SELECT *
         FROM payer_emails
@@ -194,7 +188,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.updatePayerEmailPriority,
-    async ({ payerId, priority, email }) => {
+    async ({ payerId, priority, email }, { pg }) => {
       const primary = await pg.one<{ email: string }>(
         sql`SELECT email FROM payer_emails WHERE payer_id = ${payerId.value} AND priority = 'primary'`,
       );
@@ -218,7 +212,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     },
   );
 
-  bus.register(defs.updatePayerName, async ({ payerId, name }, _, bus) => {
+  bus.register(defs.updatePayerName, async ({ payerId, name }, { pg }, bus) => {
     const updated = await pg.one<DbPayerProfileWithEmails>(sql`
       UPDATE payer_profiles
       SET name = ${name}
@@ -238,7 +232,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.updatePayerDisabledStatus,
-    async ({ payerId, disabled }, _, bus) => {
+    async ({ payerId, disabled }, { pg }, bus) => {
       const updated = await pg.one<DbPayerProfileWithEmails>(sql`
       UPDATE payer_profiles
       SET disabled = ${disabled}
@@ -259,7 +253,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.addPayerEmail,
-    async (params: AddPayerEmailOptions, _, bus) => {
+    async (params: AddPayerEmailOptions, { pg }, bus) => {
       const currentPrimary = await bus.exec(
         defs.getPayerPrimaryEmail,
         params.payerId,
@@ -291,8 +285,8 @@ export default ({ pg, bus }: ModuleDeps) => {
     },
   );
 
-  async function getPayerProfileByTkoalyIdentity(id: TkoalyIdentity) {
-    const dbProfile = await pg.one<DbPayerProfileWithEmails>(sql`
+  bus.register(defs.getPayerProfileByTkoalyIdentity, async (id, { pg }) => {
+    const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
@@ -304,10 +298,10 @@ export default ({ pg, bus }: ModuleDeps) => {
     }
 
     return null;
-  }
+  });
 
-  async function getPayerProfileByInternalIdentity(id: InternalIdentity) {
-    const dbProfile = await pg.one<DbPayerProfileWithEmails>(sql`
+  bus.register(defs.getPayerProfileByInternalIdentity, async (id, { pg }) => {
+    const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
         SELECT
           pp.*,
           (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
@@ -320,10 +314,10 @@ export default ({ pg, bus }: ModuleDeps) => {
     }
 
     return null;
-  }
+  });
 
-  async function getPayerProfileByEmailIdentity(id: EmailIdentity) {
-    const dbProfile = await pg.one<DbPayerProfileWithEmails>(sql`
+  bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
+    const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
       SELECT
         pp.*,
         (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
@@ -336,12 +330,15 @@ export default ({ pg, bus }: ModuleDeps) => {
     }
 
     return null;
-  }
+  });
 
   bus.register(
     defs.getOrCreatePayerProfileForIdentity,
     async ({ id, token }, _, bus) => {
-      const existingPayerProfile = await getPayerProfileByIdentity(id);
+      const existingPayerProfile = await bus.exec(
+        defs.getPayerProfileByIdentity,
+        id,
+      );
 
       if (existingPayerProfile) {
         return existingPayerProfile;
@@ -361,7 +358,10 @@ export default ({ pg, bus }: ModuleDeps) => {
   bus.register(
     defs.createPayerProfileForExternalIdentity,
     async ({ id, token, name }, _, bus) => {
-      const existingPayerProfile = await getPayerProfileByIdentity(id);
+      const existingPayerProfile = await bus.exec(
+        defs.getPayerProfileByIdentity,
+        id,
+      );
 
       if (existingPayerProfile) {
         return existingPayerProfile;
@@ -383,7 +383,7 @@ export default ({ pg, bus }: ModuleDeps) => {
           throw new Error('Name required for payment profile');
         }
 
-        return createPayerProfileFromEmailIdentity(id, { name });
+        return bus.exec(defs.createPayerProfileFromEmailIdentity, { id, name });
       }
 
       return assertNever(id) as any; // eslint-disable-line
@@ -392,7 +392,7 @@ export default ({ pg, bus }: ModuleDeps) => {
 
   bus.register(
     defs.createPayerProfileFromTkoalyIdentity,
-    async ({ id, token }, _, bus) => {
+    async ({ id, token }, { pg }, bus) => {
       const upstreamUser = await bus.exec(usersService.getUpstreamUserById, {
         id,
         token,
@@ -402,55 +402,58 @@ export default ({ pg, bus }: ModuleDeps) => {
         throw new Error('Upstream user not found!');
       }
 
-      return createPayerProfileFromTkoalyUser(bus, upstreamUser);
+      return createPayerProfileFromTkoalyUser(bus, pg, upstreamUser);
     },
   );
 
-  async function createPayerProfileFromEmailIdentity(
-    id: EmailIdentity,
-    details: { name: string },
-  ) {
-    const payerProfile = await pg.one<DbPayerProfile>(
-      sql`INSERT INTO payer_profiles (name) VALUES (${details.name}) RETURNING *`,
-    );
+  bus.register(
+    defs.createPayerProfileFromEmailIdentity,
+    async ({ id, name }, { pg }, bus) => {
+      const payerProfile = await pg.one<DbPayerProfile>(
+        sql`INSERT INTO payer_profiles (name) VALUES (${name}) RETURNING id`,
+      );
 
-    if (!payerProfile) {
-      throw new Error('Could not create a new payer profile');
-    }
+      if (!payerProfile) {
+        throw new Error('Could not create a new payer profile');
+      }
 
-    const email = await pg.one<DbPayerEmail>(sql`
+      const email = await pg.one<DbPayerEmail>(sql`
       INSERT INTO payer_emails (email, payer_id, priority)
       VALUES (${id.value}, ${payerProfile.id}, 'primary')
       RETURNING *
     `);
 
-    if (!email) {
-      throw new Error('Could not create email record for hte payer profile');
-    }
+      if (!email) {
+        throw new Error('Could not create email record for hte payer profile');
+      }
 
-    return formatPayerProfile({
-      ...payerProfile,
-      emails: [email],
-    });
-  }
+      return bus.exec(
+        defs.getPayerProfileByInternalIdentity,
+        internalIdentity(payerProfile.id),
+      );
+    },
+  );
 
-  async function replacePrimaryEmail(id: InternalIdentity, email: string) {
-    await pg.tx(async tx => {
-      await tx.do(sql`
-        UPDATE payer_emails
-        SET priority = 'default', updated_at = NOW()
-        WHERE payer_id = ${id.value} AND priority = 'primary'
-      `);
+  async function replacePrimaryEmail(
+    pg: PoolConnection,
+    id: InternalIdentity,
+    email: string,
+  ) {
+    await pg.do(sql`
+      UPDATE payer_emails
+      SET priority = 'default', updated_at = NOW()
+      WHERE payer_id = ${id.value} AND priority = 'primary'
+    `);
 
-      await tx.do(sql`
-        INSERT INTO payer_emails (payer_id, priority, email)
-        VALUES (${id.value}, 'primary', ${email})
-      `);
-    });
+    await pg.do(sql`
+      INSERT INTO payer_emails (payer_id, priority, email)
+      VALUES (${id.value}, 'primary', ${email})
+    `);
   }
 
   async function createPayerProfileFromTkoalyUser(
     bus: ExecutionContext<BusContext>,
+    pg: PoolConnection,
     user: UpstreamUser,
   ): Promise<PayerProfile> {
     const existingPayerProfile = await bus.exec(
@@ -465,7 +468,7 @@ export default ({ pg, bus }: ModuleDeps) => {
       );
 
       if (!emails.some(({ email }) => email === user.email)) {
-        await replacePrimaryEmail(existingPayerProfile.id, user.email);
+        await replacePrimaryEmail(pg, existingPayerProfile.id, user.email);
 
         //if (existingPayerProfile.stripeCustomerId) {
         /*await stripe.customers.update(existingPayerProfile.stripeCustomerId, {
@@ -477,16 +480,17 @@ export default ({ pg, bus }: ModuleDeps) => {
       return existingPayerProfile;
     }
 
-    const existingEmailProfile = await getPayerProfileByEmailIdentity(
+    const existingEmailProfile = await bus.exec(
+      defs.getPayerProfileByEmailIdentity,
       emailIdentity(user.email),
     );
 
     if (existingEmailProfile) {
-      await pg.one<DbPayerProfile>(sql`
-          UPDATE payer_profiles
-          SET tkoaly_user_id = ${user.id.value}
-          WHERE id = ${existingEmailProfile.id.value}
-       `);
+      await pg.do(sql`
+         UPDATE payer_profiles
+         SET tkoaly_user_id = ${user.id.value}
+         WHERE id = ${existingEmailProfile.id.value}
+      `);
 
       return {
         ...existingEmailProfile,
@@ -495,10 +499,10 @@ export default ({ pg, bus }: ModuleDeps) => {
     }
 
     const dbPayerProfile = await pg.one<DbPayerProfile>(sql`
-        INSERT INTO payer_profiles (tkoaly_user_id, name)
-        VALUES (${user.id.value}, ${user.screenName})
-        RETURNING *
-      `);
+      INSERT INTO payer_profiles (tkoaly_user_id, name)
+      VALUES (${user.id.value}, ${user.screenName})
+      RETURNING *
+    `);
 
     if (!dbPayerProfile) {
       throw new Error('Could not create payer profile');
@@ -526,48 +530,36 @@ export default ({ pg, bus }: ModuleDeps) => {
     return result;
   }
 
-  bus.register(defs.setProfileTkoalyIdentity, async ({ id, tkoalyId }) => {
-    await pg.any(sql`
+  bus.register(
+    defs.setProfileTkoalyIdentity,
+    async ({ id, tkoalyId }, { pg }) => {
+      await pg.do(sql`
       UPDATE payer_profiles
       SET tkoaly_user_id = ${tkoalyId.value}
       WHERE id = ${id.value}
     `);
+    },
+  );
+
+  bus.register(defs.mergeProfiles, async ({ primary, secondary }, { pg }) => {
+    await pg.do(sql`
+      UPDATE payer_profiles
+      SET disabled = true, merged_to = ${primary.value}
+      WHERE id = ${secondary.value}
+    `);
+
+    await pg.do(sql`
+      INSERT INTO payer_emails (payer_id, email, priority, source)
+      SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
+      FROM payer_emails
+      WHERE payer_id = ${secondary.value}
+      ON CONFLICT DO NOTHING
+    `);
+
+    const debts = await pg.many<{ id: string }>(
+      sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`,
+    );
+
+    return debts.map(debt => debt.id);
   });
-
-  bus.register(defs.mergeProfiles, async ({ primary, secondary }) => {
-    return await pg.tx(async tx => {
-      await tx.do(sql`
-        UPDATE payer_profiles
-        SET disabled = true, merged_to = ${primary.value}
-        WHERE id = ${secondary.value}
-      `);
-
-      await tx.do(sql`
-        INSERT INTO payer_emails (payer_id, email, priority, source)
-        SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
-        FROM payer_emails
-        WHERE payer_id = ${secondary.value}
-        ON CONFLICT DO NOTHING
-      `);
-
-      const debts = await tx.do<{ id: string }>(
-        sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`,
-      );
-
-      return debts.map(debt => debt.id);
-    });
-  });
-
-  bus.register(
-    defs.getPayerProfileByTkoalyIdentity,
-    getPayerProfileByTkoalyIdentity,
-  );
-  bus.register(
-    defs.getPayerProfileByEmailIdentity,
-    getPayerProfileByEmailIdentity,
-  );
-  bus.register(
-    defs.getPayerProfileByInternalIdentity,
-    getPayerProfileByInternalIdentity,
-  );
 };

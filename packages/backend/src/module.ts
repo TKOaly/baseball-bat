@@ -1,4 +1,4 @@
-import { Config } from "./config";
+/*import { Config } from "./config";
 
 export interface Module<Deps extends Record<string, Module> = never> {
   id: string;
@@ -7,4 +7,4 @@ export interface Module<Deps extends Record<string, Module> = never> {
 
 export interface ModuleFactory<M extends Module> {
   (config: Config): Promise<M>;
-}
+}*/

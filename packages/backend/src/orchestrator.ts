@@ -1,20 +1,6 @@
-import { Service } from 'typedi';
+import { createScope } from './bus';
+import * as t from 'io-ts';
 
-@Service()
-export class AppBus {
-  private closeHandlers: Set<() => void> = new Set();
+const appScope = createScope('app');
 
-  public onClose(handler: () => void | Promise<void>) {
-    this.closeHandlers.add(handler);
-  }
-
-  public removeCloseHandler(handler: () => void | Promise<void>) {
-    this.closeHandlers.delete(handler);
-  }
-
-  public async close() {
-    for (const handler of this.closeHandlers) {
-      await Promise.resolve(handler());
-    }
-  }
-}
+export const shutdown = appScope.defineEvent('shutdown', t.void);

@@ -16,7 +16,6 @@ import {
   createSMTPTransport,
   IEmailTransport,
 } from './services/email';
-// import { MagicLinksApi } from './api/magic-links';
 import { JobService } from './services/jobs';
 import { LocalBus } from './bus';
 import initServices from './services';
@@ -79,6 +78,8 @@ export type BusContext = {
 
 const bus = new LocalBus<BusContext>();
 
+// bus.on(shutdown, () => redisClient.shutdown());
+
 const jobs = new JobService(
   config,
   redisClient as RedisClientType,
@@ -110,7 +111,20 @@ const apiDeps: ApiDeps = {
   stripe: stripeClient,
 };
 
+declare global {
+  // eslint-disable-next-line
+  namespace Express {
+    export interface Request {
+      rawBody?: Buffer;
+    }
+  }
+}
+
 const app = express()
+  .use((req, _res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  })
   .use(helmet(helmetConfig))
   .use(
     cors({
@@ -118,7 +132,13 @@ const app = express()
       origin: [config.appUrl],
     }),
   )
-  .use(express.json())
+  .use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as Express.Request).rawBody = buf;
+      },
+    }),
+  )
   .use(cookieParser())
   .use(router(healthCheck).handler());
 

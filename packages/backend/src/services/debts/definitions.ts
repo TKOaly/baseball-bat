@@ -1,166 +1,162 @@
-import { createScope } from '@/bus';
+import { createInterface, createScope } from '@/bus';
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
 import * as types from '@bbat/common/types';
 import { euroValue } from '@bbat/common/currency';
 
-const scope = createScope('debts');
-
-export const getDebt = scope.defineProcedure({
-  name: 'getDebt',
-  payload: t.string,
-  response: t.union([t.null, types.debt]),
-});
-
-export const getDebtsByPayment = scope.defineProcedure({
-  name: 'getDebtsByPayment',
-  payload: t.string,
-  response: t.array(types.debt),
-});
-
-export const onDebtPaid = scope.defineProcedure({
-  name: 'onDebtPaid',
-  payload: t.type({
-    debt: types.debt,
-    payment: types.payment,
-    event: types.paymentEvent,
+const iface = createInterface('debts', builder => ({
+  getDebt: builder.proc({
+    payload: t.string,
+    response: t.union([t.null, types.debt]),
   }),
-  response: t.void,
-});
-
-export const getDebtComponentsByCenter = scope.defineProcedure({
-  name: 'getDebtComponentsByCenter',
-  payload: t.string,
-  response: t.array(types.debtComponent),
-});
-
-export const generateDebtStatusReport = scope.defineProcedure({
-  name: 'generateDebtStatusReport',
-  payload: t.type({
-    options: t.type({
-      date: tt.date,
-      centers: t.union([t.null, t.array(t.string)]),
-      groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
-      includeOnly: t.union([
-        t.null,
-        t.literal('paid'),
-        t.literal('credited'),
-        t.literal('open'),
-      ]),
+  getDebtsByPayment: builder.proc({
+    payload: t.string,
+    response: t.array(types.debt),
+  }),
+  onDebtPaid: builder.proc({
+    payload: t.type({
+      debt: types.debt,
+      payment: types.payment,
     }),
-    generatedBy: types.internalIdentityT,
-    parent: t.union([t.null, t.string]),
+    response: t.void,
   }),
-  response: types.reportWithoutHistory,
-});
-
-export const generateDebtLedger = scope.defineProcedure({
-  name: 'generateDebtLedger',
-  payload: t.type({
-    options: t.type({
-      startDate: tt.date,
-      endDate: tt.date,
-      centers: t.union([t.null, t.array(t.string)]),
-      groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
-      includeDrafts: t.union([
-        t.literal('include'),
-        t.literal('exclude'),
-        t.literal('only-drafts'),
-      ]),
-    }),
-    generatedBy: types.internalIdentityT,
-    parent: t.union([t.null, t.string]),
+  getDebtComponentsByCenter: builder.proc({
+    payload: t.string,
+    response: t.array(types.debtComponent),
   }),
-  response: types.reportWithoutHistory,
-});
-
-export const getDebtsByCenter = scope.defineProcedure({
-  name: 'getDebtsByCenter',
-  payload: t.string,
-  response: t.array(types.debt),
-});
-
-export const createDebtComponent = scope.defineProcedure({
-  name: 'createDebtComponent',
-  payload: t.type({
-    name: t.string,
-    amount: euroValue,
-    description: t.string,
-    debtCenterId: t.string,
-  }),
-  response: types.debtComponent,
-});
-
-export const deleteDebtComponent = scope.defineProcedure({
-  name: 'deleteDebtComponent',
-  payload: t.type({
-    debtCenterId: t.string,
-    debtComponentId: t.string,
-  }),
-  response: tt.either(
-    t.unknown,
-    t.type({
-      affectedDebts: t.array(t.string),
-    }),
-  ),
-});
-
-export const createDebt = scope.defineProcedure({
-  name: 'createDebt',
-  payload: t.intersection([
-    t.type({
-      debt: t.intersection([
-        t.type({
-          name: t.string,
-          description: t.string,
-          centerId: t.string,
-          accountingPeriod: t.Int,
-          components: t.array(t.string),
-          payer: types.identityT,
-          tags: t.array(
-            t.type({
-              name: t.string,
-              hidden: t.boolean,
-            }),
-          ),
-        }),
-        t.partial({
-          dueDate: t.union([t.null, types.dbDateString]),
-          date: t.union([t.null, types.dbDateString]),
-          paymentCondition: t.union([t.null, t.number]),
-          createdAt: types.dbDateString,
-          publishedAt: types.dbDateString,
-        }),
-      ]),
-    }),
-    t.partial({
-      options: t.partial({
-        defaultPayment: types.newInvoicePartial,
+  generateDebtStatusReport: builder.proc({
+    payload: t.type({
+      options: t.type({
+        date: tt.date,
+        centers: t.union([t.null, t.array(t.string)]),
+        groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+        includeOnly: t.union([
+          t.null,
+          t.literal('paid'),
+          t.literal('credited'),
+          t.literal('open'),
+        ]),
       }),
+      generatedBy: types.internalIdentityT,
+      parent: t.union([t.null, t.string]),
     }),
-  ]),
-  response: types.debt,
-});
-
-export const updateDebtComponent = scope.defineProcedure({
-  name: 'updateDebtComponent',
-  payload: t.type({
-    debtCenterId: t.string,
-    debtComponentId: t.string,
-    debtComponent: types.debtComponentPatch,
+    response: types.reportWithoutHistory,
   }),
-  response: t.union([t.null, types.debtComponent]),
-});
 
-export const getDebtsByPayer = scope.defineProcedure({
-  name: 'getDebtsByPayer',
-  payload: t.type({
-    id: types.internalIdentityT,
-    includeDrafts: t.boolean,
-    includeCredited: t.boolean,
+  generateDebtLedger: builder.proc({
+    payload: t.type({
+      options: t.type({
+        startDate: tt.date,
+        endDate: tt.date,
+        centers: t.union([t.null, t.array(t.string)]),
+        groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+        includeDrafts: t.union([
+          t.literal('include'),
+          t.literal('exclude'),
+          t.literal('only-drafts'),
+        ]),
+      }),
+      generatedBy: types.internalIdentityT,
+      parent: t.union([t.null, t.string]),
+    }),
+    response: types.reportWithoutHistory,
   }),
-  response: t.array(types.debt),
-});
+  getDebtsByCenter: builder.proc({
+    payload: t.string,
+    response: t.array(types.debt),
+  }),
+  createDebtComponent: builder.proc({
+    payload: t.type({
+      name: t.string,
+      amount: euroValue,
+      description: t.string,
+      debtCenterId: t.string,
+    }),
+    response: types.debtComponent,
+  }),
+  deleteDebtComponent: builder.proc({
+    payload: t.type({
+      debtCenterId: t.string,
+      debtComponentId: t.string,
+    }),
+    response: tt.either(
+      t.unknown,
+      t.type({
+        affectedDebts: t.array(t.string),
+      }),
+    ),
+  }),
+  createDebt: builder.proc({
+    payload: t.intersection([
+      t.type({
+        debt: t.intersection([
+          t.type({
+            name: t.string,
+            description: t.string,
+            centerId: t.string,
+            accountingPeriod: t.Int,
+            components: t.array(t.string),
+            payer: types.identityT,
+            tags: t.array(
+              t.type({
+                name: t.string,
+                hidden: t.boolean,
+              }),
+            ),
+          }),
+          t.partial({
+            dueDate: t.union([t.null, types.dbDateString]),
+            date: t.union([t.null, types.dbDateString]),
+            paymentCondition: t.union([t.null, t.number]),
+            createdAt: types.dbDateString,
+            publishedAt: types.dbDateString,
+          }),
+        ]),
+      }),
+      t.partial({
+        options: t.partial({
+          defaultPayment: types.newInvoicePartial,
+        }),
+      }),
+    ]),
+    response: types.debt,
+  }),
+  updateDebtComponent: builder.proc({
+    payload: t.type({
+      debtCenterId: t.string,
+      debtComponentId: t.string,
+      debtComponent: types.debtComponentPatch,
+    }),
+    response: t.union([t.null, types.debtComponent]),
+  }),
+  getDebtsByPayer: builder.proc({
+    payload: t.type({
+      id: types.internalIdentityT,
+      includeDrafts: t.boolean,
+      includeCredited: t.boolean,
+    }),
+    response: t.array(types.debt),
+  }),
+}));
+
+export default iface;
+
+export const {
+  getDebt,
+  getDebtsByPayment,
+  onDebtPaid,
+  getDebtComponentsByCenter,
+  generateDebtStatusReport,
+  generateDebtLedger,
+  getDebtsByCenter,
+  createDebtComponent,
+  deleteDebtComponent,
+  createDebt,
+  updateDebtComponent,
+  getDebtsByPayer,
+} = iface.procedures;
+
+const scope = createScope('debts');
 
 export const sendPaymentRemindersByPayer = scope.defineProcedure({
   name: 'sendPaymentRemindersByPayer',
@@ -287,4 +283,14 @@ export const updateDebt = scope.defineProcedure({
   name: 'updateDebt',
   payload: types.debtPatch,
   response: tt.either(t.unknown, types.debt),
+});
+
+export const createCombinedPayment = scope.defineProcedure({
+  name: 'createCombinedPayment',
+  payload: t.type({
+    debts: t.array(t.string),
+    options: t.UnknownRecord,
+    type: t.string,
+  }),
+  response: types.payment,
 });

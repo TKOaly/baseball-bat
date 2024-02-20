@@ -56,7 +56,7 @@ export const createPayerProfileFromEmailIdentity = scope.defineProcedure({
 });
 
 export const createPayerProfileForExternalIdentity = scope.defineProcedure({
-  name: 'createPayerProfileFromEmailIdentity',
+  name: 'createPayerProfileFromExternalIdentity',
   payload: t.intersection([
     t.type({
       id: t.union([emailIdentityT, tkoalyIdentityT]),

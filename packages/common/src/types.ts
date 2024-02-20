@@ -22,7 +22,7 @@ const date = new t.Type(
 
     return false;
   },
-  (u, ctx) => {
+  (u, _ctx) => {
     if (u instanceof Date) {
       return Either.right(u);
     }
@@ -32,6 +32,7 @@ const date = new t.Type(
   v => `${v}`,
 );
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nullable = <T extends t.Type<any, any, any>>(type: T) =>
   t.union([t.null, type]);
 
@@ -64,8 +65,6 @@ export type TkoAlyUserId = {
   type: 'upstream';
   id: number;
 };
-
-type TkoalyId = t.TypeOf<typeof tkoalyIdentityT>;
 
 export const tkoalyIdentity = (id: number): TkoalyIdentity => ({
   type: 'tkoaly',
@@ -337,7 +336,7 @@ export type DbPaymentEvent = {
   payment_id: string;
   type: string;
   amount: number;
-  time: Date;
+  time: Date | string;
   data: unknown;
 };
 
@@ -347,7 +346,7 @@ export const paymentEvent = t.type({
   type: t.string,
   amount: euroValue,
   time: tt.date,
-  data: t.UnknownRecord,
+  data: nullable(t.UnknownRecord),
 });
 
 export type PaymentEvent = t.TypeOf<typeof paymentEvent>;
@@ -397,7 +396,7 @@ export type DbPayment = {
   status: 'canceled' | 'paid' | 'unpaid' | 'mispaid';
   updated_at: Date;
   created_at: Date;
-  payment_number: number;
+  payment_number: string;
   credited: boolean;
   events: Array<DbPaymentEvent>;
 };
@@ -734,10 +733,10 @@ export const payment = t.type({
   humanIdNonce: nullable(t.number),
   accountingPeriod: t.number,
   paymentNumber: t.string,
-  type: t.literal('invoice'),
+  type: t.union([t.literal('invoice'), t.literal('cash'), t.literal('stripe')]),
   data: nullable(t.UnknownRecord),
   message: t.string,
-  payerId: internalIdentityT,
+  // payerId: internalIdentityT,
   title: t.string,
   createdAt: tt.date,
   balance: euroValue,
@@ -752,11 +751,10 @@ export type Payment = {
   humanId: string;
   humanIdNonce: number | null;
   accountingPeriod: number;
-  paymentNumber: number;
-  type: 'invoice';
+  paymentNumber: string;
+  type: 'invoice' | 'cash' | 'stripe';
   data: Record<string, unknown> | null;
   message: string;
-  payerId: InternalIdentity;
   title: string;
   createdAt: Date;
   balance: EuroValue;
@@ -981,7 +979,7 @@ export type AccountingPeriod = FromDbType<DbAccountingPeriod>;
 export type PaymentLedgerOptions = {
   startDate: DbDateString;
   endDate: DbDateString;
-  paymentType: null | 'invoice' | 'cash';
+  paymentType: null | 'invoice' | 'cash' | 'stripe';
   centers: null | Array<string>;
   eventTypes: null | Array<'created' | 'payment' | 'credited'>;
   groupBy: null | 'center' | 'payer';

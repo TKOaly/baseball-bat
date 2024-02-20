@@ -4,18 +4,16 @@ import {
   ConnectionOptions,
   FlowJob,
   FlowProducer,
-  Processor as BaseProcessor,
+  // Processor as BaseProcessor,
   Queue,
-  QueueEvents,
-  Worker,
   WorkerOptions,
   Job,
 } from 'bullmq';
 import { Config } from '../config';
-import process from 'process';
 import { ExecutionContext, LocalBus } from '@/bus';
 import { BusContext } from '@/app';
-import { PoolConnection } from '@/db';
+// import { PoolConnection } from '@/db';
+import { shutdown } from '@/orchestrator';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -32,12 +30,12 @@ export class JobService {
     private bus: LocalBus<BusContext>,
     private pool: pg.Pool,
   ) {
-    const events = new QueueEvents('main', {
+    /*const events = new QueueEvents('main', {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
 
-    process.on('exit', () => events.close());
+    bus.on(shutdown, () => events.close());*/
   }
 
   private getConnectionConfig(): ConnectionOptions {
@@ -58,7 +56,7 @@ export class JobService {
         prefix: 'bbat-jobs',
       }));
 
-      process.on('exit', () => queue.close());
+      this.bus.on(shutdown, () => queue.close());
     }
 
     return this.queues[name] as any;
@@ -73,7 +71,7 @@ export class JobService {
         prefix: 'bbat-jobs',
       }));
 
-      process.on('exit', () => producer.close());
+      this.bus.on(shutdown, () => producer.close());
     }
 
     return this.flowProducer;
@@ -94,11 +92,13 @@ export class JobService {
   }
 
   createWorker(
-    queue: string,
-    processor: Processor,
-    options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
+    _queue: string,
+    _processor: Processor,
+    _options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
-    const callback: BaseProcessor = async (job, token) => {
+    // TODO
+
+    /*const callback: BaseProcessor = async (job, token) => {
       const conn = await this.pool.connect();
 
       const ctx = this.bus.createContext({ pg: new PoolConnection(conn) });
@@ -111,8 +111,11 @@ export class JobService {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
-    process.on('exit', () => worker.close());
-    return worker;
+    this.bus.on(shutdown, async () => {
+      console.log('Shutting down queue worker...');
+      await worker.close();
+    });*/
+    return {} as any; // worker;
   }
 
   async getJob(queueName: string, id: string) {

@@ -13,13 +13,7 @@ import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as bankingService from '@/services/banking/definitions';
 import { validateBody } from '../validate-middleware';
-import {
-  cents,
-  euro,
-  euroValue,
-  formatEuro,
-  sumEuroValues,
-} from '@bbat/common/build/src/currency';
+import { cents, euro, euroValue } from '@bbat/common/build/src/currency';
 import { headers } from 'typera-express/parser';
 import Stripe from 'stripe';
 import { ApiFactory } from '.';
@@ -51,8 +45,8 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
       );
 
       if (
-        ctx.session.accessLevel !== 'admin' &&
-        ctx.session.payerId.value !== payment?.payerId?.value
+        ctx.session.accessLevel !== 'admin' // &&
+        // ctx.session.payerId.value !== payment?.payerId?.value
       ) {
         return unauthorized();
       }
@@ -145,29 +139,11 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
         );
       }
 
-      const payment = await bus.exec(paymentService.createInvoice, {
-        invoice: {
-          series: 9,
-          debts: debts.map(d => d.id),
-          title: 'Combined invoice',
-          date: null,
-          referenceNumber: null,
-          paymentNumber: null,
-          message:
-            'Invoice for the following debts:\n' +
-            debts
-              .map(
-                d =>
-                  ` - ${d.name} (${formatEuro(
-                    d.debtComponents
-                      .map(dc => dc.amount)
-                      .reduce(sumEuroValues, euro(0)),
-                  )})`,
-              )
-              .join('\n'),
-        },
+      const payment = await bus.exec(debtService.createCombinedPayment, {
+        type: 'invoice',
+        debts: debts.map(d => d.id),
         options: {
-          sendNotification: ctx.body.sendEmail,
+          dueDate: new Date(),
         },
       });
 
@@ -213,8 +189,10 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
         return badRequest('All debts do not have the same payer');
       }
 
-      const result = await bus.exec(paymentService.createStripePayment, {
+      const result = await bus.exec(debtService.createCombinedPayment, {
+        type: 'stripe',
         debts: debts.map(d => d.id),
+        options: {},
       });
 
       return ok(result);
@@ -248,7 +226,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
     });
 
   const stripeWebhook = route
-    .post('/')
+    .post('/stripe-webhook')
     .use(
       headers(
         t.type({
@@ -260,15 +238,16 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
       const secret = config.stripeWebhookSecret;
 
       let event;
+      let body = ctx.req.rawBody!; // eslint-disable-line
 
       try {
         event = stripe.webhooks.constructEvent(
-          ctx.req.body,
+          body,
           ctx.headers['stripe-signature'],
           secret,
         );
       } catch (err) {
-        console.log(err, typeof ctx.req.body, ctx.headers['stripe-signature']);
+        console.log(err, typeof body, ctx.headers['stripe-signature'], secret);
         return badRequest({
           error: `Webhook Error: ${err}`,
         });

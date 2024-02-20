@@ -53,10 +53,7 @@ const paymentsApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    createStripePayment: builder.mutation<
-      { payment: Payment; clientSecret: string },
-      { debts: string[] }
-    >({
+    createStripePayment: builder.mutation<Payment, { debts: string[] }>({
       query: payload => ({
         url: '/payments/create-stripe-payment',
         method: 'POST',

@@ -1,20 +1,24 @@
-import { createScope } from "@/bus";
+import { createInterface } from '@/bus';
 import * as t from 'io-ts';
 
-const scope = createScope('accounting');
+const iface = createInterface('accounting', builder => ({
+  getAccountingPeriods: builder.proc({
+    payload: t.void,
+    response: t.array(
+      t.type({
+        year: t.number,
+        closed: t.boolean,
+      }),
+    ),
+  }),
 
-export const getAccountingPeriods = scope.defineProcedure({
-  name: 'getAccountingPeriods',
-  payload: t.void,
-  response: t.array(t.type({
-    year: t.number,
-    closed: t.boolean,
-  })),
-});
+  isAccountingPeriodOpen: builder.proc({
+    payload: t.number,
+    response: t.boolean,
+  }),
+}));
 
-export const isAccountingPeriodOpen = scope.defineProcedure({
-  name: 'isAccountingPeriodOpen',
-  payload: t.number,
-  response: t.boolean,
-});
+export default iface;
 
+export const { getAccountingPeriods, isAccountingPeriodOpen } =
+  iface.procedures;

@@ -1,11 +1,8 @@
 import { JobNode } from 'bullmq';
-import { Inject, Service } from 'typedi';
-import { route, router } from 'typera-express';
+import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
-import { AuthService } from '../auth-middleware';
-import { JobService } from '../services/jobs';
 import { Job } from '@bbat/common/src/types';
-import { ApiDeps } from '.';
+import { ApiFactory } from '.';
 
 const formatJob = async (node: JobNode): Promise<Job> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
@@ -51,7 +48,7 @@ const formatJob = async (node: JobNode): Promise<Job> => {
   };
 };
 
-export default ({ jobs, auth }: ApiDeps) => {
+const factory: ApiFactory = ({ jobs, auth }, route) => {
   const getJobs = route
     .get('/list')
     .use(auth.createAuthMiddleware())
@@ -91,3 +88,5 @@ export default ({ jobs, auth }: ApiDeps) => {
 
   return router(getJobs, getJob, retryJob);
 };
+
+export default factory;

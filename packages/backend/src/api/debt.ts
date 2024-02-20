@@ -146,8 +146,8 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
       }
 
       if (
-        ctx.session.accessLevel != 'admin' &&
-        payment.payerId.value !== ctx.session.payerId.value
+        ctx.session.accessLevel != 'admin'
+        // payment.payerId.value !== ctx.session.payerId.value
       ) {
         return unauthorized();
       }
@@ -680,8 +680,9 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
           type: 'cash',
           title: 'Cash Payment',
           message: `Cash payment of debt "${debt.name}"`,
-          debts: [debt.id],
+          // debts: [debt.id],
           data: {},
+          amount: euro(0), // TODO
         },
       });
 

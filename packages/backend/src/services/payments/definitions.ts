@@ -1,10 +1,50 @@
-import { createScope } from '@/bus';
+import { createScope, createInterface } from '@/bus';
 import { euroValue } from '@bbat/common/currency';
 import * as types from '@bbat/common/types';
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
 
 const scope = createScope('payments');
+
+export const onStatusChanged = scope.defineEvent(
+  'onStatusChanged',
+  t.type({
+    paymentId: t.string,
+    status: t.union([
+      t.literal('paid'),
+      t.literal('unpaid'),
+      t.literal('mispaid'),
+      t.literal('canceled'),
+    ]),
+  }),
+);
+
+export const onBalanceChanged = scope.defineEvent(
+  'onBalanceChanged',
+  t.type({
+    paymentId: t.string,
+    balance: euroValue,
+  }),
+);
+
+export const onPaymentCreated = scope.defineEvent(
+  'onPaymentCreated',
+  t.type({
+    paymentId: t.string,
+  }),
+);
+
+export const finalizePayment = scope.defineProcedure({
+  name: 'finalizePayment',
+  payload: t.string,
+  response: t.void,
+});
+
+export const getPaymentsByData = scope.defineProcedure({
+  name: 'getPaymentsByData',
+  payload: t.UnknownRecord,
+  response: t.array(types.payment),
+});
 
 export const createPaymentEventFromTransaction = scope.defineProcedure({
   name: 'createPaymentEventFromTransaction',
@@ -163,7 +203,7 @@ export const createPayment = scope.defineProcedure({
           message: t.string,
           title: t.string,
           data: t.UnknownRecord,
-          debts: t.array(t.string),
+          amount: euroValue,
         }),
         t.partial({
           createdAt: tt.date,
@@ -172,8 +212,19 @@ export const createPayment = scope.defineProcedure({
       ]),
     }),
     t.partial({
-      options: t.type({}),
+      defer: t.boolean,
+      options: t.unknown,
     }),
   ]),
   response: types.payment,
 });
+
+export const paymentTypeIface = createInterface('paymentType', builder => ({
+  createPayment: builder.proc({
+    payload: t.type({
+      paymentId: t.string,
+      options: t.unknown,
+    }),
+    response: t.UnknownRecord,
+  }),
+}));

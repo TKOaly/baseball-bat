@@ -5,7 +5,7 @@ import accounting from './accounting';
 import banking from './banking';
 import centers from './centers';
 import debt from './debt';
-import email from './email';
+import emails from './email';
 import events from './events';
 import payers from './payers';
 import session from './session';
@@ -20,6 +20,7 @@ import Stripe from 'stripe';
 import { PgClient, PoolConnection } from '@/db';
 import { RedisClientType } from 'redis';
 import { BusContext } from '@/app';
+import search from './search';
 
 export type BusMiddleware = Middleware.ChainedMiddleware<
   { pg: PoolConnection },
@@ -58,11 +59,12 @@ export default (deps: ApiDeps, app: express.Express) => {
     debt,
     events,
     jobs,
-    email,
+    emails,
     debtCenters: centers,
     payers,
     payments,
     reports,
+    search,
   };
 
   const route = createBaseRoute(deps);

@@ -25,8 +25,12 @@ import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
 import { formatPayerProfile } from '../payers';
 import { formatDebtCenter } from '../debt-centers';
-import { cents, sumEuroValues } from '@bbat/common/build/src/currency';
-import * as defs from './definitions';
+import {
+  cents,
+  formatEuro,
+  sumEuroValues,
+} from '@bbat/common/build/src/currency';
+import iface, * as defs from './definitions';
 import * as payerService from '@/services/payers/definitions';
 import * as paymentService from '@/services/payments/definitions';
 import * as usersService from '@/services/users/definitions';
@@ -35,6 +39,7 @@ import * as debtCentersService from '@/services/debt-centers/definitions';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
+import * as O from 'fp-ts/lib/Option';
 import * as S from 'fp-ts/lib/string';
 import * as T from 'fp-ts/lib/Task';
 import * as EQ from 'fp-ts/lib/Eq';
@@ -46,7 +51,6 @@ import {
   isBefore,
   isPast,
   parseISO,
-  subDays,
   subMonths,
 } from 'date-fns';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
@@ -62,6 +66,7 @@ import {
   sendEmail,
 } from '../email/definitions';
 import { ExecutionContext } from '@/bus';
+import { Connection } from '@/db';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -185,9 +190,592 @@ type DebtJobDefinition = {
   }[];
 };
 
-export default ({ pg, bus, jobs }: ModuleDeps) => {
+export default ({ bus, jobs }: ModuleDeps) => {
+  async function linkPaymentToDebt(
+    pg: Connection,
+    payment: string,
+    debt: string,
+  ) {
+    await pg.do(sql`
+      INSERT INTO payment_debt_mappings (payment_id, debt_id)
+      VALUES (${payment}, ${debt})
+    `);
+  }
+
+  bus.provide(iface, {
+    async getDebt(id, { pg }) {
+      const [debts] = await queryDebts(pg, sql`debt.id = ${id}`);
+      return debts ?? null;
+    },
+
+    async getDebtsByCenter(id, { pg }) {
+      return queryDebts(pg, sql`debt.debt_center_id = ${id}`);
+    },
+
+    async getDebtsByPayment(paymentId, { pg }) {
+      return pg
+        .many<DbDebt>(
+          sql`
+          SELECT
+            debt.*,
+            TO_JSON(payer_profiles.*) AS payer,
+            TO_JSON(debt_center.*) AS debt_center,
+            CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
+            ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+            (
+              SELECT SUM(dc.amount) AS total
+              FROM debt_component_mapping dcm
+              JOIN debt_component dc ON dc.id = dcm.debt_component_id
+              WHERE dcm.debt_id = debt.id
+            ) AS total,
+            (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
+          FROM payment_debt_mappings pdm
+          JOIN debt ON debt.id = pdm.debt_id
+          JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+          JOIN debt_center ON debt_center.id = debt.debt_center_id
+          LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+          LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+          WHERE pdm.payment_id = ${paymentId}
+          GROUP BY debt.id, payer_profiles.*, debt_center.*
+        `,
+        )
+        .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
+    },
+    async onDebtPaid({ debt, payment }, _, bus) {
+      const payments = await bus.exec(
+        paymentService.getPaymentsContainingDebt,
+        debt.id,
+      );
+
+      const promises = payments
+        .filter(p => p.id !== payment.id)
+        .map(async payment => {
+          if (payment.type === 'invoice') {
+            await bus.exec(paymentService.creditPayment, {
+              id: payment.id,
+              reason: 'paid',
+            });
+          }
+        });
+
+      await Promise.all(promises);
+    },
+
+    async getDebtComponentsByCenter(id, { pg }) {
+      const components = await pg.many<DbDebtComponent>(sql`
+        SELECT * FROM debt_component WHERE debt_center_id = ${id}
+      `);
+
+      return components.map(formatDebtComponent);
+    },
+
+    async generateDebtStatusReport(
+      { options, generatedBy, parent },
+      { pg },
+      bus,
+    ) {
+      let statusFilter = sql``;
+
+      if (options.includeOnly === 'paid') {
+        statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
+      } else if (options.includeOnly === 'credited') {
+        statusFilter = sql` HAVING debt.credited `;
+      } else if (options.includeOnly === 'open') {
+        statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
+      }
+
+      const dbResults = await pg.many<
+        DbDebt &
+          (
+            | { status: 'paid'; paid_at: Date }
+            | { status: 'open'; paid_at: null }
+          ) & { payment_id: string }
+      >(
+        sql`
+          WITH payment_agg AS (
+            SELECT
+              payment_id,
+              SUM(amount) AS balance,
+              (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
+              (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
+              MAX(time) AS updated_at
+            FROM payment_events e
+            WHERE time < ${options.date} OR type = 'created'
+            GROUP BY payment_id
+          ),
+          payment_statuses AS (
+            SELECT
+              p.id AS payment_id,
+              (
+                SELECT time
+                FROM payment_events e2
+                WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${options.date}
+                ORDER BY e2.time DESC
+                LIMIT 1
+              ) AS paid_at, 
+              CASE
+                  WHEN s.has_cancel_event THEN 'canceled'::payment_status
+                  WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
+                  WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
+                  ELSE 'paid'::payment_status
+              END AS status
+            FROM payment_agg s
+            LEFT JOIN payments p ON p.id = s.payment_id
+            LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
+            INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${options.date} 
+            LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
+          )
+          SELECT
+            debt.*,
+            TO_JSON(payer_profiles.*) AS payer,
+            TO_JSON(debt_center.*) AS debt_center,
+            ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+            (
+              SELECT SUM(dc.amount) AS total
+              FROM debt_component_mapping dcm
+              JOIN debt_component dc ON dc.id = dcm.debt_component_id
+              WHERE dcm.debt_id = debt.id
+            ) AS total,
+            (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
+            (CASE
+              WHEN debt.credited THEN 'credited'
+              WHEN bool_or(ps.status = 'paid') THEN 'paid'
+              ELSE 'open'
+            END) status,
+            MIN(ps.paid_at) paid_at,
+            (CASE
+              WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
+            END) payment_id
+          FROM debt
+          LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
+          LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
+          LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+          LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
+          LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+          LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+          WHERE debt.published_at IS NOT NULL
+        `
+          .append(
+            options.centers
+              ? sql` AND debt_center.id = ANY (${options.centers})`
+              : sql``,
+          )
+          .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
+          .append(statusFilter)
+          .append(sql` ORDER BY MIN(ps.paid_at)`),
+      );
+
+      const results = await Promise.all(
+        dbResults.map(
+          async row =>
+            [
+              formatDebt(row),
+              row.status,
+              row.paid_at,
+              row.payment_id
+                ? await bus.exec(paymentService.getPayment, row.payment_id)
+                : null,
+            ] as [Debt, 'open' | 'paid', Date, Payment | null],
+        ),
+      );
+
+      let groups;
+
+      if (options.groupBy) {
+        let getGroupKey: (debt: Debt) => string;
+        let getGroupDetails;
+
+        if (options.groupBy === 'center') {
+          getGroupKey = (debt: Debt) => debt.debtCenterId;
+          getGroupDetails = async (id: string) => {
+            const center = await bus.exec(debtCentersService.getDebtCenter, id);
+            const name = center?.name ?? 'Unknown debt center';
+            const displayId = center?.humanId ?? '???';
+            return { name, id: displayId };
+          };
+        } else {
+          getGroupKey = (debt: Debt) => debt.payerId.value;
+          getGroupDetails = async (id: string) => {
+            const payer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
+              internalIdentity(id),
+            );
+            const name = payer?.name ?? 'Unknown payer';
+            const displayId = payer?.id?.value ?? '???';
+            return { name, id: displayId };
+          };
+        }
+
+        const createGroupUsing =
+          (
+            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
+          ) =>
+          ([key, debts]: [
+            string,
+            [Debt, 'open' | 'paid', Date | null, Payment | null][],
+          ]) =>
+          async () => {
+            const { name, id } = await nameResolver(key);
+            return { name, debts, id };
+          };
+
+        groups = await pipe(
+          results,
+          groupBy(([debt]) => getGroupKey(debt)),
+          toArray,
+          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+        )();
+      } else {
+        groups = [{ debts: results }];
+      }
+
+      const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
+
+      const report = await bus.exec(createReport, {
+        name,
+        template: 'debt-status-report',
+        options,
+        payload: { options, groups },
+        scale: 0.7,
+        parent: parent ?? undefined,
+        generatedBy,
+      });
+
+      return report;
+    },
+
+    async generateDebtLedger({ options, generatedBy, parent }, { pg }, bus) {
+      let criteria;
+
+      if (options.includeDrafts === 'include') {
+        criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+      } else if (options.includeDrafts === 'exclude') {
+        criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+      } else {
+        criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+      }
+
+      if (options.centers !== null) {
+        console.log(options.centers);
+        criteria = sql`(`
+          .append(criteria)
+          .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
+        console.log(criteria.sql, criteria.values);
+      }
+
+      const debts = await queryDebts(pg, criteria);
+      let groups;
+
+      if (options.groupBy) {
+        let getGroupKey;
+        let getGroupDetails;
+
+        if (options.groupBy === 'center') {
+          getGroupKey = (debt: Debt) => debt.debtCenterId;
+          getGroupDetails = async (id: string) => {
+            const center = await bus.exec(debtCentersService.getDebtCenter, id);
+            const name = center?.name ?? 'Unknown debt center';
+            const displayId = center?.humanId ?? '???';
+            return { name, id: displayId };
+          };
+        } else {
+          getGroupKey = (debt: Debt) => debt.payerId.value;
+          getGroupDetails = async (id: string) => {
+            const payer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
+              internalIdentity(id),
+            );
+            const name = payer?.name ?? 'Unknown payer';
+            const displayId = payer?.id?.value ?? '???';
+            return { name, id: displayId };
+          };
+        }
+
+        const createGroupUsing =
+          (
+            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
+          ) =>
+          ([key, debts]: [string, Debt[]]) =>
+          async () => {
+            const { name, id } = await nameResolver(key);
+            return { name, debts, id };
+          };
+
+        groups = await pipe(
+          debts,
+          groupBy(getGroupKey),
+          toArray,
+          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+        )();
+      } else {
+        groups = [{ debts }];
+      }
+
+      const name = `Debt Ledger ${format(
+        options.startDate,
+        'dd.MM.yyyy',
+      )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+
+      const report = await bus.exec(createReport, {
+        name,
+        template: 'debt-ledger',
+        options,
+        payload: { options, groups },
+        parent: parent ?? undefined,
+        generatedBy,
+      });
+
+      return report;
+    },
+    async createDebtComponent(debtComponent, { pg }) {
+      return pg
+        .one<DbDebtComponent>(
+          sql`
+          INSERT INTO debt_component (name, amount, debt_center_id)
+          VALUES (${debtComponent.name}, ${debtComponent.amount.value}, ${debtComponent.debtCenterId})
+          RETURNING *
+        `,
+        )
+        .then(dbDebtComponent => {
+          if (!dbDebtComponent) {
+            throw new Error('Expected value to be returned from the database');
+          }
+
+          return formatDebtComponent(dbDebtComponent);
+        });
+    },
+    async deleteDebtComponent({ debtComponentId, debtCenterId }, { pg }) {
+      // eslint-disable-next-line
+      const { exists } = (await pg.one<{ exists: boolean }>(sql`
+        SELECT
+          EXISTS(
+            SELECT *
+            FROM debt_component
+            WHERE id = ${debtComponentId} AND
+                  debt_center_id = ${debtCenterId}
+          ) AS exists
+      `))!;
+
+      if (!exists) {
+        return E.left(new Error('No such debt component'));
+      }
+
+      const result = await pg.many<{ debt_id: string }>(sql`
+        DELETE FROM debt_component_mapping
+        WHERE debt_component_id = ${debtComponentId}
+        RETURNING debt_id 
+      `);
+
+      await pg.do(sql`
+        DELETE FROM debt_component
+        WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
+      `);
+
+      return E.right({
+        affectedDebts: result.map(r => r.debt_id),
+      });
+    },
+
+    async createDebt(
+      { debt, options },
+      { pg },
+      bus,
+    ): Promise<{
+      id: string;
+      humanId: string;
+      accountingPeriod: number;
+      name: string;
+      tags: { name: string; hidden: boolean }[];
+      date: Date | null;
+      lastReminded: Date | null;
+      dueDate: Date | null;
+      draft: boolean;
+      publishedAt: Date | null;
+      payerId: { type: 'internal'; value: string };
+      debtCenterId: string;
+      description: string;
+      createdAt: Date;
+      updatedAt: Date;
+      status: 'paid' | 'unpaid' | 'mispaid';
+      paymentCondition: number | null;
+      defaultPayment: string | null;
+      credited: boolean;
+      total: { currency: 'eur'; value: number };
+      debtComponents: {
+        id: string;
+        name: string;
+        amount: { currency: 'eur'; value: number };
+        description: string;
+        debtCenterId: string;
+        createdAt: Date | null;
+        updatedAt: Date | null;
+      }[];
+    }> {
+      const payerProfile = await bus.exec(
+        payerService.getPayerProfileByIdentity,
+        debt.payer,
+      );
+
+      if (!payerProfile) {
+        throw new Error('No such payer: ' + debt.payer.value);
+      }
+
+      const created = await pg.one<DbDebt>(sql`
+          INSERT INTO debt (
+            name,
+            description,
+            debt_center_id,
+            payer_id,
+            due_date,
+            created_at,
+            payment_condition,
+            published_at,
+            date,
+            accounting_period
+          )
+          VALUES (
+            ${debt.name},
+            ${debt.description},
+            ${debt.centerId},
+            ${payerProfile.id.value},
+            ${debt.dueDate},
+            COALESCE(${debt.createdAt}, NOW()),
+            ${debt.paymentCondition},
+            ${debt.publishedAt},
+            ${debt.date},
+            ${debt.accountingPeriod}
+          )
+          RETURNING *
+        `);
+
+      if (!created) {
+        throw new Error('Failed to create debt!');
+      }
+
+      const tags = (
+        await Promise.all(
+          debt.tags.map(tag =>
+            pg.one<DbDebtTag>(sql`
+              INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${created.id}, ${tag.name}, ${tag.hidden}) RETURNING *;
+            `),
+          ),
+        )
+      ).flat();
+
+      created.tags = pipe(tags, A.map(O.fromNullable), A.compact);
+
+      if (created === null) {
+        throw new Error('Could not create debt');
+      }
+
+      await Promise.all(
+        debt.components.map(async component => {
+          await pg.do(sql`
+                INSERT INTO debt_component_mapping (debt_id, debt_component_id)
+                VALUES (${created.id}, ${component})
+            `);
+        }),
+      );
+
+      if (options?.defaultPayment) {
+        // eslint-disable-next-line
+        const { amount } = (await pg.one<{ amount: number }>(sql`
+          SELECT SUM(amount) FROM debt_component WHERE id IN ${debt.components}
+        `))!;
+
+        const payment = await bus.exec(paymentService.createPayment, {
+          payment: {
+            type: 'invoice',
+            data: {},
+            amount: cents(amount),
+            message: debt.description,
+            title: debt.name,
+          },
+          defer: true,
+          options: {
+            series: 1,
+            date: debt.date ? parseISO(debt.date) : null,
+            ...options.defaultPayment,
+          },
+        });
+
+        await linkPaymentToDebt(pg, payment.id, created.id);
+
+        await bus.exec(paymentService.finalizePayment, payment.id);
+
+        /*const payment = await bus.exec(paymentService.createInvoice, {
+          invoice: {
+          },
+          options: {
+            sendNotification: false,
+          },
+        });*/
+
+        await setDefaultPayment(pg, created.id, payment.id);
+      }
+
+      const createdDebt = await bus.exec(defs.getDebt, created.id);
+
+      if (createdDebt === null) {
+        throw new Error('Could not fetch just created debt from the database!');
+      }
+
+      return createdDebt;
+    },
+
+    async updateDebtComponent(
+      { debtCenterId, debtComponentId, debtComponent: patch },
+      { pg },
+    ) {
+      const updated = await pg.one<DbDebtComponent>(sql`
+        UPDATE debt_component
+        SET
+          name = COALESCE(${patch.name}, name),
+          amount = COALESCE(${patch.amount?.value}, amount)
+        WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
+        RETURNING *
+      `);
+
+      if (!updated) {
+        return null;
+      }
+
+      return formatDebtComponent(updated);
+    },
+    async getDebtsByPayer({ id, includeDrafts, includeCredited }, { pg }) {
+      return queryDebts(
+        pg,
+        sql`
+        debt.payer_id = ${id.value}
+          AND (${includeDrafts} OR debt.published_at IS NOT NULL)
+          AND (${includeCredited} OR NOT debt.credited)
+      `,
+      );
+    },
+  });
+
   /*const jobQueue: Queue<DebtJobDefinition, DebtJobResult, DebtJobName> =
     jobs.getQueue('debts');*/
+
+  bus.on(
+    paymentService.onStatusChanged,
+    async ({ status, paymentId }, _, bus) => {
+      if (status !== 'paid') {
+        return;
+      }
+
+      const payment = await bus.exec(paymentService.getPayment, paymentId);
+      const debts = await bus.exec(defs.getDebtsByPayment, paymentId);
+
+      if (!payment) {
+        return;
+      }
+
+      await Promise.all(
+        debts.map(debt => bus.exec(defs.onDebtPaid, { debt, payment })),
+      );
+    },
+  );
 
   async function resolvePayer(
     bus: ExecutionContext<BusContext>,
@@ -753,7 +1341,10 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     },
   );
 
-  async function queryDebts(where?: SQLStatement): Promise<Array<Debt>> {
+  async function queryDebts(
+    pg: Connection,
+    where?: SQLStatement,
+  ): Promise<Array<Debt>> {
     let query = sql`
       SELECT
         debt.*,
@@ -761,12 +1352,12 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
         TO_JSON(debt_center.*) AS debt_center,
         CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
         ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-        (
+        COALESCE((
           SELECT SUM(dc.amount) AS total
           FROM debt_component_mapping dcm
           JOIN debt_component dc ON dc.id = dcm.debt_component_id
           WHERE dcm.debt_id = debt.id
-        ) AS total,
+        ), 0) AS total,
         (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
       FROM debt
       JOIN payer_profiles ON payer_profiles.id = debt.payer_id
@@ -783,17 +1374,8 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`,
     );
 
-    return pg.any<DbDebt>(query).then(debts => debts.map(formatDebt));
+    return pg.many<DbDebt>(query).then(debts => debts.map(formatDebt));
   }
-
-  bus.register(defs.getDebt, async (id: string) => {
-    const [debts] = await queryDebts(sql`debt.id = ${id}`);
-    return debts;
-  });
-
-  bus.register(defs.getDebtsByCenter, async id => {
-    return queryDebts(sql`debt.debt_center_id = ${id}`);
-  });
 
   /*async function getDebtsByTag(tagName: string): Promise<Debt[]> {
     return queryDebts(
@@ -801,36 +1383,40 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     );
   }*/
 
-  bus.register(defs.getDebts, () => queryDebts());
-
-  bus.register(defs.getDebtComponentsByCenter, async id => {
-    const components = await pg.any<DbDebtComponent>(sql`
-      SELECT * FROM debt_component WHERE debt_center_id = ${id}
-    `);
-
-    return components.map(formatDebtComponent);
-  });
+  bus.register(defs.getDebts, (_, { pg }) => queryDebts(pg));
 
   async function createDefaultPaymentFor(
+    pg: Connection,
     bus: ExecutionContext<BusContext>,
     debt: Debt,
   ): Promise<Payment> {
-    const created = await bus.exec(paymentService.createInvoice, {
-      invoice: {
+    const created = await bus.exec(paymentService.createPayment, {
+      payment: {
+        type: 'invoice',
         title: debt.name,
         message: debt.description,
-        series: 1,
-        debts: [debt.id],
-        date: debt.date,
-        referenceNumber: null,
-        paymentNumber: null,
+        amount: debt.total,
+        data: {},
+      },
+      defer: true,
+      options: {
+        date: debt.date ?? undefined,
+      },
+    });
+
+    await linkPaymentToDebt(pg, created.id, debt.id);
+
+    await bus.exec(paymentService.finalizePayment, created.id);
+
+    /*const created = await bus.exec(paymentService.createInvoice, {
+      invoice: {
       },
       options: {
         sendNotification: false,
       },
-    });
+    });*/
 
-    await setDefaultPayment(debt.id, created.id);
+    await setDefaultPayment(pg, debt.id, created.id);
 
     if (!created) {
       return Promise.reject('Could not create invoice for debt');
@@ -839,14 +1425,14 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return created;
   }
 
-  bus.register(defs.publishDebt, async (debtId: string, _, bus) => {
+  bus.register(defs.publishDebt, async (debtId: string, { pg }, bus) => {
     const debt = await bus.exec(defs.getDebt, debtId);
 
     if (!debt) {
       throw new Error('No such debt');
     }
 
-    await pg.any(sql`
+    await pg.do(sql`
       UPDATE debt
       SET
         published_at = NOW(),
@@ -857,18 +1443,21 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
 
     const defaultPayment = debt.defaultPayment
       ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
-      : await createDefaultPaymentFor(bus, debt);
+      : await createDefaultPaymentFor(pg, bus, debt);
 
     if (!defaultPayment) {
       throw new Error('No default invoice exists for payment');
     }
 
     if (!isPaymentInvoice(defaultPayment)) {
+      console.log('Not invoice: ', defaultPayment);
+
       throw new Error(
         `The default payment of debt ${debt.id} is not an invoice!`,
       );
     }
 
+    /*
     const isBackdated = isBefore(
       parseISO(defaultPayment.data.date),
       subDays(new Date(), 1),
@@ -885,110 +1474,20 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       }
 
       await bus.exec(sendEmail, message.right.id);
-    }
+    }*/
   });
 
-  async function setDefaultPayment(debtId: string, paymentId: string) {
-    await pg.any(sql`
+  async function setDefaultPayment(
+    pg: Connection,
+    debtId: string,
+    paymentId: string,
+  ) {
+    await pg.do(sql`
       UPDATE debt SET default_payment = ${paymentId} WHERE id = ${debtId}
     `);
   }
 
-  bus.register(defs.createDebt, async ({ debt, options }, _, bus) => {
-    const payerProfile = await bus.exec(
-      payerService.getPayerProfileByIdentity,
-      debt.payer,
-    );
-
-    if (!payerProfile) {
-      throw new Error('No such payer: ' + debt.payer.value);
-    }
-
-    const created = await pg.tx(async tx => {
-      const [created] = await tx.do<DbDebt>(sql`
-          INSERT INTO debt (
-            name,
-            description,
-            debt_center_id,
-            payer_id,
-            due_date,
-            created_at,
-            payment_condition,
-            published_at,
-            date,
-            accounting_period
-          )
-          VALUES (
-            ${debt.name},
-            ${debt.description},
-            ${debt.centerId},
-            ${payerProfile.id.value},
-            ${debt.dueDate},
-            COALESCE(${debt.createdAt}, NOW()),
-            ${debt.paymentCondition},
-            ${debt.publishedAt},
-            ${debt.date},
-            ${debt.accountingPeriod}
-          )
-          RETURNING *
-        `);
-
-      const tags = (
-        await Promise.all(
-          debt.tags.map(tag =>
-            tx.do<DbDebtTag>(sql`
-          INSERT INTO debt_tags (debt_id, name, hidden) VALUES (${created.id}, ${tag.name}, ${tag.hidden}) RETURNING *;
-        `),
-          ),
-        )
-      ).flat();
-
-      return { ...created, tags };
-    });
-
-    if (created === null) {
-      throw new Error('Could not create debt');
-    }
-
-    await Promise.all(
-      debt.components.map(async component => {
-        await pg.any(sql`
-              INSERT INTO debt_component_mapping (debt_id, debt_component_id)
-              VALUES (${created.id}, ${component})
-          `);
-      }),
-    );
-
-    if (options?.defaultPayment) {
-      const payment = await bus.exec(paymentService.createInvoice, {
-        invoice: {
-          series: 1,
-          message: debt.description,
-          debts: [created.id],
-          title: debt.name,
-          date: debt.date ? parseISO(debt.date) : null,
-          referenceNumber: null,
-          paymentNumber: null,
-          ...options.defaultPayment,
-        },
-        options: {
-          sendNotification: false,
-        },
-      });
-
-      await setDefaultPayment(created.id, payment.id);
-    }
-
-    const createdDebt = await bus.exec(defs.getDebt, created.id);
-
-    if (createdDebt === null) {
-      throw new Error('Could not fetch just created debt from the database!');
-    }
-
-    return createdDebt;
-  });
-
-  bus.register(defs.updateDebt, async (debt, _, bus) => {
+  bus.register(defs.updateDebt, async (debt, { pg }, bus) => {
     const existingDebt = await bus.exec(defs.getDebt, debt.id);
 
     if (!existingDebt) {
@@ -1145,7 +1644,9 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     }
 
     const result = await pipe(
-      pg.oneTask<DbDebt>(query),
+      () => pg.one<DbDebt>(query),
+      T.map(O.fromNullable),
+      T.map(E.of),
       TE.chainEitherK(E.fromOption(() => new Error('No such debt'))),
       TE.map(debt => ({
         ...debt,
@@ -1164,120 +1665,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return result;
   });
 
-  bus.register(defs.createDebtComponent, async debtComponent => {
-    return pg
-      .one<DbDebtComponent>(
-        sql`
-        INSERT INTO debt_component (name, amount, debt_center_id)
-        VALUES (${debtComponent.name}, ${debtComponent.amount.value}, ${debtComponent.debtCenterId})
-        RETURNING *
-      `,
-      )
-      .then(dbDebtComponent => {
-        if (!dbDebtComponent) {
-          throw new Error('Expected value to be returned from the database');
-        }
-
-        return formatDebtComponent(dbDebtComponent);
-      });
-  });
-
-  bus.register(
-    defs.deleteDebtComponent,
-    async ({ debtCenterId, debtComponentId }) => {
-      return await pg.tx(async tx => {
-        const [{ exists }] = await tx.do<{ exists: boolean }>(sql`
-        SELECT
-          EXISTS(
-            SELECT *
-            FROM debt_component
-            WHERE id = ${debtComponentId} AND
-                  debt_center_id = ${debtCenterId}
-          ) AS exists
-      `);
-
-        if (!exists) {
-          return E.left(new Error('No such debt component'));
-        }
-
-        const result = await tx.do<{ debt_id: string }>(sql`
-        DELETE FROM debt_component_mapping
-        WHERE debt_component_id = ${debtComponentId}
-        RETURNING debt_id 
-      `);
-
-        await tx.do(sql`
-        DELETE FROM debt_component
-        WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
-      `);
-
-        return E.right({
-          affectedDebts: result.map(r => r.debt_id),
-        });
-      });
-    },
-  );
-
-  bus.register(
-    defs.updateDebtComponent,
-    async ({ debtCenterId, debtComponentId, debtComponent: patch }) => {
-      const updated = await pg.one<DbDebtComponent>(sql`
-      UPDATE debt_component
-      SET
-        name = COALESCE(${patch.name}, name),
-        amount = COALESCE(${patch.amount?.value}, amount)
-      WHERE id = ${debtComponentId} AND debt_center_id = ${debtCenterId}
-      RETURNING *
-    `);
-
-      if (!updated) {
-        return null;
-      }
-
-      return formatDebtComponent(updated);
-    },
-  );
-
-  bus.register(defs.getDebtsByPayment, async (paymentId: string) => {
-    return pg
-      .any<DbDebt>(
-        sql`
-        SELECT
-          debt.*,
-          TO_JSON(payer_profiles.*) AS payer,
-          TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-          (
-            SELECT SUM(dc.amount) AS total
-            FROM debt_component_mapping dcm
-            JOIN debt_component dc ON dc.id = dcm.debt_component_id
-            WHERE dcm.debt_id = debt.id
-          ) AS total,
-          (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
-        FROM payment_debt_mappings pdm
-        JOIN debt ON debt.id = pdm.debt_id
-        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        JOIN debt_center ON debt_center.id = debt.debt_center_id
-        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        WHERE pdm.payment_id = ${paymentId}
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `,
-      )
-      .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
-  });
-
-  bus.register(
-    defs.getDebtsByPayer,
-    async ({ id, includeCredited, includeDrafts }) => {
-      return queryDebts(
-        sql`debt.payer_id = ${id.value} AND (${includeDrafts} OR debt.published_at IS NOT NULL) AND (${includeCredited} OR NOT debt.credited)`,
-      );
-    },
-  );
-
-  bus.register(defs.getDebtTotal, async (id: string) => {
+  bus.register(defs.getDebtTotal, async (id, { pg }) => {
     const result = await pg.one<{ total: number }>(sql`
       SELECT SUM(dc.amount) AS total
       FROM debt_component_mapping dcm
@@ -1292,7 +1680,7 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return cents(result.total);
   });
 
-  bus.register(defs.deleteDebt, async (id: string, _, bus) => {
+  bus.register(defs.deleteDebt, async (id: string, { pg }, bus) => {
     const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
@@ -1303,15 +1691,11 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       throw new Error('Cannot delete published debts');
     }
 
-    await pg.tx(async tx => {
-      await tx.do(
-        sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`,
-      );
-      await tx.do(sql`DELETE FROM debt WHERE id = ${id}`);
-    });
+    await pg.do(sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`);
+    await pg.do(sql`DELETE FROM debt WHERE id = ${id}`);
   });
 
-  bus.register(defs.creditDebt, async (id, _, bus) => {
+  bus.register(defs.creditDebt, async (id, { pg }, bus) => {
     const debt = await bus.exec(defs.getDebt, id);
 
     if (!debt) {
@@ -1322,16 +1706,15 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       throw new Error('Cannot credit unpublished debts');
     }
 
-    await pg.tx(async tx => {
-      await tx.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `);
-      await tx.do(
-        sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
-      );
-    });
+    await pg.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `);
+    await pg.do(
+      sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
+    );
   });
 
-  async function getOverdueDebts() {
+  async function getOverdueDebts(pg: Connection) {
     return queryDebts(
+      pg,
       sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
     );
 
@@ -1361,8 +1744,8 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return debts.map(formatDebt);*/
   }
 
-  async function getDebtsPendingReminder() {
-    const debts = await pg.any<DbDebt>(sql`
+  async function getDebtsPendingReminder(pg: Connection) {
+    const debts = await pg.many<DbDebt>(sql`
       SELECT
         debt.*,
         TO_JSON(payer_profiles.*) AS payer,
@@ -1391,90 +1774,97 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
     return debts.map(formatDebt);
   }
 
-  async function setDebtLastReminded(id: string, lastReminded: Date) {
-    await pg.any(sql`
+  async function setDebtLastReminded(
+    pg: Connection,
+    id: string,
+    lastReminded: Date,
+  ) {
+    await pg.do(sql`
       UPDATE debt SET last_reminded = ${lastReminded} WHERE id = ${id}
     `);
   }
 
-  bus.register(defs.sendReminder, async ({ debtId, draft = true }, _, bus) => {
-    const debt = await bus.exec(defs.getDebt, debtId);
+  bus.register(
+    defs.sendReminder,
+    async ({ debtId, draft = true }, { pg }, bus) => {
+      const debt = await bus.exec(defs.getDebt, debtId);
 
-    if (debt == null) {
-      return E.left('Debt not found');
-    }
+      if (debt == null) {
+        return E.left('Debt not found');
+      }
 
-    if (debt.draft) {
-      return E.left('Debt is a draft');
-    }
+      if (debt.draft) {
+        return E.left('Debt is a draft');
+      }
 
-    const email = await bus.exec(
-      payerService.getPayerPrimaryEmail,
-      debt.payerId,
-    );
-    const payer = await bus.exec(
-      payerService.getPayerProfileByInternalIdentity,
-      debt.payerId,
-    );
+      const email = await bus.exec(
+        payerService.getPayerPrimaryEmail,
+        debt.payerId,
+      );
+      const payer = await bus.exec(
+        payerService.getPayerProfileByInternalIdentity,
+        debt.payerId,
+      );
 
-    if (!email || !payer) {
-      return E.left('No primary email for payer');
-    }
+      if (!email || !payer) {
+        return E.left('No primary email for payer');
+      }
 
-    const payment = await bus.exec(
-      paymentService.getDefaultInvoicePaymentForDebt,
-      debt.id,
-    );
+      const payment = await bus.exec(
+        paymentService.getDefaultInvoicePaymentForDebt,
+        debt.id,
+      );
 
-    if (!payment || !isPaymentInvoice(payment)) {
-      return E.left('No default invoice found for debt');
-    }
+      if (!payment || !isPaymentInvoice(payment)) {
+        return E.left('No default invoice found for debt');
+      }
 
-    const dueDate = debt.dueDate ? new Date(debt.dueDate) : null;
+      const dueDate = debt.dueDate ? new Date(debt.dueDate) : null;
 
-    if (dueDate === null || !isPast(dueDate)) {
-      return E.left('Debt not due yet');
-    }
+      if (dueDate === null || !isPast(dueDate)) {
+        return E.left('Debt not due yet');
+      }
 
-    const createdEmail = await bus.exec(createEmail, {
-      recipient: email.email,
-      subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
-      template: 'reminder',
-      payload: {
-        title: payment.title,
-        number: payment.paymentNumber,
-        date: parseISO(payment.data.date),
-        dueDate: parseISO(payment.data.due_date),
-        amount: debt.total,
-        debts: [debt],
-        referenceNumber: payment.data.reference_number,
-        message: payment.message,
-        receiverName: payer.name,
-      },
-      debts: [debt.id],
-    });
+      const createdEmail = await bus.exec(createEmail, {
+        recipient: email.email,
+        subject: `[Maksumuistutus / Payment Notice] ${debt.name}`,
+        template: 'reminder',
+        payload: {
+          title: payment.title,
+          number: payment.paymentNumber,
+          date: parseISO(payment.data.date),
+          dueDate: parseISO(payment.data.due_date),
+          amount: debt.total,
+          debts: [debt],
+          referenceNumber: payment.data.reference_number,
+          message: payment.message,
+          receiverName: payer.name,
+        },
+        debts: [debt.id],
+      });
 
-    if (!createdEmail) {
-      return E.left('Could not create email');
-    }
+      if (!createdEmail) {
+        return E.left('Could not create email');
+      }
 
-    if (!draft) {
-      await bus.exec(sendEmail, createdEmail.id);
-      const refreshed = await bus.exec(getEmail, createdEmail.id);
+      if (!draft) {
+        await bus.exec(sendEmail, createdEmail.id);
+        const refreshed = await bus.exec(getEmail, createdEmail.id);
 
-      return E.fromNullable('Could not fetch new email details')(refreshed);
-    }
+        return E.fromNullable('Could not fetch new email details')(refreshed);
+      }
 
-    await setDebtLastReminded(debt.id, createdEmail.createdAt);
+      await setDebtLastReminded(pg, debt.id, createdEmail.createdAt);
 
-    return E.right(createdEmail);
-  });
+      return E.right(createdEmail);
+    },
+  );
 
   bus.register(
     defs.sendAllReminders,
     async (
       { draft = true, ignoreReminderCooldown = false, debts: pDebts },
-      _,
+      { pg },
       bus,
     ) => {
       let debts: string[];
@@ -1482,8 +1872,8 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       if (!pDebts) {
         debts = (
           ignoreReminderCooldown
-            ? await getOverdueDebts()
-            : await getDebtsPendingReminder()
+            ? await getOverdueDebts(pg)
+            : await getDebtsPendingReminder(pg)
         ).map(d => d.id);
       } else {
         debts = pDebts;
@@ -1508,287 +1898,6 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
       }
 
       return result;
-    },
-  );
-
-  bus.register(defs.onDebtPaid, async ({ debt, payment }, _, bus) => {
-    const payments = await bus.exec(
-      paymentService.getPaymentsContainingDebt,
-      debt.id,
-    );
-
-    const promises = payments
-      .filter(p => p.id !== payment.id)
-      .map(async payment => {
-        if (payment.type === 'invoice') {
-          await bus.exec(paymentService.creditPayment, {
-            id: payment.id,
-            reason: 'paid',
-          });
-        }
-      });
-
-    await Promise.all(promises);
-  });
-
-  bus.register(
-    defs.generateDebtLedger,
-    async ({ options, generatedBy, parent }, _, bus) => {
-      let criteria;
-
-      if (options.includeDrafts === 'include') {
-        criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-      } else if (options.includeDrafts === 'exclude') {
-        criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-      } else {
-        criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
-      }
-
-      if (options.centers !== null) {
-        console.log(options.centers);
-        criteria = sql`(`
-          .append(criteria)
-          .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
-        console.log(criteria.sql, criteria.values);
-      }
-
-      const debts = await queryDebts(criteria);
-      let groups;
-
-      if (options.groupBy) {
-        let getGroupKey;
-        let getGroupDetails;
-
-        if (options.groupBy === 'center') {
-          getGroupKey = (debt: Debt) => debt.debtCenterId;
-          getGroupDetails = async (id: string) => {
-            const center = await bus.exec(debtCentersService.getDebtCenter, id);
-            const name = center?.name ?? 'Unknown debt center';
-            const displayId = center?.humanId ?? '???';
-            return { name, id: displayId };
-          };
-        } else {
-          getGroupKey = (debt: Debt) => debt.payerId.value;
-          getGroupDetails = async (id: string) => {
-            const payer = await bus.exec(
-              payerService.getPayerProfileByInternalIdentity,
-              internalIdentity(id),
-            );
-            const name = payer?.name ?? 'Unknown payer';
-            const displayId = payer?.id?.value ?? '???';
-            return { name, id: displayId };
-          };
-        }
-
-        const createGroupUsing =
-          (
-            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
-          ) =>
-          ([key, debts]: [string, Debt[]]) =>
-          async () => {
-            const { name, id } = await nameResolver(key);
-            return { name, debts, id };
-          };
-
-        groups = await pipe(
-          debts,
-          groupBy(getGroupKey),
-          toArray,
-          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-        )();
-      } else {
-        groups = [{ debts }];
-      }
-
-      const name = `Debt Ledger ${format(
-        options.startDate,
-        'dd.MM.yyyy',
-      )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
-
-      const report = await bus.exec(createReport, {
-        name,
-        template: 'debt-ledger',
-        options,
-        payload: { options, groups },
-        parent: parent ?? undefined,
-        generatedBy,
-      });
-
-      return report;
-    },
-  );
-
-  bus.register(
-    defs.generateDebtStatusReport,
-    async ({ options, generatedBy, parent }, _, bus) => {
-      let statusFilter = sql``;
-
-      if (options.includeOnly === 'paid') {
-        statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
-      } else if (options.includeOnly === 'credited') {
-        statusFilter = sql` HAVING debt.credited `;
-      } else if (options.includeOnly === 'open') {
-        statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
-      }
-
-      const dbResults = await pg.many<
-        DbDebt &
-          (
-            | { status: 'paid'; paid_at: Date }
-            | { status: 'open'; paid_at: null }
-          ) & { payment_id: string }
-      >(
-        sql`
-      WITH payment_agg AS (
-        SELECT
-          payment_id,
-          SUM(amount) AS balance,
-          (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
-          (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
-          MAX(time) AS updated_at
-        FROM payment_events e
-        WHERE time < ${options.date} OR type = 'created'
-        GROUP BY payment_id
-      ),
-      payment_statuses AS (
-        SELECT
-          p.id AS payment_id,
-          (
-            SELECT time
-            FROM payment_events e2
-            WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${options.date}
-            ORDER BY e2.time DESC
-            LIMIT 1
-          ) AS paid_at, 
-          CASE
-              WHEN s.has_cancel_event THEN 'canceled'::payment_status
-              WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
-              WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
-              ELSE 'paid'::payment_status
-          END AS status
-        FROM payment_agg s
-        LEFT JOIN payments p ON p.id = s.payment_id
-        LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-        INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${options.date} 
-        LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
-      )
-      SELECT
-        debt.*,
-        TO_JSON(payer_profiles.*) AS payer,
-        TO_JSON(debt_center.*) AS debt_center,
-        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-        (
-          SELECT SUM(dc.amount) AS total
-          FROM debt_component_mapping dcm
-          JOIN debt_component dc ON dc.id = dcm.debt_component_id
-          WHERE dcm.debt_id = debt.id
-        ) AS total,
-        (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
-        (CASE
-          WHEN debt.credited THEN 'credited'
-          WHEN bool_or(ps.status = 'paid') THEN 'paid'
-          ELSE 'open'
-        END) status,
-        MIN(ps.paid_at) paid_at,
-        (CASE
-          WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
-        END) payment_id
-      FROM debt
-      LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
-      LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
-      LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-      LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
-      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-      WHERE debt.published_at IS NOT NULL
-    `
-          .append(
-            options.centers
-              ? sql` AND debt_center.id = ANY (${options.centers})`
-              : sql``,
-          )
-          .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
-          .append(statusFilter)
-          .append(sql` ORDER BY MIN(ps.paid_at)`),
-      );
-
-      const results = await Promise.all(
-        dbResults.map(
-          async row =>
-            [
-              formatDebt(row),
-              row.status,
-              row.paid_at,
-              row.payment_id
-                ? await bus.exec(paymentService.getPayment, row.payment_id)
-                : null,
-            ] as [Debt, 'open' | 'paid', Date, Payment | null],
-        ),
-      );
-
-      let groups;
-
-      if (options.groupBy) {
-        let getGroupKey: (debt: Debt) => string;
-        let getGroupDetails;
-
-        if (options.groupBy === 'center') {
-          getGroupKey = (debt: Debt) => debt.debtCenterId;
-          getGroupDetails = async (id: string) => {
-            const center = await bus.exec(debtCentersService.getDebtCenter, id);
-            const name = center?.name ?? 'Unknown debt center';
-            const displayId = center?.humanId ?? '???';
-            return { name, id: displayId };
-          };
-        } else {
-          getGroupKey = (debt: Debt) => debt.payerId.value;
-          getGroupDetails = async (id: string) => {
-            const payer = await bus.exec(
-              payerService.getPayerProfileByInternalIdentity,
-              internalIdentity(id),
-            );
-            const name = payer?.name ?? 'Unknown payer';
-            const displayId = payer?.id?.value ?? '???';
-            return { name, id: displayId };
-          };
-        }
-
-        const createGroupUsing =
-          (
-            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
-          ) =>
-          ([key, debts]: [
-            string,
-            [Debt, 'open' | 'paid', Date | null, Payment | null][],
-          ]) =>
-          async () => {
-            const { name, id } = await nameResolver(key);
-            return { name, debts, id };
-          };
-
-        groups = await pipe(
-          results,
-          groupBy(([debt]) => getGroupKey(debt)),
-          toArray,
-          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-        )();
-      } else {
-        groups = [{ debts: results }];
-      }
-
-      const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
-
-      const report = await bus.exec(createReport, {
-        name,
-        template: 'debt-status-report',
-        options,
-        payload: { options, groups },
-        scale: 0.7,
-        parent: parent ?? undefined,
-        generatedBy,
-      });
-
-      return report;
     },
   );
 
@@ -1846,6 +1955,58 @@ export default ({ pg, bus, jobs }: ModuleDeps) => {
           errors: left,
         })),
       )();
+    },
+  );
+
+  bus.register(
+    defs.createCombinedPayment,
+    async ({ debts: debtIds, type, options }, { pg }, bus) => {
+      const debts = await pipe(
+        debtIds,
+        A.traverse(T.ApplicativePar)(bus.execT(defs.getDebt)),
+        T.map(flow(A.map(O.fromNullable), A.compact)),
+      )();
+
+      const amount = pipe(
+        debts,
+        A.map(d => d.total),
+        A.reduce(euro(0), sumEuroValues),
+      );
+
+      const payment = await bus.exec(paymentService.createPayment, {
+        options: {
+          ...options,
+          series: 9,
+        },
+        defer: true,
+        payment: {
+          // debts: debts.map(d => d.id),
+          type,
+          amount,
+          title: 'Combined invoice',
+          data: {},
+          message:
+            'Invoice for the following debts:\n' +
+            debts
+              .map(
+                d =>
+                  ` - ${d.name} (${formatEuro(
+                    d.debtComponents
+                      .map(dc => dc.amount)
+                      .reduce(sumEuroValues, euro(0)),
+                  )})`,
+              )
+              .join('\n'),
+        },
+      });
+
+      await Promise.all(
+        debts.map(debt => linkPaymentToDebt(pg, payment.id, debt.id)),
+      );
+
+      await bus.exec(paymentService.finalizePayment, payment.id);
+
+      return payment;
     },
   );
 

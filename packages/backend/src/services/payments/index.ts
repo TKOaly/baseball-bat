@@ -2,33 +2,23 @@ import sql from 'sql-template-strings';
 import {
   DbPayment,
   DbPaymentEvent,
-  Debt,
+  DbPaymentEventTransactionMapping,
   EuroValue,
-  internalIdentity,
-  isPaymentInvoice,
   Payment,
   PaymentEvent,
   PaymentStatus,
 } from '@bbat/common/build/src/types';
 import { Connection } from '../../db';
-import * as E from 'fp-ts/lib/Either';
 import { cents, euro, sumEuroValues } from '@bbat/common/build/src/currency';
-import { formatISO, isBefore, parseISO, subDays } from 'date-fns';
-import { BusContext, ModuleDeps } from '@/app';
+import { ModuleDeps } from '@/app';
 import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as defs from './definitions';
-import { assignTransactionsToPaymentByReferenceNumber } from '../banking/definitions';
 import { createEmail, sendEmail } from '../email/definitions';
-import { ExecutionContext } from '@/bus';
 
 export class RegistrationError extends Error {}
 
 export type PaymentCreditReason = 'manual' | 'paid';
-
-type PaymentCreationOptions = {
-  sendNotification?: boolean;
-};
 
 type PaymentWithEvents = Payment & {
   events: Array<{
@@ -39,57 +29,8 @@ type PaymentWithEvents = Payment & {
   }>;
 };
 
-function normalizeReferenceNumber(reference: string) {
-  return reference
-    .replace(/^0+/, '0')
-    .replace(/[^A-Z0-9]/gi, '')
-    .toUpperCase();
-}
-
 export function formatReferenceNumber(reference: string) {
   return reference.match(/.{1,4}/g)?.join?.(' ') ?? reference;
-}
-
-function finnishReferenceChecksum(num: bigint): bigint {
-  const factors = [7n, 3n, 1n];
-  let acc = 0n;
-
-  for (let i = 0; num > 10n ** BigInt(i); i++) {
-    const digit = (num / 10n ** BigInt(i)) % 10n;
-    acc += digit * factors[i % 3];
-  }
-
-  return (10n - (acc % 10n)) % 10n;
-}
-
-function createReferenceNumber(series: number, year: number, number: number) {
-  const finRef =
-    1337n * 10n ** 11n +
-    BigInt(year) * 10n ** 7n +
-    BigInt(number) * 10n ** 3n +
-    BigInt(series);
-  const finCheck = finnishReferenceChecksum(finRef);
-  const content = finRef * 10n + finCheck;
-  const tmp = content * 10n ** 6n + 271500n;
-  const checksum = 98n - (tmp % 97n);
-  const numbers: Record<string, string> = { Y: `${checksum}`, X: `${content}` };
-  const template = 'RFYYXXXXXXXXXXXXXXXX';
-  const acc = new Array(template.length);
-
-  for (let i = template.length - 1; i >= 0; i--) {
-    const letter = template[i];
-
-    if (letter in numbers) {
-      const number = numbers[letter];
-      const digit = number[number.length - 1];
-      acc[i] = digit ?? '0';
-      numbers[letter] = number.substring(0, number.length - 1);
-    } else {
-      acc[i] = letter;
-    }
-  }
-
-  return acc.map(i => `${i}`).join('');
 }
 
 const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
@@ -118,7 +59,6 @@ export const formatPayment = (db: DbPayment): Payment => ({
   type: db.type,
   title: db.title,
   paymentNumber: db.payment_number,
-  payerId: internalIdentity(db.payer_id),
   data: db.data,
   message: db.message,
   balance: cents(db.balance),
@@ -129,7 +69,7 @@ export const formatPayment = (db: DbPayment): Payment => ({
   events: db.events.map(formatPaymentEvent),
 });
 
-export default ({ stripe, bus }: ModuleDeps) => {
+export default ({ bus }: ModuleDeps) => {
   bus.register(defs.getPayments, async (_, { pg }) => {
     const payments = await pg.many<DbPayment>(sql`
         SELECT
@@ -185,10 +125,10 @@ export default ({ stripe, bus }: ModuleDeps) => {
     return payments;
   }
 
-  async function onPaymentPaid(
+  /*async function onPaymentPaid(
     bus: ExecutionContext<BusContext>,
     id: string,
-    event: PaymentEvent,
+    _event: PaymentEvent,
   ) {
     const payment = await bus.exec(defs.getPayment, id);
     const debts = await bus.exec(debtService.getDebtsByPayment, id);
@@ -199,21 +139,22 @@ export default ({ stripe, bus }: ModuleDeps) => {
 
     await Promise.all(
       debts.map(debt =>
-        bus.exec(debtService.onDebtPaid, { debt, payment, event }),
+        bus.exec(debtService.onDebtPaid, { debt, payment }),
       ),
     );
-  }
+  }*/
 
   bus.register(
     defs.createPaymentEvent,
     async ({ paymentId: id, ...event }, { pg }, bus) => {
       // const [created, oldStatus, newStatus] = await pg.tx(async tx => {
 
-      const { status: oldStatus } = await pg.one<{
+      // eslint-disable-next-line
+      const { status: oldStatus } = (await pg.one<{
         status: PaymentStatus;
       }>(sql`
       SELECT status FROM payment_statuses WHERE id = ${id}
-    `);
+    `))!;
 
       const created = await pg.one<DbPaymentEvent>(sql`
       INSERT INTO payment_events (payment_id, type, amount, data, time)
@@ -250,20 +191,49 @@ export default ({ stripe, bus }: ModuleDeps) => {
 
       const createdEvent = formatPaymentEvent(created);
 
+      // eslint-disable-next-line
+      const newPayment = (await bus.exec(defs.getPayment, id))!;
+
+      if (event.amount.value !== 0) {
+        await bus.emit(defs.onBalanceChanged, {
+          paymentId: id,
+          balance: newPayment.balance,
+        });
+      }
+
       if (oldStatus !== newStatus) {
-        if (newStatus === 'paid') {
-          await onPaymentPaid(bus, id, createdEvent);
-        }
+        await bus.emit(defs.onStatusChanged, {
+          paymentId: id,
+          status: newStatus,
+        });
       }
 
       return createdEvent;
     },
   );
 
+  bus.register(defs.getPaymentsByData, async (data, { pg }) => {
+    const payments = await pg.many<DbPayment>(sql`
+      SELECT
+        p.*,
+        s.balance,
+        s.status,
+        s.payer,
+        s.payer->>'id' AS payer_id,
+        (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+        COALESCE(s.updated_at, p.created_at) AS updated_at
+      FROM payments p
+      JOIN payment_statuses s ON s.id = p.id
+      WHERE p.data @> (${data})
+    `);
+
+    return payments.map(formatPayment);
+  });
+
   bus.register(
     defs.createPaymentEventFromTransaction,
     async ({ transaction: tx, amount, paymentId }, { pg }, bus) => {
-      const existing_mapping =
+      const [existing_mapping] =
         await pg.many<DbPaymentEventTransactionMapping>(sql`
           SELECT *
           FROM payment_event_transaction_mapping
@@ -376,7 +346,7 @@ export default ({ stripe, bus }: ModuleDeps) => {
     return result;
   }*/
 
-  async function updatePaymentData(
+  /*async function updatePaymentData(
     pg: Connection,
     id: string,
     data: Record<string, unknown>,
@@ -384,11 +354,13 @@ export default ({ stripe, bus }: ModuleDeps) => {
     pg.do(sql`
       UPDATE payments SET data = ${data} WHERE id = ${id}
     `);
-  }
+  }*/
 
-  bus.register(
+  /*bus.register(
     defs.createInvoice,
     async ({ invoice, options }, { pg }, bus) => {
+      console.log('Getting debts!');
+
       const results = await Promise.all(
         invoice.debts.map(id => bus.exec(debtService.getDebt, id)),
       );
@@ -408,13 +380,18 @@ export default ({ stripe, bus }: ModuleDeps) => {
       const due_dates = debts
         .flatMap(debt => (debt.dueDate ? [new Date(debt.dueDate)] : []))
         .sort();
+
+      console.log('Due date', debts[0].dueDate);
+
       const due_date = due_dates[0];
+
+      const amount = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
 
       const payment = await bus.exec(defs.createPayment, {
         payment: {
           type: 'invoice',
           message: invoice.message,
-          debts: invoice.debts,
+          amount,
           paymentNumber: invoice.paymentNumber ?? undefined,
           title: invoice.title,
           data: {},
@@ -437,7 +414,7 @@ export default ({ stripe, bus }: ModuleDeps) => {
               payment.humanIdNonce ?? 0,
             ),
         due_date: formatISO(due_date),
-        date: invoice.date ?? new Date(),
+        date: formatISO(invoice.date ?? new Date()),
       };
 
       await updatePaymentData(pg, payment.id, data);
@@ -447,9 +424,9 @@ export default ({ stripe, bus }: ModuleDeps) => {
         data,
       };
     },
-  );
+  );*/
 
-  bus.register(defs.createStripePayment, async (options, _, bus) => {
+  /*bus.register(defs.createStripePayment, async (options, _, bus) => {
     const results = await Promise.all(
       options.debts.map(id => bus.exec(debtService.getDebt, id)),
     );
@@ -519,13 +496,15 @@ export default ({ stripe, bus }: ModuleDeps) => {
       payment,
       clientSecret: intent.client_secret,
     };
-  });
+  });*/
 
   bus.register(
     defs.createPayment,
-    async ({ payment, options = {} }, { pg }, bus) => {
+    async ({ payment, defer, options = {} }, { pg }, bus) => {
       // const created = await pg.tx(async tx => {
-      const { id: createdPaymentId } = await pg.one<DbPayment>(sql`
+      //
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const { id: createdPaymentId } = (await pg.one<DbPayment>(sql`
         INSERT INTO payments (type, data, message, title, created_at)
         VALUES (
           ${payment.type},
@@ -535,9 +514,25 @@ export default ({ stripe, bus }: ModuleDeps) => {
           COALESCE(${payment.createdAt}, NOW())
         )
         RETURNING id
+      `))!;
+
+      await pg.do(sql`
+        INSERT INTO payment_events (payment_id, type, amount)
+        VALUES (${createdPaymentId}, 'created', ${-payment.amount.value})
       `);
 
-      await Promise.all(
+      const iface = bus.getInterface(defs.paymentTypeIface, payment.type);
+
+      const data = await iface.createPayment({
+        paymentId: createdPaymentId,
+        options,
+      });
+
+      await pg.do(
+        sql`UPDATE payments SET data = ${data} WHERE id = ${createdPaymentId}`,
+      );
+
+      /*await Promise.all(
         payment.debts.map(debt =>
           pg.do(sql`
             INSERT INTO payment_debt_mappings (payment_id, debt_id)
@@ -551,16 +546,15 @@ export default ({ stripe, bus }: ModuleDeps) => {
         FROM debt_component_mapping m
         JOIN debt_component c ON c.id = m.debt_component_id
         WHERE m.debt_id = ANY (${payment.debts})
-      `);
-
-      await pg.do(sql`
-        INSERT INTO payment_events (payment_id, type, amount)
-        VALUES (${createdPaymentId}, 'created', ${-total})
-      `);
+      `);*/
 
       //const formated = formatPayment(createdPayment as any) as any;
 
       //console.log(formated)
+
+      if (!defer) {
+        await bus.exec(defs.finalizePayment, createdPaymentId);
+      }
 
       const created = await bus.exec(defs.getPayment, createdPaymentId);
 
@@ -571,44 +565,9 @@ export default ({ stripe, bus }: ModuleDeps) => {
       // return created;
       // });
 
-      await onPaymentCreated(bus, created, options);
-
       return created;
     },
   );
-
-  async function onPaymentCreated(
-    bus: ExecutionContext<BusContext>,
-    payment: Payment,
-    options: PaymentCreationOptions,
-  ) {
-    if (isPaymentInvoice(payment)) {
-      const isBackdated = isBefore(
-        parseISO(payment.data.date),
-        subDays(new Date(), 1),
-      );
-
-      if (!isBackdated && options.sendNotification !== false) {
-        const email = await bus.exec(
-          defs.sendNewPaymentNotification,
-          payment.id,
-        );
-
-        if (E.isRight(email)) {
-          await bus.exec(sendEmail, email.right.id);
-        } else {
-          throw email.left;
-        }
-      }
-    }
-
-    if (isPaymentInvoice(payment)) {
-      await bus.exec(assignTransactionsToPaymentByReferenceNumber, {
-        paymentId: payment.id,
-        referenceNumber: payment.data.reference_number,
-      });
-    }
-  }
 
   bus.register(defs.creditPayment, async ({ id, reason }, { pg }, bus) => {
     const payment = await bus.exec(defs.getPayment, id);
@@ -617,15 +576,21 @@ export default ({ stripe, bus }: ModuleDeps) => {
       throw new Error('Payment not found');
     }
 
+    const debts = await bus.exec(debtService.getDebtsByPayment, id);
+
+    if (debts.length === 0) {
+      throw new Error('Payment is not associated with a debt!');
+    }
+
+    const payerId = debts[0].payerId;
+
     const payer = await bus.exec(
       payerService.getPayerProfileByInternalIdentity,
-      payment.payerId,
+      payerId,
     );
-    const email = await bus.exec(
-      payerService.getPayerPrimaryEmail,
-      payment.payerId,
-    );
-    const debts = await bus.exec(debtService.getDebtsByPayment, id);
+
+    const email = await bus.exec(payerService.getPayerPrimaryEmail, payerId);
+
     const amount = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
 
     await pg.do(sql`
@@ -703,7 +668,7 @@ export default ({ stripe, bus }: ModuleDeps) => {
     });
   }*/
 
-  bus.register(defs.sendNewPaymentNotification, async (id, _, bus) => {
+  /*bus.register(defs.sendNewPaymentNotification, async (id, _, bus) => {
     const payment = await bus.exec(defs.getPayment, id);
 
     if (!payment) {
@@ -711,14 +676,15 @@ export default ({ stripe, bus }: ModuleDeps) => {
     }
 
     const debts = await bus.exec(debtService.getDebtsByPayment, id);
+    const payerId = debts[0].payerId;
     const total = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
     const payer = await bus.exec(
       payerService.getPayerProfileByInternalIdentity,
-      payment.payerId,
+      payerId,
     );
     const email = await bus.exec(
       payerService.getPayerPrimaryEmail,
-      payment.payerId,
+      payerId,
     );
 
     if (!email || !payer) {
@@ -748,7 +714,7 @@ export default ({ stripe, bus }: ModuleDeps) => {
     });
 
     return E.fromNullable('Could not create email')(created);
-  });
+  });*/
 
   /*async function generatePaymentLedger(
     pg: Connection,
@@ -893,5 +859,11 @@ export default ({ stripe, bus }: ModuleDeps) => {
     `);
 
     return paymentEvent && formatPaymentEvent(paymentEvent);
+  });
+
+  bus.register(defs.finalizePayment, async (paymentId, _, bus) => {
+    await bus.emit(defs.onPaymentCreated, {
+      paymentId,
+    });
   });
 };

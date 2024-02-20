@@ -1,4 +1,4 @@
-import { createScope } from '@/bus';
+import { createInterface } from '@/bus';
 import * as t from 'io-ts';
 import * as types from '@bbat/common/types';
 
@@ -14,46 +14,45 @@ export const sendEmailOptions = t.intersection([
   }),
 ]);
 
-const scope = createScope('emails');
+const iface = createInterface('email', builder => ({
+  createEmail: builder.proc({
+    payload: sendEmailOptions,
+    response: types.email,
+  }),
+  sendEmail: builder.proc({
+    payload: t.string,
+    response: t.void,
+  }),
+  getEmail: builder.proc({
+    payload: t.string,
+    response: t.union([t.null, types.email]),
+  }),
+  batchSendEmails: builder.proc({
+    payload: t.array(t.string),
+    response: t.void,
+  }),
+  sendEmailDirect: builder.proc({
+    payload: sendEmailOptions,
+    response: t.void,
+  }),
+  getEmails: builder.proc({
+    payload: t.void,
+    response: t.array(types.email),
+  }),
+  getEmailsByDebt: builder.proc({
+    payload: t.string,
+    response: t.array(types.email),
+  }),
+}));
 
-export const createEmail = scope.defineProcedure({
-  name: 'createEmail',
-  payload: sendEmailOptions,
-  response: types.email,
-});
+export const {
+  createEmail,
+  sendEmail,
+  getEmail,
+  batchSendEmails,
+  sendEmailDirect,
+  getEmails,
+  getEmailsByDebt,
+} = iface.procedures;
 
-export const sendEmail = scope.defineProcedure({
-  name: 'sendEmail',
-  payload: t.string,
-  response: t.void,
-});
-
-export const getEmail = scope.defineProcedure({
-  name: 'getEmail',
-  payload: t.string,
-  response: t.union([t.null, types.email]),
-});
-
-export const batchSendEmails = scope.defineProcedure({
-  name: 'batchSendEmails',
-  payload: t.array(t.string),
-  response: t.void,
-});
-
-export const sendEmailDirect = scope.defineProcedure({
-  name: 'sendEmailDirect',
-  payload: sendEmailOptions,
-  response: t.void,
-});
-
-export const getEmails = scope.defineProcedure({
-  name: 'getEmails',
-  payload: t.void,
-  response: t.array(types.email),
-});
-
-export const getEmailsByDebt = scope.defineProcedure({
-  name: 'getEmailsByDebt',
-  payload: t.string,
-  response: t.array(types.email),
-});
+export default iface;

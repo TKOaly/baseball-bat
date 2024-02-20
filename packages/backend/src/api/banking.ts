@@ -2,7 +2,6 @@ import { Middleware, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount } from '@bbat/common/build/src/types';
 import * as bankingService from '@/services/banking/definitions';
-import * as paymentService from '@/services/payments/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '../validate-middleware';
 import multer from 'multer';
@@ -127,7 +126,8 @@ const factory: ApiFactory = ({ auth }, route) => {
   const autoregisterTransactions = route
     .post('/autoregister')
     .use(auth.createAuthMiddleware())
-    .handler(async ({ bus }) => {
+    .handler(async () => {
+      /*
       const transactions = await bus.exec(
         bankingService.getTransactionsWithoutRegistration,
       );
@@ -138,7 +138,7 @@ const factory: ApiFactory = ({ auth }, route) => {
           amount: null,
           paymentId: null,
         });
-      }
+      }*/
 
       return ok();
     });

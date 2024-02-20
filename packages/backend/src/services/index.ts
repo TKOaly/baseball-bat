@@ -9,6 +9,8 @@ import events from './events';
 import payments from './payments';
 import payers from './payers';
 import users from './users';
+import invoices from './invoices';
+import stripe from './stripe';
 
 export default async (deps: ModuleDeps) => {
   await Promise.all([
@@ -21,5 +23,7 @@ export default async (deps: ModuleDeps) => {
     payers(deps),
     users(deps),
     payments(deps),
+    invoices(deps),
+    stripe(deps),
   ]);
 };

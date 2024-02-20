@@ -47,7 +47,7 @@ let counter = 1;
 export class PoolConnection implements Connection {
   private id = counter++;
 
-  constructor(private conn: pg.PoolClient) {}
+  constructor(public conn: pg.PoolClient) {}
 
   async one<T>(query: SQLStatement): Promise<T | null> {
     const result = await this.many<T>(query);
@@ -64,7 +64,7 @@ export class PoolConnection implements Connection {
   }
 
   async many<T>(query: SQLStatement): Promise<T[]> {
-    //console.log(`[${this.id}] => ${query.sql.replace(/ +/g, ' ').replace(/\n/g, '\n       ')}`, query.values)
+    // console.log(`[${this.id}] => ${query.sql.replace(/ +/g, ' ').replace(/\n/g, '\n       ')}`, query.values)
     const result = await this.conn.query(query);
 
     /*const value = (result.rowCount ?? 0) > 0

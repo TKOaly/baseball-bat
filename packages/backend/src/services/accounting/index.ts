@@ -4,7 +4,7 @@ import {
   DbAccountingPeriod,
 } from '@bbat/common/build/src/types';
 import { ModuleDeps } from '@/app';
-import { getAccountingPeriods, isAccountingPeriodOpen } from './definitions';
+import iface from './definitions';
 
 const formatAccountingPeriod = (db: DbAccountingPeriod): AccountingPeriod => ({
   year: db.year,
@@ -12,19 +12,21 @@ const formatAccountingPeriod = (db: DbAccountingPeriod): AccountingPeriod => ({
 });
 
 export default ({ pg, bus }: ModuleDeps) => {
-  bus.register(getAccountingPeriods, async () => {
-    const periods = await pg.any<DbAccountingPeriod>(
-      sql`SELECT * FROM accounting_periods`,
-    );
+  bus.provide(iface, {
+    async getAccountingPeriods() {
+      const periods = await pg.any<DbAccountingPeriod>(
+        sql`SELECT * FROM accounting_periods`,
+      );
 
-    return periods.map(formatAccountingPeriod);
-  });
+      return periods.map(formatAccountingPeriod);
+    },
 
-  bus.register(isAccountingPeriodOpen, async (year) => {
-    const result = await pg.one<{ exists: boolean }>(sql`
-      SELECT EXISTS(SELECT 1 FROM accounting_periods WHERE year = ${year} AND NOT closed) AS exists
-    `);
+    async isAccountingPeriodOpen(year) {
+      const result = await pg.one<{ exists: boolean }>(sql`
+        SELECT EXISTS(SELECT 1 FROM accounting_periods WHERE year = ${year} AND NOT closed) AS exists
+      `);
 
-    return !!result?.exists;
+      return !!result?.exists;
+    },
   });
 };

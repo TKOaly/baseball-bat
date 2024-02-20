@@ -1,5 +1,5 @@
 import { DbDebtCenter, DebtCenter } from '@bbat/common/build/src/types';
-import { isAccountingPeriodOpen } from '../accounting/definitions';
+import accountingIface from '../accounting/definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
 import * as E from 'fp-ts/lib/Either';
@@ -66,8 +66,9 @@ export default ({ pg, bus }: ModuleDeps) => {
   });
 
   bus.register(defs.createDebtCenter, async (center, _, bus) => {
-    const isAccountingPeriodOpenResult = await bus.exec(
-      isAccountingPeriodOpen,
+    const accounting = bus.getInterface(accountingIface);
+
+    const isAccountingPeriodOpenResult = accounting.isAccountingPeriodOpen(
       center.accountingPeriod,
     );
 

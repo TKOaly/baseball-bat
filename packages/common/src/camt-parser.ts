@@ -84,16 +84,13 @@ export const parseCamtStatement = async (
     return value;
   };
 
-  const balances = xpath.find(doc, '//Document/BkToCstmrAcctRpt/Rpt/Bal').map(
-    bal => (
-      console.log(bal),
-      {
-        type: findOrThrow('//Tp/CdOrPrtry/Cd', bal),
-        amount: parseEuroValue(findOrThrow('//Amt', bal)),
-        date: parseISO(findOrThrow('//Dt/Dt', bal)),
-      }
-    ),
-  );
+  const balances = xpath
+    .find(doc, '//Document/BkToCstmrAcctRpt/Rpt/Bal')
+    .map(bal => ({
+      type: findOrThrow('//Tp/CdOrPrtry/Cd', bal),
+      amount: parseEuroValue(findOrThrow('//Amt', bal)),
+      date: parseISO(findOrThrow('//Dt/Dt', bal)),
+    }));
 
   const openingBalance = balances.find(bal => bal.type === 'OPBD');
   const closingBalance = balances.find(bal => bal.type === 'CLBD');

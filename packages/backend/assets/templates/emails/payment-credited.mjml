@@ -148,6 +148,7 @@
             </th>
             <td><%- payer.name %></td>
           </tr>
+          <% if (payment.data.date) { %>
           <tr>
             <th
               style="
@@ -161,6 +162,8 @@
             </th>
             <td><%- formatDate(new Date(payment.data.date)) %></td>
           </tr>
+          <% } %>
+          <% if (payment.data.due_date) { %>
           <tr>
             <th
               style="
@@ -174,6 +177,8 @@
             </th>
             <td><%- formatDate(new Date(payment.data.due_date)) %></td>
           </tr>
+          <% } %>
+          <% if (payment.data.reference_number) { %>
           <tr>
             <th
               style="
@@ -187,6 +192,7 @@
             </th>
             <td><%- formatReferenceNumber(payment.data.reference_number) %></td>
           </tr>
+          <% } %>
           <tr>
             <th
               style="
