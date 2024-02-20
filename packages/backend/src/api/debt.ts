@@ -675,18 +675,16 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
         return badRequest('Debt already paid');
       }
 
-      const payment = await bus.exec(paymentService.createPayment, {
+      const amount = debt.total;
+
+      const payment = await bus.exec(debtService.createPayment, {
+        debts: [debt.id],
         payment: {
           type: 'cash',
           title: 'Cash Payment',
           message: `Cash payment of debt "${debt.name}"`,
-          // debts: [debt.id],
-          data: {},
-          amount: euro(0), // TODO
         },
       });
-
-      const amount = await bus.exec(debtService.getDebtTotal, debt.id);
 
       await bus.exec(paymentService.createPaymentEvent, {
         paymentId: payment.id,

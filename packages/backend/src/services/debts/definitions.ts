@@ -137,6 +137,28 @@ const iface = createInterface('debts', builder => ({
     }),
     response: t.array(types.debt),
   }),
+  createPayment: builder.proc({
+    payload: t.intersection([
+      t.type({
+        debts: t.array(t.string),
+        payment: t.intersection([
+          t.type({
+            type: t.string,
+            message: t.string,
+            title: t.string,
+          }),
+          t.partial({
+            createdAt: tt.date,
+            paymentNumber: t.string,
+          }),
+        ]),
+      }),
+      t.partial({
+        options: t.unknown,
+      }),
+    ]),
+    response: types.payment,
+  }),
 }));
 
 export default iface;
@@ -154,6 +176,7 @@ export const {
   createDebt,
   updateDebtComponent,
   getDebtsByPayer,
+  createPayment,
 } = iface.procedures;
 
 const scope = createScope('debts');

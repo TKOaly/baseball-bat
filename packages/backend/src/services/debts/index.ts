@@ -35,10 +35,10 @@ import * as payerService from '@/services/payers/definitions';
 import * as paymentService from '@/services/payments/definitions';
 import * as usersService from '@/services/users/definitions';
 import * as debtCentersService from '@/services/debt-centers/definitions';
-
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';
+import * as AA from 'fp-ts/lib/ReadonlyArray';
 import * as O from 'fp-ts/lib/Option';
 import * as S from 'fp-ts/lib/string';
 import * as T from 'fp-ts/lib/Task';
@@ -191,16 +191,15 @@ type DebtJobDefinition = {
 };
 
 export default ({ bus, jobs }: ModuleDeps) => {
-  async function linkPaymentToDebt(
+  const linkPaymentToDebt = async (
     pg: Connection,
     payment: string,
     debt: string,
-  ) {
-    await pg.do(sql`
-      INSERT INTO payment_debt_mappings (payment_id, debt_id)
-      VALUES (${payment}, ${debt})
-    `);
-  }
+  ) =>
+    pg.do(sql`
+    INSERT INTO payment_debt_mappings (payment_id, debt_id)
+    VALUES (${payment}, ${debt})
+  `);
 
   bus.provide(iface, {
     async getDebt(id, { pg }) {
@@ -678,30 +677,19 @@ export default ({ bus, jobs }: ModuleDeps) => {
       );
 
       if (options?.defaultPayment) {
-        // eslint-disable-next-line
-        const { amount } = (await pg.one<{ amount: number }>(sql`
-          SELECT SUM(amount) FROM debt_component WHERE id IN ${debt.components}
-        `))!;
-
-        const payment = await bus.exec(paymentService.createPayment, {
+        const payment = await bus.exec(defs.createPayment, {
+          debts: [created.id],
           payment: {
             type: 'invoice',
-            data: {},
-            amount: cents(amount),
             message: debt.description,
             title: debt.name,
           },
-          defer: true,
           options: {
             series: 1,
             date: debt.date ? parseISO(debt.date) : null,
             ...options.defaultPayment,
           },
         });
-
-        await linkPaymentToDebt(pg, payment.id, created.id);
-
-        await bus.exec(paymentService.finalizePayment, payment.id);
 
         /*const payment = await bus.exec(paymentService.createInvoice, {
           invoice: {
@@ -751,6 +739,72 @@ export default ({ bus, jobs }: ModuleDeps) => {
           AND (${includeCredited} OR NOT debt.credited)
       `,
       );
+    },
+
+    async createPayment({ debts: ids, payment, options }, { pg }, bus) {
+      const result = await pipe(
+        ids,
+        A.traverse(T.ApplicativePar)(bus.execT(defs.getDebt)),
+        T.map(
+          flow(
+            A.map(E.fromNullable(new Error('Debt not found'))),
+            E.traverseArray(a => a),
+          ),
+        ),
+        TE.bindTo('debts'),
+        TE.let(
+          'total',
+          flow(
+            t => t.debts,
+            AA.map(d => d.total),
+            AA.reduce(euro(0), sumEuroValues),
+          ),
+        ),
+        TE.bind(
+          'payment',
+          flow(
+            ({ total }) => ({
+              payment: {
+                ...payment,
+                data: {},
+                amount: total,
+              },
+              defer: true,
+              options,
+            }),
+            bus.execT(paymentService.createPayment),
+            T.map(E.fromNullable(new Error('Failed to create payment!'))),
+          ),
+        ),
+        TE.chainFirstTaskK(({ payment, debts }) =>
+          pipe(
+            debts,
+            AA.traverse(T.ApplicativePar)(
+              debt => () => linkPaymentToDebt(pg, payment.id, debt.id),
+            ),
+          ),
+        ),
+        TE.chainFirstTaskK(
+          flow(o => o.payment.id, bus.execT(paymentService.finalizePayment)),
+        ),
+        TE.chainW(
+          flow(
+            o => o.payment.id,
+            bus.execT(paymentService.getPayment),
+            T.map(
+              E.fromNullable(
+                new Error('Failed to fetch newly created payment!'),
+              ),
+            ),
+          ),
+        ),
+      )();
+
+      if (E.isLeft(result)) {
+        throw result.left;
+      }
+
+      return result.right;
     },
   });
 
@@ -1390,23 +1444,17 @@ export default ({ bus, jobs }: ModuleDeps) => {
     bus: ExecutionContext<BusContext>,
     debt: Debt,
   ): Promise<Payment> {
-    const created = await bus.exec(paymentService.createPayment, {
+    const created = await bus.exec(defs.createPayment, {
+      debts: [debt.id],
       payment: {
         type: 'invoice',
         title: debt.name,
         message: debt.description,
-        amount: debt.total,
-        data: {},
       },
-      defer: true,
       options: {
         date: debt.date ?? undefined,
       },
     });
-
-    await linkPaymentToDebt(pg, created.id, debt.id);
-
-    await bus.exec(paymentService.finalizePayment, created.id);
 
     /*const created = await bus.exec(paymentService.createInvoice, {
       invoice: {
@@ -1960,31 +2008,22 @@ export default ({ bus, jobs }: ModuleDeps) => {
 
   bus.register(
     defs.createCombinedPayment,
-    async ({ debts: debtIds, type, options }, { pg }, bus) => {
+    async ({ debts: debtIds, type, options }, _, bus) => {
       const debts = await pipe(
         debtIds,
         A.traverse(T.ApplicativePar)(bus.execT(defs.getDebt)),
         T.map(flow(A.map(O.fromNullable), A.compact)),
       )();
 
-      const amount = pipe(
-        debts,
-        A.map(d => d.total),
-        A.reduce(euro(0), sumEuroValues),
-      );
-
-      const payment = await bus.exec(paymentService.createPayment, {
+      return bus.exec(defs.createPayment, {
+        debts: debtIds,
         options: {
           ...options,
           series: 9,
         },
-        defer: true,
         payment: {
-          // debts: debts.map(d => d.id),
           type,
-          amount,
           title: 'Combined invoice',
-          data: {},
           message:
             'Invoice for the following debts:\n' +
             debts
@@ -1999,14 +2038,6 @@ export default ({ bus, jobs }: ModuleDeps) => {
               .join('\n'),
         },
       });
-
-      await Promise.all(
-        debts.map(debt => linkPaymentToDebt(pg, payment.id, debt.id)),
-      );
-
-      await bus.exec(paymentService.finalizePayment, payment.id);
-
-      return payment;
     },
   );
 
