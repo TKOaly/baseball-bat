@@ -866,4 +866,10 @@ export default ({ bus }: ModuleDeps) => {
       paymentId,
     });
   });
+
+  bus.provideNamed(defs.paymentTypeIface, 'cash', {
+    async createPayment() {
+      return {};
+    },
+  });
 };
