@@ -1,4 +1,3 @@
-import { PayerProfile } from '@bbat/common/src/types';
 import { useAppSelector, useAppDispatch } from '../store';
 import {
   SessionData,
@@ -23,7 +22,6 @@ export const useSession = (): Session => {
     if (session.token === null) {
       dispatch(createSession());
     } else {
-      console.log(session);
       dispatch(refreshSession());
     }
 

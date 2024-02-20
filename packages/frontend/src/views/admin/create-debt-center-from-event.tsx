@@ -741,7 +741,7 @@ const evaluateRules = (
         if (event.id !== eventId) continue;
 
         const answer = registration.answers.find(
-          q => q.question_id === customFieldId,
+          q => q.questionId === customFieldId,
         );
 
         if (!answer) continue;
@@ -834,7 +834,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
           render: (value: CustomFieldAnswer[]) => (
             <div className="flex flex-col gap-0.5">
               {value.map(question => (
-                <QuestionBadge key={question.question_id} question={question} />
+                <QuestionBadge key={question.questionId} question={question} />
               ))}
             </div>
           ),

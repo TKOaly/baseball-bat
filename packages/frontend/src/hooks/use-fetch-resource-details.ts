@@ -134,14 +134,15 @@ const selectResourceDetails = createSelector(
         'Balance',
         { type: 'text', value: formatEuro(payment.data.balance) },
       ]);
-      details.push([
+
+      /*details.push([
         'Payer',
         {
           type: 'resource',
           resourceType: 'payer',
           id: payment.data.payerId.value,
         },
-      ]);
+      ]); TODO */
 
       if (isPaymentInvoice(payment.data)) {
         if (payment.data.data.date) {

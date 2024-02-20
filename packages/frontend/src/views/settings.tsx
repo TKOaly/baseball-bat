@@ -17,7 +17,7 @@ export const Settings = () => {
   const [updatePreferences] = useUpdatePayerPreferencesMutation();
   const [updatePayerEmails] = useUpdatePayerEmailsMutation();
   const session = useAppSelector(state => state.session);
-  const { data } = useGetPayerEmailsQuery(session.payerId ?? skipToken);
+  const { data } = useGetPayerEmailsQuery(session.data?.userId ?? skipToken);
 
   return (
     <div>
@@ -27,7 +27,7 @@ export const Settings = () => {
       <Formik
         enableReinitialize
         initialValues={{
-          ...session.preferences,
+          ...session.data?.preferences,
           emails: data ?? [],
         }}
         onSubmit={async values => {

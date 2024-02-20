@@ -20,7 +20,6 @@ import {
   PayerIdentity,
   PayerProfile,
   TkoalyIdentity,
-  tkoalyIdentity,
   UpstreamUser,
 } from '@bbat/common/src/types';
 import { groupBy } from 'remeda';
@@ -163,7 +162,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       ...(users ?? []).map(value => ({
         type: 'tkoaly',
         key: value.id,
-        id: tkoalyIdentity(value.id),
+        id: value.id,
         value,
       })),
       ...(payers ?? []).map(value => ({
