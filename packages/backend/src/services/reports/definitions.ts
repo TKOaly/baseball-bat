@@ -35,7 +35,7 @@ export const getReports = scope.defineProcedure({
 });
 
 export const getReportContent = scope.defineProcedure({
-  name: 'getReport',
+  name: 'getReportContent',
   payload: t.string,
   response: t.union([t.null, t.string]),
 });

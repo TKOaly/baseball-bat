@@ -934,7 +934,7 @@ export type DbReport = {
   id: string;
   status: 'generating' | 'failed' | 'finished';
   name: string;
-  generated_at: Date;
+  generated_at: Date | string;
   human_id: string;
   options: unknown;
   revision: number;

@@ -11,6 +11,7 @@ import payers from './payers';
 import users from './users';
 import invoices from './invoices';
 import stripe from './stripe';
+import reports from './reports';
 
 export default async (deps: ModuleDeps) => {
   await Promise.all([
@@ -25,5 +26,6 @@ export default async (deps: ModuleDeps) => {
     payments(deps),
     invoices(deps),
     stripe(deps),
+    reports(deps),
   ]);
 };

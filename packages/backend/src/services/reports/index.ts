@@ -52,7 +52,10 @@ const formatReport = (
 ): Omit<Report, 'history'> => ({
   id: db.id,
   name: db.name,
-  generatedAt: db.generated_at,
+  generatedAt:
+    typeof db.generated_at === 'string'
+      ? datefns.parseISO(db.generated_at)
+      : db.generated_at,
   humanId: db.human_id,
   options: db.options,
   type: db.type,
