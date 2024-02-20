@@ -4,7 +4,25 @@ import * as defs from '../../src/services/payments/definitions';
 import { euro } from '@bbat/common/src/currency';
 
 setup('Payments service', ({ test }) => {
-  test('creating payment', async ({ bus }) => {
+  test('creating cash payment', async ({ bus }) => {
+    const result = await bus.exec(defs.createPayment, {
+      payment: {
+        type: 'cash',
+        message: 'Test',
+        title: 'Test',
+        amount: euro(10),
+        data: {},
+      },
+    });
+
+    assert.equal(result.title, 'Test');
+    assert.equal(result.type, 'cash');
+    assert.equal(result.message, 'Test');
+    assert.deepEqual(result.data, {});
+    assert.deepEqual(result.balance, euro(-10));
+  });
+
+  test('creating invoice payment', async ({ bus }) => {
     const result = await bus.exec(defs.createPayment, {
       payment: {
         type: 'invoice',
