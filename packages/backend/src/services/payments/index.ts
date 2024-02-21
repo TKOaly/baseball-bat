@@ -2,7 +2,6 @@ import sql from 'sql-template-strings';
 import {
   DbPayment,
   DbPaymentEvent,
-  DbPaymentEventTransactionMapping,
   EuroValue,
   Payment,
   PaymentEvent,
@@ -233,17 +232,6 @@ export default ({ bus }: ModuleDeps) => {
   bus.register(
     defs.createPaymentEventFromTransaction,
     async ({ transaction: tx, amount, paymentId }, { pg }, bus) => {
-      const [existing_mapping] =
-        await pg.many<DbPaymentEventTransactionMapping>(sql`
-          SELECT *
-          FROM payment_event_transaction_mapping
-          WHERE bank_transaction_id = ${tx.id}
-        `);
-
-      if (existing_mapping) {
-        return null;
-      }
-
       let payment;
 
       if (paymentId) {

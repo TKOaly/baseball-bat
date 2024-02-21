@@ -1,6 +1,7 @@
 import setup from '../setup';
 import assert from 'node:assert';
 import * as defs from '@/services/banking/definitions';
+import { describe } from 'node:test';
 import { parseCamtStatement } from '@bbat/common/camt-parser';
 import { formatISO } from 'date-fns';
 import { euro } from '@bbat/common/currency';
@@ -284,5 +285,276 @@ setup('Banking service', ({ test }) => {
     assert.equal(accountTransactions.length, 2);
 
     assert.equal(txSpy.calls.length, 2);
+  });
+
+  describe('registrations', () => {
+    test('registrations cannot exceed the amount of the transaction', async ({
+      bus,
+      readFixture,
+    }) => {
+      await bus.exec(defs.createBankAccount, {
+        name: 'Test Account',
+        iban: GROUPED_IBAN,
+      });
+
+      const payment1 = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 1',
+          message: 'Test 1 Desc.',
+          data: {},
+          amount: euro(10),
+        },
+        options: {},
+      });
+
+      const payment2 = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 2',
+          message: 'Test 2 Desc.',
+          data: {},
+          amount: euro(5),
+        },
+        options: {},
+      });
+
+      const camt = await readFixture('camt/single-payment.xml');
+      const statement = await parseCamtStatement(camt);
+
+      const stmt = await bus.exec(defs.createBankStatement, {
+        id: statement.id,
+        accountIban: statement.account.iban,
+        generatedAt: statement.creationDateTime,
+        transactions: statement.entries.map(entry => ({
+          id: entry.id,
+          amount: entry.amount,
+          date: entry.valueDate,
+          type: entry.type,
+          otherParty: entry.otherParty,
+          message: entry.message,
+          reference: entry.reference,
+        })),
+        openingBalance: statement.openingBalance,
+        closingBalance: statement.closingBalance,
+      });
+
+      await bus.exec(payments.createPaymentEventFromTransaction, {
+        transaction: stmt.transactions[0],
+        amount: euro(5),
+        paymentId: payment1.id,
+      });
+
+      await assert.rejects(
+        bus.exec(payments.createPaymentEventFromTransaction, {
+          transaction: stmt.transactions[0],
+          amount: euro(10),
+          paymentId: payment2.id,
+        }),
+      );
+    });
+
+    test('single registration with exact amount should succeed', async ({
+      bus,
+      readFixture,
+    }) => {
+      await bus.exec(defs.createBankAccount, {
+        name: 'Test Account',
+        iban: GROUPED_IBAN,
+      });
+
+      const payment = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 1',
+          message: 'Test 1 Desc.',
+          data: {},
+          amount: euro(10),
+        },
+        options: {},
+      });
+
+      const camt = await readFixture('camt/single-payment.xml');
+      const statement = await parseCamtStatement(camt);
+
+      const stmt = await bus.exec(defs.createBankStatement, {
+        id: statement.id,
+        accountIban: statement.account.iban,
+        generatedAt: statement.creationDateTime,
+        transactions: statement.entries.map(entry => ({
+          id: entry.id,
+          amount: entry.amount,
+          date: entry.valueDate,
+          type: entry.type,
+          otherParty: entry.otherParty,
+          message: entry.message,
+          reference: entry.reference,
+        })),
+        openingBalance: statement.openingBalance,
+        closingBalance: statement.closingBalance,
+      });
+
+      await bus.exec(payments.createPaymentEventFromTransaction, {
+        transaction: stmt.transactions[0],
+        amount: euro(10),
+        paymentId: payment.id,
+      });
+
+      const registrations = await bus.exec(
+        defs.getTransactionRegistrations,
+        stmt.transactions[0].id,
+      );
+
+      assert.equal(registrations.length, 1);
+      assert.equal(registrations[0].paymentId, payment.id);
+      assert.deepEqual(registrations[0].amount, euro(10));
+
+      const paid = await bus.exec(payments.getPayment, payment.id);
+
+      assert.ok(paid);
+      assert.equal(paid.status, 'paid');
+    });
+
+    test('single registration with lesser amount should succeed', async ({
+      bus,
+      readFixture,
+    }) => {
+      await bus.exec(defs.createBankAccount, {
+        name: 'Test Account',
+        iban: GROUPED_IBAN,
+      });
+
+      const payment = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 1',
+          message: 'Test 1 Desc.',
+          data: {},
+          amount: euro(10),
+        },
+        options: {},
+      });
+
+      const camt = await readFixture('camt/single-payment.xml');
+      const statement = await parseCamtStatement(camt);
+
+      const stmt = await bus.exec(defs.createBankStatement, {
+        id: statement.id,
+        accountIban: statement.account.iban,
+        generatedAt: statement.creationDateTime,
+        transactions: statement.entries.map(entry => ({
+          id: entry.id,
+          amount: entry.amount,
+          date: entry.valueDate,
+          type: entry.type,
+          otherParty: entry.otherParty,
+          message: entry.message,
+          reference: entry.reference,
+        })),
+        openingBalance: statement.openingBalance,
+        closingBalance: statement.closingBalance,
+      });
+
+      await bus.exec(payments.createPaymentEventFromTransaction, {
+        transaction: stmt.transactions[0],
+        amount: euro(5),
+        paymentId: payment.id,
+      });
+
+      const registrations = await bus.exec(
+        defs.getTransactionRegistrations,
+        stmt.transactions[0].id,
+      );
+
+      assert.equal(registrations.length, 1);
+      assert.equal(registrations[0].paymentId, payment.id);
+      assert.deepEqual(registrations[0].amount, euro(5));
+
+      const paid = await bus.exec(payments.getPayment, payment.id);
+
+      assert.ok(paid);
+      assert.equal(paid.status, 'mispaid');
+    });
+
+    test('multiple registrations with an exact amount should succeed', async ({
+      bus,
+      readFixture,
+    }) => {
+      await bus.exec(defs.createBankAccount, {
+        name: 'Test Account',
+        iban: GROUPED_IBAN,
+      });
+
+      const payment1 = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 1',
+          message: 'Test 1 Desc.',
+          data: {},
+          amount: euro(10),
+        },
+        options: {},
+      });
+
+      const payment2 = await bus.exec(payments.createPayment, {
+        payment: {
+          type: 'invoice',
+          title: 'Test 2',
+          message: 'Test 2 Desc.',
+          data: {},
+          amount: euro(5),
+        },
+        options: {},
+      });
+
+      const camt = await readFixture('camt/single-payment.xml');
+      const statement = await parseCamtStatement(camt);
+
+      const stmt = await bus.exec(defs.createBankStatement, {
+        id: statement.id,
+        accountIban: statement.account.iban,
+        generatedAt: statement.creationDateTime,
+        transactions: statement.entries.map(entry => ({
+          id: entry.id,
+          amount: entry.amount,
+          date: entry.valueDate,
+          type: entry.type,
+          otherParty: entry.otherParty,
+          message: entry.message,
+          reference: entry.reference,
+        })),
+        openingBalance: statement.openingBalance,
+        closingBalance: statement.closingBalance,
+      });
+
+      await bus.exec(payments.createPaymentEventFromTransaction, {
+        transaction: stmt.transactions[0],
+        amount: euro(5),
+        paymentId: payment1.id,
+      });
+
+      await bus.exec(payments.createPaymentEventFromTransaction, {
+        transaction: stmt.transactions[0],
+        amount: euro(5),
+        paymentId: payment2.id,
+      });
+
+      const registrations = await bus.exec(
+        defs.getTransactionRegistrations,
+        stmt.transactions[0].id,
+      );
+
+      assert.equal(registrations.length, 2);
+
+      const paid1 = await bus.exec(payments.getPayment, payment1.id);
+
+      assert.ok(paid1);
+      assert.equal(paid1.status, 'mispaid');
+
+      const paid2 = await bus.exec(payments.getPayment, payment2.id);
+
+      assert.ok(paid2);
+      assert.equal(paid2.status, 'paid');
+    });
   });
 });
