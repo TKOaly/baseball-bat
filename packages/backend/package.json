@@ -6,7 +6,7 @@
   "scripts": {
     "start:dev": "node --watch -r esbuild-register --inspect=0.0.0.0 ./src/app.ts",
     "start": "node -r tsconfig-paths/register ./build/src/app.js",
-    "test": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node -r esbuild-register --test tests/**/*.test.ts",
+    "test": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node -r esbuild-register --test",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
     "build": "tsc",
     "lint": "eslint src && prettier --check src",
