@@ -43,7 +43,9 @@ const factory: ApiFactory = ({ auth }, route) => {
         });
       }
 
-      return ok(report, { 'Content-Type': 'application/pdf' });
+      return ok(Buffer.from(report, 'base64'), {
+        'Content-Type': 'application/pdf',
+      });
     });
 
   const getReports = route

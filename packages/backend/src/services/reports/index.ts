@@ -93,6 +93,8 @@ export default ({ config, bus }: ModuleDeps) => {
       waitUntil: ['domcontentloaded', 'load', 'networkidle0'],
     });
 
+    await new Promise(resolve => setTimeout(resolve, 10000));
+
     await page.addStyleTag({
       content: `
         html {
