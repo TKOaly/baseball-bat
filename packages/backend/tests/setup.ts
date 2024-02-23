@@ -22,6 +22,8 @@ import { describe, mock, test } from 'node:test';
 
 import setupModules from '../src/services';
 import { readFile } from 'fs/promises';
+import * as fs from 'fs/promises';
+import * as os from 'os';
 
 export const setupPostgres = async () => {
   const container = await new PostgreSqlContainer().start();
@@ -76,6 +78,8 @@ export const createModuleDeps = async (): Promise<
     6379,
   )}`;
 
+  const dataPath = await fs.mkdtemp(path.resolve(os.tmpdir(), 'bbat-'));
+
   const config = new Config({
     dbUrl,
     userServiceUrl: '',
@@ -98,7 +102,7 @@ export const createModuleDeps = async (): Promise<
     redisUrl,
     magicLinkSecret: '',
     assetPath: process.env.ASSET_PATH ?? './packages/backend/assets/',
-    dataPath: '',
+    dataPath,
   });
 
   const stripeClient = new Stripe(config.stripeSecretKey, {
@@ -129,6 +133,7 @@ export const createModuleDeps = async (): Promise<
     await redisClient.quit();
     await redisContainer.stop();
     await postgresContainer.stop();
+    await fs.rm(dataPath, { recursive: true });
   };
 
   return [

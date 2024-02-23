@@ -27,6 +27,7 @@ import {
   generateDebtStatusReport,
 } from '@/services/debts/definitions';
 import * as defs from './definitions';
+import { Connection } from '@/db';
 
 export type CreateReportOptions = {
   template: string;
@@ -69,7 +70,7 @@ const formatReportWithHistory = (db: DbReport): Report => ({
   history: db.history.map(formatReport),
 });
 
-export default ({ pg, config, bus }: ModuleDeps) => {
+export default ({ config, bus }: ModuleDeps) => {
   let _browser: Browser | null = null;
 
   async function getBrowser() {
@@ -89,12 +90,8 @@ export default ({ pg, config, bus }: ModuleDeps) => {
     const page = await browser.newPage();
 
     await page.setContent(source, {
-      waitUntil: 'domcontentloaded',
+      waitUntil: ['domcontentloaded', 'load', 'networkidle0'],
     });
-
-    // await page.waitForSelector('head style');
-
-    await new Promise(resolve => setTimeout(resolve, 10000));
 
     await page.addStyleTag({
       content: `
@@ -129,6 +126,7 @@ export default ({ pg, config, bus }: ModuleDeps) => {
   }
 
   async function reserveReport(
+    pg: Connection,
     options: SaveReportOptions,
   ): Promise<Omit<Report, 'history'> | null> {
     const id = uuid.v4();
@@ -154,7 +152,7 @@ export default ({ pg, config, bus }: ModuleDeps) => {
     );
 
     if (report && options.parent) {
-      await pg.any(
+      await pg.do(
         sql`UPDATE reports SET superseded_by = ${report.id} WHERE id = ${options.parent}`,
       );
     }
@@ -163,6 +161,7 @@ export default ({ pg, config, bus }: ModuleDeps) => {
   }
 
   async function updateReportStatus(
+    pg: Connection,
     id: string,
     status: 'finished' | 'failed',
   ): Promise<Omit<Report, 'history'> | null> {
@@ -192,11 +191,11 @@ export default ({ pg, config, bus }: ModuleDeps) => {
     });
   }
 
-  bus.register(defs.createReport, async options => {
+  bus.register(defs.createReport, async (options, { pg }) => {
     const template = await loadTemplate(options.template);
     const generatedAt = new Date();
 
-    const report = await reserveReport({
+    const report = await reserveReport(pg, {
       generatedAt,
       name: options.name,
       options: options.options,
@@ -233,9 +232,10 @@ export default ({ pg, config, bus }: ModuleDeps) => {
       const pdf = await render(source, options.scale ?? 0.8);
 
       await saveReport(report.id, pdf);
-      result = await updateReportStatus(report.id, 'finished');
+      result = await updateReportStatus(pg, report.id, 'finished');
     } catch (err) {
-      result = await updateReportStatus(report.id, 'failed');
+      console.error('Report generation failed: ', err);
+      result = await updateReportStatus(pg, report.id, 'failed');
     }
 
     if (!result) {
@@ -245,7 +245,7 @@ export default ({ pg, config, bus }: ModuleDeps) => {
     return result;
   });
 
-  bus.register(defs.getReport, async id => {
+  bus.register(defs.getReport, async (id, { pg }) => {
     const report = await pg.one<DbReport>(sql`
       WITH RECURSIVE report_history AS (
         SELECT reports.id, generated_by, status, revision, name, generated_at, human_id, options, type, superseded_by, cast(NULL as UUID) as head FROM reports WHERE id = ${id}
@@ -269,11 +269,11 @@ export default ({ pg, config, bus }: ModuleDeps) => {
   bus.register(defs.getReportContent, async id => {
     const reportPath = path.join(config.dataPath, 'reports', `${id}.pdf`);
     const buffer = await fs.promises.readFile(reportPath);
-    return buffer.toString('utf-8');
+    return buffer.toString('base64');
   });
 
-  bus.register(defs.getReports, async () => {
-    const reports = await pg.any<DbReport>(sql`
+  bus.register(defs.getReports, async (_, { pg }) => {
+    const reports = await pg.many<DbReport>(sql`
       WITH RECURSIVE report_history AS (
         SELECT reports.id, generated_by, status, revision, name, generated_at, human_id, options, type, superseded_by, cast(NULL as UUID) as head FROM reports WHERE superseded_by IS NULL
         UNION

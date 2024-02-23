@@ -955,7 +955,7 @@ export const reportWithoutHistory = t.type({
   humanId: t.string,
   options: t.unknown,
   revision: t.number,
-  type: t.string,
+  type: t.union([t.null, t.string]),
   generatedBy: t.union([t.null, internalIdentityT]),
 });
 
