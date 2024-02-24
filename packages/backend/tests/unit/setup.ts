@@ -9,21 +9,18 @@ import { PgClient, PoolConnection } from '@/db';
 import { Config } from '@/config';
 import type { BusContext, ModuleDeps } from '@/app';
 import Stripe from 'stripe';
-import {
-  ExecutionContext,
-  LocalBus,
-  ProcedureHandler,
-  EventType,
-  ProcedureType,
-  EventHandler,
-} from '@/bus';
+import { ExecutionContext, LocalBus } from '@/bus';
 import { JobService } from '@/services/jobs';
-import { describe, mock, test } from 'node:test';
+import { describe, test } from 'node:test';
 
-import setupModules from '@/services';
-import { readFile } from 'fs/promises';
 import * as fs from 'fs/promises';
 import * as os from 'os';
+import {
+  Environment,
+  TestEnvironment,
+  createEnvironment,
+  startServices,
+} from '../common';
 
 export const setupPostgres = async () => {
   const container = await new PostgreSqlContainer().start();
@@ -150,28 +147,8 @@ export const createModuleDeps = async (): Promise<
   ];
 };
 
-type MockProcedureFn = <P extends ProcedureType<any, any>>(
-  p: P,
-  impl?: ProcedureHandler<P, BusContext>,
-  mockOpts?: Parameters<typeof mock.fn>[2],
-) => ReturnType<typeof mock.fn>['mock'];
-type MockEventFn = <E extends EventType<any>>(
-  p: E,
-  impl?: EventHandler<E, BusContext>,
-  mockOpts?: Parameters<typeof mock.fn>[2],
-) => ReturnType<typeof mock.fn>['mock'];
-
-type CustomTestContext = {
-  t: TestContext;
-  bus: ExecutionContext<BusContext>;
-  root: LocalBus<BusContext>;
-  mockProcedure: MockProcedureFn;
-  mockEvent: MockEventFn;
-  readFixture: (path: string) => Promise<string>;
-};
-
 interface CustomTestHandler {
-  (ctx: CustomTestContext): Promise<void> | void;
+  (ctx: UnitTestEnvironment): Promise<void> | void;
 }
 
 interface CustomTestFn {
@@ -190,51 +167,32 @@ interface CustomSuiteFn {
 type TestFn = NonNullable<Parameters<typeof test>[0]>;
 type TestContext = Parameters<TestFn>[0];
 
+class UnitTestEnvironment extends TestEnvironment {
+  public bus!: ExecutionContext<BusContext>;
+
+  constructor(
+    public t: TestContext,
+    env: Environment,
+  ) {
+    super(env);
+  }
+}
+
 export default (name: string, callback: CustomSuiteFn) =>
   describe(name, () => {
     const wrap: (fn: CustomTestHandler) => TestFn =
       fn => async (t: TestContext) => {
-        const [deps, after] = await createModuleDeps();
-        const conn = await deps.pg.conn.connect();
-
-        await conn.query('BEGIN');
-
-        const bus = deps.bus.createContext({
-          pg: new PoolConnection(conn),
-        });
-
-        await setupModules(deps);
-
-        const mockProcedure: MockProcedureFn = (proc, ...args) => {
-          const orig = deps.bus.getHandler(proc);
-          const mockfn = mock.fn(orig, ...args);
-          deps.bus.register(proc, mockfn, undefined, true);
-          return mockfn.mock;
-        };
-
-        const mockEvent: MockEventFn = (event, ...args) => {
-          const mockfn = mock.fn(...args);
-          deps.bus.on(event, mockfn);
-          return mockfn.mock;
-        };
-
-        const readFixture = async (fixture: string) => {
-          const fixturePath = path.resolve(__dirname, '../fixtures', fixture);
-          return readFile(fixturePath, 'utf8');
-        };
-
-        await fn({
-          t,
-          bus,
-          root: deps.bus,
-          mockProcedure,
-          mockEvent,
-          readFixture,
-        });
-
-        await conn.query('COMMIT');
-        conn.release();
-        await after();
+        const env = await createEnvironment();
+        try {
+          await startServices(env);
+          const testEnv = new UnitTestEnvironment(t, env);
+          await testEnv.withContext(async ctx => {
+            testEnv.bus = ctx;
+            await fn(testEnv);
+          });
+        } finally {
+          await env.teardown();
+        }
       };
 
     const customTest: CustomTestFn = (name, fn) => test(name, wrap(fn));

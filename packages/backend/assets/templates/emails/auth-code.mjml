@@ -41,8 +41,6 @@
           requested this code from.
           <!-- Alternatively you can click the button below: -->
         </mj-text>
-
-        <!-- <mj-button padding-top="30px" background-color="red" href="<%- link %>">Log In</mj-button> -->
       </mj-column>
     </mj-section>
   </mj-body>

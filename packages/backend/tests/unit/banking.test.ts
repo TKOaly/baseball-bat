@@ -95,7 +95,7 @@ setup('Banking service', ({ test }) => {
   }) => {
     const camt = await readFixture('camt/single-payment.xml');
     const statement = await parseCamtStatement(camt);
-    const txSpy = mockEvent(defs.onTransaction);
+    const txSpy = await mockEvent(defs.onTransaction);
 
     await bus.exec(defs.createBankAccount, {
       name: 'Test Account',
@@ -163,8 +163,8 @@ setup('Banking service', ({ test }) => {
     const camt = await readFixture('camt/single-payment.xml');
     const statement = await parseCamtStatement(camt);
 
-    const statusSpy = mockEvent(payments.onStatusChanged);
-    const balanceSpy = mockEvent(payments.onBalanceChanged);
+    const statusSpy = await mockEvent(payments.onStatusChanged);
+    const balanceSpy = await mockEvent(payments.onBalanceChanged);
 
     const result = await bus.exec(payments.createPayment, {
       payment: {
@@ -219,7 +219,7 @@ setup('Banking service', ({ test }) => {
     readFixture,
     mockEvent,
   }) => {
-    const txSpy = mockEvent(defs.onTransaction);
+    const txSpy = await mockEvent(defs.onTransaction);
 
     const camt1 = await readFixture('camt/single-payment.xml');
     const statement1 = await parseCamtStatement(camt1);

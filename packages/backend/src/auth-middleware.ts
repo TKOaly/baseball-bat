@@ -15,6 +15,7 @@ import { BusContext, ModuleDeps } from './app';
 import { getPayerProfileByIdentity } from './services/payers/definitions';
 import { getUpstreamUserById } from './services/users/definitions';
 import { ExecutionContext } from './bus';
+import { createInterface } from './bus';
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
   (O['unauthenticated'] extends true
@@ -55,7 +56,30 @@ type AuthMiddlewareOptions = {
   allowQueryToken?: boolean;
 };
 
-export const authServiceFactory = ({ redis, config }: ModuleDeps) => {
+export const iface = createInterface('auth', builder => ({
+  authenticateSession: builder.proc({
+    payload: t.intersection([
+      t.type({
+        token: t.string,
+        payerId: internalIdentityT,
+        method: t.string,
+      }),
+      t.partial({
+        userServiceToken: t.string,
+        accessLevel: t.string,
+      }),
+    ]),
+    response: t.void,
+  }),
+}));
+
+export const { authenticateSession } = iface.procedures;
+
+export const authServiceFactory = ({
+  bus,
+  redis,
+  config,
+}: Pick<ModuleDeps, 'bus' | 'redis' | 'config'>) => {
   async function getSession<R extends RequestBase>(
     { req }: R,
     allowQueryToken: boolean,
@@ -117,6 +141,58 @@ export const authServiceFactory = ({ redis, config }: ModuleDeps) => {
       token,
     ];
   }
+
+  bus.provide(iface, {
+    async authenticateSession(
+      { accessLevel: pAccessLevel, method, token, payerId, userServiceToken },
+      _,
+      bus,
+    ) {
+      let accessLevel = pAccessLevel;
+
+      if (accessLevel === undefined) {
+        const profile = await bus.exec(getPayerProfileByIdentity, payerId);
+
+        if (!profile) {
+          throw new Error('Profile does not exist');
+        }
+
+        if (profile.tkoalyUserId && userServiceToken) {
+          const user = await bus.exec(getUpstreamUserById, {
+            id: profile.tkoalyUserId,
+            token: userServiceToken,
+          });
+
+          if (user && user.role === 'yllapitaja') {
+            accessLevel = 'admin';
+          } else {
+            accessLevel = 'normal';
+          }
+        } else {
+          accessLevel = 'normal';
+        }
+      }
+
+      const session = {
+        authLevel: 'authenticated',
+        payerId: payerId.value,
+        authMethod: method,
+        accessLevel,
+      };
+
+      console.log('? session:' + token);
+
+      const exists = await redis.exists(`session:${token}`);
+
+      if (!exists) {
+        return Promise.reject();
+      }
+
+      await redis.set(`session:${token}`, JSON.stringify(session));
+
+      return Promise.resolve();
+    },
+  });
 
   return {
     config,

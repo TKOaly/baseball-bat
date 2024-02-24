@@ -154,14 +154,19 @@ const Routes = () => {
     }
   }, [session.data?.preferences?.uiLanguage]);
 
-  const [isAuthPath] = useRoute('/auth');
+  const [isAuthPath1] = useRoute('/auth*');
+  const [isAuthPath2] = useRoute('/auth/*');
 
-  if (!session.data?.accessLevel && !isAuthPath) {
-    return <Redirect to="/auth" />;
-  }
+  const isAuthPath = isAuthPath1 || isAuthPath2;
 
-  if (session.data?.accessLevel && isAuthPath) {
-    return <Redirect to="/" />;
+  if (!session.isLoading) {
+    if (!session.data?.accessLevel && !isAuthPath) {
+      return <Redirect to="/auth" />;
+    }
+
+    if (session.data?.accessLevel && isAuthPath) {
+      return <Redirect to="/" />;
+    }
   }
 
   return (

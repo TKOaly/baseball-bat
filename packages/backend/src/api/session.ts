@@ -1,5 +1,5 @@
 import { router } from 'typera-express';
-import { ok, redirect, unauthorized } from 'typera-express/response';
+import { ok, redirect } from 'typera-express/response';
 import base64url from 'base64url';
 import { ApiFactory } from '.';
 import {
@@ -11,7 +11,7 @@ const factory: ApiFactory = ({ auth, config }, route) => {
   const getSession = route
     .use(auth.createAuthMiddleware({ unauthenticated: true }))
     .get('/')
-    .handler(async ({ session, req, bus }) => {
+    .handler(async ({ session, bus }) => {
       if (session.authLevel === 'unauthenticated') {
         return ok({
           authLevel: 'unauthenticated',
@@ -25,20 +25,6 @@ const factory: ApiFactory = ({ auth, config }, route) => {
         id,
       );
       const preferences = await bus.exec(getPayerPreferences, id);
-
-      if (!req.cookies.token) {
-        return unauthorized();
-      }
-
-      const tokenPayload = JSON.parse(
-        Buffer.from(req.cookies.token.split('.')[1], 'base64').toString(),
-      );
-
-      if (
-        tokenPayload.authenticatedTo.split(',').indexOf(config.serviceId) === -1
-      ) {
-        return unauthorized();
-      }
 
       return ok({
         authLevel: session.authLevel,

@@ -4,7 +4,7 @@ const authApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     requestAuthCode: builder.mutation<{ id: string }, string>({
       query: email => ({
-        url: '/auth/request-code',
+        url: 'auth/request-code',
         method: 'POST',
         body: { email },
       }),

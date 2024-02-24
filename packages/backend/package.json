@@ -8,6 +8,7 @@
     "start": "node -r tsconfig-paths/register ./build/src/app.js",
     "test:unit": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node -r esbuild-register --test",
     "test:unit:all": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node -r esbuild-register --test tests/unit/*.test.ts",
+    "test:e2e": "playwright test",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
     "build": "tsc",
     "lint": "eslint src && prettier --check src",
@@ -86,6 +87,7 @@
   "devDependencies": {
     "@ava/typescript": "^4.1.0",
     "@faker-js/faker": "^8.0.2",
+    "@playwright/test": "^1.41.2",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.5",
     "@testcontainers/postgresql": "^10.2.1",

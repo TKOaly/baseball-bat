@@ -36,7 +36,7 @@ setup('Payers service', ({ test }) => {
   });
 
   test('creating from tko-aly id', async ({ bus, mockProcedure }) => {
-    const mock = mockProcedure(
+    const mock = await mockProcedure(
       getUpstreamUserById,
       async ({ id }) => {
         return {
@@ -51,7 +51,6 @@ setup('Payers service', ({ test }) => {
         times: 1,
       },
     );
-    ('Arabianrantaan uusi kaupunginosa, joka suunnitellaan alusta asti tietoyhteiskunnan muutosta');
 
     const id = tkoalyIdentity(1234);
 
@@ -77,7 +76,7 @@ setup('Payers service', ({ test }) => {
     bus,
     mockProcedure,
   }) => {
-    const mock = mockProcedure(
+    const mock = await mockProcedure(
       getUpstreamUserById,
       async ({ id }) => {
         return {
@@ -130,7 +129,7 @@ setup('Payers service', ({ test }) => {
 
     assert.ok(fromEmail);
 
-    mockProcedure(
+    await mockProcedure(
       getUpstreamUserById,
       async ({ id }) => {
         return {
