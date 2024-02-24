@@ -1,13 +1,13 @@
 import path from 'path';
 import migrate from 'node-pg-migrate';
-import { shutdown } from '../src/orchestrator';
+import { shutdown } from '@/orchestrator';
 import { GenericContainer } from 'testcontainers';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisClientType } from 'redis';
 import * as redis from 'redis';
-import { PgClient, PoolConnection } from '../src/db';
-import { Config } from '../src/config';
-import type { BusContext, ModuleDeps } from '../src/app';
+import { PgClient, PoolConnection } from '@/db';
+import { Config } from '@/config';
+import type { BusContext, ModuleDeps } from '@/app';
 import Stripe from 'stripe';
 import {
   ExecutionContext,
@@ -16,11 +16,11 @@ import {
   EventType,
   ProcedureType,
   EventHandler,
-} from '../src/bus';
-import { JobService } from '../src/services/jobs';
+} from '@/bus';
+import { JobService } from '@/services/jobs';
 import { describe, mock, test } from 'node:test';
 
-import setupModules from '../src/services';
+import setupModules from '@/services';
 import { readFile } from 'fs/promises';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -32,7 +32,7 @@ export const setupPostgres = async () => {
     databaseUrl: container.getConnectionUri(),
     migrationsTable: '__migrations',
     direction: 'up',
-    dir: path.resolve(__dirname, '../migrations'),
+    dir: path.resolve(__dirname, '../../migrations'),
     log: () => {
       return;
     },
@@ -219,7 +219,7 @@ export default (name: string, callback: CustomSuiteFn) =>
         };
 
         const readFixture = async (fixture: string) => {
-          const fixturePath = path.resolve(__dirname, './fixtures', fixture);
+          const fixturePath = path.resolve(__dirname, '../fixtures', fixture);
           return readFile(fixturePath, 'utf8');
         };
 

@@ -1,5 +1,5 @@
 import { emailIdentity } from '@bbat/common/types';
-import setup from '../setup';
+import setup from './setup';
 import * as defs from '@/services/reports/definitions';
 import { createPayerProfileFromEmailIdentity } from '@/services/payers/definitions';
 import assert from 'assert';

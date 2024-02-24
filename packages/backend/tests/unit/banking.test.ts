@@ -1,4 +1,4 @@
-import setup from '../setup';
+import setup from './setup';
 import assert from 'node:assert';
 import * as defs from '@/services/banking/definitions';
 import { describe } from 'node:test';

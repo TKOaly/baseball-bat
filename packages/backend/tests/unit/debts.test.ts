@@ -1,4 +1,4 @@
-import setup from '../setup';
+import setup from './setup';
 import * as defs from '../../src/services/debts/definitions';
 import assert from 'node:assert';
 import { createDebtCenter } from '../../src/services/debt-centers/definitions';

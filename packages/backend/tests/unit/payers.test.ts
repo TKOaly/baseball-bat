@@ -1,5 +1,5 @@
 import { emailIdentity, tkoalyIdentity } from '@bbat/common/types';
-import setup from '../setup';
+import setup from './setup';
 import * as defs from '@/services/payers/definitions';
 import { assert as chai, use as chaiUse } from 'chai';
 import assert from 'node:assert';

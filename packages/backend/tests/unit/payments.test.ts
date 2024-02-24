@@ -1,4 +1,4 @@
-import setup from '../setup';
+import setup from './setup';
 import assert from 'node:assert';
 import * as defs from '../../src/services/payments/definitions';
 import { euro } from '@bbat/common/src/currency';

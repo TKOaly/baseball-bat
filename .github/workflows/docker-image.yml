@@ -37,7 +37,7 @@ jobs:
         run: pnpm run --filter=@bbat/backend... --recursive build
 
       - name: Run tests
-        run: pnpm run --recursive test tests/services/${{ matrix.suite }}.test.ts
+        run: pnpm run --recursive test:unit tests/services/${{ matrix.suite }}.test.ts
         env:
           ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
 
