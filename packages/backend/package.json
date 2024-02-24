@@ -112,7 +112,6 @@
     "chai": "^4.3.7",
     "chai-subset": "^1.6.0",
     "concurrently": "^7.6.0",
-    "cypress": "^11.2.0",
     "earl": "^1.1.0",
     "esbuild-register": "^3.5.0",
     "eslint": "^8.26.0",
