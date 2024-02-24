@@ -67,8 +67,14 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @bbat/backend exec playwright install
 
-      - name: Build project
-        run: pnpm run --recursive build
+      - name: Build frontend dependencies
+        run: pnpm run --filter @bbat/frontend^... build
+
+      - name: Build frontend in development mode
+        run: pnpm run --filter @bbat/frontend build -m development
+
+      - name: Build backend
+        run: pnpm run --filter @bbat/backend... build
 
       - name: Run tests
         run: pnpm run --filter=@bbat/backend test:e2e tests/e2e/${{ matrix.suite }}.spec.ts
