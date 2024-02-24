@@ -65,7 +65,7 @@ jobs:
         run: pnpm install --filter=@bbat/backend... --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright intall
+        run: pnpm --filter @bbat/backend exec playwright install
 
       - name: Build tests
         run: pnpm run --filter=@bbat/backend... --recursive build
