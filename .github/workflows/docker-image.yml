@@ -75,6 +75,13 @@ jobs:
         env:
           ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
 
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-results
+          path: packages/backend/test-results
+          retention-days: 30
+
   build:
     name: Build Docker images
     runs-on: ubuntu-latest
