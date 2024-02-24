@@ -62,13 +62,13 @@ jobs:
         run: corepack enable
 
       - name: Install Yarn dependencies
-        run: pnpm install --filter=@bbat/backend... --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
         run: pnpm --filter @bbat/backend exec playwright install
 
-      - name: Build tests
-        run: pnpm run --filter=@bbat/backend... --recursive build
+      - name: Build project
+        run: pnpm run --recursive build
 
       - name: Run tests
         run: pnpm run --filter=@bbat/backend test:e2e tests/e2e/${{ matrix.suite }}.spec.ts
