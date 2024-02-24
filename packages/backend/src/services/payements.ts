@@ -7,7 +7,6 @@ import {
   DbPayerProfile,
   DbPayment,
   DbPaymentEvent,
-  DbPaymentEventTransactionMapping,
   Debt,
   EuroValue,
   internalIdentity,
@@ -712,17 +711,6 @@ export class PaymentService {
     amount?: EuroValue,
     pPayment?: string,
   ) {
-    const existing_mapping = await this.pg
-      .one<DbPaymentEventTransactionMapping>(sql`
-      SELECT *
-      FROM payment_event_transaction_mapping
-      WHERE bank_transaction_id = ${tx.id}
-    `);
-
-    if (existing_mapping) {
-      return null;
-    }
-
     let payment;
 
     if (pPayment) {
