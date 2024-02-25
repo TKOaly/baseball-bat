@@ -113,3 +113,45 @@ test('debt creation', async ({ page, bbat }) => {
   await expect(row.getCell('Status').getByText('Unpaid')).toBeVisible();
   await expect(row.getCell('Components')).toHaveText('Test Component');
 });
+
+test('debt deletion', async ({ page, bbat }) => {
+  await page.goto(bbat.url);
+
+  await page
+    .context()
+    .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+  await bbat.login({
+    screenName: 'John Smith',
+  });
+
+  await createDebt(bbat, {
+    name: 'Test Debt',
+    payer: {
+      create: true,
+      name: 'Matti',
+      email: 'matti@example.com',
+    },
+    center: {
+      create: true,
+      name: 'Test Center',
+    },
+    components: [
+      {
+        name: 'Test Component',
+        amount: 10.0,
+      },
+    ],
+  });
+
+  await page.getByTestId('side-navigation').getByText('Debts').click();
+  const table = bbat.table(page.getByRole('table'));
+  await expect(table.rows()).toHaveCount(1);
+  const row = table.getRowByColumnValue('Name', 'Test Debt');
+  await row.getCell('Identifier').click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByTestId('side-navigation').getByText('Debts').click();
+
+  const table2 = bbat.table(page.getByRole('table'));
+  await expect(table2.rows()).toHaveCount(0);
+});
