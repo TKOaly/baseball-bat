@@ -49,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [debts, auth]
+        suite: [debts, auth, banking]
 
     steps:
       - name: Checkout repository
