@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { euro, formatEuro } from '@bbat/common/currency';
+import { createPayment } from '@/services/payments/definitions';
 
 const GROUPED_IBAN = 'FI79 9359 4446 8357 68';
 const IBAN = GROUPED_IBAN.replaceAll(' ', '');
@@ -113,4 +114,60 @@ test('uploading bank statement', async ({ page, bbat }) => {
   await expect(row.getCell('Reference')).toHaveText('RF4974154318938921639933');
   await expect(row.getCell('Message')).toHaveText('');
   await expect(row.getCell('Payment')).toHaveText('');
+});
+
+test('automatic payment registration', async ({ page, bbat }) => {
+  const reference = 'RF4974154318938921639933';
+
+  const payment = await bbat.withContext(async ctx => {
+    return ctx.exec(createPayment, {
+      payment: {
+        type: 'invoice',
+        amount: euro(10),
+        data: {},
+        title: 'Test Payment',
+        message: 'Test Message',
+      },
+      options: {
+        referenceNumber: reference,
+      },
+    });
+  });
+
+  await page.goto(bbat.url);
+
+  await page
+    .context()
+    .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+  await bbat.login({});
+
+  await createBankAccount(bbat);
+
+  await page.getByRole('button', { name: 'Import bank statement' }).click();
+
+  const fileChooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Select file' }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles([
+    {
+      name: 'statement.xml',
+      mimeType: 'application/xml',
+      buffer: Buffer.from(
+        await bbat.readFixture('camt/single-payment.xml'),
+        'utf-8',
+      ),
+    },
+  ]);
+
+  await page.getByRole('button', { name: 'Submit' }).click();
+
+  await page.pause();
+
+  const table = bbat.table(
+    bbat.getResourceSection('Transactions').getByRole('table'),
+  );
+  await expect(table.rows()).toHaveCount(1);
+  const row = table.row(0);
+  await expect(row.getCell('Payment')).toHaveText(payment.paymentNumber);
 });
