@@ -73,13 +73,11 @@ export const Field: React.FC<PropsWithChildren<FieldProps>> = ({
   fullWidth,
   children,
 }) => (
-  <div
-    className={fullWidth ? 'col-span-full' : ''}
-    data-cy="resource-field"
-    data-cy-label={label}
-  >
-    <div className="text-gray-500 text-xs font-bold uppercase">{label}</div>
-    <div className="mt-1">
+  <div className={`${fullWidth ? 'col-span-full' : ''} resource-field`}>
+    <div className="resource-field-label text-gray-500 text-xs font-bold uppercase">
+      {label}
+    </div>
+    <div className="mt-1 resource-field-content">
       <DataWrapper>{children}</DataWrapper>
     </div>
   </div>

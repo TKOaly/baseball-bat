@@ -1,4 +1,4 @@
-import { Page, test as base } from '@playwright/test';
+import { Locator, Page, test as base } from '@playwright/test';
 import {
   Environment,
   TestEnvironment,
@@ -16,13 +16,22 @@ type Fixtures = {
   bbat: E2ETestEnvironment;
 };
 
-class E2ETestEnvironment extends TestEnvironment {
+export class E2ETestEnvironment extends TestEnvironment {
   constructor(
-    private page: Page,
+    public page: Page,
     public url: string,
     env: Environment,
   ) {
     super(env);
+  }
+
+  getResourceField(label: string) {
+    return this.page
+      .locator('.resource-field-label', {
+        hasText: new RegExp(`^${label}$`, 'i'),
+      })
+      .locator('..')
+      .locator('.resource-field-content');
   }
 
   async login(user: Partial<UpstreamUser>) {
@@ -60,6 +69,74 @@ class E2ETestEnvironment extends TestEnvironment {
         userServiceToken: 'TEST-TOKEN',
       });
     });
+  }
+
+  table(locator: Locator) {
+    return new Table(locator);
+  }
+}
+
+export class Table {
+  constructor(private root: Locator) {}
+
+  get page() {
+    return this.root.page();
+  }
+
+  async rowCount() {
+    return this.root.getByRole('row').count();
+  }
+
+  rows() {
+    return this.root.getByRole('row');
+  }
+
+  getCellByValue(column: string, value: string) {
+    return this.root
+      .getByRole('cell')
+      .and(
+        this.root.locator(`[data-column="${column}"][data-value="${value}"]`),
+      );
+  }
+
+  getRowByColumnValue(column: string, value: string) {
+    const cell = this.page
+      .getByRole('cell')
+      .and(
+        this.page.locator(`[data-column="${column}"][data-value="${value}"]`),
+      );
+
+    const row = this.root.getByRole('row').filter({ has: cell });
+
+    return new Row(row);
+  }
+}
+
+class Row {
+  constructor(private locator: Locator) {}
+
+  get page() {
+    return this.locator.page();
+  }
+
+  async index() {
+    const row = await this.locator.getAttribute('data-row');
+
+    if (!row) {
+      throw new Error('Row has no data-row attribute!');
+    }
+
+    return parseInt(row);
+  }
+
+  getCell(column: string) {
+    return this.locator
+      .getByRole('cell')
+      .and(this.page.locator(`[data-column="${column}"]`));
+  }
+
+  click() {
+    return this.locator.click();
   }
 }
 

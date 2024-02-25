@@ -259,6 +259,8 @@ const TableRow = <R extends Row>({
   return (
     <>
       <div
+        role="row"
+        data-row={rowIndex}
         className="contents"
         onClick={() => (
           onRowClick && onRowClick(data), toggleRowExpanded(data.key)
@@ -302,8 +304,10 @@ const TableRow = <R extends Row>({
           return (
             <div
               key={column.name}
+              role="cell"
               data-row={rowIndex}
               data-column={column.name}
+              data-value={`${value}`}
               className={`
                   whitespace-nowrap
                   overflow-hidden
@@ -554,6 +558,7 @@ export const Table = <
 
   return (
     <div
+      role="table"
       className="relative"
       data-cy="table-view"
       data-visible-rows={sortedRows.length}
@@ -670,6 +675,7 @@ export const Table = <
           )}
           {columns.map((column, i) => (
             <div
+              role="columnheader"
               key={column.name}
               onClick={() => handleColumnHeaderClick(column)}
               className={`
