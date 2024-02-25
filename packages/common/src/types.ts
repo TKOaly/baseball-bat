@@ -846,7 +846,7 @@ export type DbBankTransaction = {
   id: string;
   account: string;
   amount: number;
-  value_time: Date;
+  value_time: Date | string;
   type: 'credit' | 'debit';
   other_party_account: string | null;
   other_party_name: string;

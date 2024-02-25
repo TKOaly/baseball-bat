@@ -11,6 +11,7 @@ import { cents } from '@bbat/common/currency';
 import { formatPayment } from '../payments';
 import iface, { onTransaction } from './definitions';
 import { ModuleDeps } from '@/app';
+import { parseISO } from 'date-fns';
 
 const formatBankStatement = (
   stmt: DbBankStatement,
@@ -31,7 +32,8 @@ const formatBankStatement = (
 const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
   id: tx.id,
   amount: cents(tx.amount),
-  date: tx.value_time,
+  date:
+    typeof tx.value_time === 'string' ? parseISO(tx.value_time) : tx.value_time,
   type: tx.type,
   account: tx.account,
   otherParty: {
@@ -172,11 +174,21 @@ export default ({ bus }: ModuleDeps) => {
         SELECT
           bt.*,
           (
-            SELECT ARRAY_AGG(TO_JSONB(p.*) || JSONB_BUILD_OBJECT('events', (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id)))
-            FROM payment_event_transaction_mapping petm
-            INNER JOIN payment_events pe ON pe.id = petm.payment_event_id
-            INNER JOIN payments p ON p.id = pe.payment_id
-            WHERE petm.bank_transaction_id = bt.id
+            SELECT ARRAY_AGG(TO_JSONB(ps.*)) FROM (
+              SELECT
+                p.*,
+                s.balance,
+                s.status,
+                s.payer,
+                (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+                (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+                COALESCE(s.updated_at, p.created_at) AS updated_at
+              FROM payment_event_transaction_mapping petm
+              JOIN payment_events pe ON pe.id = petm.payment_event_id
+              JOIN payments p ON pe.payment_id = p.id
+              JOIN payment_statuses s ON s.id = p.id
+              WHERE petm.bank_transaction_id = bt.id
+            ) ps
           ) AS payments
         FROM bank_transactions bt
         WHERE account = ${iban}
@@ -258,12 +270,25 @@ export default ({ bus }: ModuleDeps) => {
       const transactions = await pg.many<DbBankTransaction>(sql`
         SELECT
           bt.*,
-          TO_JSON(p.*) AS payment
+          (
+            SELECT ARRAY_AGG(TO_JSONB(ps.*)) FROM (
+              SELECT
+                p.*,
+                s.balance,
+                s.status,
+                s.payer,
+                (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+                (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+                COALESCE(s.updated_at, p.created_at) AS updated_at
+              FROM payment_event_transaction_mapping petm
+              JOIN payment_events pe ON pe.id = petm.payment_event_id
+              JOIN payments p ON pe.payment_id = p.id
+              JOIN payment_statuses s ON s.id = p.id
+              WHERE petm.bank_transaction_id = bt.id
+            ) ps
+          ) AS payments
         FROM bank_statement_transaction_mapping bstm
         JOIN bank_transactions bt ON bt.id = bstm.bank_transaction_id
-        LEFT JOIN payment_event_transaction_mapping petm ON petm.bank_transaction_id = bt.id
-        LEFT JOIN payment_events pe ON pe.id = petm.payment_event_id
-        LEFT JOIN payments p ON p.id = pe.payment_id
         WHERE bstm.bank_statement_id = ${id}
       `);
 

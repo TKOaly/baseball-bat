@@ -14,6 +14,7 @@ import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as defs from './definitions';
 import { createEmail, sendEmail } from '../email/definitions';
+import { parseISO } from 'date-fns';
 
 export class RegistrationError extends Error {}
 
@@ -32,12 +33,15 @@ export function formatReferenceNumber(reference: string) {
   return reference.match(/.{1,4}/g)?.join?.(' ') ?? reference;
 }
 
+const mapDate = (value: Date | string): Date =>
+  typeof value === 'string' ? parseISO(value) : value;
+
 const formatPaymentEvent = (db: DbPaymentEvent): PaymentEvent => ({
   id: db.id,
   paymentId: db.payment_id,
   type: db.type,
   amount: cents(db.amount),
-  time: new Date(db.time),
+  time: mapDate(db.time),
   data: db.data as any,
 });
 
@@ -62,8 +66,8 @@ export const formatPayment = (db: DbPayment): Payment => ({
   message: db.message,
   balance: cents(db.balance),
   status: db.status,
-  updatedAt: db.updated_at,
-  createdAt: db.created_at,
+  updatedAt: mapDate(db.updated_at),
+  createdAt: mapDate(db.created_at),
   credited: db.credited,
   events: db.events.map(formatPaymentEvent),
 });
