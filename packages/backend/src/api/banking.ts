@@ -67,7 +67,7 @@ const factory: ApiFactory = ({ auth }, route) => {
       const content = ctx.file.buffer.toString('utf8');
       const statement = await parseCamtStatement(content);
 
-      await bus.exec(bankingService.createBankStatement, {
+      const result = await bus.exec(bankingService.createBankStatement, {
         id: statement.id,
         accountIban: statement.account.iban,
         generatedAt: statement.creationDateTime,
@@ -84,7 +84,7 @@ const factory: ApiFactory = ({ auth }, route) => {
         closingBalance: statement.closingBalance,
       });
 
-      return ok();
+      return ok(result.statement);
     });
 
   const getAccountTransactions = route
