@@ -100,6 +100,14 @@ test('debt creation', async ({ page, bbat }) => {
   await expect(bbat.getResourceField('due date')).toBeHidden();
   await expect(bbat.getResourceField('status')).toHaveText('Draft');
 
+  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Publish' }),
+  ).not.toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Credit' })).not.toBeVisible();
+
   await page.getByTestId('side-navigation').getByText('Debts').click();
   const table = bbat.table(page.getByRole('table'));
   await expect(table.rows()).toHaveCount(1);
@@ -112,14 +120,6 @@ test('debt creation', async ({ page, bbat }) => {
   await expect(row.getCell('Status').getByText('Draft')).toBeVisible();
   await expect(row.getCell('Status').getByText('Unpaid')).toBeVisible();
   await expect(row.getCell('Components')).toHaveText('Test Component');
-
-  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Publish' }),
-  ).not.toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Publish' })).not.toBeVisible();
 });
 
 test('debt deletion', async ({ page, bbat }) => {
