@@ -46,12 +46,19 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
 export default ({ bus }: ModuleDeps) => {
   bus.provide(iface, {
     async createBankAccount(account, { pg }) {
-      return pg.do(sql`
+      const result = await pg.one<BankAccount>(sql`
         INSERT INTO bank_accounts (iban, name)
         VALUES (${account.iban.replace(/\s+/g, '').toUpperCase()}, ${
           account.name
         })
+        RETURNING *
       `);
+
+      if (!result) {
+        throw new Error('Failed to create bank account!');
+      }
+
+      return result;
     },
 
     async getBankAccount(iban, { pg }) {

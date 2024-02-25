@@ -25,8 +25,8 @@ const factory: ApiFactory = ({ auth }, route) => {
     .use(auth.createAuthMiddleware())
     .use(validateBody(bankAccount))
     .handler(async ({ bus, body }) => {
-      await bus.exec(bankingService.createBankAccount, body);
-      return ok();
+      const account = await bus.exec(bankingService.createBankAccount, body);
+      return ok(account);
     });
 
   const getBankAccount = route

@@ -12,7 +12,7 @@ export const onTransaction = scope.defineEvent(
 const iface = createInterface('banking', builder => ({
   createBankAccount: builder.proc({
     payload: types.bankAccount,
-    response: t.void,
+    response: types.bankAccount,
   }),
 
   getBankAccounts: builder.proc({
