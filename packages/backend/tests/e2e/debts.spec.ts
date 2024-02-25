@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
-import { getYear } from 'date-fns';
+import { addDays, format, getYear } from 'date-fns';
 
 type DebtCreationOptions = {
   name: string;
@@ -112,6 +112,14 @@ test('debt creation', async ({ page, bbat }) => {
   await expect(row.getCell('Status').getByText('Draft')).toBeVisible();
   await expect(row.getCell('Status').getByText('Unpaid')).toBeVisible();
   await expect(row.getCell('Components')).toHaveText('Test Component');
+
+  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Publish' }),
+  ).not.toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Publish' })).not.toBeVisible();
 });
 
 test('debt deletion', async ({ page, bbat }) => {
@@ -154,4 +162,69 @@ test('debt deletion', async ({ page, bbat }) => {
 
   const table2 = bbat.table(page.getByRole('table'));
   await expect(table2.rows()).toHaveCount(0);
+});
+
+test('test publishing', async ({ page, bbat }) => {
+  await page.goto(bbat.url);
+
+  await page
+    .context()
+    .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+  await bbat.login({
+    screenName: 'John Smith',
+  });
+
+  await createDebt(bbat, {
+    name: 'Test Debt',
+    payer: {
+      create: true,
+      name: 'Matti',
+      email: 'matti@example.com',
+    },
+    center: {
+      create: true,
+      name: 'Test Center',
+    },
+    components: [
+      {
+        name: 'Test Component',
+        amount: 10.0,
+      },
+    ],
+  });
+
+  await page.getByRole('button', { name: 'Publish' }).click();
+
+  await expect(bbat.getResourceField('Status')).toHaveText('Unpaid');
+  await expect(bbat.getResourceField('Due Date')).toHaveText(
+    format(addDays(new Date(), 14), 'dd.MM.yyyy'),
+  );
+
+  await expect(page.getByRole('button', { name: 'Publish' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Credit' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Credit' })).not.toBeDisabled();
+
+  const table = bbat.table(
+    bbat.getResourceSection('Payments').getByRole('table'),
+  );
+  await expect(table.rows()).toHaveCount(1);
+  const row = table.row(0);
+
+  await expect(row.getCell('Name')).toHaveText('Test Debt');
+  await expect(row.getCell('Status')).toHaveText('Unpaid');
+  await expect(row.getCell('Number')).toHaveText(`${getYear(new Date())}-0000`);
+  await expect(row.getCell('Total')).toHaveText('−10,00 €');
+
+  const table2 = bbat.table(
+    bbat.getResourceSection('Emails').getByRole('table'),
+  );
+  await expect(table2.rows()).toHaveCount(1);
+  const row2 = table2.row(0);
+
+  await expect(row2.getCell('Recipient')).toHaveText('matti@example.com');
+  await expect(row2.getCell('Subject')).toHaveText(
+    '[Lasku / Invoice] Test Debt',
+  );
 });

@@ -37,21 +37,18 @@ export const ActionButton: React.FC<
 export const Section: React.FC<
   PropsWithChildren<{ title: string; columns?: 1 | 2 }>
 > = ({ title, columns = 1, children }) => (
-  <div
-    className={'mt-5 mb-10'}
-    data-cy="resource-section"
-    data-cy-title={title}
-  >
+  <div className={'mt-5 mb-10 resource-section'}>
     <div className="flex items-center mt-4 mb-5">
       <div className="h-[1px] w-3 bg-gray-300" />
-      <div className="text-gray-500 mx-2 text-xs font-bold uppercase">
+      <div className="text-gray-500 mx-2 text-xs font-bold uppercase resource-section-title">
         {title}
       </div>
       <div className="h-[1px] bg-gray-300 flex-grow" />
     </div>
     <div
-      className={`px-1 ${columns === 2 && 'grid grid-cols-2 gap-8'}`}
-      data-cy="resource-section-content"
+      className={`px-1 ${
+        columns === 2 && 'grid grid-cols-2 gap-8'
+      } resource-section-content`}
     >
       {children}
     </div>

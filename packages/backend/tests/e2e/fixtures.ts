@@ -34,6 +34,15 @@ export class E2ETestEnvironment extends TestEnvironment {
       .locator('.resource-field-content');
   }
 
+  getResourceSection(title: string) {
+    return this.page
+      .locator('.resource-section')
+      .filter({
+        has: this.page.locator('.resource-section-title', { hasText: title }),
+      })
+      .locator('.resource-section-content');
+  }
+
   async login(user: Partial<UpstreamUser>) {
     await this.mockProcedure(
       getUpstreamUserById,
@@ -109,6 +118,10 @@ export class Table {
     const row = this.root.getByRole('row').filter({ has: cell });
 
     return new Row(row);
+  }
+
+  row(i: number) {
+    return new Row(this.rows().nth(i));
   }
 }
 
