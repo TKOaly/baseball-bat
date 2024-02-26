@@ -149,7 +149,7 @@ export class Environment {
 }
 
 export class TestEnvironment {
-  constructor(private env: Environment) {}
+  constructor(public env: Environment) {}
 
   mockProcedure = async <P extends ProcedureType<any, any>>(
     proc: P,
