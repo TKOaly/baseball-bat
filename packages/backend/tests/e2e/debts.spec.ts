@@ -390,7 +390,7 @@ test.describe('CSV import', () => {
     );
   });
 
-  test.only('with reference number', async ({ page, bbat, context }) => {
+  test('with reference number', async ({ page, bbat, context }) => {
     await page.goto(bbat.url);
 
     await page
