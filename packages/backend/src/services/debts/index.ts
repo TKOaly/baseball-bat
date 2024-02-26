@@ -686,7 +686,7 @@ export default ({ bus, jobs }: ModuleDeps) => {
           },
           options: {
             series: 1,
-            date: debt.date ? parseISO(debt.date) : null,
+            date: debt.date ? parseISO(debt.date) : undefined,
             ...options.defaultPayment,
           },
         });
@@ -1431,11 +1431,12 @@ export default ({ bus, jobs }: ModuleDeps) => {
     return pg.many<DbDebt>(query).then(debts => debts.map(formatDebt));
   }
 
-  /*async function getDebtsByTag(tagName: string): Promise<Debt[]> {
+  bus.register(defs.getDebtsByTag, async (tag, { pg }) => {
     return queryDebts(
-      sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tagName})`,
+      pg,
+      sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tag})`,
     );
-  }*/
+  });
 
   bus.register(defs.getDebts, (_, { pg }) => queryDebts(pg));
 

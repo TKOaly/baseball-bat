@@ -1,6 +1,8 @@
 import { expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { addDays, format, getYear } from 'date-fns';
+import assert from 'assert';
+import { euro, formatEuro } from '@bbat/common/currency';
 
 type DebtCreationOptions = {
   name: string;
@@ -227,4 +229,258 @@ test('test publishing', async ({ page, bbat }) => {
   await expect(row2.getCell('Subject')).toHaveText(
     '[Lasku / Invoice] Test Debt',
   );
+});
+
+test.describe('CSV import', () => {
+  test('simple with payment condition', async ({ page, bbat, context }) => {
+    await page.goto(bbat.url);
+
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+    await bbat.login({});
+
+    await page.goto(`${bbat.url}/admin/debts`);
+
+    await page.getByRole('button', { name: 'Mass Creation' }).click();
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+
+    await page
+      .getByRole('button', { name: 'upload one by clicking here' })
+      .click();
+
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles([
+      {
+        name: 'import.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          await bbat.readFixture('csv/simple-payment-condition.csv'),
+          'utf-8',
+        ),
+      },
+    ]);
+
+    await page.getByRole('button', { name: 'Interpret as headers' }).click();
+    await page.getByRole('button', { name: 'Create Debts' }).click();
+
+    await expect(page.getByText('Created Debt')).toBeVisible();
+
+    const pagePromise = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'View created' }).click();
+
+    const newPage = await pagePromise;
+
+    const message = newPage.getByText(
+      /Here are listed all debts associated with the tag "mass-import-batch-[a-z0-9]{11}"\./,
+    );
+    await expect(message).toBeVisible();
+    const messageContent = await message.innerText();
+    const match = messageContent.match(/mass-import-batch-[a-z0-9]{11}/);
+
+    assert.ok(match);
+
+    const tag = match[0];
+
+    const tableLocator = newPage.getByRole('table');
+    await expect(tableLocator).toHaveCount(1);
+    const table = bbat.table(tableLocator);
+    await expect(table.rows()).toHaveCount(1);
+    const row = table.row(0);
+    await expect(row.getCell('Identifier')).toHaveText(
+      `DEBT-${getYear(new Date())}-0000`,
+    );
+    await expect(row.getCell('Name')).toHaveText('Test Debt');
+    await expect(row.getCell('Payer')).toHaveText('Teppo Testaaja');
+    await expect(row.getCell('Components')).toHaveText(/Osallistumismaksu/);
+    await expect(row.getCell('Tags')).toHaveText(tag);
+
+    await row.getCell('Identifier').click();
+
+    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+
+    await expect(newBbat.getResourceField('Payment Condition')).toHaveText(
+      '14 days',
+    );
+    await expect(newBbat.getResourceField('Total')).toHaveText(
+      formatEuro(euro(10)),
+    );
+    await expect(newBbat.getResourceField('Published at')).toHaveText(
+      'Not published',
+    );
+  });
+
+  test('simple with due date', async ({ page, bbat, context }) => {
+    await page.goto(bbat.url);
+
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+    await bbat.login({});
+
+    await page.goto(`${bbat.url}/admin/debts`);
+
+    await page.getByRole('button', { name: 'Mass Creation' }).click();
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+
+    await page
+      .getByRole('button', { name: 'upload one by clicking here' })
+      .click();
+
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles([
+      {
+        name: 'import.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          await bbat.readFixture('csv/simple-due-date.csv'),
+          'utf-8',
+        ),
+      },
+    ]);
+
+    await page.getByRole('button', { name: 'Interpret as headers' }).click();
+    await page.getByRole('button', { name: 'Create Debts' }).click();
+
+    await expect(page.getByText('Created Debt')).toBeVisible();
+
+    const pagePromise = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'View created' }).click();
+
+    const newPage = await pagePromise;
+
+    const message = newPage.getByText(
+      /Here are listed all debts associated with the tag "mass-import-batch-[a-z0-9]{11}"\./,
+    );
+    await expect(message).toBeVisible();
+    const messageContent = await message.innerText();
+    const match = messageContent.match(/mass-import-batch-[a-z0-9]{11}/);
+
+    assert.ok(match);
+
+    const tag = match[0];
+
+    const tableLocator = newPage.getByRole('table');
+    await expect(tableLocator).toHaveCount(1);
+    const table = bbat.table(tableLocator);
+    await expect(table.rows()).toHaveCount(1);
+    const row = table.row(0);
+    await expect(row.getCell('Identifier')).toHaveText(
+      `DEBT-${getYear(new Date())}-0000`,
+    );
+    await expect(row.getCell('Name')).toHaveText('Test Debt');
+    await expect(row.getCell('Payer')).toHaveText('Teppo Testaaja');
+    await expect(row.getCell('Components')).toHaveText(/Osallistumismaksu/);
+    await expect(row.getCell('Tags')).toHaveText(tag);
+
+    await row.getCell('Identifier').click();
+
+    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+
+    await expect(newBbat.getResourceField('Due date')).toHaveText('12.03.2030');
+    await expect(newBbat.getResourceField('Total')).toHaveText(
+      formatEuro(euro(10)),
+    );
+    await expect(newBbat.getResourceField('Published at')).toHaveText(
+      'Not published',
+    );
+  });
+
+  test.only('with reference number', async ({ page, bbat, context }) => {
+    await page.goto(bbat.url);
+
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+    await bbat.login({});
+
+    await page.goto(`${bbat.url}/admin/debts`);
+
+    await page.getByRole('button', { name: 'Mass Creation' }).click();
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+
+    await page
+      .getByRole('button', { name: 'upload one by clicking here' })
+      .click();
+
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles([
+      {
+        name: 'import.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          await bbat.readFixture('csv/with-reference-number.csv'),
+          'utf-8',
+        ),
+      },
+    ]);
+
+    await page.getByRole('button', { name: 'Interpret as headers' }).click();
+
+    await page.pause();
+
+    await page.getByRole('button', { name: 'Create Debts' }).click();
+
+    await expect(page.getByText('Created Debt')).toBeVisible();
+
+    const pagePromise = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'View created' }).click();
+
+    const newPage = await pagePromise;
+
+    const message = newPage.getByText(
+      /Here are listed all debts associated with the tag "mass-import-batch-[a-z0-9]{11}"\./,
+    );
+    await expect(message).toBeVisible();
+    const messageContent = await message.innerText();
+    const match = messageContent.match(/mass-import-batch-[a-z0-9]{11}/);
+
+    assert.ok(match);
+
+    const tag = match[0];
+
+    const tableLocator = newPage.getByRole('table');
+    await expect(tableLocator).toHaveCount(1);
+    const table = bbat.table(tableLocator);
+    await expect(table.rows()).toHaveCount(1);
+    const row = table.row(0);
+    await expect(row.getCell('Identifier')).toHaveText(
+      `DEBT-${getYear(new Date())}-0000`,
+    );
+    await expect(row.getCell('Name')).toHaveText('Test Debt');
+    await expect(row.getCell('Payer')).toHaveText('Teppo Testaaja');
+    await expect(row.getCell('Components')).toHaveText(/Osallistumismaksu/);
+    await expect(row.getCell('Tags')).toHaveText(tag);
+
+    await row.getCell('Identifier').click();
+
+    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+
+    await expect(newBbat.getResourceField('Payment condition')).toHaveText(
+      '14 days',
+    );
+    await expect(newBbat.getResourceField('Total')).toHaveText(
+      formatEuro(euro(10)),
+    );
+    await expect(newBbat.getResourceField('Published at')).toHaveText(
+      'Not published',
+    );
+
+    await newPage.getByRole('button', { name: 'Publish' }).click();
+
+    const paymentsTable = newBbat.table(
+      newBbat.getResourceSection('Payments').getByRole('table'),
+    );
+    await expect(paymentsTable.rows()).toHaveCount(1);
+    await paymentsTable.row(0).getCell('Name').click();
+    await expect(newBbat.getResourceField('Reference number')).toHaveText(
+      'RF4974154318938921639933',
+    );
+  });
 });

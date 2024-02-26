@@ -16,6 +16,7 @@ import {
   DebtPatch,
   euro,
   NewDebtTag,
+  newInvoicePartial,
   tkoalyIdentity,
 } from '@bbat/common/build/src/types';
 import { validateBody } from '../validate-middleware';
@@ -69,6 +70,10 @@ const createDebtPayload = t.intersection([
     date: dbDateString,
     dueDate: t.union([t.null, dbDateString]),
     paymentCondition: t.union([t.null, t.number]),
+    defaultPayment: t.type({
+      type: t.literal('invoice'),
+      options: newInvoicePartial,
+    }),
     tags: t.array(
       t.union([
         t.string,
@@ -296,6 +301,9 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
           dueDate,
           date,
           tags,
+        },
+        options: {
+          defaultPayment: ctx.body.defaultPayment?.options,
         },
       });
 

@@ -628,6 +628,7 @@ export type NewDebt = {
   createdAt?: Date;
   paymentCondition: null | number;
   tags: Array<NewDebtTag>;
+  defaultPayment?: { type: 'invoice'; options: Partial<NewInvoice> };
 };
 
 export const debtPatch = t.intersection([

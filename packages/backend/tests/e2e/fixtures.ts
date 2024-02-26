@@ -20,7 +20,7 @@ export class E2ETestEnvironment extends TestEnvironment {
   constructor(
     public page: Page,
     public url: string,
-    env: Environment,
+    public env: Environment,
   ) {
     super(env);
   }
