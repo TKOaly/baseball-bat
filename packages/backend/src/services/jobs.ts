@@ -131,8 +131,7 @@ export class JobService {
     });
 
     this.bus.on(shutdown, async () => {
-      await worker.close(true);
-      await worker.disconnect();
+      await worker.close();
     });
 
     return worker;
