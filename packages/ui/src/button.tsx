@@ -71,6 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       {...rest}
+      disabled={disabled}
       className={twMerge(
         buttonCva({
           style: secondary ? 'secondary' : 'primary',
