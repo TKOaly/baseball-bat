@@ -70,7 +70,7 @@ const formatReportWithHistory = (db: DbReport): Report => ({
   history: db.history.map(formatReport),
 });
 
-export default ({ config, bus }: ModuleDeps) => {
+export default async ({ config, bus, jobs }: ModuleDeps) => {
   let _browser: Browser | null = null;
 
   async function getBrowser() {
@@ -194,7 +194,6 @@ export default ({ config, bus }: ModuleDeps) => {
   }
 
   bus.register(defs.createReport, async (options, { pg }) => {
-    const template = await loadTemplate(options.template);
     const generatedAt = new Date();
 
     const report = await reserveReport(pg, {
@@ -210,41 +209,15 @@ export default ({ config, bus }: ModuleDeps) => {
       throw new Error('Failed to create report!');
     }
 
-    let result;
+    await jobs.createJob({
+      queueName: 'reports',
+      name: 'create-report',
+      data: {
+        id: report.id,
+      },
+    });
 
-    try {
-      const source = ejs.render(template, {
-        data: options.payload,
-        metadata: {
-          name: options.name,
-          humanId: report.humanId,
-          id: report.id,
-          generatedAt,
-          revision: report.revision,
-        },
-        utils: {
-          formatEuro,
-          formatDate: datefns.format,
-          sumEuroValues,
-          euro,
-          cents,
-        },
-      });
-
-      const pdf = await render(source, options.scale ?? 0.8);
-
-      await saveReport(report.id, pdf);
-      result = await updateReportStatus(pg, report.id, 'finished');
-    } catch (err) {
-      console.error('Report generation failed: ', err);
-      result = await updateReportStatus(pg, report.id, 'failed');
-    }
-
-    if (!result) {
-      throw new Error('Failed to fetch report!');
-    }
-
-    return result;
+    return report;
   });
 
   bus.register(defs.getReport, async (id, { pg }) => {
@@ -419,4 +392,64 @@ export default ({ config, bus }: ModuleDeps) => {
       }
     },
   );
+
+  type ReportJob = {
+    id: string;
+  };
+
+  await jobs.createWorker<ReportJob, void>('reports', async (ctx, job) => {
+    const { id } = job.data;
+
+    const report = await ctx.exec(defs.getReport, id);
+
+    if (!report) {
+      throw new Error('Report does not exist!');
+    }
+
+    if (report.status === 'finished') {
+      return;
+    }
+
+    if (!report.type) {
+      throw new Error('Report has undefined type!');
+    }
+
+    try {
+      const reportType = ctx.getInterface(defs.reportTypeIface, report.type);
+      const details = await reportType.getDetails();
+      const template = await loadTemplate(details.template);
+      const generatedAt = new Date();
+
+      const payload = await reportType.generate({
+        options: report.options,
+      });
+
+      const source = ejs.render(template, {
+        data: payload,
+        metadata: {
+          name: report.name,
+          humanId: report.humanId,
+          id: report.id,
+          generatedAt,
+          revision: report.revision,
+        },
+        utils: {
+          formatEuro,
+          formatDate: datefns.format,
+          sumEuroValues,
+          euro,
+          cents,
+        },
+      });
+
+      const pdf = await render(source, details.scale ?? 0.8);
+
+      await saveReport(report.id, pdf);
+      await updateReportStatus(ctx.context.pg, report.id, 'finished');
+    } catch (err) {
+      console.error('Report generation failed: ', err);
+      await updateReportStatus(ctx.context.pg, report.id, 'failed');
+      throw err;
+    }
+  });
 };

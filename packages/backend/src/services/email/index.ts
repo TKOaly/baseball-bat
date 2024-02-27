@@ -133,7 +133,7 @@ const TemplateType = {
 
 type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
 
-export default ({
+export default async ({
   jobs,
   config,
   bus,
@@ -401,7 +401,7 @@ export default ({
     return emails.map(formatEmail);
   }*/
 
-  jobs.createWorker('emails', handleEmailJob as any, {
+  await jobs.createWorker('emails', handleEmailJob as any, {
     limiter: {
       max: 1,
       duration: 1000,

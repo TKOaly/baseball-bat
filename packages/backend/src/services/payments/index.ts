@@ -1,5 +1,7 @@
 import sql from 'sql-template-strings';
 import {
+  DbDebt,
+  DbPayerProfile,
   DbPayment,
   DbPaymentEvent,
   EuroValue,
@@ -14,7 +16,19 @@ import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as defs from './definitions';
 import { createEmail, sendEmail } from '../email/definitions';
-import { parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { createReport, reportTypeIface } from '../reports/definitions';
+import * as t from 'io-ts';
+import * as tt from 'io-ts-types';
+import { pipe } from 'fp-ts/lib/function';
+import { groupBy } from 'fp-ts/lib/NonEmptyArray';
+import * as A from 'fp-ts/lib/ReadonlyArray';
+import * as T from 'fp-ts/lib/Task';
+import { isLeft } from 'fp-ts/lib/Either';
+import * as R from 'remeda';
+import { formatDebt } from '../debts';
+import { formatPayerProfile } from '../payers';
+import { toArray } from 'fp-ts/lib/Record';
 
 export class RegistrationError extends Error {}
 
@@ -28,6 +42,24 @@ type PaymentWithEvents = Payment & {
     amount: EuroValue;
   }>;
 };
+
+const paymentLedgerOptions = t.type({
+  startDate: tt.DateFromISOString,
+  endDate: tt.DateFromISOString,
+  centers: t.union([t.null, t.array(t.string)]),
+  eventTypes: t.union([
+    t.null,
+    t.array(
+      t.union([
+        t.literal('credited'),
+        t.literal('created'),
+        t.literal('payment'),
+      ]),
+    ),
+  ]),
+  groupBy: t.union([t.null, t.string]),
+  paymentType: t.union([t.null, t.string]),
+});
 
 export function formatReferenceNumber(reference: string) {
   return reference.match(/.{1,4}/g)?.join?.(' ') ?? reference;
@@ -708,127 +740,31 @@ export default ({ bus }: ModuleDeps) => {
     return E.fromNullable('Could not create email')(created);
   });*/
 
-  /*async function generatePaymentLedger(
-    pg: Connection,
-    bus: ExecutionContext<BusContext>,
-    options: Omit<PaymentLedgerOptions, 'startDate' | 'endDate'> &
-      Record<'startDate' | 'endDate', Date>,
-    generatedBy: InternalIdentity,
-    parent?: string,
-  ) {
-    const results = await pg.many<{
-      event: DbPaymentEvent;
-      debt: DbDebt;
-      payment: DbPayment;
-      payer: DbPayerProfile;
-    }>(
-      sql`
-      SELECT DISTINCT ON (event.id, debt.id)
-        TO_JSONB(event.*) AS event,
-        TO_JSONB(debt.*) AS debt,
-        TO_JSONB(payment.*) AS payment,
-        TO_JSONB(payer.*) AS payer
-      FROM payment_events event
-      JOIN payments payment ON payment.id = event.payment_id
-      JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
-      JOIN debt ON debt.id = pdm.debt_id
-      JOIN payer_profiles payer ON payer.id = debt.payer_id
-      WHERE
-        event.time BETWEEN ${options.startDate} AND ${options.endDate} AND
-      `
-        .append(
-          options.paymentType
-            ? sql` payment.type = ${options.paymentType} `
-            : sql` TRUE `,
-        )
-        .append(sql`AND`)
-        .append(
-          options.eventTypes
-            ? sql` event.type = ANY (${options.eventTypes}) `
-            : sql` TRUE `,
-        ),
-    );
+  bus.register(
+    defs.generatePaymentLedger,
+    async ({ options, generatedBy, parent }, _, bus) => {
+      let name = `Payment Ledger ${format(
+        options.startDate,
+        'dd.MM.yyyy',
+      )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
 
-    const events = R.sortBy(
-      results.map(({ payment, payer, event, debt }) => ({
-        ...formatPaymentEvent({ ...event, time: parseISO(event.time as any) }),
-        debt: formatDebt(debt),
-        payer: formatPayerProfile(payer),
-        payment: formatPayment({ ...payment, events: [] }),
-      })),
-      item => item.time,
-    );
-
-    type EventDetails = (typeof events)[0];
-
-    let groups;
-
-    if (options.groupBy) {
-      let getGroupKey;
-      let getGroupDetails;
-
-      if (options.groupBy === 'center') {
-        getGroupKey = (event: EventDetails) => event.debt.debtCenterId;
-        getGroupDetails = async (id: string) => {
-          const center = await bus.exec(getDebtCenter, id);
-          return {
-            id: center?.humanId ?? 'Unknown',
-            name: center?.name ?? 'Unknown',
-          };
-        };
-      } else {
-        getGroupKey = (event: EventDetails) => event.payer.id.value;
-        getGroupDetails = async (id: string, [row]: EventDetails[]) => ({
-          id,
-          name: row.payer.name,
-        });
+      if (options.paymentType) {
+        name =
+          options.paymentType[0].toUpperCase() +
+          options.paymentType.substring(1) +
+          ' ' +
+          name;
       }
 
-      const createGroupUsing =
-        (
-          nameResolver: (
-            id: string,
-            rows: EventDetails[],
-          ) => Promise<{ name: string; id: string }>,
-        ) =>
-        ([key, events]: [string, EventDetails[]]) =>
-        async () => {
-          const { name, id } = await nameResolver(key, events);
-          return { name, events, id };
-        };
-
-      groups = await pipe(
-        events,
-        groupBy(getGroupKey),
-        toArray,
-        A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-      )();
-    } else {
-      groups = [{ events }];
-    }
-
-    let name = `Payment Ledger ${format(
-      options.startDate,
-      'dd.MM.yyyy',
-    )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
-
-    if (options.paymentType) {
-      name =
-        options.paymentType[0].toUpperCase() +
-        options.paymentType.substring(1) +
-        ' ' +
-        name;
-    }
-
-    return bus.exec(createReport, {
-      template: 'payment-ledger',
-      name,
-      options,
-      payload: { options, groups },
-      parent,
-      generatedBy,
-    });
-  }*/
+      return bus.exec(createReport, {
+        template: 'payment-ledger',
+        name,
+        options,
+        parent: parent ?? undefined,
+        generatedBy,
+      });
+    },
+  );
 
   bus.register(defs.deletePaymentEvent, async (id, { pg }) => {
     await pg.do(sql`
@@ -862,6 +798,120 @@ export default ({ bus }: ModuleDeps) => {
   bus.provideNamed(defs.paymentTypeIface, 'cash', {
     async createPayment() {
       return {};
+    },
+  });
+
+  bus.provideNamed(reportTypeIface, 'payment-ledger', {
+    async getDetails() {
+      return {
+        template: 'payment-ledger',
+      };
+    },
+
+    async generate(args, { pg }, bus) {
+      const result = paymentLedgerOptions.decode(args.options);
+
+      if (isLeft(result)) {
+        throw new Error('Invalid options!');
+      }
+
+      const options = result.right;
+
+      const results = await pg.many<{
+        event: DbPaymentEvent;
+        debt: DbDebt;
+        payment: DbPayment;
+        payer: DbPayerProfile;
+      }>(
+        sql`
+        SELECT DISTINCT ON (event.id, debt.id)
+          TO_JSONB(event.*) AS event,
+          TO_JSONB(debt.*) AS debt,
+          TO_JSONB(payment.*) AS payment,
+          TO_JSONB(payer.*) AS payer
+        FROM payment_events event
+        JOIN payments payment ON payment.id = event.payment_id
+        JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
+        JOIN debt ON debt.id = pdm.debt_id
+        JOIN payer_profiles payer ON payer.id = debt.payer_id
+        WHERE
+          event.time BETWEEN ${options.startDate} AND ${options.endDate} AND
+        `
+          .append(
+            options.paymentType
+              ? sql` payment.type = ${options.paymentType} `
+              : sql` TRUE `,
+          )
+          .append(sql`AND`)
+          .append(
+            options.eventTypes
+              ? sql` event.type = ANY (${options.eventTypes}) `
+              : sql` TRUE `,
+          ),
+      );
+
+      const events = R.sortBy(
+        results.map(({ payment, payer, event, debt }) => ({
+          ...formatPaymentEvent({
+            ...event,
+            time: parseISO(event.time as any),
+          }),
+          debt: formatDebt(debt),
+          payer: formatPayerProfile(payer),
+          payment: formatPayment({ ...payment, events: [] }),
+        })),
+        item => item.time,
+      );
+
+      type EventDetails = (typeof events)[0];
+
+      let groups;
+
+      if (options.groupBy) {
+        let getGroupKey;
+        let getGroupDetails;
+
+        if (options.groupBy === 'center') {
+          getGroupKey = (event: EventDetails) => event.debt.debtCenterId;
+          getGroupDetails = async (id: string) => {
+            const center = await bus.exec(getDebtCenter, id);
+            return {
+              id: center?.humanId ?? 'Unknown',
+              name: center?.name ?? 'Unknown',
+            };
+          };
+        } else {
+          getGroupKey = (event: EventDetails) => event.payer.id.value;
+          getGroupDetails = async (id: string, [row]: EventDetails[]) => ({
+            id,
+            name: row.payer.name,
+          });
+        }
+
+        const createGroupUsing =
+          (
+            nameResolver: (
+              id: string,
+              rows: EventDetails[],
+            ) => Promise<{ name: string; id: string }>,
+          ) =>
+          ([key, events]: [string, EventDetails[]]) =>
+          async () => {
+            const { name, id } = await nameResolver(key, events);
+            return { name, events, id };
+          };
+
+        groups = await pipe(
+          events,
+          groupBy(getGroupKey),
+          toArray,
+          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
+        )();
+      } else {
+        groups = [{ events }];
+      }
+
+      return { options, groups };
     },
   });
 };

@@ -13,7 +13,7 @@ const formatJob = async (node: JobNode): Promise<Job> => {
     status = 'failed';
   } else if (
     status === 'completed' &&
-    node.job.returnvalue.result === 'error'
+    node.job.returnvalue?.result === 'error'
   ) {
     status = 'failed';
   }

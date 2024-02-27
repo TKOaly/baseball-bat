@@ -5,16 +5,12 @@ import {
   DebtComponent,
   Debt,
   internalIdentity,
-  DbPayerProfile,
   PayerProfile,
-  DbDebtCenter,
-  DebtCenter,
   EuroValue,
   Email,
   isPaymentInvoice,
   Payment,
   DbDebtTag,
-  DebtTag,
   tkoalyIdentity,
   emailIdentity,
   DateString,
@@ -23,8 +19,7 @@ import {
 } from '@bbat/common/build/src/types';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
-import { formatPayerProfile } from '../payers';
-import { formatDebtCenter } from '../debt-centers';
+import reports from './reports';
 import {
   cents,
   formatEuro,
@@ -43,17 +38,8 @@ import * as O from 'fp-ts/lib/Option';
 import * as S from 'fp-ts/lib/string';
 import * as T from 'fp-ts/lib/Task';
 import * as EQ from 'fp-ts/lib/Eq';
-import { toArray } from 'fp-ts/lib/Record';
 import { flow, pipe } from 'fp-ts/lib/function';
-import {
-  addDays,
-  format,
-  isBefore,
-  isPast,
-  parseISO,
-  subMonths,
-} from 'date-fns';
-import { groupBy } from 'fp-ts/lib/NonEmptyArray';
+import { format, isBefore, isPast, parseISO, subMonths } from 'date-fns';
 import { Job } from 'bullmq';
 import { validate } from 'uuid';
 import { BusContext, ModuleDeps } from '@/app';
@@ -67,78 +53,7 @@ import {
 } from '../email/definitions';
 import { ExecutionContext } from '@/bus';
 import { Connection } from '@/db';
-
-const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
-  name: tag.name,
-  hidden: tag.hidden,
-});
-
-const resolveDueDate = (debt: DbDebt) => {
-  if (debt.due_date) {
-    return debt.due_date;
-  }
-
-  if (debt.published_at && debt.payment_condition !== null) {
-    return addDays(debt.published_at, debt.payment_condition);
-  }
-
-  return null;
-};
-
-export const formatDebt = (
-  debt: DbDebt & {
-    payer?: [DbPayerProfile] | DbPayerProfile;
-    debt_center?: DbDebtCenter;
-    debt_components?: DbDebtComponent[];
-    total?: number;
-  },
-): Debt & {
-  payer?: PayerProfile;
-  debtCenter?: DebtCenter;
-  debtComponents: Array<DebtComponent>;
-} => ({
-  name: debt.name,
-  id: debt.id,
-  humanId: debt.human_id,
-  accountingPeriod: debt.accounting_period,
-  date: debt.date,
-  lastReminded: debt.last_reminded,
-  payerId: internalIdentity(debt.payer_id),
-  createdAt: debt.created_at,
-  updatedAt: debt.updated_at,
-  draft: debt.published_at === null,
-  description: debt.description,
-  dueDate: resolveDueDate(debt),
-  publishedAt: debt.published_at,
-  debtCenterId: debt.debt_center_id,
-  defaultPayment: debt.default_payment,
-  debtCenter: debt.debt_center && formatDebtCenter(debt.debt_center),
-  credited: debt.credited,
-  total: debt.total === undefined ? cents(0) : cents(debt.total),
-  paymentCondition: debt.payment_condition,
-  debtComponents: debt.debt_components
-    ? debt.debt_components.filter(c => c !== null).map(formatDebtComponent)
-    : [],
-  payer:
-    debt.payer &&
-    (Array.isArray(debt.payer)
-      ? formatPayerProfile(debt.payer[0])
-      : formatPayerProfile(debt.payer)),
-  status: debt.status,
-  tags: (debt.tags ?? []).map(formatDebtTag),
-});
-
-const formatDebtComponent = (
-  debtComponent: DbDebtComponent,
-): DebtComponent => ({
-  id: debtComponent.id,
-  name: debtComponent.name,
-  amount: euro(debtComponent.amount / 100),
-  description: debtComponent.description ?? '',
-  debtCenterId: debtComponent.debt_center_id,
-  createdAt: null,
-  updatedAt: null,
-});
+import { formatDebt, formatDebtComponent, queryDebts } from './query';
 
 export type CreateDebtOptions = {
   defaultPayment?: Partial<NewInvoice>;
@@ -190,7 +105,9 @@ type DebtJobDefinition = {
   }[];
 };
 
-export default ({ bus, jobs }: ModuleDeps) => {
+export default async ({ bus, jobs }: ModuleDeps) => {
+  reports(bus);
+
   const linkPaymentToDebt = async (
     pg: Connection,
     payment: string,
@@ -268,174 +185,13 @@ export default ({ bus, jobs }: ModuleDeps) => {
       return components.map(formatDebtComponent);
     },
 
-    async generateDebtStatusReport(
-      { options, generatedBy, parent },
-      { pg },
-      bus,
-    ) {
-      let statusFilter = sql``;
-
-      if (options.includeOnly === 'paid') {
-        statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
-      } else if (options.includeOnly === 'credited') {
-        statusFilter = sql` HAVING debt.credited `;
-      } else if (options.includeOnly === 'open') {
-        statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
-      }
-
-      const dbResults = await pg.many<
-        DbDebt &
-          (
-            | { status: 'paid'; paid_at: Date }
-            | { status: 'open'; paid_at: null }
-          ) & { payment_id: string }
-      >(
-        sql`
-          WITH payment_agg AS (
-            SELECT
-              payment_id,
-              SUM(amount) AS balance,
-              (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
-              (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
-              MAX(time) AS updated_at
-            FROM payment_events e
-            WHERE time < ${options.date} OR type = 'created'
-            GROUP BY payment_id
-          ),
-          payment_statuses AS (
-            SELECT
-              p.id AS payment_id,
-              (
-                SELECT time
-                FROM payment_events e2
-                WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${options.date}
-                ORDER BY e2.time DESC
-                LIMIT 1
-              ) AS paid_at, 
-              CASE
-                  WHEN s.has_cancel_event THEN 'canceled'::payment_status
-                  WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
-                  WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
-                  ELSE 'paid'::payment_status
-              END AS status
-            FROM payment_agg s
-            LEFT JOIN payments p ON p.id = s.payment_id
-            LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-            INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${options.date} 
-            LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
-          )
-          SELECT
-            debt.*,
-            TO_JSON(payer_profiles.*) AS payer,
-            TO_JSON(debt_center.*) AS debt_center,
-            ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-            (
-              SELECT SUM(dc.amount) AS total
-              FROM debt_component_mapping dcm
-              JOIN debt_component dc ON dc.id = dcm.debt_component_id
-              WHERE dcm.debt_id = debt.id
-            ) AS total,
-            (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
-            (CASE
-              WHEN debt.credited THEN 'credited'
-              WHEN bool_or(ps.status = 'paid') THEN 'paid'
-              ELSE 'open'
-            END) status,
-            MIN(ps.paid_at) paid_at,
-            (CASE
-              WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
-            END) payment_id
-          FROM debt
-          LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
-          LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
-          LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-          LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
-          LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-          LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-          WHERE debt.published_at IS NOT NULL
-        `
-          .append(
-            options.centers
-              ? sql` AND debt_center.id = ANY (${options.centers})`
-              : sql``,
-          )
-          .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
-          .append(statusFilter)
-          .append(sql` ORDER BY MIN(ps.paid_at)`),
-      );
-
-      const results = await Promise.all(
-        dbResults.map(
-          async row =>
-            [
-              formatDebt(row),
-              row.status,
-              row.paid_at,
-              row.payment_id
-                ? await bus.exec(paymentService.getPayment, row.payment_id)
-                : null,
-            ] as [Debt, 'open' | 'paid', Date, Payment | null],
-        ),
-      );
-
-      let groups;
-
-      if (options.groupBy) {
-        let getGroupKey: (debt: Debt) => string;
-        let getGroupDetails;
-
-        if (options.groupBy === 'center') {
-          getGroupKey = (debt: Debt) => debt.debtCenterId;
-          getGroupDetails = async (id: string) => {
-            const center = await bus.exec(debtCentersService.getDebtCenter, id);
-            const name = center?.name ?? 'Unknown debt center';
-            const displayId = center?.humanId ?? '???';
-            return { name, id: displayId };
-          };
-        } else {
-          getGroupKey = (debt: Debt) => debt.payerId.value;
-          getGroupDetails = async (id: string) => {
-            const payer = await bus.exec(
-              payerService.getPayerProfileByInternalIdentity,
-              internalIdentity(id),
-            );
-            const name = payer?.name ?? 'Unknown payer';
-            const displayId = payer?.id?.value ?? '???';
-            return { name, id: displayId };
-          };
-        }
-
-        const createGroupUsing =
-          (
-            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
-          ) =>
-          ([key, debts]: [
-            string,
-            [Debt, 'open' | 'paid', Date | null, Payment | null][],
-          ]) =>
-          async () => {
-            const { name, id } = await nameResolver(key);
-            return { name, debts, id };
-          };
-
-        groups = await pipe(
-          results,
-          groupBy(([debt]) => getGroupKey(debt)),
-          toArray,
-          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-        )();
-      } else {
-        groups = [{ debts: results }];
-      }
-
+    async generateDebtStatusReport({ options, generatedBy, parent }, _, bus) {
       const name = `Debt Status Report (${format(options.date, 'dd.MM.yyyy')})`;
 
       const report = await bus.exec(createReport, {
         name,
         template: 'debt-status-report',
         options,
-        payload: { options, groups },
-        scale: 0.7,
         parent: parent ?? undefined,
         generatedBy,
       });
@@ -443,73 +199,7 @@ export default ({ bus, jobs }: ModuleDeps) => {
       return report;
     },
 
-    async generateDebtLedger({ options, generatedBy, parent }, { pg }, bus) {
-      let criteria;
-
-      if (options.includeDrafts === 'include') {
-        criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-      } else if (options.includeDrafts === 'exclude') {
-        criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
-      } else {
-        criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
-      }
-
-      if (options.centers !== null) {
-        console.log(options.centers);
-        criteria = sql`(`
-          .append(criteria)
-          .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
-        console.log(criteria.sql, criteria.values);
-      }
-
-      const debts = await queryDebts(pg, criteria);
-      let groups;
-
-      if (options.groupBy) {
-        let getGroupKey;
-        let getGroupDetails;
-
-        if (options.groupBy === 'center') {
-          getGroupKey = (debt: Debt) => debt.debtCenterId;
-          getGroupDetails = async (id: string) => {
-            const center = await bus.exec(debtCentersService.getDebtCenter, id);
-            const name = center?.name ?? 'Unknown debt center';
-            const displayId = center?.humanId ?? '???';
-            return { name, id: displayId };
-          };
-        } else {
-          getGroupKey = (debt: Debt) => debt.payerId.value;
-          getGroupDetails = async (id: string) => {
-            const payer = await bus.exec(
-              payerService.getPayerProfileByInternalIdentity,
-              internalIdentity(id),
-            );
-            const name = payer?.name ?? 'Unknown payer';
-            const displayId = payer?.id?.value ?? '???';
-            return { name, id: displayId };
-          };
-        }
-
-        const createGroupUsing =
-          (
-            nameResolver: (id: string) => Promise<{ name: string; id: string }>,
-          ) =>
-          ([key, debts]: [string, Debt[]]) =>
-          async () => {
-            const { name, id } = await nameResolver(key);
-            return { name, debts, id };
-          };
-
-        groups = await pipe(
-          debts,
-          groupBy(getGroupKey),
-          toArray,
-          A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
-        )();
-      } else {
-        groups = [{ debts }];
-      }
-
+    async generateDebtLedger({ options, generatedBy, parent }, _, bus) {
       const name = `Debt Ledger ${format(
         options.startDate,
         'dd.MM.yyyy',
@@ -519,7 +209,6 @@ export default ({ bus, jobs }: ModuleDeps) => {
         name,
         template: 'debt-ledger',
         options,
-        payload: { options, groups },
         parent: parent ?? undefined,
         generatedBy,
       });
@@ -1395,42 +1084,6 @@ export default ({ bus, jobs }: ModuleDeps) => {
     },
   );
 
-  async function queryDebts(
-    pg: Connection,
-    where?: SQLStatement,
-  ): Promise<Array<Debt>> {
-    let query = sql`
-      SELECT
-        debt.*,
-        TO_JSON(payer_profiles.*) AS payer,
-        TO_JSON(debt_center.*) AS debt_center,
-        CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-        ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-        COALESCE((
-          SELECT SUM(dc.amount) AS total
-          FROM debt_component_mapping dcm
-          JOIN debt_component dc ON dc.id = dcm.debt_component_id
-          WHERE dcm.debt_id = debt.id
-        ), 0) AS total,
-        (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
-      FROM debt
-      JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-      JOIN debt_center ON debt_center.id = debt.debt_center_id
-      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-      LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-    `;
-
-    if (where) {
-      query = query.append(' WHERE ').append(where).append(' ');
-    }
-
-    query = query.append(
-      sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`,
-    );
-
-    return pg.many<DbDebt>(query).then(debts => debts.map(formatDebt));
-  }
-
   bus.register(defs.getDebtsByTag, async (tag, { pg }) => {
     return queryDebts(
       pg,
@@ -2042,5 +1695,5 @@ export default ({ bus, jobs }: ModuleDeps) => {
     },
   );
 
-  jobs.createWorker('debts', handleDebtJob);
+  await jobs.createWorker('debts', handleDebtJob);
 };

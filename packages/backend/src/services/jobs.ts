@@ -4,9 +4,10 @@ import {
   ConnectionOptions,
   FlowJob,
   FlowProducer,
-  // Processor as BaseProcessor,
+  Processor as BaseProcessor,
   Queue,
   WorkerOptions,
+  Worker,
   Job,
 } from 'bullmq';
 import { Config } from '../config';
@@ -14,6 +15,7 @@ import { ExecutionContext, LocalBus } from '@/bus';
 import { BusContext } from '@/app';
 // import { PoolConnection } from '@/db';
 import { shutdown } from '@/orchestrator';
+import { PoolConnection } from '@/db';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -91,19 +93,35 @@ export class JobService {
     return flow.children[0];
   }
 
-  createWorker(
-    _queue: string,
-    _processor: Processor,
-    _options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
+  async createWorker<T, R>(
+    queue: string,
+    processor: Processor<T, R>,
+    options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
-    // TODO
-
-    /*const callback: BaseProcessor = async (job, token) => {
+    const callback: BaseProcessor = async (job, token) => {
       const conn = await this.pool.connect();
+      console.log('CONNECT!');
+
+      await conn.query('BEGIN');
 
       const ctx = this.bus.createContext({ pg: new PoolConnection(conn) });
 
-      return processor(ctx, job, token);
+      let failed = false;
+
+      try {
+        return await processor(ctx, job, token);
+      } catch (err) {
+        failed = true;
+        throw err;
+      } finally {
+        if (failed) {
+          await conn.query('ROLLBACK');
+        } else {
+          await conn.query('COMMIT');
+        }
+
+        conn.release();
+      }
     };
 
     const worker = new Worker(queue, callback, {
@@ -111,11 +129,13 @@ export class JobService {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
+
     this.bus.on(shutdown, async () => {
-      console.log('Shutting down queue worker...');
-      await worker.close();
-    });*/
-    return {} as any; // worker;
+      await worker.close(true);
+      await worker.disconnect();
+    });
+
+    return worker;
   }
 
   async getJob(queueName: string, id: string) {

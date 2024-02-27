@@ -1,4 +1,4 @@
-import { createScope } from '@/bus';
+import { createInterface, createScope } from '@/bus';
 import * as types from '@bbat/common/types';
 import * as t from 'io-ts';
 
@@ -10,7 +10,6 @@ export const createReport = scope.defineProcedure({
     t.type({
       template: t.string,
       name: t.string,
-      payload: t.unknown,
       options: t.unknown,
       generatedBy: types.internalIdentityT,
     }),
@@ -48,3 +47,24 @@ export const refreshReport = scope.defineProcedure({
   }),
   response: types.reportWithoutHistory,
 });
+
+export const reportTypeIface = createInterface('reportType', builder => ({
+  getDetails: builder.proc({
+    payload: t.void,
+    response: t.intersection([
+      t.type({
+        template: t.string,
+      }),
+      t.partial({
+        scale: t.number,
+      }),
+    ]),
+  }),
+
+  generate: builder.proc({
+    payload: t.type({
+      options: t.unknown,
+    }),
+    response: t.unknown,
+  }),
+}));
