@@ -307,4 +307,80 @@ test.describe('manual registration', () => {
       }
     });
   }
+
+  test('registration removal', async ({ page, bbat }) => {
+    const payment = await bbat.withContext(async ctx => {
+      return ctx.exec(createPayment, {
+        payment: {
+          type: 'invoice',
+          amount: euro(10),
+          data: {},
+          title: `Test Payment`,
+          message: `Test Message`,
+        },
+        options: {
+          referenceNumber: 'RF4974154318938921639933',
+        },
+      });
+    });
+
+    await page.goto(bbat.url);
+
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+    await bbat.login({});
+
+    await createBankAccount(bbat);
+
+    await page.getByRole('button', { name: 'Import bank statement' }).click();
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Select file' }).click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles([
+      {
+        name: 'statement.xml',
+        mimeType: 'application/xml',
+        buffer: Buffer.from(
+          await bbat.readFixture('camt/single-payment.xml'),
+          'utf-8',
+        ),
+      },
+    ]);
+
+    await page.getByRole('button', { name: 'Submit' }).click();
+
+    const table = bbat.table(
+      bbat.getResourceSection('Transactions').getByRole('table'),
+    );
+
+    await expect(table.rows()).toHaveCount(1);
+    await expect(table.row(0).getCell('Payment')).toHaveText(
+      payment.paymentNumber,
+    );
+    await table
+      .row(0)
+      .getCell('Payment')
+      .getByText(payment.paymentNumber)
+      .click();
+    await expect(
+      page.getByText(`Payment of ${formatEuro(euro(10))}`),
+    ).toBeVisible();
+    await expect(bbat.getResourceField('Status')).toHaveText('Paid');
+    const paymentPage = page.url();
+    await page.goBack();
+    await table.rows().nth(0).getByRole('button').click();
+    await page.getByRole('button', { name: 'Register' }).click();
+    const dialog = bbat.getDialog('Register transaction');
+    await dialog.getByRole('button', { name: 'Remove' }).click();
+    await dialog.getByRole('button', { name: 'Register' }).click();
+    await expect(table.row(0).getCell('Payment')).toHaveText('');
+    await page.goto(paymentPage);
+    await expect(bbat.getResourceField('Status')).toHaveText('Unpaid');
+    await expect(
+      page.getByText(`Payment of ${formatEuro(euro(10))}`),
+    ).not.toBeVisible();
+  });
 });
