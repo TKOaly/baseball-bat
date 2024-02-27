@@ -114,6 +114,7 @@ const paymentsApi = rtkApi.injectEndpoints({
         body: { transactionId, amount },
       }),
       invalidatesTags: (_, __, { paymentId, transactionId }) => [
+        { type: 'PaymentEvent' as const, id: 'LIST' },
         { type: 'BankTransaction', id: 'LIST' },
         { type: 'BankTransaction', id: transactionId },
         { type: 'Payment', id: paymentId },
