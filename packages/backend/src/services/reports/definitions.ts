@@ -1,4 +1,4 @@
-import { createInterface, createScope } from '@/bus';
+import { createInterface, createScope, defineEvent } from '@/bus';
 import * as types from '@bbat/common/types';
 import * as t from 'io-ts';
 
@@ -68,3 +68,11 @@ export const reportTypeIface = createInterface('reportType', builder => ({
     response: t.unknown,
   }),
 }));
+
+export const onReportStatusChanged = defineEvent(
+  'reports:reportStatusChanged',
+  t.type({
+    report: t.string,
+    status: types.reportStatus,
+  }),
+);

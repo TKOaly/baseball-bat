@@ -944,13 +944,15 @@ export type DbReport = {
   generated_by: string;
 };
 
+export const reportStatus = t.union([
+  t.literal('generating'),
+  t.literal('failed'),
+  t.literal('finished'),
+]);
+
 export const reportWithoutHistory = t.type({
   id: t.string,
-  status: t.union([
-    t.literal('generating'),
-    t.literal('failed'),
-    t.literal('finished'),
-  ]),
+  status: reportStatus,
   name: t.string,
   generatedAt: tt.date,
   humanId: t.string,

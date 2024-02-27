@@ -169,6 +169,7 @@ type TestContext = Parameters<TestFn>[0];
 
 class UnitTestEnvironment extends TestEnvironment {
   public bus!: ExecutionContext<BusContext>;
+  public busRoot!: LocalBus<BusContext>;
 
   constructor(
     public t: TestContext,
@@ -186,6 +187,7 @@ export default (name: string, callback: CustomSuiteFn) =>
         try {
           await startServices(env);
           const testEnv = new UnitTestEnvironment(t, env);
+          testEnv.busRoot = await testEnv.env.get('bus');
           await testEnv.withContext(async ctx => {
             testEnv.bus = ctx;
             await fn(testEnv);

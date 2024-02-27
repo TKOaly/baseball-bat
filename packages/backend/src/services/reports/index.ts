@@ -446,9 +446,17 @@ export default async ({ config, bus, jobs }: ModuleDeps) => {
 
       await saveReport(report.id, pdf);
       await updateReportStatus(ctx.context.pg, report.id, 'finished');
+      await ctx.emit(defs.onReportStatusChanged, {
+        report: id,
+        status: 'finished',
+      });
     } catch (err) {
       console.error('Report generation failed: ', err);
       await updateReportStatus(ctx.context.pg, report.id, 'failed');
+      await ctx.emit(defs.onReportStatusChanged, {
+        report: id,
+        status: 'failed',
+      });
       throw err;
     }
   });
