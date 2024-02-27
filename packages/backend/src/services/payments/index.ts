@@ -26,9 +26,10 @@ import * as A from 'fp-ts/lib/ReadonlyArray';
 import * as T from 'fp-ts/lib/Task';
 import { isLeft } from 'fp-ts/lib/Either';
 import * as R from 'remeda';
-import { formatDebt } from '../debts';
+import { formatDebt } from '../debts/query';
 import { formatPayerProfile } from '../payers';
 import { toArray } from 'fp-ts/lib/Record';
+import { getDebtCenter } from '../debt-centers/definitions';
 
 export class RegistrationError extends Error {}
 

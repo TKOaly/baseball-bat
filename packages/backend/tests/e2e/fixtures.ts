@@ -43,7 +43,11 @@ export class E2ETestEnvironment extends TestEnvironment {
       .locator('.resource-section-content');
   }
 
-  getDialog(title: string | RegExp) {
+  getDialog(title?: string | RegExp) {
+    if (!title) {
+      return this.page.locator('.dialog-base');
+    }
+
     return this.page.locator('.dialog-base').filter({
       has: this.page.locator('.dialog-header', { hasText: title }),
     });
