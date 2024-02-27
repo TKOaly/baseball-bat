@@ -43,6 +43,12 @@ export class E2ETestEnvironment extends TestEnvironment {
       .locator('.resource-section-content');
   }
 
+  getDialog(title: string | RegExp) {
+    return this.page.locator('.dialog-base').filter({
+      has: this.page.locator('.dialog-header', { hasText: title }),
+    });
+  }
+
   async login(user: Partial<UpstreamUser>) {
     await this.mockProcedure(
       getUpstreamUserById,

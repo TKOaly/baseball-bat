@@ -199,7 +199,11 @@ export const DialogContent = ({ children }: { children: ReactNode }) => {
 };
 
 export const DialogHeader = ({ children }: { children: ReactNode }) => {
-  return <div className="flex gap-3 items-center p-3 border-b">{children}</div>;
+  return (
+    <div className="dialog-header flex gap-3 items-center p-3 border-b">
+      {children}
+    </div>
+  );
 };
 
 export const DialogFooter = ({ children }: { children: ReactNode }) => {

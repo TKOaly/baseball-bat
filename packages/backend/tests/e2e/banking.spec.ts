@@ -2,6 +2,8 @@ import { expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { euro, formatEuro } from '@bbat/common/currency';
 import { createPayment } from '@/services/payments/definitions';
+import { groupBy } from 'fp-ts/lib/ReadonlyNonEmptyArray';
+import { pipe } from 'fp-ts/lib/function';
 
 const GROUPED_IBAN = 'FI79 9359 4446 8357 68';
 const IBAN = GROUPED_IBAN.replaceAll(' ', '');
@@ -170,4 +172,139 @@ test('automatic payment registration', async ({ page, bbat }) => {
   await expect(table.rows()).toHaveCount(1);
   const row = table.row(0);
   await expect(row.getCell('Payment')).toHaveText(payment.paymentNumber);
+});
+
+test.describe('manual registration', () => {
+  type TestParams = [number[], [number, number, number][], boolean, string];
+
+  // prettier-ignore
+  const params: TestParams[] = [
+    [[10    ], [[0, 0, 10]            ],  true, '1 payment, 1 transaction, exact amount'],
+    [[10    ], [[1, 0, 10]            ], false, '1 payment, 1 transaction, transaction amount surpassed'],
+    [[ 5    ], [[0, 0, 10]            ],  true, '1 payment, 1 transaction, payment amount surpassed'],
+    [[10    ], [[0, 0,  5], [1, 0,  5]],  true, '1 payment, 2 transactions, exact amount'],
+    [[10    ], [[0, 0,  6], [1, 0,  5]],  true, '1 payment, 2 transactions, payment amount surpassed'],
+    [[10    ], [[0, 0,  4], [1, 0,  6]], false, '1 payment, 2 transactions, transaction amount surpassed'],
+    [[ 5,  5], [[0, 0,  5], [0, 1,  5]],  true, '2 payments, 1 transactions, exact amount'],
+    [[ 5, 10], [[0, 0,  5], [0, 1,  6]], false, '2 payments, 1 transactions, transaction amount surpassed'],
+    [[ 5, 10], [[0, 0,  5], [0, 1,  6]], false, '2 payments, 2 transactions, transaction amount surpassed'],
+  ];
+
+  for (const [paymentAmounts, registrations, shouldSucceed, name] of params) {
+    test(`${name}${shouldSucceed ? '' : ' (fail)'}`, async ({ page, bbat }) => {
+      const payments = await bbat.withContext(async ctx => {
+        return Promise.all(
+          paymentAmounts.map((amount, i) =>
+            ctx.exec(createPayment, {
+              payment: {
+                type: 'invoice',
+                amount: euro(amount),
+                data: {},
+                title: `Test Payment #${i}`,
+                message: `Test Message #${i}`,
+              },
+            }),
+          ),
+        );
+      });
+
+      await page.goto(bbat.url);
+
+      await page
+        .context()
+        .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+      await bbat.login({});
+
+      await createBankAccount(bbat);
+
+      await page.getByRole('button', { name: 'Import bank statement' }).click();
+
+      const fileChooserPromise = page.waitForEvent('filechooser');
+      await page.getByRole('button', { name: 'Select file' }).click();
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles([
+        {
+          name: 'statement.xml',
+          mimeType: 'application/xml',
+          buffer: Buffer.from(
+            await bbat.readFixture('camt/two-payments.xml'),
+            'utf-8',
+          ),
+        },
+      ]);
+
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      const table = bbat.table(
+        bbat.getResourceSection('Transactions').getByRole('table'),
+      );
+
+      await expect(table.rows()).toHaveCount(2);
+
+      for (const [transactionIndex, paymentIndex, amount] of registrations) {
+        await table.rows().nth(transactionIndex).getByRole('button').click();
+        await page.getByRole('button', { name: 'Register' }).click();
+        const dialog = bbat.getDialog('Register transaction');
+
+        await expect(dialog.getByRole('table')).toBeVisible();
+        const table2 = bbat.table(dialog.getByRole('table'));
+
+        await dialog.getByRole('button', { name: 'Add row' }).click();
+        const last = await table2.rowCount();
+
+        await table2
+          .row(last - 1)
+          .getCell('Amount')
+          .locator('input')
+          .fill(`${amount}`);
+        await table2
+          .row(last - 1)
+          .getCell('Payment')
+          .getByText(/Select a payment/)
+          .click();
+
+        const dialog2 = bbat.getDialog('Select a payment');
+
+        await dialog2
+          .getByPlaceholder('Search...')
+          .fill(payments[paymentIndex].humanId);
+        await dialog2.getByText(payments[paymentIndex].title).click();
+
+        const registerButton = dialog.getByRole('button', { name: 'Register' });
+        await expect(registerButton).toBeVisible();
+
+        if (shouldSucceed) {
+          await expect(registerButton).not.toBeDisabled();
+        } else {
+          const disabled = await registerButton.isDisabled();
+
+          if (disabled) {
+            return;
+          }
+        }
+
+        await registerButton.click();
+      }
+
+      const grouped = pipe(
+        registrations,
+        groupBy(r => r[0].toString()),
+      );
+
+      for (const [txi, pis] of Object.entries(grouped)) {
+        const cell = table.row(parseInt(txi)).getCell('Payment');
+
+        if (pis.length === 1) {
+          await expect(cell).toHaveText(payments[pis[0][1]].paymentNumber);
+        } else {
+          await expect(cell).toHaveText(`${pis.length} payments`);
+        }
+      }
+
+      if (!shouldSucceed) {
+        throw new Error('Test was expected to fail!');
+      }
+    });
+  }
 });
