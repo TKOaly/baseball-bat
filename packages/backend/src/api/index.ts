@@ -17,13 +17,14 @@ import { Config } from '@/config';
 import { AuthService } from '@/auth-middleware';
 import { JobService } from '@/services/jobs';
 import Stripe from 'stripe';
-import { PgClient, PoolConnection } from '@/db';
 import { RedisClientType } from 'redis';
 import { BusContext } from '@/app';
 import search from './search';
+import { Pool, Connection } from '@/db/connection';
+import dbMiddleware from '@/db/middleware';
 
 export type BusMiddleware = Middleware.ChainedMiddleware<
-  { pg: PoolConnection },
+  { pg: Connection },
   { bus: ExecutionContext<BusContext> },
   never
 >;
@@ -34,8 +35,8 @@ export const busMiddleware =
     return Middleware.next({ bus: bus.createContext({ pg }) });
   };
 
-export const createBaseRoute = ({ bus, pg }: ApiDeps) =>
-  route.use(pg.middleware()).use(busMiddleware(bus));
+export const createBaseRoute = ({ bus, pool }: ApiDeps) =>
+  route.use(dbMiddleware(pool)).use(busMiddleware(bus));
 
 type BaseRoute = ReturnType<typeof createBaseRoute>;
 
@@ -44,7 +45,7 @@ export type ApiDeps = {
   config: Config;
   redis: RedisClientType;
   auth: AuthService;
-  pg: PgClient;
+  pool: Pool;
   jobs: JobService;
   stripe: Stripe;
 };

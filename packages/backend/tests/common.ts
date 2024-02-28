@@ -17,7 +17,7 @@ import {
   ProcedureHandler,
   ProcedureType,
 } from '@/bus';
-import { PgClient, PoolConnection } from '@/db';
+import { Pool } from '@/db/connection';
 import { IEmailTransport } from '@/services/email';
 import { JobService } from '@/services/jobs';
 import Stripe from 'stripe';
@@ -68,10 +68,11 @@ export class Environment {
         const bus = new LocalBus<BusContext>();
 
         env.onTeardown(async () => {
-          const conn = await (await env.get('pg')).conn.connect();
-          const pg = new PoolConnection(conn);
-          await bus.createContext({ pg }).emit(shutdown);
-          conn.release();
+          const pool = await env.get('pool');
+
+          await pool.withConnection(pg =>
+            bus.createContext({ pg }).emit(shutdown),
+          );
         });
 
         return bus;
@@ -96,20 +97,20 @@ export class Environment {
           redis: await env.get('redis'),
           config: env.config,
         }),
-      pg: async env => {
-        const pg = PgClient.create(env.config.dbUrl);
+      pool: async env => {
+        const pool = new Pool(env.config.dbUrl);
 
-        env.onTeardown(() => pg.conn.end());
+        env.onTeardown(() => pool.end());
 
-        return pg;
+        return pool;
       },
-      jobs: async env =>
-        new JobService(
-          env.config,
-          await env.get('redis'),
-          await env.get('bus'),
-          (await env.get('pg')).conn,
-        ),
+      jobs: async env => {
+        const pool = await env.get('pool');
+        const redis = await env.get('redis');
+        const bus = await env.get('bus');
+
+        return new JobService(env.config, redis, bus, pool);
+      },
       stripe: async env =>
         new Stripe(env.config.stripeSecretKey, {
           apiVersion: '2020-08-27',
@@ -191,23 +192,13 @@ export class TestEnvironment {
   withContext = async <T>(
     fn: (ctx: ExecutionContext<BusContext>) => Promise<T>,
   ): Promise<T> => {
-    const pg = await this.env.get('pg');
+    const pool = await this.env.get('pool');
     const bus = await this.env.get('bus');
-    const conn = await pg.conn.connect();
 
-    await conn.query('BEGIN');
-
-    const ctx = bus.createContext({
-      pg: new PoolConnection(conn),
+    return pool.tryWithConnection(async pg => {
+      const ctx = bus.createContext({ pg });
+      return await fn(ctx);
     });
-
-    try {
-      const result = await fn(ctx);
-      await conn.query('COMMIT');
-      return result;
-    } finally {
-      conn.release();
-    }
   };
 
   readFixture = async (name: string) => {
@@ -265,7 +256,7 @@ export const createEnvironment = async (): Promise<Environment> => {
 
 export const startServices = async (env: Environment) => {
   await setupServices({
-    pg: await env.get('pg'),
+    pool: await env.get('pool'),
     config: env.config,
     bus: await env.get('bus'),
     redis: await env.get('redis'),
@@ -277,7 +268,7 @@ export const startServices = async (env: Environment) => {
 
 export const startServer = async (env: Environment) => {
   const app = await server({
-    pg: await env.get('pg'),
+    pool: await env.get('pool'),
     config: env.config,
     bus: await env.get('bus'),
     redis: await env.get('redis'),

@@ -1,6 +1,7 @@
 import { emailIdentity } from '@bbat/common/types';
 import setup from './setup';
 import * as defs from '@/services/reports/definitions';
+import sql from 'sql-template-strings';
 import { createPayerProfileFromEmailIdentity } from '@/services/payers/definitions';
 import assert from 'assert';
 import parsePdf from 'pdf-parse';
@@ -27,7 +28,7 @@ setup('Reports service', ({ test }) => {
       generatedBy: payer.id,
     });
 
-    bus.context.pg.conn.query('COMMIT; BEGIN');
+    bus.context.pg.do(sql`COMMIT; BEGIN`);
 
     assert.equal(report.status, 'generating');
 

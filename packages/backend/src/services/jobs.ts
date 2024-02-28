@@ -1,5 +1,4 @@
 import { RedisClientType } from 'redis';
-import pg from 'pg';
 import {
   ConnectionOptions,
   FlowJob,
@@ -14,9 +13,8 @@ import {
 import { Config } from '../config';
 import { ExecutionContext, LocalBus } from '@/bus';
 import { BusContext } from '@/app';
-// import { PoolConnection } from '@/db';
 import { shutdown } from '@/orchestrator';
-import { PoolConnection } from '@/db';
+import { Pool } from '@/db/connection';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -42,7 +40,7 @@ export class JobService {
     public config: Config,
     private redis: RedisClientType,
     private bus: LocalBus<BusContext>,
-    private pool: pg.Pool,
+    private pool: Pool,
   ) {
     const events = new QueueEvents('reports', {
       connection: this.getConnectionConfig(),
@@ -113,29 +111,13 @@ export class JobService {
     options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
     const callback: BaseProcessor = async (job, token) => {
-      const conn = await this.pool.connect();
-      console.log('CONNECT!');
+      const pg = await this.pool.connect();
 
-      await conn.query('BEGIN');
+      const ctx = this.bus.createContext({ pg });
 
-      const ctx = this.bus.createContext({ pg: new PoolConnection(conn) });
-
-      let failed = false;
-
-      try {
-        return await processor(ctx, job, token);
-      } catch (err) {
-        failed = true;
-        throw err;
-      } finally {
-        if (failed) {
-          await conn.query('ROLLBACK');
-        } else {
-          await conn.query('COMMIT');
-        }
-
-        conn.release();
-      }
+      return pg.try(async () => {
+        return processor(ctx, job, token);
+      });
     };
 
     const worker = new Worker(queue, callback, {

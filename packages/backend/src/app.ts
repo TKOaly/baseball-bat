@@ -7,7 +7,7 @@ import { Config } from './config';
 import apiRoutes, { ApiDeps } from './api';
 import cookieParser from 'cookie-parser';
 import Stripe from 'stripe';
-import { PgClient, PoolConnection } from './db';
+import { Pool, Connection } from './db/connection';
 import cors from 'cors';
 import helmet, { HelmetOptions } from 'helmet';
 import * as redis from 'redis';
@@ -56,7 +56,7 @@ const stripeClient = new Stripe(config.stripeSecretKey, {
   apiVersion: '2020-08-27',
 });
 
-const pg = PgClient.create(config.dbUrl);
+const pool = new Pool(config.dbUrl);
 
 const redisClient = redis.createClient({
   url: config.redisUrl,
@@ -73,22 +73,17 @@ if (config.emailDispatcher) {
 }
 
 export type BusContext = {
-  pg: PoolConnection;
+  pg: Connection;
 };
 
 const bus = new LocalBus<BusContext>();
 
 // bus.on(shutdown, () => redisClient.shutdown());
 
-const jobs = new JobService(
-  config,
-  redisClient as RedisClientType,
-  bus,
-  pg.conn,
-);
+const jobs = new JobService(config, redisClient as RedisClientType, bus, pool);
 
 const moduleDeps = {
-  pg,
+  pool,
   config,
   bus,
   redis: redisClient,
@@ -102,7 +97,7 @@ const auth = authServiceFactory(moduleDeps);
 export type ModuleDeps = typeof moduleDeps;
 
 const apiDeps: ApiDeps = {
-  pg,
+  pool,
   bus,
   jobs,
   redis: redisClient as RedisClientType,

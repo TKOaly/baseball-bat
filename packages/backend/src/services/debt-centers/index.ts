@@ -25,10 +25,10 @@ export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   url: debtCenter.url,
 });
 
-export default ({ pg, bus }: ModuleDeps) => {
-  bus.register(defs.getDebtCenters, async () => {
+export default ({ bus }: ModuleDeps) => {
+  bus.register(defs.getDebtCenters, async (_, { pg }) => {
     return pg
-      .any<DbDebtCenter>(
+      .many<DbDebtCenter>(
         sql`
         SELECT
           dc.*,
@@ -49,23 +49,23 @@ export default ({ pg, bus }: ModuleDeps) => {
       .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter));
   });
 
-  bus.register(defs.getDebtCenterByName, name => {
-    return pg
-      .one<DbDebtCenter>(
-        sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`,
-      )
-      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
+  bus.register(defs.getDebtCenterByName, async (name, { pg }) => {
+    const dbDebtCenter = await pg.one<DbDebtCenter>(
+      sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`,
+    );
+
+    return dbDebtCenter && formatDebtCenter(dbDebtCenter);
   });
 
-  bus.register(defs.getDebtCenter, async id => {
-    return pg
-      .one<DbDebtCenter>(
-        sql`SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted`,
-      )
-      .then(dbDebtCenters => dbDebtCenters && formatDebtCenter(dbDebtCenters));
+  bus.register(defs.getDebtCenter, async (id, { pg }) => {
+    const dbDebtCenter = await pg.one<DbDebtCenter>(sql`
+      SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted
+    `);
+
+    return dbDebtCenter && formatDebtCenter(dbDebtCenter);
   });
 
-  bus.register(defs.createDebtCenter, async (center, _, bus) => {
+  bus.register(defs.createDebtCenter, async (center, { pg }, bus) => {
     const accounting = bus.getInterface(accountingIface);
 
     const isAccountingPeriodOpenResult = accounting.isAccountingPeriodOpen(
@@ -100,7 +100,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     return result;
   });
 
-  bus.register(defs.deleteDebtCenter, async id => {
+  bus.register(defs.deleteDebtCenter, async (id, { pg }) => {
     const center = await pg.one<DbDebtCenter>(sql`
         UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
       `);
@@ -108,7 +108,7 @@ export default ({ pg, bus }: ModuleDeps) => {
     return center && formatDebtCenter(center);
   });
 
-  bus.register(defs.updateDebtCenter, async (center, _, bus) => {
+  bus.register(defs.updateDebtCenter, async (center, { pg }, bus) => {
     const existing = await bus.exec(defs.getDebtCenter, center.id);
 
     if (!existing) {
