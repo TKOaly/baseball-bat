@@ -9,7 +9,7 @@ Invoice Breakdown
 <%
 
 function formatLine(padding, left, right) {
-  return `${' '.repeat(padding)}${left} ${'.'.repeat(Math.max(50-right.length-left.length-padding-2))} ${right}`;
+  return `${' '.repeat(padding)}${left} ${'.'.repeat(Math.max(50-right.length-left.length-padding-2, 2))} ${right}`;
 }
 
 %>
