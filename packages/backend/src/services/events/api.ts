@@ -1,35 +1,14 @@
 import { router } from 'typera-express';
 import { ok } from 'typera-express/response';
 import * as eventsService from '@/services/events/definitions';
+import auth from '@/auth-middleware';
 import * as dfn from 'date-fns';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth }, route) => {
-  /*getEvents() {
-    return route
-      .get('/')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ({ session }) => {
-        const payerProfile = await this.payerService.getPayerProfileByInternalIdentity(internalIdentity(session.payerId));
-
-        if (!payerProfile || !payerProfile.tkoalyUserId) {
-          return ok([]);
-        }
-
-        const events = await this.eventsService.getEvents(payerProfile.tkoalyUserId);
-
-        const withStatus = await this.payerService.getEventsWithPaymentStatus(
-          payerProfile.id,
-          events,
-        );
-
-        return ok(withStatus);
-      });
-  }*/
-
+const factory: RouterFactory = route => {
   const getEventRegistrations = route
     .get('/:id(int)/registrations')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const registrations = await bus.exec(
         eventsService.getEventRegistrations,
@@ -40,7 +19,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getEventCustomFields = route
     .get('/:id(int)/fields')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const fields = await bus.exec(
         eventsService.getEventCustomFields,
@@ -51,7 +30,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getAllEvents = route
     .get('/all')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const events = await bus.exec(eventsService.getEvents, {
         starting:

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import routes from './api';
 import sql from 'sql-template-strings';
 import mjml2html from 'mjml';
 import nodemailer from 'nodemailer';
@@ -21,10 +22,11 @@ import {
 } from '@bbat/common/build/src/virtual-barcode';
 import { formatReferenceNumber } from '../payments';
 import { Job } from 'bullmq';
-import { BusContext, ModuleDeps } from '@/app';
+import { BusContext } from '@/app';
 import iface, * as defs from './definitions';
 import { Connection } from '@/db/connection';
 import { ExecutionContext } from '@/bus';
+import { createModule } from '@/module';
 
 const formatEmail = (email: DbEmail): Email => ({
   id: email.id,
@@ -133,278 +135,279 @@ const TemplateType = {
 
 type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
 
-export default async ({
-  jobs,
-  config,
-  bus,
-  emailTransport: transport,
-}: ModuleDeps) => {
-  async function handleEmailJob(
-    ctx: ExecutionContext<BusContext>,
-    job: EmailJob,
-  ) {
-    if (job.name === 'send') {
-      try {
-        await _sendEmail(ctx, ctx.context.pg, job.data.emailId);
-      } catch (err) {
-        return {
-          result: 'error',
-          message: `Sending email failed: ${err}`,
-        };
-      }
+export default createModule({
+  name: 'emails',
 
-      return { result: 'success' };
-    } else {
-      return { result: 'success' };
-    }
-  }
+  routes,
 
-  const templatesDir = path.resolve(config.assetPath, 'templates/emails');
-
-  async function getTemplatePath(name: string, type: TemplateType) {
-    const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
-
-    for (const ext of exts) {
-      const filepath = path.resolve(templatesDir, `${name}.${ext}`);
-
-      try {
-        const result = await fs.stat(filepath);
-
-        if (result.isFile()) {
-          return filepath;
+  async setup({ jobs, config, bus, emailTransport: transport }) {
+    async function handleEmailJob(
+      ctx: ExecutionContext<BusContext>,
+      job: EmailJob,
+    ) {
+      if (job.name === 'send') {
+        try {
+          await _sendEmail(ctx, ctx.context.pg, job.data.emailId);
+        } catch (err) {
+          return {
+            result: 'error',
+            message: `Sending email failed: ${err}`,
+          };
         }
-      } catch (err) {
-        continue;
+
+        return { result: 'success' };
+      } else {
+        return { result: 'success' };
       }
     }
 
-    throw new Error(
-      `Could not find template "${name}" of type "${type}" from ${templatesDir}`,
-    );
-  }
+    const templatesDir = path.resolve(config.assetPath, 'templates/emails');
 
-  async function sendRawEmail(options: EmailTransportOptions) {
-    return transport.sendEmail(options);
-  }
+    async function getTemplatePath(name: string, type: TemplateType) {
+      const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
 
-  bus.provide(iface, {
-    async sendEmailDirect(options) {
-      const html = await renderTemplate(
-        options.template,
-        TemplateType.HTML,
-        options.payload,
-      );
-      const text = await renderTemplate(
-        options.template,
-        TemplateType.TEXT,
-        options.payload,
-      );
+      for (const ext of exts) {
+        const filepath = path.resolve(templatesDir, `${name}.${ext}`);
 
-      if (!text) {
-        return Promise.reject();
+        try {
+          const result = await fs.stat(filepath);
+
+          if (result.isFile()) {
+            return filepath;
+          }
+        } catch (err) {
+          continue;
+        }
       }
 
-      return sendRawEmail({
-        to: options.recipient,
+      throw new Error(
+        `Could not find template "${name}" of type "${type}" from ${templatesDir}`,
+      );
+    }
+
+    async function sendRawEmail(options: EmailTransportOptions) {
+      return transport.sendEmail(options);
+    }
+
+    bus.provide(iface, {
+      async sendEmailDirect(options) {
+        const html = await renderTemplate(
+          options.template,
+          TemplateType.HTML,
+          options.payload,
+        );
+        const text = await renderTemplate(
+          options.template,
+          TemplateType.TEXT,
+          options.payload,
+        );
+
+        if (!text) {
+          return Promise.reject();
+        }
+
+        return sendRawEmail({
+          to: options.recipient,
+          from: 'velat@tko-aly.fi',
+          replyTo: 'rahastonhoitaja@tko-aly.fi',
+          subject: options.subject,
+          text,
+          html,
+        });
+      },
+
+      async createEmail(email, { pg }) {
+        const html = await renderTemplate(
+          email.template,
+          TemplateType.HTML,
+          email.payload,
+        );
+        const text = await renderTemplate(
+          email.template,
+          TemplateType.TEXT,
+          email.payload,
+        );
+
+        const result = await pg.one<DbEmail>(sql`
+            INSERT INTO emails (recipient, subject, template, html, text)
+            VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
+            RETURNING *
+         `);
+
+        if (!result) {
+          throw new Error('Failed to create email!');
+        }
+
+        if (email.debts) {
+          await Promise.all(
+            email.debts.map(debt =>
+              pg.many(sql`
+                INSERT INTO email_debt_mapping (email_id, debt_id)
+                VALUES (${result.id}, ${debt})
+              `),
+            ),
+          );
+        }
+
+        return formatEmail(result);
+      },
+
+      async batchSendEmails(ids, _, bus) {
+        const children = await Promise.all(
+          ids.map(id => createEmailJobDescription(bus, id)),
+        );
+
+        await jobs.createJob({
+          queueName: 'emails',
+          name: 'batch',
+          data: { name: `Send ${ids.length} emails` },
+          children,
+        });
+      },
+
+      async sendEmail(id, _, bus) {
+        const description = await createEmailJobDescription(bus, id);
+
+        await jobs.createJob(description);
+      },
+
+      async getEmails(_, { pg }) {
+        const emails = await pg.many<DbEmail>(sql`SELECT * FROM emails`);
+
+        return emails.map(formatEmail);
+      },
+
+      async getEmail(id, { pg }) {
+        const email = await pg.one<DbEmail>(
+          sql`SELECT * FROM emails WHERE id = ${id}`,
+        );
+
+        return email && formatEmail(email);
+      },
+
+      async getEmailsByDebt(debt, { pg }) {
+        const emails = await pg.many<DbEmail>(sql`
+            SELECT emails.*
+            FROM email_debt_mapping edm
+            JOIN emails ON emails.id = edm.email_id
+            WHERE edm.debt_id = ${debt}
+          `);
+
+        return emails.map(formatEmail);
+      },
+    });
+
+    async function renderTemplate(
+      name: string,
+      type: TemplateType,
+      payload: object,
+    ) {
+      const template = await getTemplatePath(name, type);
+      const ext = path.extname(template).substring(1);
+
+      const data = {
+        ...payload,
+        dateFns,
+        formatEuro,
+        formatReferenceNumber,
+        sumEuroValues,
+        euro,
+        cents,
+        formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
+        formatBarcode: (
+          iban: string,
+          amount: EuroValue,
+          reference: string,
+          date: Date,
+        ) => formatBarcode(iban, amount.value / 100, reference, date),
+        generateBarcodeImage,
+      };
+
+      const opts = {
+        filename: template,
+      };
+
+      const rendered = await ejs.renderFile(template, data, opts);
+
+      if (ext === 'mjml') {
+        const result = mjml2html(rendered).html;
+
+        return result;
+      }
+
+      return rendered;
+    }
+
+    async function _sendEmail(
+      bus: ExecutionContext<BusContext>,
+      pg: Connection,
+      id: string,
+    ) {
+      const email = await bus.exec(defs.getEmail, id);
+
+      if (!email) {
+        throw 'No such email';
+      }
+
+      await sendRawEmail({
+        to: email.recipient,
         from: 'velat@tko-aly.fi',
         replyTo: 'rahastonhoitaja@tko-aly.fi',
-        subject: options.subject,
-        text,
-        html,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
       });
-    },
 
-    async createEmail(email, { pg }) {
-      const html = await renderTemplate(
-        email.template,
-        TemplateType.HTML,
-        email.payload,
-      );
-      const text = await renderTemplate(
-        email.template,
-        TemplateType.TEXT,
-        email.payload,
-      );
+      await pg.do(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
+    }
 
-      const result = await pg.one<DbEmail>(sql`
-          INSERT INTO emails (recipient, subject, template, html, text)
-          VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
-          RETURNING *
-       `);
+    async function createEmailJobDescription(
+      bus: ExecutionContext<BusContext>,
+      id: string,
+    ) {
+      const email = await bus.exec(defs.getEmail, id);
 
-      if (!result) {
-        throw new Error('Failed to create email!');
-      }
-
-      if (email.debts) {
-        await Promise.all(
-          email.debts.map(debt =>
-            pg.many(sql`
-              INSERT INTO email_debt_mapping (email_id, debt_id)
-              VALUES (${result.id}, ${debt})
-            `),
-          ),
-        );
-      }
-
-      return formatEmail(result);
-    },
-
-    async batchSendEmails(ids, _, bus) {
-      const children = await Promise.all(
-        ids.map(id => createEmailJobDescription(bus, id)),
-      );
-
-      await jobs.createJob({
+      return {
         queueName: 'emails',
-        name: 'batch',
-        data: { name: `Send ${ids.length} emails` },
-        children,
-      });
-    },
+        name: 'send',
+        data: {
+          name: `Send email to ${email?.recipient}`,
+          emailId: id,
+        },
+        opts: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60 * 2000,
+          },
+        },
+      };
+    }
 
-    async sendEmail(id, _, bus) {
-      const description = await createEmailJobDescription(bus, id);
-
-      await jobs.createJob(description);
-    },
-
-    async getEmails(_, { pg }) {
-      const emails = await pg.many<DbEmail>(sql`SELECT * FROM emails`);
+    /*async function getEmailsByAddress(email: string) {
+      const emails = await pg.any<DbEmail>(
+        sql`SELECT * FROM emails WHERE recipient = ${email}`,
+      );
 
       return emails.map(formatEmail);
-    },
+    }
 
-    async getEmail(id, { pg }) {
-      const email = await pg.one<DbEmail>(
-        sql`SELECT * FROM emails WHERE id = ${id}`,
-      );
-
-      return email && formatEmail(email);
-    },
-
-    async getEmailsByDebt(debt, { pg }) {
-      const emails = await pg.many<DbEmail>(sql`
+    async function getEmailsByPayer(payer: InternalIdentity) {
+      const emails = await pg.any<DbEmail>(sql`
           SELECT emails.*
-          FROM email_debt_mapping edm
-          JOIN emails ON emails.id = edm.email_id
-          WHERE edm.debt_id = ${debt}
+          FROM payer_emails
+          JOIN emails ON emails.recipient = payer_emails.email
+          WHERE payer_emails.payer_id = ${payer.value}
         `);
 
       return emails.map(formatEmail);
-    },
-  });
+    }*/
 
-  async function renderTemplate(
-    name: string,
-    type: TemplateType,
-    payload: object,
-  ) {
-    const template = await getTemplatePath(name, type);
-    const ext = path.extname(template).substring(1);
-
-    const data = {
-      ...payload,
-      dateFns,
-      formatEuro,
-      formatReferenceNumber,
-      sumEuroValues,
-      euro,
-      cents,
-      formatDate: (d: number | Date) => dateFns.format(d, 'dd.MM.yyyy'),
-      formatBarcode: (
-        iban: string,
-        amount: EuroValue,
-        reference: string,
-        date: Date,
-      ) => formatBarcode(iban, amount.value / 100, reference, date),
-      generateBarcodeImage,
-    };
-
-    const opts = {
-      filename: template,
-    };
-
-    const rendered = await ejs.renderFile(template, data, opts);
-
-    if (ext === 'mjml') {
-      const result = mjml2html(rendered).html;
-
-      return result;
-    }
-
-    return rendered;
-  }
-
-  async function _sendEmail(
-    bus: ExecutionContext<BusContext>,
-    pg: Connection,
-    id: string,
-  ) {
-    const email = await bus.exec(defs.getEmail, id);
-
-    if (!email) {
-      throw 'No such email';
-    }
-
-    await sendRawEmail({
-      to: email.recipient,
-      from: 'velat@tko-aly.fi',
-      replyTo: 'rahastonhoitaja@tko-aly.fi',
-      subject: email.subject,
-      text: email.text,
-      html: email.html,
+    await jobs.createWorker('emails', handleEmailJob as any, {
+      limiter: {
+        max: 1,
+        duration: 1000,
+      },
     });
-
-    await pg.do(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
-  }
-
-  async function createEmailJobDescription(
-    bus: ExecutionContext<BusContext>,
-    id: string,
-  ) {
-    const email = await bus.exec(defs.getEmail, id);
-
-    return {
-      queueName: 'emails',
-      name: 'send',
-      data: {
-        name: `Send email to ${email?.recipient}`,
-        emailId: id,
-      },
-      opts: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 60 * 2000,
-        },
-      },
-    };
-  }
-
-  /*async function getEmailsByAddress(email: string) {
-    const emails = await pg.any<DbEmail>(
-      sql`SELECT * FROM emails WHERE recipient = ${email}`,
-    );
-
-    return emails.map(formatEmail);
-  }
-
-  async function getEmailsByPayer(payer: InternalIdentity) {
-    const emails = await pg.any<DbEmail>(sql`
-        SELECT emails.*
-        FROM payer_emails
-        JOIN emails ON emails.recipient = payer_emails.email
-        WHERE payer_emails.payer_id = ${payer.value}
-      `);
-
-    return emails.map(formatEmail);
-  }*/
-
-  await jobs.createWorker('emails', handleEmailJob as any, {
-    limiter: {
-      max: 1,
-      duration: 1000,
-    },
-  });
-};
+  },
+});

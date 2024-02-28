@@ -4,7 +4,6 @@ import {
   TestEnvironment,
   createEnvironment,
   startServer,
-  startServices,
 } from '../common';
 import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
 import { UpstreamUser, tkoalyIdentity } from '@bbat/common/types';
@@ -170,7 +169,6 @@ class Row {
 export const test = base.extend<Fixtures>({
   async bbat({ page }, use) {
     const env = await createEnvironment();
-    await startServices(env);
     const url = await startServer(env);
     const testEnv = new E2ETestEnvironment(page, url, env);
     await use(testEnv);

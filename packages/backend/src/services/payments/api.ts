@@ -2,7 +2,6 @@ import { router } from 'typera-express';
 import {
   badRequest,
   forbidden,
-  internalServerError,
   notFound,
   ok,
   unauthorized,
@@ -12,16 +11,15 @@ import * as paymentService from '@/services/payments/definitions';
 import * as payerService from '@/services/payers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as bankingService from '@/services/banking/definitions';
-import { validateBody } from '../validate-middleware';
-import { cents, euro, euroValue } from '@bbat/common/build/src/currency';
-import { headers } from 'typera-express/parser';
-import Stripe from 'stripe';
-import { ApiFactory } from '.';
+import { validateBody } from '@/validate-middleware';
+import { euroValue } from '@bbat/common/build/src/currency';
+import auth from '@/auth-middleware';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth, config, stripe }, route) => {
+const factory: RouterFactory = route => {
   const getPayments = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const payments = await bus.exec(paymentService.getPayments);
       return ok(payments);
@@ -30,7 +28,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
   const getPayment = route
     .get('/:id')
     .use(
-      auth.createAuthMiddleware({
+      auth({
         accessLevel: 'normal',
       }),
     )
@@ -59,7 +57,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
 
   const registerTransaction = route
     .post('/:id/register')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -95,7 +93,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
 
   const createInvoice = route
     .post('/create-invoice')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .use(
       validateBody(
         t.type({
@@ -152,7 +150,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
 
   const createStripePayment = route
     .post('/create-stripe-payment')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .use(
       validateBody(
         t.type({
@@ -201,7 +199,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
   const getOwnPayments = route
     .get('/my')
     .use(
-      auth.createAuthMiddleware({
+      auth({
         accessLevel: 'normal',
       }),
     )
@@ -215,7 +213,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
 
   const creditPayment = route
     .post('/:id/credit')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       await bus.exec(paymentService.creditPayment, {
         id: ctx.routeParams.id,
@@ -225,95 +223,9 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
       return ok();
     });
 
-  const stripeWebhook = route
-    .post('/stripe-webhook')
-    .use(
-      headers(
-        t.type({
-          'stripe-signature': t.string,
-        }),
-      ),
-    )
-    .handler(async ({ bus, ...ctx }) => {
-      const secret = config.stripeWebhookSecret;
-
-      let event;
-      let body = ctx.req.rawBody!; // eslint-disable-line
-
-      try {
-        event = stripe.webhooks.constructEvent(
-          body,
-          ctx.headers['stripe-signature'],
-          secret,
-        );
-      } catch (err) {
-        console.log(err, typeof body, ctx.headers['stripe-signature'], secret);
-        return badRequest({
-          error: `Webhook Error: ${err}`,
-        });
-      }
-
-      let intent;
-
-      if (event.type === 'payment_intent.succeeded') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
-
-        const paymentId = intent.metadata.paymentId;
-
-        if (intent.currency !== 'eur') {
-          return internalServerError(
-            'Currencies besides EUR are not supported!',
-          );
-        }
-
-        await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'payment',
-          amount: cents(intent.amount),
-          data: {},
-          time: undefined,
-          transaction: null,
-        });
-      } else if (event.type === 'payment_intent.payment_failed') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
-
-        const { paymentId } = intent.metadata;
-
-        await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'failed',
-          amount: euro(0),
-          data: {},
-          time: undefined,
-          transaction: null,
-        });
-      } else if (event.type === 'payment_intent.processing') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
-
-        const { paymentId } = intent.metadata;
-
-        await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'other',
-          amount: euro(0),
-          data: {
-            stripe: {
-              type: 'processing',
-            },
-          },
-          time: undefined,
-          transaction: null,
-        });
-      } else {
-        console.log('Other Stripe event: ' + event.type, event);
-      }
-
-      return ok();
-    });
-
   const deletePaymentEvent = route
     .delete('/events/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const event = await bus.exec(
         paymentService.deletePaymentEvent,
@@ -329,7 +241,7 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
 
   const updatePaymentEvent = route
     .patch('/events/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -354,7 +266,6 @@ const factory: ApiFactory = ({ auth, config, stripe }, route) => {
     creditPayment,
     registerTransaction,
     createStripePayment,
-    stripeWebhook,
     deletePaymentEvent,
     updatePaymentEvent,
   );

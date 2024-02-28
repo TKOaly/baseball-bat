@@ -6,16 +6,17 @@ import {
 } from '@bbat/common/build/src/types';
 import { v4 as uuid } from 'uuid';
 import { pipe } from 'fp-ts/lib/function';
-import { commandOptions } from 'redis';
+import { commandOptions, createClient } from 'redis';
 import * as t from 'io-ts';
 import { range, reduce, map } from 'fp-ts/lib/NonEmptyArray';
 import { randomElem } from 'fp-ts/lib/Random';
 import { split } from 'fp-ts/lib/string';
-import { BusContext, ModuleDeps } from './app';
+import { BusContext } from './app';
 import { getPayerProfileByIdentity } from './services/payers/definitions';
 import { getUpstreamUserById } from './services/users/definitions';
 import { ExecutionContext } from './bus';
 import { createInterface } from './bus';
+import { ModuleDeps } from './module';
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
   (O['unauthenticated'] extends true
@@ -27,7 +28,10 @@ type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
 
 type AuthMiddleware<O extends AuthMiddlewareOptions> =
   Middleware.ChainedMiddleware<
-    { bus: ExecutionContext<BusContext> },
+    {
+      bus: ExecutionContext<BusContext>;
+      redis: ReturnType<typeof createClient>;
+    },
     { session: AuthMiddlewareSession<O> },
     Response.Unauthorized<string>
   >;
@@ -396,3 +400,115 @@ export const authServiceFactory = ({
 };
 
 export type AuthService = ReturnType<typeof authServiceFactory>;
+
+async function getSession<R extends RequestBase>(
+  { req }: R,
+  redis: ReturnType<typeof createClient>,
+  allowQueryToken: boolean,
+): Promise<[Session | null, string | null]> {
+  const getTokenFromHeader = () => {
+    const header = req.header('Authorization');
+
+    if (!header) {
+      return null;
+    }
+
+    const [authType, token] = header.split(' ');
+
+    if (authType.toLowerCase() !== 'bearer') {
+      return null;
+    }
+
+    return token;
+  };
+
+  const getTokenFromQuery = () => {
+    if (typeof req.query.token === 'string') {
+      return req.query.token;
+    } else {
+      return null;
+    }
+  };
+
+  let token = getTokenFromHeader();
+
+  if (!token && allowQueryToken) {
+    token = getTokenFromQuery();
+  }
+
+  if (!token) {
+    return [null, null];
+  }
+
+  const dataSerialized = await redis.get(`session:${token}`);
+
+  if (dataSerialized === null) {
+    return [null, token];
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(dataSerialized);
+  } catch {
+    return [null, token];
+  }
+
+  return [
+    {
+      ...data,
+      payerId: internalIdentity(data.payerId),
+      token,
+    },
+    token,
+  ];
+}
+
+const authMiddleware = <O extends AuthMiddlewareOptions>(
+  options?: O,
+): AuthMiddleware<O> => {
+  const middleware = (async ctx => {
+    const { redis } = ctx;
+
+    const [session, token] = await getSession(
+      ctx,
+      redis,
+      options?.allowQueryToken === true,
+    );
+
+    if (session === null) {
+      if (!options?.unauthenticated) {
+        return Middleware.stop(Response.unauthorized('No session'));
+      } else {
+        return Middleware.next({
+          session: { authLevel: 'unauthenticated', token },
+        });
+      }
+    }
+
+    if (session.authLevel === 'unauthenticated') {
+      if (!options?.unauthenticated) {
+        return Middleware.stop(
+          Response.unauthorized('Session not authenticated'),
+        );
+      }
+    } else {
+      if (!options?.unauthenticated) {
+        if (
+          options?.accessLevel !== 'normal' &&
+          session.accessLevel !== 'admin'
+        ) {
+          return Middleware.stop(
+            Response.unauthorized('Insufficient access level'),
+          );
+        }
+      }
+    }
+
+    return Middleware.next({ session });
+  }) as AuthMiddleware<O>;
+
+  return middleware;
+};
+
+export default authMiddleware;

@@ -3,18 +3,19 @@ import { badRequest, ok } from 'typera-express/response';
 import { bankAccount } from '@bbat/common/build/src/types';
 import * as bankingService from '@/services/banking/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
-import { validateBody } from '../validate-middleware';
+import { validateBody } from '@/validate-middleware';
 import multer from 'multer';
-import { ApiFactory } from '.';
+import auth from '@/auth-middleware';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const upload = multer({
     storage: multer.memoryStorage(),
   });
 
   const getBankAccounts = route
     .get('/accounts')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const accounts = await bus.exec(bankingService.getBankAccounts);
       return ok(accounts);
@@ -22,7 +23,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const createBankAccount = route
     .post('/accounts')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(validateBody(bankAccount))
     .handler(async ({ bus, body }) => {
       const account = await bus.exec(bankingService.createBankAccount, body);
@@ -31,7 +32,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getBankAccount = route
     .get('/accounts/:iban')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const account = await bus.exec(
         bankingService.getBankAccount,
@@ -42,7 +43,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getBankAccountStatements = route
     .get('/accounts/:iban/statements')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const statements = await bus.exec(
         bankingService.getAccountStatements,
@@ -53,7 +54,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const createBankStatement = route
     .post('/statements')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       Middleware.wrapNative(upload.single('statement'), ({ req }) => ({
         file: req.file,
@@ -89,7 +90,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getAccountTransactions = route
     .get('/accounts/:iban/transactions')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getAccountTransactions,
@@ -101,7 +102,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getBankStatement = route
     .get('/statements/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const statement = await bus.exec(
         bankingService.getBankStatement,
@@ -113,7 +114,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getBankStatementTransactions,
@@ -125,7 +126,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const autoregisterTransactions = route
     .post('/autoregister')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async () => {
       /*
       const transactions = await bus.exec(
@@ -145,7 +146,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getTransactionRegistrations = route
     .get('/transactions/:id/registrations')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const events = await bus.exec(
         bankingService.getTransactionRegistrations,

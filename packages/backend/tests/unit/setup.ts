@@ -6,7 +6,7 @@ import {
   Environment,
   TestEnvironment,
   createEnvironment,
-  startServices,
+  startServer,
 } from '../common';
 
 interface CustomTestHandler {
@@ -47,7 +47,7 @@ export default (name: string, callback: CustomSuiteFn) =>
       fn => async (t: TestContext) => {
         const env = await createEnvironment();
         try {
-          await startServices(env);
+          await startServer(env);
           const testEnv = new UnitTestEnvironment(t, env);
           testEnv.busRoot = await testEnv.env.get('bus');
           await testEnv.withContext(async ctx => {

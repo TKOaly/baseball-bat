@@ -3,9 +3,11 @@ import path from 'path';
 import helmet, { HelmetOptions } from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import initServices from '@/services';
 import { router } from 'typera-express';
 import healthCheck from './api/health-check';
 import apiRoutes, { ApiDeps } from './api';
+import { ModuleDeps } from './module';
 
 const helmetConfig: HelmetOptions = {
   contentSecurityPolicy: {
@@ -35,7 +37,7 @@ const helmetConfig: HelmetOptions = {
   crossOriginEmbedderPolicy: false,
 };
 
-export default async (deps: ApiDeps) => {
+export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
     .use((req, res, next) => {
       res.on('finish', () =>
@@ -60,7 +62,8 @@ export default async (deps: ApiDeps) => {
     .use(cookieParser())
     .use(router(healthCheck).handler());
 
-  apiRoutes(deps, app);
+  apiRoutes(deps, deps, app);
+  await initServices(app, deps);
 
   if (process.env.NODE_ENV !== 'production') {
     const staticPath = path.resolve(__dirname, '../../frontend/dist');

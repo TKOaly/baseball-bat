@@ -12,10 +12,11 @@ import * as debtCentersService from '@/services/debt-centers/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as eventsService from '@/services/events/definitions';
 import * as payerService from '@/services/payers/definitions';
-import { validateBody } from '../validate-middleware';
+import auth from '@/auth-middleware';
+import { validateBody } from '@/validate-middleware';
 import { pipe } from 'fp-ts/lib/function';
 import { euroValue } from '@bbat/common/build/src/currency';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
 const componentRule = t.type({
   type: t.literal('CUSTOM_FIELD'),
@@ -26,10 +27,10 @@ const componentRule = t.type({
 
 type ComponentRule = t.TypeOf<typeof componentRule>;
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const getDebtCenters = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const centers = await bus.exec(debtCentersService.getDebtCenters);
       return ok(centers);
@@ -37,7 +38,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getDebtCenter = route
     .get('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const center = await bus.exec(
         debtCentersService.getDebtCenter,
@@ -53,7 +54,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getDebtsByCenter = route
     .get('/:id/debts')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByCenter,
@@ -64,7 +65,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getDebtComponentsByCenter = route
     .get('/:id/components')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const components = await bus.exec(
         debtService.getDebtComponentsByCenter,
@@ -75,7 +76,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const createDebtCenter = route
     .post('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       try {
         const center = await bus.exec(
@@ -103,7 +104,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const deleteDebtCenter = route
     .delete('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByCenter,
@@ -132,7 +133,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const updateDebtCenter = route
     .put('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -182,7 +183,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const createDebtCenterFromEvent = route
     .post('/fromEvent')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(validateBody(createDebtCenterFromEventBody))
     .handler(async ({ bus, ...ctx }) => {
       const body = ctx.body;
@@ -318,7 +319,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const deleteDebtComponent = route
     .delete('/:debtCenterId/components/:debtComponentId')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const { debtCenterId, debtComponentId } = ctx.routeParams;
 
@@ -336,7 +337,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const updateDebtComponent = route
     .patch('/:debtCenterId/components/:debtComponentId')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.partial({

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import iface from './definitions';
+import routes from './api';
 import {
   ApiCustomField,
   ApiEvent,
@@ -14,7 +15,7 @@ import {
 import { parseISO } from 'date-fns';
 import * as Either from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
-import { ModuleDeps } from '@/app';
+import { createModule } from '@/module';
 
 const getEuro = (value: string): EuroValue | undefined =>
   pipe(
@@ -52,62 +53,68 @@ const formatRegistration = (registration: ApiRegistration): Registration => ({
     registration.user_id === null ? null : tkoalyIdentity(registration.user_id),
 });
 
-export default ({ config, bus }: ModuleDeps) => {
-  const client = axios.create({
-    baseURL: config.eventServiceUrl,
-    headers: {
-      'X-Token': config.eventServiceToken,
-    },
-  });
+export default createModule({
+  name: 'events',
 
-  bus.provide(iface, {
-    async getEvents({ starting }) {
-      try {
-        const res = await client.get<ApiEvent[]>('/api/events', {
-          params: { fromDate: starting },
-        });
+  routes,
 
-        return res.data.map(parseApiEvent).filter(event => !event.deleted);
-      } catch (err) {
-        console.error(err);
-        throw new Error('Failed to fetch events');
-      }
-    },
+  async setup({ config, bus }) {
+    const client = axios.create({
+      baseURL: config.eventServiceUrl,
+      headers: {
+        'X-Token': config.eventServiceToken,
+      },
+    });
 
-    async getUserEvents(id) {
-      try {
-        const res = await client.get<ApiEvent[]>(
-          `/api/users/${id.value}/events`,
-        );
+    bus.provide(iface, {
+      async getEvents({ starting }) {
+        try {
+          const res = await client.get<ApiEvent[]>('/api/events', {
+            params: { fromDate: starting },
+          });
 
-        return res.data.map(parseApiEvent).filter(event => !event.deleted);
-      } catch {
-        throw new Error(`Failed to fetch events for user ${id.value}`);
-      }
-    },
+          return res.data.map(parseApiEvent).filter(event => !event.deleted);
+        } catch (err) {
+          console.error(err);
+          throw new Error('Failed to fetch events');
+        }
+      },
 
-    async getEventRegistrations(id) {
-      try {
-        const res = await client.get<ApiRegistration[]>(
-          `/api/events/${id}/registrations`,
-        );
-        return res.data.map(formatRegistration);
-      } catch (err) {
-        console.log(err);
-        throw new Error(`Failed to fetch registrations for event ${id}`);
-      }
-    },
+      async getUserEvents(id) {
+        try {
+          const res = await client.get<ApiEvent[]>(
+            `/api/users/${id.value}/events`,
+          );
 
-    async getEventCustomFields(id) {
-      try {
-        const res = await client.get<ApiCustomField[]>(
-          `/api/events/${id}/fields`,
-        );
-        return res.data;
-      } catch (err) {
-        console.log(err);
-        throw new Error(`Failed to fetch custom fields for event ${id}`);
-      }
-    },
-  });
-};
+          return res.data.map(parseApiEvent).filter(event => !event.deleted);
+        } catch {
+          throw new Error(`Failed to fetch events for user ${id.value}`);
+        }
+      },
+
+      async getEventRegistrations(id) {
+        try {
+          const res = await client.get<ApiRegistration[]>(
+            `/api/events/${id}/registrations`,
+          );
+          return res.data.map(formatRegistration);
+        } catch (err) {
+          console.log(err);
+          throw new Error(`Failed to fetch registrations for event ${id}`);
+        }
+      },
+
+      async getEventCustomFields(id) {
+        try {
+          const res = await client.get<ApiCustomField[]>(
+            `/api/events/${id}/fields`,
+          );
+          return res.data;
+        } catch (err) {
+          console.log(err);
+          throw new Error(`Failed to fetch custom fields for event ${id}`);
+        }
+      },
+    });
+  },
+});

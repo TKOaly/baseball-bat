@@ -1,18 +1,19 @@
 import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import { dbDateString } from '@bbat/common/build/src/types';
-import { validateBody } from '../validate-middleware';
+import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';
 import { parse } from 'date-fns';
 import * as reportService from '@/services/reports/definitions';
 import * as debtService from '@/services/debts/definitions';
 import * as paymentService from '@/services/payments/definitions';
-import { ApiFactory } from '.';
+import auth from '@/auth-middleware';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const getReport = route
     .get('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(
         reportService.getReport,
@@ -30,7 +31,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getReportContent = route
     .get('/:id/content')
-    //.use(auth.createAuthMiddleware())
+    //.use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(
         reportService.getReportContent,
@@ -50,7 +51,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getReports = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const reports = await bus.exec(reportService.getReports);
       return ok(reports);
@@ -58,7 +59,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const generateDebtLedgerReport = route
     .post('/generate/debt-ledger')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -93,7 +94,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const generatePaymentLedgerReport = route
     .post('/generate/payment-ledger')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -139,7 +140,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const generateDebtStatusReport = route
     .post('/generate/debt-status-report')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -173,7 +174,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const refreshReport = route
     .post('/:id/refresh')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(reportService.refreshReport, {
         reportId: ctx.routeParams.id,

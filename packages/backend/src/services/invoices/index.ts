@@ -1,4 +1,4 @@
-import { BusContext, ModuleDeps } from '@/app';
+import { BusContext } from '@/app';
 import sql from 'sql-template-strings';
 import {
   createPaymentEvent,
@@ -29,6 +29,7 @@ import {
   getTransactionsByReference,
   onTransaction,
 } from '../banking/definitions';
+import { createModule } from '@/module';
 
 function normalizeReferenceNumber(reference: string) {
   return reference
@@ -130,118 +131,122 @@ async function sendNewPaymentNotification(
   return E.fromNullable('Could not create email')(created);
 }
 
-export default ({ bus }: ModuleDeps) => {
-  bus.provideNamed(paymentTypeIface, 'invoice', {
-    async createPayment(params, _, bus) {
-      const { paymentId } = params;
+export default createModule({
+  name: 'invoices',
 
-      const optionsResult = invoiceOptions.decode(params.options);
+  async setup({ bus }) {
+    bus.provideNamed(paymentTypeIface, 'invoice', {
+      async createPayment(params, _, bus) {
+        const { paymentId } = params;
 
-      if (isLeft(optionsResult)) {
-        console.error('Invalid options: ', params.options);
-        throw new Error('Invalid options!');
+        const optionsResult = invoiceOptions.decode(params.options);
+
+        if (isLeft(optionsResult)) {
+          console.error('Invalid options: ', params.options);
+          throw new Error('Invalid options!');
+        }
+
+        const options = optionsResult.right;
+
+        const payment = await bus.exec(getPayment, paymentId);
+
+        if (!payment) {
+          throw new Error('No such payment exists!');
+        }
+
+        const data = {
+          reference_number: options.referenceNumber
+            ? normalizeReferenceNumber(options.referenceNumber)
+            : createReferenceNumber(
+                options.series ?? 0,
+                payment.accountingPeriod,
+                payment.humanIdNonce ?? 0,
+              ),
+          due_date: options.dueDate ? formatISO(options.dueDate) : null,
+          date: formatISO(options.date ?? new Date()),
+        };
+
+        return data;
+      },
+    });
+
+    bus.on(onTransaction, async (transaction, { pg }, bus) => {
+      const [existing_mapping] =
+        await pg.many<DbPaymentEventTransactionMapping>(sql`
+            SELECT *
+            FROM payment_event_transaction_mapping
+            WHERE bank_transaction_id = ${transaction.id}
+          `);
+
+      if (existing_mapping) {
+        return;
       }
 
-      const options = optionsResult.right;
+      const [payment] = await bus.exec(getPaymentsByData, {
+        reference_number: transaction.reference,
+      });
 
+      if (!payment) {
+        return;
+      }
+
+      await bus.exec(createPaymentEvent, {
+        paymentId: payment.id,
+        type: 'payment',
+        amount: transaction.amount,
+        time: transaction.date,
+        transaction: transaction.id,
+        data: {},
+      });
+    });
+
+    bus.on(onPaymentCreated, async ({ paymentId }, _, bus) => {
       const payment = await bus.exec(getPayment, paymentId);
 
       if (!payment) {
-        throw new Error('No such payment exists!');
+        throw new Error('No such payment!');
       }
 
-      const data = {
-        reference_number: options.referenceNumber
-          ? normalizeReferenceNumber(options.referenceNumber)
-          : createReferenceNumber(
-              options.series ?? 0,
-              payment.accountingPeriod,
-              payment.humanIdNonce ?? 0,
-            ),
-        due_date: options.dueDate ? formatISO(options.dueDate) : null,
-        date: formatISO(options.date ?? new Date()),
-      };
+      if (!isPaymentInvoice(payment)) {
+        return;
+      }
 
-      return data;
-    },
-  });
+      const transactions = await bus.exec(
+        getTransactionsByReference,
+        payment.data.reference_number,
+      );
 
-  bus.on(onTransaction, async (transaction, { pg }, bus) => {
-    const [existing_mapping] =
-      await pg.many<DbPaymentEventTransactionMapping>(sql`
-          SELECT *
-          FROM payment_event_transaction_mapping
-          WHERE bank_transaction_id = ${transaction.id}
-        `);
-
-    if (existing_mapping) {
-      return;
-    }
-
-    const [payment] = await bus.exec(getPaymentsByData, {
-      reference_number: transaction.reference,
+      await Promise.all(
+        transactions.map(transaction =>
+          bus.exec(createPaymentEvent, {
+            paymentId: payment.id,
+            type: 'payment',
+            amount: transaction.amount,
+            time: transaction.date,
+            transaction: transaction.id,
+            data: {},
+          }),
+        ),
+      );
     });
 
-    if (!payment) {
-      return;
-    }
+    bus.on(onPaymentCreated, async ({ paymentId }, _, bus) => {
+      const payment = (await bus.exec(getPayment, paymentId))!; // eslint-disable-line
 
-    await bus.exec(createPaymentEvent, {
-      paymentId: payment.id,
-      type: 'payment',
-      amount: transaction.amount,
-      time: transaction.date,
-      transaction: transaction.id,
-      data: {},
+      if (!isPaymentInvoice(payment)) {
+        return;
+      }
+
+      const isBackdated = isBefore(
+        parseISO(payment.data.date),
+        subDays(new Date(), 1),
+      );
+
+      if (isBackdated) {
+        return;
+      }
+
+      await sendNewPaymentNotification(bus, payment);
     });
-  });
-
-  bus.on(onPaymentCreated, async ({ paymentId }, _, bus) => {
-    const payment = await bus.exec(getPayment, paymentId);
-
-    if (!payment) {
-      throw new Error('No such payment!');
-    }
-
-    if (!isPaymentInvoice(payment)) {
-      return;
-    }
-
-    const transactions = await bus.exec(
-      getTransactionsByReference,
-      payment.data.reference_number,
-    );
-
-    await Promise.all(
-      transactions.map(transaction =>
-        bus.exec(createPaymentEvent, {
-          paymentId: payment.id,
-          type: 'payment',
-          amount: transaction.amount,
-          time: transaction.date,
-          transaction: transaction.id,
-          data: {},
-        }),
-      ),
-    );
-  });
-
-  bus.on(onPaymentCreated, async ({ paymentId }, _, bus) => {
-    const payment = (await bus.exec(getPayment, paymentId))!; // eslint-disable-line
-
-    if (!isPaymentInvoice(payment)) {
-      return;
-    }
-
-    const isBackdated = isBefore(
-      parseISO(payment.data.date),
-      subDays(new Date(), 1),
-    );
-
-    if (isBackdated) {
-      return;
-    }
-
-    await sendNewPaymentNotification(bus, payment);
-  });
-};
+  },
+});

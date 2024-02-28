@@ -1,12 +1,13 @@
 import { router } from 'typera-express';
 import { ok } from 'typera-express/response';
 import * as accountingService from '@/services/accounting/definitions';
-import type { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
+import auth from '@/auth-middleware';
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const getAccountingPeriods = route
     .get('/periods')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const periods = await bus.exec(accountingService.getAccountingPeriods);
       return ok(periods);

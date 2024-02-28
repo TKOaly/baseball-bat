@@ -1,15 +1,16 @@
 import { router } from 'typera-express';
 import { ok, redirect } from 'typera-express/response';
 import base64url from 'base64url';
+import auth from '@/auth-middleware';
 import { ApiFactory } from '.';
 import {
   getPayerPreferences,
   getPayerProfileByInternalIdentity,
 } from '@/services/payers/definitions';
 
-const factory: ApiFactory = ({ auth, config }, route) => {
+const factory: ApiFactory = ({ config }, route) => {
   const getSession = route
-    .use(auth.createAuthMiddleware({ unauthenticated: true }))
+    .use(auth({ unauthenticated: true }))
     .get('/')
     .handler(async ({ session, bus }) => {
       if (session.authLevel === 'unauthenticated') {

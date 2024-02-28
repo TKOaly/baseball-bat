@@ -1,4 +1,3 @@
-import { RedisClientType } from 'redis';
 import {
   ConnectionOptions,
   FlowJob,
@@ -10,11 +9,13 @@ import {
   Job,
   QueueEvents,
 } from 'bullmq';
-import { Config } from '../config';
+import routes from './api';
+import { Config } from '@/config';
 import { ExecutionContext, LocalBus } from '@/bus';
 import { BusContext } from '@/app';
 import { shutdown } from '@/orchestrator';
 import { Pool } from '@/db/connection';
+import { createModule } from '@/module';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -38,7 +39,6 @@ export class JobService {
 
   constructor(
     public config: Config,
-    private redis: RedisClientType,
     private bus: LocalBus<BusContext>,
     private pool: Pool,
   ) {
@@ -165,3 +165,12 @@ export class JobService {
     return flows.flatMap(flow => (flow.children ? [flow.children[0]] : []));
   }
 }
+
+export default createModule({
+  name: 'jobs',
+
+  routes,
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  async setup() {},
+});

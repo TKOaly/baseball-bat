@@ -1,14 +1,15 @@
 import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import * as emailService from '@/services/email/definitions';
-import { validateBody } from '../validate-middleware';
+import auth from '@/auth-middleware';
+import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const getEmails = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const emails = await bus.exec(emailService.getEmails);
       return ok(emails);
@@ -16,7 +17,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getEmailsByDebt = route
     .get('/by-debt/:debt')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const emails = await bus.exec(
         emailService.getEmailsByDebt,
@@ -27,7 +28,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getEmail = route
     .get('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const email = await bus.exec(emailService.getEmail, ctx.routeParams.id);
       return ok(email);
@@ -55,7 +56,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const sendEmails = route
     .post('/send')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(validateBody(t.type({ ids: t.array(t.string) })))
     .handler(async ({ body, bus }) => {
       await Promise.all(

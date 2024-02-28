@@ -20,6 +20,7 @@ import * as t from 'io-ts';
 import { ApiFactory } from '.';
 import { getTokenUpstreamUser } from '@/services/users/definitions';
 import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
+import { authServiceFactory } from '@/auth-middleware';
 
 const sendAuthCodeBody = t.type({
   email: t.string,
@@ -30,7 +31,13 @@ const validateAuthCodeBody = t.type({
   code: t.string,
 });
 
-const factory: ApiFactory = ({ config, auth }, route) => {
+const factory: ApiFactory = ({ config, bus, redis }, route) => {
+  const auth = authServiceFactory({
+    bus,
+    redis,
+    config,
+  });
+
   const authCompleted = route
     .get('/auth/auth-completed')
     .handler(async ({ req, bus }) => {

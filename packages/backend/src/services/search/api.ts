@@ -1,17 +1,18 @@
 import { router } from 'typera-express';
 import sql from 'sql-template-strings';
 import { ok } from 'typera-express/response';
-import { ApiFactory } from '.';
+import auth from '@/auth-middleware';
+import { RouterFactory } from '@/module';
 
 export type ResultRow = {
   type: 'payer' | 'debt' | 'debt_center';
   id: string;
 };
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const search = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ pg, ...ctx }) => {
       const { term, type } = ctx.req.query;
 

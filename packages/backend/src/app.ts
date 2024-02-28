@@ -19,7 +19,6 @@ import {
 import { JobService } from './services/jobs';
 import { LocalBus } from './bus';
 import initServices from './services';
-import { authServiceFactory } from './auth-middleware';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -80,7 +79,7 @@ const bus = new LocalBus<BusContext>();
 
 // bus.on(shutdown, () => redisClient.shutdown());
 
-const jobs = new JobService(config, redisClient as RedisClientType, bus, pool);
+const jobs = new JobService(config, bus, pool);
 
 const moduleDeps = {
   pool,
@@ -90,20 +89,6 @@ const moduleDeps = {
   stripe: stripeClient,
   jobs,
   emailTransport,
-};
-
-const auth = authServiceFactory(moduleDeps);
-
-export type ModuleDeps = typeof moduleDeps;
-
-const apiDeps: ApiDeps = {
-  pool,
-  bus,
-  jobs,
-  redis: redisClient as RedisClientType,
-  config,
-  auth,
-  stripe: stripeClient,
 };
 
 declare global {
@@ -137,7 +122,15 @@ const app = express()
   .use(cookieParser())
   .use(router(healthCheck).handler());
 
-apiRoutes(apiDeps, app);
+const apiDeps: ApiDeps = {
+  bus,
+  config,
+  redis: redisClient as RedisClientType,
+  pool,
+  jobs,
+};
+
+apiRoutes(moduleDeps, apiDeps, app);
 
 if (process.env.NODE_ENV !== 'production') {
   app.use('/static', express.static('/usr/src/app/packages/frontend/dist'));
@@ -147,7 +140,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 async function start() {
-  await initServices(moduleDeps);
+  await initServices(app, moduleDeps);
 
   app.listen(PORT, () => console.log(`backend listening on port ${PORT} 🚀`));
 }

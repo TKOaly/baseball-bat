@@ -1,6 +1,7 @@
 import { Parser, router } from 'typera-express';
 import { notFound, ok, unauthorized } from 'typera-express/response';
 import * as payerService from '@/services/payers/definitions';
+import auth from '@/auth-middleware';
 import * as debtService from '@/services/debts/definitions';
 import * as t from 'io-ts';
 import {
@@ -9,14 +10,14 @@ import {
   PayerEmailPriority,
   tkoalyIdentity,
 } from '@bbat/common/build/src/types';
-import { validateBody } from '../validate-middleware';
+import { validateBody } from '@/validate-middleware';
 import { body } from 'typera-express/parser';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
-const factory: ApiFactory = ({ auth }, route) => {
+const factory: RouterFactory = route => {
   const getPayer = route
     .get('/:id')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       let id;
 
@@ -44,7 +45,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const createPayer = route
     .post('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       body(
         t.type({
@@ -67,7 +68,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getPayers = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const payers = await bus.exec(payerService.getPayerProfiles);
       return ok(payers);
@@ -75,7 +76,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getPayerByEmail = route
     .get('/by-email/:email')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByEmailIdentity,
@@ -91,7 +92,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const updatePayerPreferences = route
     .patch('/:id/preferences')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .use(
       validateBody(
         t.partial({
@@ -120,7 +121,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getPayerByTkoalyId = route
     .get('/by-tkoaly-id/:id(int)')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByTkoalyIdentity,
@@ -136,7 +137,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getPayerDebts = route
     .get('/:id/debts')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       let id;
 
@@ -165,7 +166,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const getSessionPayer = route
     .get('/session')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       const payer = await bus.exec(
         payerService.getPayerProfileByInternalIdentity,
@@ -182,7 +183,7 @@ const factory: ApiFactory = ({ auth }, route) => {
   const getPayerEmails = route
     .get('/:id/emails')
     .use(
-      auth.createAuthMiddleware({
+      auth({
         accessLevel: 'normal',
       }),
     )
@@ -203,7 +204,7 @@ const factory: ApiFactory = ({ auth }, route) => {
 
   const updatePayerEmails = route
     .patch('/:id/emails')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .use(
       validateBody(
         t.array(
@@ -280,7 +281,7 @@ const factory: ApiFactory = ({ auth }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const payer = internalIdentity(ctx.routeParams.id);
       const res = await bus.exec(debtService.sendPaymentRemindersByPayer, {
@@ -300,7 +301,7 @@ const factory: ApiFactory = ({ auth }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const primary = internalIdentity(ctx.routeParams.id);
       const secondary = internalIdentity(ctx.body.mergeWith);

@@ -1,8 +1,9 @@
 import { JobNode } from 'bullmq';
 import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
+import auth from '@/auth-middleware';
 import { Job } from '@bbat/common/src/types';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
 const formatJob = async (node: JobNode): Promise<Job> => {
   const children = await Promise.all((node.children ?? []).map(formatJob));
@@ -48,11 +49,11 @@ const formatJob = async (node: JobNode): Promise<Job> => {
   };
 };
 
-const factory: ApiFactory = ({ jobs, auth }, route) => {
+const factory: RouterFactory = route => {
   const getJobs = route
     .get('/list')
-    .use(auth.createAuthMiddleware())
-    .handler(async _ctx => {
+    .use(auth())
+    .handler(async ({ jobs }) => {
       const allJobs = await jobs.getJobs();
 
       return ok(await Promise.all(allJobs.map(formatJob)));
@@ -60,8 +61,8 @@ const factory: ApiFactory = ({ jobs, auth }, route) => {
 
   const getJob = route
     .get('/queue/:queue/:id')
-    .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .use(auth())
+    .handler(async ({ jobs, ...ctx }) => {
       const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
 
       if (!node) {
@@ -73,8 +74,8 @@ const factory: ApiFactory = ({ jobs, auth }, route) => {
 
   const retryJob = route
     .post('/queue/:queue/:id/retry')
-    .use(auth.createAuthMiddleware())
-    .handler(async ctx => {
+    .use(auth())
+    .handler(async ({ jobs, ...ctx }) => {
       const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
 
       if (!node) {

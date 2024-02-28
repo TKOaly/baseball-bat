@@ -1,5 +1,5 @@
-import { ModuleDeps } from '@/app';
-
+import { ModuleDeps } from '@/module';
+import express from 'express';
 import debts from './debts';
 import accounting from './accounting';
 import banking from './banking';
@@ -12,20 +12,44 @@ import users from './users';
 import invoices from './invoices';
 import stripe from './stripe';
 import reports from './reports';
+import { ModuleDefinition, createBaseRoute } from '@/module';
+import { Middleware } from 'typera-express';
+import search from './search';
 
-export default async (deps: ModuleDeps) => {
-  await Promise.all([
-    accounting(deps),
-    banking(deps),
-    debtCenters(deps),
-    debts(deps),
-    email(deps),
-    events(deps),
-    payers(deps),
-    users(deps),
-    payments(deps),
-    invoices(deps),
-    stripe(deps),
-    reports(deps),
+export default async (app: express.Express | null, deps: ModuleDeps) => {
+  const route = createBaseRoute(deps);
+
+  const initModule = async <T>(module: ModuleDefinition<T>) => {
+    const data = await module.setup(deps);
+
+    if (app && module.routes) {
+      const router = module.routes(
+        route.use(() => Middleware.next({ module: data })),
+        { config: deps.config },
+      );
+      app.use(`/api/${module.name}`, router.handler());
+    }
+  };
+
+  const registerModules = async <M extends Array<ModuleDefinition<any>>>(
+    modules: M,
+  ) => {
+    await Promise.all(modules.map(initModule));
+  };
+
+  await registerModules([
+    accounting,
+    banking,
+    debtCenters,
+    debts,
+    email,
+    payers,
+    payments,
+    reports,
+    search,
+    events,
+    invoices,
+    users,
+    stripe,
   ]);
 };

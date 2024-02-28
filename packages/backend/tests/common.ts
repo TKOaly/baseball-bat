@@ -1,8 +1,7 @@
 import { ApiDeps } from '@/api';
-import { BusContext, ModuleDeps } from '@/app';
+import { BusContext } from '@/app';
 import * as redis from 'redis';
 import { Config } from '@/config';
-import setupServices from '@/services';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import fs from 'fs/promises';
 import os from 'os';
@@ -20,11 +19,10 @@ import {
 import { Pool } from '@/db/connection';
 import { IEmailTransport } from '@/services/email';
 import { JobService } from '@/services/jobs';
-import Stripe from 'stripe';
-import { authServiceFactory } from '@/auth-middleware';
 import server from '@/server';
 import { shutdown } from '@/orchestrator';
 import { mock } from 'node:test';
+import { ModuleDeps } from '@/module';
 
 export const setupPostgres = async () => {
   const container = await new PostgreSqlContainer().start();
@@ -91,12 +89,6 @@ export class Environment {
 
         return client as redis.RedisClientType;
       },
-      auth: async env =>
-        authServiceFactory({
-          bus: await env.get('bus'),
-          redis: await env.get('redis'),
-          config: env.config,
-        }),
       pool: async env => {
         const pool = new Pool(env.config.dbUrl);
 
@@ -106,15 +98,10 @@ export class Environment {
       },
       jobs: async env => {
         const pool = await env.get('pool');
-        const redis = await env.get('redis');
         const bus = await env.get('bus');
 
-        return new JobService(env.config, redis, bus, pool);
+        return new JobService(env.config, bus, pool);
       },
-      stripe: async env =>
-        new Stripe(env.config.stripeSecretKey, {
-          apiVersion: '2020-08-27',
-        }),
       emailTransport: async () => {
         return {
           async sendEmail() {
@@ -254,27 +241,14 @@ export const createEnvironment = async (): Promise<Environment> => {
   return environment;
 };
 
-export const startServices = async (env: Environment) => {
-  await setupServices({
-    pool: await env.get('pool'),
-    config: env.config,
-    bus: await env.get('bus'),
-    redis: await env.get('redis'),
-    stripe: await env.get('stripe'),
-    jobs: await env.get('jobs'),
-    emailTransport: await env.get('emailTransport'),
-  });
-};
-
 export const startServer = async (env: Environment) => {
   const app = await server({
     pool: await env.get('pool'),
     config: env.config,
     bus: await env.get('bus'),
     redis: await env.get('redis'),
-    stripe: await env.get('stripe'),
     jobs: await env.get('jobs'),
-    auth: await env.get('auth'),
+    emailTransport: await env.get('emailTransport'),
   });
 
   return new Promise<string>((resolve, reject) => {

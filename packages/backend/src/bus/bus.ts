@@ -297,12 +297,12 @@ export class LocalBus<C> {
     this.procedures.set(name, fn);
   }
 
-  middleware(
-    ctx: C,
-  ): Middleware.Middleware<{ bus: ExecutionContext<C> }, never> {
-    return async () => {
+  middleware<R>(
+    ctx: (req: R) => C,
+  ): Middleware.ChainedMiddleware<R, { bus: ExecutionContext<C> }, never> {
+    return async req => {
       return Middleware.next({
-        bus: this.createContext(ctx),
+        bus: this.createContext(ctx(req)),
       });
     };
   }

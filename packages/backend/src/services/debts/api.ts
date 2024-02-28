@@ -19,9 +19,10 @@ import {
   newInvoicePartial,
   tkoalyIdentity,
 } from '@bbat/common/build/src/types';
-import { validateBody } from '../validate-middleware';
+import { validateBody } from '@/validate-middleware';
 import { format, parseISO } from 'date-fns';
 import { flow, pipe } from 'fp-ts/lib/function';
+import auth from '@/auth-middleware';
 import * as E from 'fp-ts/lib/Either';
 import * as A from 'fp-ts/lib/Array';
 import * as TE from 'fp-ts/lib/TaskEither';
@@ -35,7 +36,7 @@ import * as paymentService from '@/services/payments/definitions';
 import * as accountingService from '@/services/accounting/definitions';
 import { euroValue } from '@bbat/common/build/src/currency';
 import * as EQ from 'fp-ts/lib/Eq';
-import { ApiFactory } from '.';
+import { RouterFactory } from '@/module';
 
 const debtCenter = t.type({
   name: t.string,
@@ -86,10 +87,10 @@ const createDebtPayload = t.intersection([
   }),
 ]);
 
-const factory: ApiFactory = ({ auth, jobs }, route) => {
+const factory: RouterFactory = route => {
   const createDebtComponent = route
     .post('/component')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const component = await bus.exec(
         debtService.createDebtComponent,
@@ -100,7 +101,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getDebt = route
     .get('/:id')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
@@ -120,7 +121,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getDebts = route
     .get('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus }) => {
       const debts = await bus.exec(debtService.getDebts);
       return ok(debts);
@@ -128,7 +129,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getDebtsByTag = route
     .get('/by-tag/:name')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByTag,
@@ -139,7 +140,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getDebtsByPayment = route
     .get('/by-payment/:id')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       const payment = await bus.exec(
         paymentService.getPayment,
@@ -163,7 +164,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const publishDebts = route
     .post('/publish')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(validateBody(t.type({ ids: t.array(t.string) })))
     .handler(async ({ body, bus }) => {
       await Promise.all(
@@ -196,7 +197,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const createDebt = route
     .post('/')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(validateBody(createDebtPayload))
     .handler(async ({ bus, ...ctx }) => {
       const payload = ctx.body;
@@ -346,7 +347,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const { dueDate, paymentCondition } = ctx.body.values;
 
@@ -455,7 +456,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       if (ctx.body.paymentCondition && ctx.body.dueDate) {
         return badRequest({
@@ -509,7 +510,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getPaymentsContainingDebt = route
     .get('/:id/payments')
-    .use(auth.createAuthMiddleware({ accessLevel: 'normal' }))
+    .use(auth({ accessLevel: 'normal' }))
     .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
@@ -534,7 +535,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const massCreateDebts = route
     .post('/mass-create')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .use(
       validateBody(
         t.type({
@@ -612,9 +613,9 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const massCreateDebtsProgressPoll = route
     .get('/mass-create/poll/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ctx => {
-      const flow = await jobs.getFlowProducer().getFlow({
+      const flow = await ctx.jobs.getFlowProducer().getFlow({
         id: ctx.routeParams.id,
         queueName: 'debts',
         prefix: 'bbat-jobs',
@@ -645,7 +646,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const deleteDebt = route
     .delete('/:id')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       await bus.exec(debtService.deleteDebt, ctx.routeParams.id);
 
@@ -654,7 +655,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const creditDebt = route
     .post('/:id/credit')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       await bus.exec(debtService.creditDebt, ctx.routeParams.id);
 
@@ -663,7 +664,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const markPaidWithCash = route
     .post('/:id/mark-paid-with-cash')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
@@ -715,7 +716,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const getEmailPayerId = (debt: Debt) => debt.payerId.value;
       const EmailPayerEq = EQ.contramap(getEmailPayerId)(S.Eq);
@@ -756,7 +757,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
         }),
       ),
     )
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const result = await bus.exec(debtService.sendReminder, {
         debtId: ctx.routeParams.id,
@@ -772,7 +773,7 @@ const factory: ApiFactory = ({ auth, jobs }, route) => {
 
   const getDebtsByEmail = route
     .get('/by-email/:email')
-    .use(auth.createAuthMiddleware())
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
       const debts = await bus.exec(
         debtService.getDebtsByEmail,
