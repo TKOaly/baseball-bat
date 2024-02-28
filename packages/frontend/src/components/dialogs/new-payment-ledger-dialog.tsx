@@ -32,7 +32,7 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
   const [generatePaymentLedgerReport] = useGeneratePaymentLedgerMutation();
 
   const handleSubmit = async (values: FormValues) => {
-    await generatePaymentLedgerReport({
+    const result = await generatePaymentLedgerReport({
       startDate: values.startDate,
       endDate: values.endDate,
       paymentType: values.paymentType,
@@ -40,6 +40,10 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
       centers: values.center ? [values.center.id] : null,
       eventTypes: values.eventTypes,
     });
+
+    if ('data' in result) {
+      onClose(result.data);
+    }
   };
 
   return (
