@@ -23,7 +23,7 @@ import { formatReferenceNumber } from '../payments';
 import { Job } from 'bullmq';
 import { BusContext, ModuleDeps } from '@/app';
 import iface, * as defs from './definitions';
-import { Connection } from '@/db';
+import { Connection } from '@/db/connection';
 import { ExecutionContext } from '@/bus';
 
 const formatEmail = (email: DbEmail): Email => ({

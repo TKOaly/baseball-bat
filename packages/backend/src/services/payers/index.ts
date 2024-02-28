@@ -20,7 +20,7 @@ import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
 import { BusContext, ModuleDeps } from '@/app';
 import { ExecutionContext } from '@/bus';
-import { PoolConnection } from '@/db';
+import { Connection } from '@/db/connection';
 
 export type DbPayerProfileWithEmails = DbPayerProfile & {
   emails: DbPayerEmail[];
@@ -435,7 +435,7 @@ export default ({ bus }: ModuleDeps) => {
   );
 
   async function replacePrimaryEmail(
-    pg: PoolConnection,
+    pg: Connection,
     id: InternalIdentity,
     email: string,
   ) {
@@ -453,7 +453,7 @@ export default ({ bus }: ModuleDeps) => {
 
   async function createPayerProfileFromTkoalyUser(
     bus: ExecutionContext<BusContext>,
-    pg: PoolConnection,
+    pg: Connection,
     user: UpstreamUser,
   ): Promise<PayerProfile> {
     const existingPayerProfile = await bus.exec(

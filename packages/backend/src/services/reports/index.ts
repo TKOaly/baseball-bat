@@ -27,7 +27,7 @@ import {
   generateDebtStatusReport,
 } from '@/services/debts/definitions';
 import * as defs from './definitions';
-import { Connection } from '@/db';
+import { Connection } from '@/db/connection';
 
 export type CreateReportOptions = {
   template: string;

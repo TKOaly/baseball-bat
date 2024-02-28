@@ -52,7 +52,7 @@ import {
   sendEmail,
 } from '../email/definitions';
 import { ExecutionContext } from '@/bus';
-import { Connection } from '@/db';
+import { Connection } from '@/db/connection';
 import { formatDebt, formatDebtComponent, queryDebts } from './query';
 
 export type CreateDebtOptions = {

@@ -1,4 +1,4 @@
-import { Connection } from '@/db';
+import { Connection } from '@/db/connection';
 import {
   DbDebt,
   DbDebtCenter,

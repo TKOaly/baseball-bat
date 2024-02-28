@@ -9,7 +9,7 @@ import {
   PaymentEvent,
   PaymentStatus,
 } from '@bbat/common/build/src/types';
-import { Connection } from '../../db';
+import { Connection } from '@/db/connection';
 import { cents, euro, sumEuroValues } from '@bbat/common/build/src/currency';
 import { ModuleDeps } from '@/app';
 import * as payerService from '@/services/payers/definitions';
