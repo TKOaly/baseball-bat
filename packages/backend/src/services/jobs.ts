@@ -9,6 +9,7 @@ import {
   WorkerOptions,
   Worker,
   Job,
+  QueueEvents,
 } from 'bullmq';
 import { Config } from '../config';
 import { ExecutionContext, LocalBus } from '@/bus';
@@ -23,6 +24,17 @@ export type Processor<T = any, R = any, N extends string = string> = (
   token?: string,
 ) => Promise<R>;
 
+const logAllEvents = <EmitFn extends (...args: any[]) => any>(emitter: {
+  emit: EmitFn;
+}) => {
+  const oldEmit = emitter.emit;
+
+  emitter.emit = function (...args: Parameters<EmitFn>) {
+    console.log('Event', ...args);
+    oldEmit.apply(emitter, args);
+  } as EmitFn;
+};
+
 export class JobService {
   queues: Record<string, Queue> = {};
 
@@ -32,12 +44,14 @@ export class JobService {
     private bus: LocalBus<BusContext>,
     private pool: pg.Pool,
   ) {
-    /*const events = new QueueEvents('main', {
+    const events = new QueueEvents('reports', {
       connection: this.getConnectionConfig(),
       prefix: 'bbat-jobs',
     });
 
-    bus.on(shutdown, () => events.close());*/
+    logAllEvents(events);
+
+    bus.on(shutdown, () => events.close());
   }
 
   private getConnectionConfig(): ConnectionOptions {
