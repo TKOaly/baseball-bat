@@ -110,12 +110,9 @@ export class JobService {
     processor: Processor<T, R>,
     options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
-    const callback: BaseProcessor = async (job, token) => {
-      const pg = await this.pool.connect();
-
-      const ctx = this.bus.createContext({ pg });
-
-      return pg.try(async () => {
+    const callback: BaseProcessor = (job, token) => {
+      return this.pool.tryWithConnection(async pg => {
+        const ctx = this.bus.createContext({ pg });
         return processor(ctx, job, token);
       });
     };
