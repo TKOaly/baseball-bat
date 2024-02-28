@@ -53,6 +53,10 @@ export class E2ETestEnvironment extends TestEnvironment {
     });
   }
 
+  async navigate(item: string) {
+    await this.page.getByTestId('side-navigation').getByText(item).click();
+  }
+
   async login(user: Partial<UpstreamUser>) {
     await this.mockProcedure(
       getUpstreamUserById,
