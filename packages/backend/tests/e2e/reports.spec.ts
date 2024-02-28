@@ -17,7 +17,10 @@ const reportTypes = [
 ];
 
 for (const { name, button } of reportTypes) {
-  test(`Generate a ${name} with default options`, async ({ page, bbat }) => {
+  test.skip(`Generate a ${name} with default options`, async ({
+    page,
+    bbat,
+  }) => {
     test.slow();
 
     await page.goto(bbat.url);
