@@ -12,7 +12,7 @@ import session from './session';
 import payments from './payments';
 import reports from './report';
 import jobs from './jobs';
-import { ApplicationBus, ExecutionContext, LocalBus } from '@/bus';
+import { LocalBus, ExecutionContext } from '@/bus';
 import { Config } from '@/config';
 import { AuthService } from '@/auth-middleware';
 import { JobService } from '@/services/jobs';
@@ -30,7 +30,7 @@ export type BusMiddleware = Middleware.ChainedMiddleware<
 >;
 
 export const busMiddleware =
-  (bus: ApplicationBus<BusContext>): BusMiddleware =>
+  (bus: LocalBus<BusContext>): BusMiddleware =>
   async ({ pg }) => {
     return Middleware.next({ bus: bus.createContext({ pg }) });
   };

@@ -1,28 +1,31 @@
-import { Decode, Encode, Type, TypeOf } from 'io-ts';
-import { flow, pipe } from 'fp-ts/lib/function';
-import * as E from 'fp-ts/lib/Either';
+import { EventArgs } from '@/bus';
+import { EventOf, EventType, defineEvent } from './event';
+import { Interface } from './interface';
+import {
+  PayloadOf,
+  ProcedureArgs,
+  ProcedureType,
+  ResponseOf,
+  defineProcedure,
+} from './procedure';
+import { Decode, Encode, Type } from 'io-ts';
+import * as T from 'fp-ts/lib/Task';
 import * as TE from 'fp-ts/lib/TaskEither';
-import { Task } from 'fp-ts/lib/Task';
+import * as E from 'fp-ts/lib/Either';
 import { Middleware } from 'typera-express';
+import { flow, pipe } from 'fp-ts/lib/function';
 
-export type EventType<PT extends Type<any, any, any>> = {
-  name: string;
-  payloadType: PT;
+type ProcedureImplementations<I extends Interface, C> = {
+  [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
 };
 
-export type EventOf<ET extends EventType<any>> = TypeOf<ET['payloadType']>;
-export type PayloadOf<PT extends ProcedureType<any, any>> = TypeOf<
-  PT['payloadType']
->;
-export type ResponseOf<PT extends ProcedureType<any, any>> = TypeOf<
-  PT['responseType']
->;
-export type ProcedureArgs<PT extends ProcedureType<any, any>> =
-  PayloadOf<PT> extends void ? [] : [PayloadOf<PT>];
+type InterfaceHandleProc<P extends ProcedureType> = (
+  ...args: ProcedureArgs<P>
+) => Promise<ResponseOf<P>>;
 
-export type EventArgs<ET extends EventType<any>> = EventOf<ET> extends void
-  ? []
-  : [EventOf<ET>];
+type InterfaceHandle<I extends Interface> = {
+  [P in keyof I['procedures']]: InterfaceHandleProc<I['procedures'][P]>;
+};
 
 export type EventHandler<T, C> = (
   payload: T,
@@ -30,191 +33,10 @@ export type EventHandler<T, C> = (
   bus: ExecutionContext<C>,
 ) => Promise<void> | void;
 
-export const defineEvent = <T extends Type<any, any, any>>(
-  name: string,
-  payloadType: T,
-) => ({
-  name,
-  payloadType,
-});
-
-export const defineProcedure = <
-  PT extends Type<any, any, any>,
-  RT extends Type<any, any, any>,
->(options: {
-  interfaceName: string;
-  name: string;
-  payload: PT;
-  response: RT;
-}) => ({
-  name: options.name,
-  interfaceName: options.interfaceName,
-  payloadType: options.payload,
-  responseType: options.response,
-});
-
-type Interface<
-  Name extends string,
-  Procedures extends Record<string, ProcedureType<any, any>>,
-> = {
-  name: Name;
-  procedures: Procedures;
-};
-
-interface InterfaceBuilder<N extends string> {
-  proc<
-    PT extends Type<any, any, any>,
-    RT extends Type<any, any, any>,
-  >(options: {
-    payload: PT;
-    response: RT;
-  }): Omit<ProcedureType<PT, RT, N>, 'name'>;
-}
-
-type InterfaceBuilderFn<
-  N extends string,
-  Procs extends Record<string, Omit<ProcedureType<any, any, N>, 'name'>>,
-> = {
-  (builder: InterfaceBuilder<N>): Procs;
-};
-
-type CreateInterfaceFn = {
-  <
-    N extends string,
-    Procs extends Record<string, Omit<ProcedureType<any, any, N>, 'name'>>,
-  >(
-    name: N,
-    builder: InterfaceBuilderFn<N, Procs>,
-  ): Interface<
-    N,
-    { [K in keyof Procs]: K extends string ? Procs[K] & { name: K } : never }
-  >;
-};
-
-type ProcedureImplementations<I extends Interface<any, any>, C> = {
-  [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
-};
-
-export const createInterface: CreateInterfaceFn = (name, builder) => {
-  const procedures = builder({
-    proc: ({ payload, response }) => ({
-      payloadType: payload,
-      responseType: response,
-      interfaceName: name,
-    }),
-  });
-
-  return {
-    name,
-    procedures: Object.fromEntries(
-      Object.entries(procedures).map(([procName, def]) => [
-        procName,
-        { ...def, name: procName },
-      ]),
-    ) as any,
-  };
-};
-
-export const createScope = (scope: string) => ({
-  defineEvent<T extends Type<any, any, any>>(
-    name: string | string[],
-    payloadType: T,
-  ) {
-    return defineEvent(`${scope}:${name}`, payloadType);
-  },
-
-  defineProcedure<
-    PT extends Type<any, any, any>,
-    RT extends Type<any, any, any>,
-  >(options: { name: string; payload: PT; response: RT }) {
-    return defineProcedure({
-      ...options,
-      interfaceName: scope,
-      name: options.name,
-    });
-  },
-});
-
-export type ProcedureHandler<PT extends ProcedureType<any, any>, C> = (
-  payload: PayloadOf<PT>,
-  context: C,
-  bus: ExecutionContext<C>,
-) => Promise<ResponseOf<PT>>;
-
-interface ProcedureHandlerWithOriginal<PT extends ProcedureType<any, any>, C>
-  extends ProcedureHandler<PT, C> {
-  original: ProcedureHandler<PT, C>;
-}
-
-export type ProcedureType<
-  PT extends Type<any, unknown, any>,
-  RT extends Type<any, unknown, any>,
-  InterfaceName extends string = string,
-  Name extends string = string,
-> = {
-  name: Name;
-  interfaceName: InterfaceName;
-  payloadType: PT;
-  responseType: RT;
-};
-
-export abstract class ApplicationBus<C = void> {
-  createContext(context: C): ExecutionContext<C> {
-    return new ExecutionContext(this, context);
-  }
-
-  abstract on<ET extends EventType<any>>(
-    eventType: ET,
-    handler: EventHandler<EventOf<ET>, C>,
-  ): void;
-
-  abstract emit<ET extends EventType<any>>(
-    ctx: C,
-    eventType: ET,
-    ...payload: EventArgs<ET>
-  ): Promise<void>;
-  /*abstract emit<ET extends EventType<any>>(
-    ctx: C,
-    eventType: ET,
-    payload: EventOf<ET>,
-  ): void;*/
-
-  abstract exec<
-    PT extends ProcedureType<PayloadType, ResponseType>,
-    PayloadType extends Type<any, any, any>,
-    ResponseType extends Type<any, any, any>,
-  >(
-    ctx: C,
-    procedure: PT,
-    id: string | null,
-    ...payload: ProcedureArgs<PT>
-  ): Promise<ResponseOf<PT>>;
-
-  abstract register<
-    PT extends ProcedureType<PayloadType, ResponseType>,
-    PayloadType extends Type<any, any, any>,
-    ResponseType extends Type<any, any, any>,
-  >(procedure: PT, handler: ProcedureHandler<PT, C>): void;
-
-  execT<
-    PT extends ProcedureType<PayloadType, ResponseType>,
-    PayloadType extends Type<any, any, any>,
-    ResponseType extends Type<any, any, any>,
-  >(
-    ctx: C,
-    procedure: PT,
-  ): (...payload: ProcedureArgs<PT>) => Task<ResponseOf<PT>> {
-    return (...payload: ProcedureArgs<PT>) =>
-      () =>
-        this.exec(ctx, procedure, null, ...payload);
-  }
-}
-
 export class ExecutionContext<C> {
   constructor(
-    private bus: ApplicationBus<C>,
+    private bus: LocalBus<C>,
     public context: C,
-    private level: number = 0,
   ) {}
 
   emit<ET extends EventType<any>>(
@@ -255,16 +77,13 @@ export class ExecutionContext<C> {
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,
     ResponseType extends Type<any, any, any>,
-  >(procedure: PT): (...payload: ProcedureArgs<PT>) => Task<ResponseOf<PT>> {
+  >(procedure: PT): (...payload: ProcedureArgs<PT>) => T.Task<ResponseOf<PT>> {
     return (...payload: ProcedureArgs<PT>) =>
       () =>
         this.exec(procedure, ...payload);
   }
 
-  getInterface<I extends Interface<any, any>>(
-    iface: I,
-    id?: string,
-  ): InterfaceHandle<I> {
+  getInterface<I extends Interface>(iface: I, id?: string): InterfaceHandle<I> {
     return new Proxy(
       {},
       {
@@ -286,21 +105,24 @@ export class ExecutionContext<C> {
   }
 }
 
-type InterfaceHandleProc<P extends ProcedureType<any, any>> = (
-  ...args: ProcedureArgs<P>
-) => Promise<ResponseOf<P>>;
+export type ProcedureHandler<PT extends ProcedureType, C> = (
+  payload: PayloadOf<PT>,
+  context: C,
+  bus: ExecutionContext<C>,
+) => Promise<ResponseOf<PT>>;
 
-type InterfaceHandle<I extends Interface<any, any>> = {
-  [P in keyof I['procedures']]: InterfaceHandleProc<I['procedures'][P]>;
-};
+interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
+  extends ProcedureHandler<PT, C> {
+  original: ProcedureHandler<PT, C>;
+}
 
-export class LocalBus<C> extends ApplicationBus<C> {
+export class LocalBus<C> {
   // private emitter = new EventEmitter();
 
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
 
-  protected getName<P extends ProcedureType<any, any>>(
+  protected getName<P extends ProcedureType>(
     procedure: P,
     impl?: string,
   ): string {
@@ -311,9 +133,7 @@ export class LocalBus<C> extends ApplicationBus<C> {
     return name;
   }
 
-  getHandler<P extends ProcedureType<any, any>>(
-    proc: P,
-  ): ProcedureHandler<any, C> {
+  getHandler<P extends ProcedureType>(proc: P): ProcedureHandler<any, C> {
     const name = this.getName(proc);
     return this.procedures.get(name)!.original; // eslint-disable-line
   }
@@ -357,7 +177,7 @@ export class LocalBus<C> extends ApplicationBus<C> {
     // this.emitter.emit(eventType.name, payload, ctx);
   }
 
-  async exec<PT extends ProcedureType<any, any>>(
+  async exec<PT extends ProcedureType>(
     ctx: C,
     procedure: PT,
     id: string | null,
@@ -374,7 +194,7 @@ export class LocalBus<C> extends ApplicationBus<C> {
     }
 
     const execHandler =
-      (payload: PayloadOf<PT>): Task<unknown> =>
+      (payload: PayloadOf<PT>): T.Task<unknown> =>
       () =>
         handler(payload, ctx, this.createContext(ctx));
 
@@ -428,7 +248,7 @@ export class LocalBus<C> extends ApplicationBus<C> {
     return result.right;
   }
 
-  provide<I extends Interface<any, any>>(
+  provide<I extends Interface>(
     iface: I,
     implementations: ProcedureImplementations<I, C>,
   ) {
@@ -437,7 +257,7 @@ export class LocalBus<C> extends ApplicationBus<C> {
     );
   }
 
-  provideNamed<I extends Interface<any, any>>(
+  provideNamed<I extends Interface>(
     iface: I,
     id: string | null,
     implementations: ProcedureImplementations<I, C>,
@@ -458,8 +278,6 @@ export class LocalBus<C> extends ApplicationBus<C> {
     override?: boolean,
   ) {
     const name = this.getName(procedure, ifaceId);
-
-    // console.log(`Registering ${name}`, new Error().stack);
 
     if (!override && this.procedures.has(name)) {
       throw new Error(`Handler for procedure ${name} already defined!`);
@@ -488,4 +306,28 @@ export class LocalBus<C> extends ApplicationBus<C> {
       });
     };
   }
+
+  createContext(context: C): ExecutionContext<C> {
+    return new ExecutionContext(this, context);
+  }
 }
+
+export const createScope = (scope: string) => ({
+  defineEvent<T extends Type<any, any, any>>(
+    name: string | string[],
+    payloadType: T,
+  ) {
+    return defineEvent(`${scope}:${name}`, payloadType);
+  },
+
+  defineProcedure<
+    PT extends Type<any, any, any>,
+    RT extends Type<any, any, any>,
+  >(options: { name: string; payload: PT; response: RT }) {
+    return defineProcedure({
+      ...options,
+      interfaceName: scope,
+      name: options.name,
+    });
+  },
+});
