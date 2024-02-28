@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from './fixtures';
-import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
+import { createPayerProfileFromTkoalyIdentity } from '@/modules/payers/definitions';
 import { tkoalyIdentity } from '@bbat/common/types';
-import { getUpstreamUserById } from '@/services/users/definitions';
+import { getUpstreamUserById } from '@/modules/users/definitions';
 
 test('site accessible', async ({ page, bbat }) => {
   await page.goto(bbat.url);

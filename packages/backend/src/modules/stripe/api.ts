@@ -4,7 +4,7 @@ import * as t from 'io-ts';
 import { router } from 'typera-express';
 import { headers } from 'typera-express/parser';
 import { badRequest, internalServerError, ok } from 'typera-express/response';
-import * as paymentService from '@/services/payments/definitions';
+import * as paymentService from '@/modules/payments/definitions';
 import { cents, euro } from '@bbat/common/currency';
 
 export type StripeContext = {

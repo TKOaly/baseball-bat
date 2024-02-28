@@ -7,10 +7,10 @@ import {
   unauthorized,
 } from 'typera-express/response';
 import * as t from 'io-ts';
-import * as paymentService from '@/services/payments/definitions';
-import * as payerService from '@/services/payers/definitions';
-import * as debtService from '@/services/debts/definitions';
-import * as bankingService from '@/services/banking/definitions';
+import * as paymentService from '@/modules/payments/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import * as debtService from '@/modules/debts/definitions';
+import * as bankingService from '@/modules/banking/definitions';
 import { validateBody } from '@/validate-middleware';
 import { euroValue } from '@bbat/common/build/src/currency';
 import auth from '@/auth-middleware';

@@ -4,7 +4,7 @@ import { Browser } from 'puppeteer';
 import sql from 'sql-template-strings';
 import routes from './api';
 import * as path from 'path';
-import * as paymentService from '@/services/payments/definitions';
+import * as paymentService from '@/modules/payments/definitions';
 import * as fs from 'fs';
 import * as uuid from 'uuid';
 import {
@@ -25,7 +25,7 @@ import { isRight } from 'fp-ts/lib/Either';
 import {
   generateDebtLedger,
   generateDebtStatusReport,
-} from '@/services/debts/definitions';
+} from '@/modules/debts/definitions';
 import * as defs from './definitions';
 import { Connection } from '@/db/connection';
 import { createModule } from '@/module';

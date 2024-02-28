@@ -5,9 +5,9 @@ import {
   createEnvironment,
   startServer,
 } from '../common';
-import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
+import { createPayerProfileFromTkoalyIdentity } from '@/modules/payers/definitions';
 import { UpstreamUser, tkoalyIdentity } from '@bbat/common/types';
-import { getUpstreamUserById } from '@/services/users/definitions';
+import { getUpstreamUserById } from '@/modules/users/definitions';
 import { authenticateSession } from '@/auth-middleware';
 import assert from 'node:assert';
 

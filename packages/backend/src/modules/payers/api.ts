@@ -1,8 +1,8 @@
 import { Parser, router } from 'typera-express';
 import { notFound, ok, unauthorized } from 'typera-express/response';
-import * as payerService from '@/services/payers/definitions';
+import * as payerService from '@/modules/payers/definitions';
 import auth from '@/auth-middleware';
-import * as debtService from '@/services/debts/definitions';
+import * as debtService from '@/modules/debts/definitions';
 import * as t from 'io-ts';
 import {
   emailIdentity,

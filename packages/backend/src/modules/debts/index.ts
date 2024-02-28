@@ -27,10 +27,10 @@ import {
   sumEuroValues,
 } from '@bbat/common/build/src/currency';
 import iface, * as defs from './definitions';
-import * as payerService from '@/services/payers/definitions';
-import * as paymentService from '@/services/payments/definitions';
-import * as usersService from '@/services/users/definitions';
-import * as debtCentersService from '@/services/debt-centers/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import * as paymentService from '@/modules/payments/definitions';
+import * as usersService from '@/modules/users/definitions';
+import * as debtCentersService from '@/modules/debt-centers/definitions';
 import * as E from 'fp-ts/lib/Either';
 import * as TE from 'fp-ts/lib/TaskEither';
 import * as A from 'fp-ts/lib/Array';

@@ -1,7 +1,7 @@
 import { Middleware, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount } from '@bbat/common/build/src/types';
-import * as bankingService from '@/services/banking/definitions';
+import * as bankingService from '@/modules/banking/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '@/validate-middleware';
 import multer from 'multer';

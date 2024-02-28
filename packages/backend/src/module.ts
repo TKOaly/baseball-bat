@@ -4,9 +4,9 @@ import { LocalBus } from '@/bus';
 import dbMiddleware from '@/db/middleware';
 import { BusContext } from './app';
 import * as redis from 'redis';
-import { JobService } from './services/jobs';
+import { JobService } from './modules/jobs';
 import { Config } from './config';
-import { IEmailTransport } from './services/email';
+import { IEmailTransport } from './modules/email';
 
 export type ModuleDeps = {
   bus: LocalBus<BusContext>;

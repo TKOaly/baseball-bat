@@ -1,11 +1,11 @@
 import setup from './setup';
 import assert from 'node:assert';
-import * as defs from '@/services/banking/definitions';
+import * as defs from '@/modules/banking/definitions';
 import { describe } from 'node:test';
 import { parseCamtStatement } from '@bbat/common/camt-parser';
 import { formatISO } from 'date-fns';
 import { euro } from '@bbat/common/currency';
-import * as payments from '@/services/payments/definitions';
+import * as payments from '@/modules/payments/definitions';
 
 const GROUPED_IBAN = 'FI79 9359 4446 8357 68';
 const IBAN = GROUPED_IBAN.replaceAll(' ', '');

@@ -14,7 +14,7 @@ import {
   PayerPreferences,
   PayerEmailPriority,
 } from '@bbat/common/build/src/types';
-import * as usersService from '@/services/users/definitions';
+import * as usersService from '@/modules/users/definitions';
 import * as defs from './definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';

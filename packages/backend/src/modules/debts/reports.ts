@@ -11,9 +11,9 @@ import { DbDebt, Debt, Payment, internalIdentity } from '@bbat/common/types';
 import { groupBy } from 'fp-ts/lib/NonEmptyArray';
 import { pipe } from 'fp-ts/lib/function';
 import { toArray } from 'fp-ts/lib/Record';
-import * as debtCentersService from '@/services/debt-centers/definitions';
-import * as payerService from '@/services/payers/definitions';
-import * as paymentService from '@/services/payments/definitions';
+import * as debtCentersService from '@/modules/debt-centers/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import * as paymentService from '@/modules/payments/definitions';
 import { queryDebts, formatDebt } from './query';
 
 const debtLedgerOptions = t.type({

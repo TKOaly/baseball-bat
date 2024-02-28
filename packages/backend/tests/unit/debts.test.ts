@@ -1,11 +1,11 @@
 import setup from './setup';
-import * as defs from '../../src/services/debts/definitions';
+import * as defs from '../../src/modules/debts/definitions';
 import assert from 'node:assert';
-import { createDebtCenter } from '../../src/services/debt-centers/definitions';
-import { createPayerProfileFromEmailIdentity } from '../../src/services/payers/definitions';
+import { createDebtCenter } from '../../src/modules/debt-centers/definitions';
+import { createPayerProfileFromEmailIdentity } from '../../src/modules/payers/definitions';
 import { emailIdentity, euro } from '@bbat/common/src/types';
-import { getEmails } from '../../src/services/email/definitions';
-import { createPaymentEvent } from '@/services/payments/definitions';
+import { getEmails } from '../../src/modules/email/definitions';
+import { createPaymentEvent } from '@/modules/payments/definitions';
 
 setup('Debts service', ({ test }) => {
   test('debt creation', async ({ bus }) => {

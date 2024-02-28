@@ -1,6 +1,6 @@
 import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
-import * as emailService from '@/services/email/definitions';
+import * as emailService from '@/modules/email/definitions';
 import auth from '@/auth-middleware';
 import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';

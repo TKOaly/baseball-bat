@@ -4,7 +4,7 @@ import express from 'express';
 import session from './session';
 import { LocalBus } from '@/bus';
 import { Config } from '@/config';
-import { JobService } from '@/services/jobs';
+import { JobService } from '@/modules/jobs';
 import redis from 'redis';
 import { BusContext } from '@/app';
 import { Pool } from '@/db/connection';

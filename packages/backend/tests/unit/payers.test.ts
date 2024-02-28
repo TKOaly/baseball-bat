@@ -1,9 +1,9 @@
 import { emailIdentity, tkoalyIdentity } from '@bbat/common/types';
 import setup from './setup';
-import * as defs from '@/services/payers/definitions';
+import * as defs from '@/modules/payers/definitions';
 import { assert as chai, use as chaiUse } from 'chai';
 import assert from 'node:assert';
-import { getUpstreamUserById } from '@/services/users/definitions';
+import { getUpstreamUserById } from '@/modules/users/definitions';
 import chaiSubset from 'chai-subset';
 
 chaiUse(chaiSubset);

@@ -1,8 +1,8 @@
 import { emailIdentity } from '@bbat/common/types';
 import setup from './setup';
-import * as defs from '@/services/reports/definitions';
+import * as defs from '@/modules/reports/definitions';
 import sql from 'sql-template-strings';
-import { createPayerProfileFromEmailIdentity } from '@/services/payers/definitions';
+import { createPayerProfileFromEmailIdentity } from '@/modules/payers/definitions';
 import assert from 'assert';
 import parsePdf from 'pdf-parse';
 import { EventOf } from '@/bus';

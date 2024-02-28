@@ -7,9 +7,9 @@ import {
   notFound,
   unauthorized,
 } from 'typera-express/response';
-import * as usersService from '@/services/users/definitions';
-import * as payerService from '@/services/payers/definitions';
-import * as emailService from '@/services/email/definitions';
+import * as usersService from '@/modules/users/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import * as emailService from '@/modules/email/definitions';
 import {
   emailIdentity,
   TkoalyIdentity,
@@ -18,8 +18,8 @@ import {
 import { validateBody } from '../validate-middleware';
 import * as t from 'io-ts';
 import { ApiFactory } from '.';
-import { getTokenUpstreamUser } from '@/services/users/definitions';
-import { createPayerProfileFromTkoalyIdentity } from '@/services/payers/definitions';
+import { getTokenUpstreamUser } from '@/modules/users/definitions';
+import { createPayerProfileFromTkoalyIdentity } from '@/modules/payers/definitions';
 import { authServiceFactory } from '@/auth-middleware';
 
 const sendAuthCodeBody = t.type({

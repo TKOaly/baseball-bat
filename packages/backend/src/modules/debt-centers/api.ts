@@ -8,10 +8,10 @@ import {
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
-import * as debtCentersService from '@/services/debt-centers/definitions';
-import * as debtService from '@/services/debts/definitions';
-import * as eventsService from '@/services/events/definitions';
-import * as payerService from '@/services/payers/definitions';
+import * as debtCentersService from '@/modules/debt-centers/definitions';
+import * as debtService from '@/modules/debts/definitions';
+import * as eventsService from '@/modules/events/definitions';
+import * as payerService from '@/modules/payers/definitions';
 import auth from '@/auth-middleware';
 import { validateBody } from '@/validate-middleware';
 import { pipe } from 'fp-ts/lib/function';

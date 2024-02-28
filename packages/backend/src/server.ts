@@ -3,7 +3,7 @@ import path from 'path';
 import helmet, { HelmetOptions } from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import initServices from '@/services';
+import initServices from '@/modules';
 import { router } from 'typera-express';
 import healthCheck from './api/health-check';
 import apiRoutes, { ApiDeps } from './api';

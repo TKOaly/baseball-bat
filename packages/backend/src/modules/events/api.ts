@@ -1,6 +1,6 @@
 import { router } from 'typera-express';
 import { ok } from 'typera-express/response';
-import * as eventsService from '@/services/events/definitions';
+import * as eventsService from '@/modules/events/definitions';
 import auth from '@/auth-middleware';
 import * as dfn from 'date-fns';
 import { RouterFactory } from '@/module';

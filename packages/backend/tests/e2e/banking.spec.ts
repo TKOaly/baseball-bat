@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { euro, formatEuro } from '@bbat/common/currency';
-import { createPayment } from '@/services/payments/definitions';
+import { createPayment } from '@/modules/payments/definitions';
 import { groupBy } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { pipe } from 'fp-ts/lib/function';
 

@@ -1,6 +1,6 @@
 import setup from './setup';
 import assert from 'node:assert';
-import * as defs from '../../src/services/payments/definitions';
+import * as defs from '../../src/modules/payments/definitions';
 import { euro } from '@bbat/common/src/currency';
 
 setup('Payments service', ({ test }) => {

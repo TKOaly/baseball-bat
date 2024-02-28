@@ -12,8 +12,8 @@ import {
 import { Connection } from '@/db/connection';
 import { cents, euro, sumEuroValues } from '@bbat/common/build/src/currency';
 import routes from './api';
-import * as payerService from '@/services/payers/definitions';
-import * as debtService from '@/services/debts/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import * as debtService from '@/modules/debts/definitions';
 import * as defs from './definitions';
 import { createEmail, sendEmail } from '../email/definitions';
 import { format, parseISO } from 'date-fns';

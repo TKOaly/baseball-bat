@@ -1,6 +1,6 @@
 import { router } from 'typera-express';
 import { ok } from 'typera-express/response';
-import * as accountingService from '@/services/accounting/definitions';
+import * as accountingService from '@/modules/accounting/definitions';
 import { RouterFactory } from '@/module';
 import auth from '@/auth-middleware';
 

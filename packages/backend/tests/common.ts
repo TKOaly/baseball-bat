@@ -17,8 +17,8 @@ import {
   ProcedureType,
 } from '@/bus';
 import { Pool } from '@/db/connection';
-import { IEmailTransport } from '@/services/email';
-import { JobService } from '@/services/jobs';
+import { IEmailTransport } from '@/modules/email';
+import { JobService } from '@/modules/jobs';
 import server from '@/server';
 import { shutdown } from '@/orchestrator';
 import { mock } from 'node:test';

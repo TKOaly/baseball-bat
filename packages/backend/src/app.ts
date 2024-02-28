@@ -15,10 +15,10 @@ import {
   createEmailDispatcherTransport,
   createSMTPTransport,
   IEmailTransport,
-} from './services/email';
-import { JobService } from './services/jobs';
+} from './modules/email';
+import { JobService } from './modules/jobs';
 import { LocalBus } from './bus';
-import initServices from './services';
+import initServices from './modules';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();

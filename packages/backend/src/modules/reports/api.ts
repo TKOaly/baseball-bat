@@ -4,9 +4,9 @@ import { dbDateString } from '@bbat/common/build/src/types';
 import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';
 import { parse } from 'date-fns';
-import * as reportService from '@/services/reports/definitions';
-import * as debtService from '@/services/debts/definitions';
-import * as paymentService from '@/services/payments/definitions';
+import * as reportService from '@/modules/reports/definitions';
+import * as debtService from '@/modules/debts/definitions';
+import * as paymentService from '@/modules/payments/definitions';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
 

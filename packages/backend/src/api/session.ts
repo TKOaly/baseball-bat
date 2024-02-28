@@ -6,7 +6,7 @@ import { ApiFactory } from '.';
 import {
   getPayerPreferences,
   getPayerProfileByInternalIdentity,
-} from '@/services/payers/definitions';
+} from '@/modules/payers/definitions';
 
 const factory: ApiFactory = ({ config }, route) => {
   const getSession = route
