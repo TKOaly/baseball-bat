@@ -3,6 +3,7 @@ import express from 'express';
 import debts from './debts';
 import accounting from './accounting';
 import banking from './banking';
+import jobs from './jobs';
 import debtCenters from './debt-centers';
 import email from './email';
 import events from './events';
@@ -51,5 +52,6 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
     invoices,
     users,
     stripe,
+    jobs,
   ]);
 };
