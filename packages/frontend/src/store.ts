@@ -15,7 +15,9 @@ export const store = configureStore({
     notifications: notificationsSlice.reducer,
   },
   middleware: getDefaultMiddleware =>
-    getDefaultMiddleware().concat(api.middleware),
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }).concat(api.middleware),
   devTools: import.meta.env.NODE_ENV === 'development',
 });
 

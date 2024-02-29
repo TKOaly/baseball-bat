@@ -17,6 +17,18 @@ export const cents = (value: number): EuroValue => ({
   value,
 });
 
+export const equal = (a: EuroValue, b: EuroValue) => a.value === b.value;
+export const sub = (a: EuroValue, b: EuroValue) => cents(a.value - b.value);
+export const add = (a: EuroValue, b: EuroValue) => cents(a.value + b.value);
+export const multiply = (a: EuroValue, b: EuroValue) =>
+  cents(a.value * b.value);
+export const isPositive = (a: EuroValue) => a.value > 0;
+export const isNegative = (a: EuroValue) => a.value < 0;
+export const isPositiveOrZero = (a: EuroValue) => a.value >= 0;
+export const isNegativeOrZero = (a: EuroValue) => a.value <= 0;
+
+export const zero: EuroValue = cents(0);
+
 export const eurosEqual = (a: EuroValue, b: EuroValue) => a.value === b.value;
 
 export const makeEurosNegative = (value: EuroValue): EuroValue => ({

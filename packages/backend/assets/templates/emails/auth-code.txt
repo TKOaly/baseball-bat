@@ -2,4 +2,4 @@ Vahvistuskoodisi on <%= code %>.
 
 --
 
-Your authetication code is <%= code %>.
+Your authentication code is <%= code %>.

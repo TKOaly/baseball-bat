@@ -2,7 +2,6 @@
 
 import assert from 'assert';
 import * as dotenv from 'dotenv';
-import { Service } from 'typedi';
 
 dotenv.config();
 
@@ -35,7 +34,6 @@ interface IConfig {
   magicLinkSecret: string;
 }
 
-@Service()
 export class Config implements IConfig {
   dbUrl = '';
   userServiceUrl = '';

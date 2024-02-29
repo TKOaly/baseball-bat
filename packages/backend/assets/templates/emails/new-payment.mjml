@@ -90,6 +90,7 @@
             </th>
             <td><%= dateFns.format(date, 'dd.MM.yyyy') %></td>
           </tr>
+          <% if (dueDate) { %>
           <tr>
             <th>
               Eräpäivä <br />
@@ -97,6 +98,7 @@
             </th>
             <td><%= dateFns.format(dueDate, 'dd.MM.yyyy') %></td>
           </tr>
+          <% } %>
           <tr>
             <th>
               Summa <br />

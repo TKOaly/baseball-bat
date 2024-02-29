@@ -1,125 +1,69 @@
-import { route, router } from 'typera-express';
-import { AuthService } from '../auth-middleware';
-import { PayerService } from '../services/payer';
-import { internalIdentity } from '@bbat/common/build/src/types';
-import { ok, redirect, unauthorized } from 'typera-express/response';
-import { Inject, Service } from 'typedi';
-import { Config } from '../config';
+import { router } from 'typera-express';
+import { ok, redirect } from 'typera-express/response';
 import base64url from 'base64url';
+import auth from '@/auth-middleware';
+import { ApiFactory } from '.';
+import {
+  getPayerPreferences,
+  getPayerProfileByInternalIdentity,
+} from '@/modules/payers/definitions';
 
-@Service()
-export class SessionApi {
-  @Inject(() => AuthService)
-  authService: AuthService;
-
-  @Inject(() => PayerService)
-  payerService: PayerService;
-
-  @Inject(() => Config)
-  config: Config;
-
-  getSession() {
-    return route
-      .use(this.authService.createAuthMiddleware({ unauthenticated: true }))
-      .get('/')
-      .handler(async ({ session, req }) => {
-        if (session.authLevel === 'unauthenticated') {
-          return ok({
-            authLevel: 'unauthenticated',
-          });
-        }
-
-        const id = internalIdentity(session.payerId);
-
-        const payerProfile =
-          await this.payerService.getPayerProfileByInternalIdentity(id);
-        const preferences = await this.payerService.getPayerPreferences(id);
-
-        if (!req.cookies.token) {
-          return unauthorized();
-        }
-
-        const tokenPayload = JSON.parse(
-          Buffer.from(req.cookies.token.split('.')[1], 'base64').toString(),
-        );
-
-        if (
-          tokenPayload.authenticatedTo
-            .split(',')
-            .indexOf(this.config.serviceId) === -1
-        ) {
-          return unauthorized();
-        }
-
+const factory: ApiFactory = ({ config }, route) => {
+  const getSession = route
+    .use(auth({ unauthenticated: true }))
+    .get('/')
+    .handler(async ({ session, bus }) => {
+      if (session.authLevel === 'unauthenticated') {
         return ok({
-          authLevel: session.authLevel,
-          accessLevel: session.accessLevel,
-          payerProfile,
-          preferences,
+          authLevel: 'unauthenticated',
         });
-      });
-  }
-
-  login() {
-    return route.get('/login').handler(ctx => {
-      const payload = base64url.encode(
-        JSON.stringify({
-          target: ctx.req.query.target,
-        }),
-      );
-
-      let redirectUrl = null;
-
-      if (
-        ctx.req.query.target === 'welcome' &&
-        typeof ctx.req.query.token === 'string'
-      ) {
-        redirectUrl = `${
-          this.config.appUrl
-        }/api/auth/merge?token=${encodeURIComponent(ctx.req.query.token)}`;
       }
 
-      return redirect(
-        302,
-        `${this.config.userServiceUrl}?serviceIdentifier=${
-          this.config.serviceId
-        }&payload=${payload}${
-          redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''
-        }`,
+      const id = session.payerId;
+
+      const payerProfile = await bus.exec(
+        getPayerProfileByInternalIdentity,
+        id,
       );
+      const preferences = await bus.exec(getPayerPreferences, id);
+
+      return ok({
+        authLevel: session.authLevel,
+        accessLevel: session.accessLevel,
+        payerProfile,
+        preferences,
+      });
     });
-  }
 
-  /*getSetupIntent() {
-    return route
-      .get('/setup-intent')
-      .use(this.authService.createAuthMiddleware())
-      .handler(async ({ session }) => {
-        const secret = await this.payerService.getSetupIntentForUser(internalIdentity(session.payerId))
-        return ok(secret)
-      })
-  }*/
-
-  /*confirmCardSetup() {
-    return route
-      .get('/confirm-card-setup')
-      .handler(async ({ req }) => {
-        const setupIntentId = req.query.setup_intent
-        if (!setupIntentId) {
-          return badRequest('Missing setup_intent')
-        }
-        await this.payerService.setPaymentMethod(req.query.setup_intent!.toString())
-
-        return redirect(302, `${this.config.appUrl}/`)
-      })
-  }*/
-
-  router() {
-    return router(
-      this.getSession(),
-      this.login(),
-      //this.getSetupIntent(),
-      //this.confirmCardSetup()
+  const login = route.get('/login').handler(ctx => {
+    const payload = base64url.encode(
+      JSON.stringify({
+        target: ctx.req.query.target,
+      }),
     );
-  }
-}
+
+    let redirectUrl = null;
+
+    if (
+      ctx.req.query.target === 'welcome' &&
+      typeof ctx.req.query.token === 'string'
+    ) {
+      redirectUrl = `${config.appUrl}/api/auth/merge?token=${encodeURIComponent(
+        ctx.req.query.token,
+      )}`;
+    }
+
+    return redirect(
+      302,
+      `${config.userServiceUrl}?serviceIdentifier=${
+        config.serviceId
+      }&payload=${payload}${
+        redirectUrl ? `&loginRedirect=${encodeURIComponent(redirectUrl)}` : ''
+      }`,
+    );
+  });
+
+  return router(getSession, login);
+};
+
+export default factory;

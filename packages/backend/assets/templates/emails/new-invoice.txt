@@ -27,11 +27,13 @@ Title:             <%- title %>
 Invoice number:    <%- number %>
 Invoice date:      <%- formatDate(date) %>
 Invoice recipient: <%- receiverName %>
+<% if (dueDate) { %>
 Due date:          <%- formatDate(dueDate) %>
+<% } %>
 Total amount:      <%- formatEuro(amount) %>
 Reference number:  <%- formatReferenceNumber(referenceNumber) %>
 Beneficiary:       TKO-äly ry
 Bnf. bank account: FI89 7997 7995 1312 86
 Bnf. BIC:          HOLVFIHH
 
-<%- formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate) %>
+<%- formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate ?? new Date()) %>

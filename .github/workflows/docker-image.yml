@@ -10,14 +10,22 @@ env:
   REGISTRY: registry.tko-aly.fi
 
 jobs:
-  test:
+  test-unit:
     name: Run unit tests
     runs-on: ubuntu-latest
     container: node:18.17.1
 
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [banking, debts, payers, payments, reports]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
+      - name: Install chromium dependencies
+        run: apt update && apt install -y libx11-xcb1 libxcomposite1 libxcursor1 libxdamage1 libxi-dev libxtst-dev libnss3 libcups2 libxss1 libxrandr2 libasound2 libatk1.0-0 libatk-bridge2.0-0 libpangocairo-1.0-0 libgtk-3-0 libgbm1
 
       - name: Enable corepack
         run: corepack enable
@@ -29,9 +37,56 @@ jobs:
         run: pnpm run --filter=@bbat/backend... --recursive build
 
       - name: Run tests
-        run: pnpm run --recursive test
+        run: pnpm run --recursive test:unit tests/unit/${{ matrix.suite }}.test.ts
         env:
           ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
+
+  test-e2e:
+    name: Run E2E tests
+    runs-on: ubuntu-latest
+    container: node:18.17.1
+
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [debts, auth, banking, reports]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install chromium dependencies
+        run: apt update && apt install -y libx11-xcb1 libxcomposite1 libxcursor1 libxdamage1 libxi-dev libxtst-dev libnss3 libcups2 libxss1 libxrandr2 libasound2 libatk1.0-0 libatk-bridge2.0-0 libpangocairo-1.0-0 libgtk-3-0 libgbm1
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install Yarn dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @bbat/backend exec playwright install
+
+      - name: Build frontend dependencies
+        run: pnpm run --filter @bbat/frontend^... build
+
+      - name: Build frontend in development mode
+        run: pnpm run --filter @bbat/frontend build -m development
+
+      - name: Build backend
+        run: pnpm run --filter @bbat/backend... build
+
+      - name: Run tests
+        run: pnpm run --filter=@bbat/backend test:e2e tests/e2e/${{ matrix.suite }}.spec.ts
+        env:
+          ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
+
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-results
+          path: packages/backend/test-results
+          retention-days: 30
 
   build:
     name: Build Docker images
@@ -110,7 +165,7 @@ jobs:
     
     if: ${{ github.event_name == 'release' }}
 
-    needs: [build, test]
+    needs: [build, test-unit, test-e2e]
 
     steps:
       - name: Trigger deployment

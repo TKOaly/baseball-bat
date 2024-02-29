@@ -582,6 +582,12 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         paymentCondition: paymentCondition ?? null,
         tags,
         components: [componentResult.data.id],
+        defaultPayment: {
+          type: 'invoice',
+          options: {
+            referenceNumber: row.columns['reference'],
+          },
+        },
       };
     },
     [resolveDebtCenter, accountingPeriods, activeAccountingPeriod, batchTag],

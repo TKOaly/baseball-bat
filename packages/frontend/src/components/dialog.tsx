@@ -177,7 +177,7 @@ export const DialogBase = <T,>({
   return (
     <div
       {...rest}
-      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10"
+      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10 dialog-base"
       onClick={() => onClose(null)}
     >
       <div
@@ -199,7 +199,11 @@ export const DialogContent = ({ children }: { children: ReactNode }) => {
 };
 
 export const DialogHeader = ({ children }: { children: ReactNode }) => {
-  return <div className="flex gap-3 items-center p-3 border-b">{children}</div>;
+  return (
+    <div className="dialog-header flex gap-3 items-center p-3 border-b">
+      {children}
+    </div>
+  );
 };
 
 export const DialogFooter = ({ children }: { children: ReactNode }) => {

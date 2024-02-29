@@ -66,7 +66,7 @@ export const TransactionList = ({ transactions }: Props) => {
         },
         {
           name: 'Other Party',
-          getValue: tx => tx.otherParty.name,
+          getValue: tx => tx.otherParty?.name,
         },
         {
           name: 'Reference',

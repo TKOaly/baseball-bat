@@ -156,6 +156,7 @@
             </th>
             <td><%- formatDate(date) %></td>
           </tr>
+          <% if (dueDate) { %>
           <tr>
             <th
               style="
@@ -169,6 +170,7 @@
             </th>
             <td><%- formatDate(dueDate) %></td>
           </tr>
+          <% } %>
           <tr>
             <th
               style="
@@ -238,7 +240,7 @@
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Virtual bar code</mj-text>
         <% const barcode = formatBarcode("FI89 7997 7995 1312 86", amount,
-        referenceNumber, dueDate) %>
+        referenceNumber, dueDate ?? new Date()) %>
         <mj-text><pre><%- barcode %></pre></mj-text>
         <mj-image src="<%- generateBarcodeImage(barcode) %>" />
       </mj-column>

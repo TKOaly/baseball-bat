@@ -164,7 +164,7 @@ const Admin = () => {
           className="mx-3 mb-5"
           onClick={() => showSearchDialog({ openOnSelect: true })}
         />
-        <ul className="">
+        <ul data-testid="side-navigation">
           <MenuItem path="/admin/debt-centers">Collections</MenuItem>
           <MenuItem path="/admin/debts">Debts</MenuItem>
           <MenuItem path="/admin/payments">Payments</MenuItem>

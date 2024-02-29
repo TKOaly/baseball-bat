@@ -16,7 +16,7 @@ export const PaymentList = ({ payments }: Props) => {
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       columns={[
         { name: 'Name', getValue: 'title' },
-        { name: 'Number', getValue: 'payment_number' },
+        { name: 'Number', getValue: 'paymentNumber' },
         {
           name: 'Status',
           getValue: row => {

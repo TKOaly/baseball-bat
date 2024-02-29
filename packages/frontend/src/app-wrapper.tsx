@@ -2,7 +2,7 @@ import React, { PropsWithChildren, Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
 import { NewPayment } from './views/new-payment';
-import { store, useAppDispatch, useAppSelector } from './store';
+import { store } from './store';
 import { PaymentSelectionSidebar } from './components/payment-selection-sidebar';
 import { EmailAuth } from './views/email-auth';
 import { DebtDetails } from './views/debt-details';
@@ -10,31 +10,37 @@ import { DebtDetails } from './views/debt-details';
 import { PaymentDetails } from './views/payment-details';
 import { ConfirmEmailAuth } from './views/confirm-email-auth';
 import { Settings } from './views/settings';
-import { Route, Switch, useLocation, useRoute } from 'wouter';
+import {
+  Redirect,
+  Route,
+  Switch,
+  useLocation,
+  useRoute,
+  useSearch,
+} from 'wouter';
 import { Loading } from '@bbat/ui/loading';
 import { Landing } from './views/landing';
 import { Main } from './views/main';
 import './style.css';
-import {
-  authenticateSession,
-  bootstrapSession,
-  createSession,
-  destroySession,
-  heartbeat,
-} from './session';
 import { Button } from '@bbat/ui/button';
 import { DialogContextProvider } from './components/dialog';
 import { StripePaymentFlow } from './views/stripe-payment-flow';
 import { StripePaymentReturnPage } from './views/stripe-payment-return-page';
+import {
+  useAuthenticate,
+  useDeauthenticate,
+  useSession,
+} from './hooks/use-session';
 
 const Navigation = () => {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation();
-  const session = useAppSelector(state => state.session);
-  const dispatch = useAppDispatch();
+  const session = useSession();
+  const deauthenticate = useDeauthenticate();
 
-  const handleLogOut = () => {
-    dispatch(destroySession()).then(() => setLocation('/'));
+  const handleLogOut = async () => {
+    await deauthenticate();
+    setLocation('/');
   };
 
   return (
@@ -57,7 +63,7 @@ const Navigation = () => {
       >
         {t('navigation.logOut')}
       </li>
-      {session.accessLevel === 'admin' && (
+      {session.data?.accessLevel === 'admin' && (
         <>
           <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
           <li
@@ -126,106 +132,81 @@ const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({
 
 const LazyAdmin = React.lazy(() => import('./views/admin'));
 
-const useManageSession = () => {
-  const authToken = new URLSearchParams(window.location.search).get('token');
-  const [location, setLocation] = useLocation();
-  const { bootstrapping, token, authenticated, creatingSession } =
-    useAppSelector(state => state.session);
-  const dispatch = useAppDispatch();
-
-  const [isMagicInvalid] = useRoute('/magic/invalid');
-  const [isAuth] = useRoute('/auth/*');
-
-  const allowUnauthenticated = isMagicInvalid || isAuth;
-
-  useEffect(() => {
-    if (token) {
-      const id = setInterval(() => {
-        dispatch(heartbeat());
-      }, 60 * 1000);
-
-      return () => clearInterval(id);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (bootstrapping === 'pending') {
-      dispatch(bootstrapSession());
-    } else if (bootstrapping === 'completed') {
-      if (!authenticated) {
-        if (authToken) {
-          const redirect = window.localStorage.getItem('redirect') ?? '/';
-
-          dispatch(authenticateSession(authToken)).then(() => {
-            setLocation(redirect);
-          });
-        } else {
-          console.log(allowUnauthenticated);
-          if (!allowUnauthenticated) {
-            setLocation('/auth');
-          }
-        }
-      }
-
-      if (!token && !creatingSession) {
-        dispatch(createSession()).then(() => {
-          window.localStorage.setItem('redirect', location);
-          setLocation('/auth');
-        });
-      }
-    }
-  }, [bootstrapping, token, authToken, creatingSession, allowUnauthenticated]);
-};
-
 const Routes = () => {
   const { i18n } = useTranslation();
-  const [isAdminRoute] = useRoute('/admin/*');
-  const session = useAppSelector(state => state.session);
-
-  useManageSession();
+  const session = useSession();
+  const search = useSearch();
+  const authenticate = useAuthenticate();
 
   useEffect(() => {
-    if (session?.preferences?.uiLanguage) {
-      i18n.changeLanguage(session.preferences.uiLanguage);
+    const token = new URLSearchParams(search).get('token');
+
+    if (token) {
+      authenticate(token);
     }
-  }, [session?.preferences?.uiLanguage]);
+  }, [authenticate, search]);
 
-  if (session.bootstrapping !== 'completed') {
-    return <Loading />;
-  }
+  useEffect(() => {
+    const language = session.data?.preferences?.uiLanguage;
 
-  if (isAdminRoute && session.authenticated) {
-    return <LazyAdmin />;
+    if (language) {
+      i18n.changeLanguage(language);
+    }
+  }, [session.data?.preferences?.uiLanguage]);
+
+  const [isAuthPath1] = useRoute('/auth*');
+  const [isAuthPath2] = useRoute('/auth/*');
+
+  const isAuthPath = isAuthPath1 || isAuthPath2;
+
+  if (!session.isLoading) {
+    if (!session.data?.accessLevel && !isAuthPath) {
+      return <Redirect to="/auth" />;
+    }
+
+    if (session.data?.accessLevel && isAuthPath) {
+      return <Redirect to="/" />;
+    }
   }
 
   return (
-    <PublicLayout sidebars={session.authenticated}>
-      <Switch>
-        <Route path="/auth" component={Landing} />
-        <Route path="/auth/email" component={EmailAuth} />
-        <Route path="/auth/email/confirm/:id" component={ConfirmEmailAuth} />
-        {/*<Route path="/magic/invalid" component={InvalidMagicLink} />*/}
-        {session.authenticated && (
-          <>
-            <Route path="/">
-              <Main />
-            </Route>
-            <Route path="/settings" component={Settings} />
-            <Route path="/debt/:id" component={DebtDetails} />
-            <Route path="/payment/new" component={NewPayment} />
-            <Route path="/payment/:id" component={PaymentDetails} />
+    <Switch>
+      <Route path="/admin/*">
+        <LazyAdmin />
+      </Route>
+      <Route>
+        <PublicLayout sidebars={!!session.data?.accessLevel}>
+          <Switch>
+            <Route path="/auth" component={Landing} />
+            <Route path="/auth/email" component={EmailAuth} />
             <Route
-              path="/payment/:id/stripe/:secret"
-              component={StripePaymentFlow}
+              path="/auth/email/confirm/:id"
+              component={ConfirmEmailAuth}
             />
-            <Route
-              path="/payment/:id/stripe/:secret/return"
-              component={StripePaymentReturnPage}
-            />
-          </>
-        )}
-      </Switch>
-    </PublicLayout>
+            {/*<Route path="/magic/invalid" component={InvalidMagicLink} />*/}
+            {session.data !== null && (
+              <>
+                <Route path="/">
+                  <Main />
+                </Route>
+                <Route path="/settings" component={Settings} />
+                <Route path="/debt/:id" component={DebtDetails} />
+                <Route path="/payment/new" component={NewPayment} />
+                <Route path="/payment/:id" component={PaymentDetails} />
+                <Route
+                  path="/payment/:id/stripe/:secret"
+                  component={StripePaymentFlow}
+                />
+                <Route
+                  path="/payment/:id/stripe/:secret/return"
+                  component={StripePaymentReturnPage}
+                />
+              </>
+            )}
+          </Switch>
+        </PublicLayout>
+      </Route>
+    </Switch>
   );
 };
 

@@ -53,10 +53,7 @@ const paymentsApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    createStripePayment: builder.mutation<
-      { payment: Payment; clientSecret: string },
-      { debts: string[] }
-    >({
+    createStripePayment: builder.mutation<Payment, { debts: string[] }>({
       query: payload => ({
         url: '/payments/create-stripe-payment',
         method: 'POST',
@@ -88,6 +85,7 @@ const paymentsApi = rtkApi.injectEndpoints({
       invalidatesTags: payment =>
         payment
           ? [
+              { type: 'BankTransaction', id: 'LIST' },
               { type: 'PaymentEvent', id: payment.id },
               { type: 'PaymentEvent', id: 'LIST' },
             ]
@@ -117,6 +115,7 @@ const paymentsApi = rtkApi.injectEndpoints({
         body: { transactionId, amount },
       }),
       invalidatesTags: (_, __, { paymentId, transactionId }) => [
+        { type: 'PaymentEvent' as const, id: 'LIST' },
         { type: 'BankTransaction', id: 'LIST' },
         { type: 'BankTransaction', id: transactionId },
         { type: 'Payment', id: paymentId },

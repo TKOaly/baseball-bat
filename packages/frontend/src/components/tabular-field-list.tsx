@@ -143,7 +143,7 @@ export const TabularFieldList = <
       <div className="col-span-full flex justify-end pt-1 pr-2 text-gray-600">
         <button
           onClick={() => tools.push(createNew())}
-          data-cy="tabular-field-list-add-button"
+          data-testid="tabular-field-list-add-button"
         >
           <Plus />
         </button>

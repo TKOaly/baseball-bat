@@ -20,7 +20,6 @@ import {
   PayerIdentity,
   PayerProfile,
   TkoalyIdentity,
-  tkoalyIdentity,
   UpstreamUser,
 } from '@bbat/common/src/types';
 import { groupBy } from 'remeda';
@@ -163,7 +162,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       ...(users ?? []).map(value => ({
         type: 'tkoaly',
         key: value.id,
-        id: tkoalyIdentity(value.id),
+        id: value.id,
         value,
       })),
       ...(payers ?? []).map(value => ({
@@ -332,6 +331,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   text: center.name,
                   value: center.id,
                 }))}
+                data-testid="center"
                 createCustomOption={(name: string) => ({ name })}
                 formatCustomOption={
                   (({ name }: { name: string }) => name) as any
@@ -496,6 +496,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
                   onClick={submitForm}
                   disabled={isSubmitting}
+                  data-testid="create-debt"
                 >
                   Create
                 </button>

@@ -9,6 +9,33 @@ import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray';
 import { foldW } from 'fp-ts/lib/Either';
 export { type EuroValue, euro };
 
+const date = new t.Type(
+  'date',
+  (u): u is Date | string => {
+    if (u instanceof Date) {
+      return true;
+    }
+
+    if (typeof u === 'string') {
+      return true;
+    }
+
+    return false;
+  },
+  (u, _ctx) => {
+    if (u instanceof Date) {
+      return Either.right(u);
+    }
+
+    return tt.DateFromISOString.decode(u);
+  },
+  v => `${v}`,
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nullable = <T extends t.Type<any, any, any>>(type: T) =>
+  t.union([t.null, type]);
+
 type Join<Items> = Items extends [infer FirstItem, ...infer Rest]
   ? FirstItem extends string
     ? Rest extends string[]
@@ -95,21 +122,6 @@ export const nonEmptyArray = <T>(rootType: t.Type<T, T, unknown>) =>
     arr => arr,
   );
 
-export type Event = {
-  id: number;
-  name: string;
-  starts: Date;
-  registrationStarts: Date;
-  registrationEnds: Date;
-  cancellationStarts: Date;
-  cancellationEnds: Date;
-  registrationCount: number;
-  maxParticipants: number | null;
-  location: string;
-  deleted: boolean;
-  price: EuroValue | null;
-};
-
 export type ApiEvent = {
   id: 1078;
   name: string;
@@ -124,6 +136,27 @@ export type ApiEvent = {
   deleted: 0 | 1;
   price: string;
 };
+
+export const event = t.intersection([
+  t.type({
+    id: t.number,
+    name: t.string,
+    starts: tt.date,
+    deleted: t.boolean,
+  }),
+  t.partial({
+    registrationStarts: tt.date,
+    registrationEnds: tt.date,
+    cancellationStarts: tt.date,
+    cancellationEnds: tt.date,
+    registrationCount: t.number,
+    maxParticipants: t.number,
+    location: t.string,
+    price: euroValue,
+  }),
+]);
+
+export type Event = t.TypeOf<typeof event>;
 
 export const tkoalyIdentityT = t.type({
   type: t.literal('tkoaly'),
@@ -140,9 +173,22 @@ export const internalIdentityT = t.type({
   value: t.string,
 });
 
+export const identityT = t.union([
+  tkoalyIdentityT,
+  emailIdentityT,
+  internalIdentityT,
+]);
+
 export type TkoalyIdentity = t.TypeOf<typeof tkoalyIdentityT>;
 export type EmailIdentity = t.TypeOf<typeof emailIdentityT>;
 export type InternalIdentity = t.TypeOf<typeof internalIdentityT>;
+
+export const TkoalyIdentityFromNumber = new t.Type(
+  'TkoalyIdentityFromNumber',
+  tkoalyIdentityT.is,
+  flow(t.number.decode, Either.map(tkoalyIdentity)),
+  (id: TkoalyIdentity) => id.value,
+);
 
 export const payerIdentity = t.union([
   emailIdentityT,
@@ -166,25 +212,64 @@ export function isEmailIdentity(id: PayerIdentity): id is EmailIdentity {
 
 export type ExternalIdentity = TkoalyIdentity | EmailIdentity;
 
-export type UpstreamUserRole =
-  | 'kayttaja'
-  | 'virkailija'
-  | 'tenttiarkistovirkailija'
-  | 'jasenvirkailija'
-  | 'yllapitaja';
+export const upstreamUserRole = t.union([
+  t.literal('kayttaja'),
+  t.literal('virkailija'),
+  t.literal('tenttiarkistovirkailija'),
+  t.literal('jasenvirkailija'),
+  t.literal('yllapitaja'),
+]);
 
-export type UpstreamUser = {
-  id: number;
-  screenName: string;
+export const upstreamUser = t.type({
+  id: tkoalyIdentityT,
+  screenName: t.string,
+  email: t.string,
+  username: t.string,
+  role: upstreamUserRole,
+});
+
+export type UpstreamUserRole = t.TypeOf<typeof upstreamUserRole>;
+export type UpstreamUser = t.TypeOf<typeof upstreamUser>;
+
+export type DbPayerEmail = {
+  payer_id: string;
   email: string;
-  username: string;
-  role: UpstreamUserRole;
+  priority: PayerEmailPriority;
+  source: 'tkoaly' | 'other' | 'user';
+  created_at: Date;
+  updated_at: Date;
 };
+
+export const payerEmailPriority = t.union([
+  t.literal('primary'),
+  t.literal('disabled'),
+  t.literal('default'),
+]);
+
+export type PayerEmailPriority = t.TypeOf<typeof payerEmailPriority>;
+
+export const payerEmailSource = t.union([
+  t.literal('tkoaly'),
+  t.literal('other'),
+  t.literal('user'),
+]);
+
+export type PayerEmailSource = t.TypeOf<typeof payerEmailSource>;
+
+export const payerEmail = t.type({
+  payerId: internalIdentityT,
+  email: t.string,
+  priority: payerEmailPriority,
+  source: payerEmailSource,
+  createdAt: date,
+  updatedAt: date,
+});
+
+export type PayerEmail = t.TypeOf<typeof payerEmail>;
 
 export type DbPayerProfile = {
   id: string;
   tkoaly_user_id?: number;
-  email: string;
   stripe_customer_id: string;
   created_at: Date;
   updated_at: Date;
@@ -197,23 +282,33 @@ export type DbPayerProfile = {
   total?: number;
   total_paid?: number;
 };
-export type PayerProfile = Omit<
-  FromDbType<DbPayerProfile>,
-  'id' | 'tkoalyUserId' | 'mergedTo' | 'total' | 'totalPaid'
-> & {
-  id: InternalIdentity;
-  tkoalyUserId?: TkoalyIdentity;
-  mergedTo?: InternalIdentity;
-  emails: PayerEmail[];
-  total?: EuroValue;
-  totalPaid?: EuroValue;
-};
 
-export const payerPreferences = t.type({
+export const payerProfile = t.type({
+  id: internalIdentityT,
+  tkoalyUserId: nullable(tkoalyIdentityT),
+  createdAt: date,
+  updatedAt: date,
+  name: t.string,
+  disabled: t.boolean,
+  mergedTo: nullable(internalIdentityT),
+  paidCount: nullable(t.number),
+  unpaidCount: nullable(t.number),
+  debtCount: nullable(t.number),
+  total: nullable(euroValue),
+  totalPaid: nullable(euroValue),
+  emails: t.array(payerEmail),
+});
+
+export type PayerProfile = t.TypeOf<typeof payerProfile>;
+
+const payerPreferenceFields = {
   uiLanguage: t.union([t.literal('fi'), t.literal('en')]),
   emailLanguage: t.union([t.literal('fi'), t.literal('en')]),
   hasConfirmedMembership: t.boolean,
-});
+};
+
+export const payerPreferences = t.type(payerPreferenceFields);
+export const payerPreferencePatch = t.partial(payerPreferenceFields);
 
 export type PayerPreferences = t.TypeOf<typeof payerPreferences>;
 
@@ -241,18 +336,20 @@ export type DbPaymentEvent = {
   payment_id: string;
   type: string;
   amount: number;
-  time: Date;
+  time: Date | string;
   data: unknown;
 };
 
-export type PaymentEvent = {
-  id: string;
-  paymentId: string;
-  type: string;
-  amount: EuroValue;
-  time: Date;
-  data: Record<string, unknown>;
-};
+export const paymentEvent = t.type({
+  id: t.string,
+  paymentId: t.string,
+  type: t.string,
+  amount: euroValue,
+  time: tt.date,
+  data: nullable(t.UnknownRecord),
+});
+
+export type PaymentEvent = t.TypeOf<typeof paymentEvent>;
 
 export const TokenPayload = t.type({
   id: t.string,
@@ -299,7 +396,7 @@ export type DbPayment = {
   status: 'canceled' | 'paid' | 'unpaid' | 'mispaid';
   updated_at: Date;
   created_at: Date;
-  payment_number: number;
+  payment_number: string;
   credited: boolean;
   events: Array<DbPaymentEvent>;
 };
@@ -335,13 +432,45 @@ export type DbDebtCenter = {
   total?: number;
 };
 
-export type DebtCenter = Omit<FromDbType<DbDebtCenter>, 'total'> & {
-  total?: EuroValue;
-};
+export const debtCenter = t.type({
+  paidCount: nullable(t.number),
+  humanId: t.string,
+  accountingPeriod: t.number,
+  unpaidCount: nullable(t.number),
+  debtCount: nullable(t.number),
+  id: t.string,
+  name: t.string,
+  description: t.string,
+  url: t.string,
+  createdAt: tt.date,
+  updatedAt: tt.date,
+  total: nullable(euroValue),
+});
+
+export const debtCenterPatch = t.intersection([
+  t.type({
+    id: t.string,
+  }),
+  t.partial({
+    name: t.string,
+    description: t.string,
+    url: t.string,
+  }),
+]);
+
+export type DebtCenter = t.TypeOf<typeof debtCenter>;
+export type DebtCenterPatch = t.TypeOf<typeof debtCenterPatch>;
 
 export type NewDebtCenter = Omit<
   DebtCenter,
-  'id' | 'createdAt' | 'updatedAt' | 'humanId'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'humanId'
+  | 'paidCount'
+  | 'unpaidCount'
+  | 'debtCount'
+  | 'total'
 >;
 
 export type DbDebtComponent = {
@@ -351,8 +480,6 @@ export type DbDebtComponent = {
   amount: number;
   description: string;
   debt_center_id: string;
-  created_at: Date;
-  updated_at: Date;
 };
 
 export type DebtComponentPatch = Partial<{
@@ -360,9 +487,24 @@ export type DebtComponentPatch = Partial<{
   amount: EuroValue;
 }>;
 
-export type DebtComponent = Omit<FromDbType<DbDebtComponent>, 'amount'> & {
-  amount: EuroValue;
-};
+export const debtComponent = t.type({
+  id: t.string,
+  name: t.string,
+  amount: euroValue,
+  description: t.string,
+  debtCenterId: t.string,
+  createdAt: nullable(tt.date),
+  updatedAt: nullable(tt.date),
+});
+
+export const debtComponentPatch = t.partial({
+  name: t.string,
+  amount: euroValue,
+  description: t.string,
+  debtCenterId: t.string,
+});
+
+export type DebtComponent = t.TypeOf<typeof debtComponent>;
 
 export type NewDebtComponent = Omit<
   DebtComponent,
@@ -380,7 +522,12 @@ export type DbDebtTag = {
   debt_id: string;
 };
 
-export type DebtTag = Omit<DbDebtTag, 'debt_id'>;
+export const debtTag = t.type({
+  name: t.string,
+  hidden: t.boolean,
+});
+
+export type DebtTag = t.TypeOf<typeof debtTag>;
 
 export type DbDebt = {
   id: string;
@@ -404,15 +551,39 @@ export type DbDebt = {
   credited: boolean;
 };
 
-export type DebtStatus = 'paid' | 'unpaid' | 'mispaid';
+export const debtStatus = t.union([
+  t.literal('paid'),
+  t.literal('unpaid'),
+  t.literal('mispaid'),
+]);
 
-export type Debt = Omit<FromDbType<DbDebt>, 'payerId' | 'total' | 'tags'> & {
-  total?: EuroValue;
-  payerId: InternalIdentity;
-  status: DebtStatus;
-  debtComponents: Array<DebtComponent>;
-  tags: Array<DebtTag>;
-};
+export type DebtStatus = t.TypeOf<typeof debtStatus>;
+
+export const debt = t.type({
+  id: t.string,
+  humanId: t.string,
+  accountingPeriod: t.number,
+  name: t.string,
+  tags: t.array(debtTag),
+  date: nullable(tt.date),
+  lastReminded: nullable(tt.date),
+  dueDate: nullable(tt.date),
+  draft: t.boolean,
+  publishedAt: nullable(tt.date),
+  payerId: internalIdentityT,
+  debtCenterId: t.string,
+  description: t.string,
+  createdAt: tt.date,
+  updatedAt: tt.date,
+  status: debtStatus,
+  paymentCondition: nullable(t.number),
+  defaultPayment: nullable(t.string),
+  credited: t.boolean,
+  total: euroValue,
+  debtComponents: t.array(debtComponent),
+});
+
+export type Debt = t.TypeOf<typeof debt>;
 
 export type DebtWithPayer = Debt & { payer: PayerProfile };
 
@@ -457,20 +628,27 @@ export type NewDebt = {
   createdAt?: Date;
   paymentCondition: null | number;
   tags: Array<NewDebtTag>;
+  defaultPayment?: { type: 'invoice'; options: Partial<NewInvoice> };
 };
 
-export type DebtPatch = {
-  id: string;
-  name?: string;
-  description?: string;
-  payerId?: PayerIdentity;
-  dueDate?: Date | null;
-  date?: DbDateString | null;
-  paymentCondition?: number | null;
-  centerId?: string;
-  components?: string[];
-  tags?: string[];
-};
+export const debtPatch = t.intersection([
+  t.type({
+    id: t.string,
+  }),
+  t.partial({
+    name: t.string,
+    description: t.string,
+    payerId: identityT,
+    dueDate: nullable(tt.date),
+    date: nullable(dbDateString),
+    paymentCondition: nullable(t.number),
+    centerId: t.string,
+    components: t.array(t.string),
+    tags: t.array(t.string),
+  }),
+]);
+
+export type DebtPatch = t.TypeOf<typeof debtPatch>;
 
 export type MultipleDebtPatchValues = {
   name?: string;
@@ -488,13 +666,6 @@ export type MultipleDebtPatchValues = {
     name: string;
     operation: 'include' | 'exclude';
   }[];
-};
-
-export type DebtCenterPatch = {
-  id: string;
-  name: string;
-  description: string;
-  url: string;
 };
 
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
@@ -517,9 +688,22 @@ export type ApiRegistration = {
   answers: { question_id: number; question: string; answer: string }[];
 };
 
-export type Registration = Omit<FromDbType<ApiRegistration>, 'userId'> & {
-  userId: TkoalyIdentity | null;
-};
+export const registration = t.type({
+  id: t.number,
+  userId: t.union([t.null, tkoalyIdentityT]),
+  name: t.string,
+  email: t.string,
+  phone: t.string,
+  answers: t.array(
+    t.type({
+      questionId: t.number,
+      question: t.string,
+      answer: t.string,
+    }),
+  ),
+});
+
+export type Registration = t.TypeOf<typeof registration>;
 
 export type ApiCustomField = {
   id: number;
@@ -528,35 +712,57 @@ export type ApiCustomField = {
   options: string[];
 };
 
-export type CustomField = ApiCustomField;
+export const customField = t.type({
+  id: t.number,
+  name: t.string,
+  type: t.union([
+    t.literal('text'),
+    t.literal('textarea'),
+    t.literal('radio'),
+    t.literal('checkbox'),
+  ]),
+  options: t.array(t.string),
+});
 
-export type PayerEmailPriority = 'primary' | 'disabled' | 'default';
+export type CustomField = t.TypeOf<typeof customField>;
 
-export type DbPayerEmail = {
-  payer_id: string;
-  email: string;
-  priority: PayerEmailPriority;
-  source: 'tkoaly' | 'other' | 'user';
-  created_at: Date;
-  updated_at: Date;
-};
+const paymentStatus = t.union([
+  t.literal('paid'),
+  t.literal('canceled'),
+  t.literal('mispaid'),
+  t.literal('unpaid'),
+]);
 
-export type PayerEmail = Omit<FromDbType<DbPayerEmail>, 'payerId'> & {
-  payerId: InternalIdentity;
-};
+export type PaymentStatus = t.TypeOf<typeof paymentStatus>;
 
-export type PaymentStatus = 'paid' | 'canceled' | 'mispaid' | 'unpaid';
+export const payment = t.type({
+  id: t.string,
+  humanId: t.string,
+  humanIdNonce: nullable(t.number),
+  accountingPeriod: t.number,
+  paymentNumber: t.string,
+  type: t.union([t.literal('invoice'), t.literal('cash'), t.literal('stripe')]),
+  data: nullable(t.UnknownRecord),
+  message: t.string,
+  // payerId: internalIdentityT,
+  title: t.string,
+  createdAt: tt.date,
+  balance: euroValue,
+  credited: t.boolean,
+  status: paymentStatus,
+  updatedAt: tt.date,
+  events: t.array(paymentEvent),
+});
 
 export type Payment = {
   id: string;
   humanId: string;
-  humanIdNonce?: number;
+  humanIdNonce: number | null;
   accountingPeriod: number;
-  paymentNumber: number;
-  type: 'invoice';
-  data: object | null;
+  paymentNumber: string;
+  type: 'invoice' | 'cash' | 'stripe';
+  data: Record<string, unknown> | null;
   message: string;
-  payerId: InternalIdentity;
   title: string;
   createdAt: Date;
   balance: EuroValue;
@@ -565,6 +771,28 @@ export type Payment = {
   updatedAt: Date;
   events: Array<PaymentEvent>;
 };
+
+export const newInvoice = t.type({
+  title: t.string,
+  series: t.number,
+  message: t.string,
+  date: nullable(tt.date),
+  debts: t.array(t.string),
+  referenceNumber: nullable(t.string),
+  paymentNumber: nullable(t.string),
+});
+
+export const newInvoicePartial = t.partial({
+  title: t.string,
+  series: t.number,
+  message: t.string,
+  date: nullable(tt.date),
+  debts: t.array(t.string),
+  referenceNumber: nullable(t.string),
+  paymentNumber: nullable(t.string),
+});
+
+export type NewInvoice = t.TypeOf<typeof newInvoice>;
 
 export const isPaymentInvoice = (
   p: Payment,
@@ -594,6 +822,20 @@ export type DbEmail = {
   sent_at: Date | null;
 };
 
+export const email = t.type({
+  id: t.string,
+  recipient: t.string,
+  subject: t.string,
+  template: t.string,
+  html: nullable(t.string),
+  text: t.string,
+  draft: t.boolean,
+  createdAt: tt.date,
+  sentAt: nullable(tt.date),
+});
+
+export type Email = t.TypeOf<typeof email>;
+
 export const bankAccount = t.type({
   iban: t.string,
   name: t.string,
@@ -605,7 +847,7 @@ export type DbBankTransaction = {
   id: string;
   account: string;
   amount: number;
-  value_time: Date;
+  value_time: Date | string;
   type: 'credit' | 'debit';
   other_party_account: string | null;
   other_party_name: string;
@@ -614,18 +856,24 @@ export type DbBankTransaction = {
   payments: DbPayment[] | null;
 };
 
-export type BankTransaction = Omit<
-  FromDbType<DbBankTransaction>,
-  'amount' | 'otherPartyAccount' | 'otherPartyName' | 'valueTime' | 'payments'
-> & {
-  amount: EuroValue;
-  date: Date;
-  otherParty: {
-    name: string;
-    account: string | null;
-  };
-  payments: Payment[];
-};
+export const bankTransaction = t.type({
+  id: t.string,
+  account: t.string,
+  amount: euroValue,
+  date: tt.date,
+  type: t.union([t.literal('credit'), t.literal('debit')]),
+  otherParty: nullable(
+    t.type({
+      name: t.string,
+      account: nullable(t.string),
+    }),
+  ),
+  reference: nullable(t.string),
+  message: nullable(t.string),
+  payments: t.array(payment),
+});
+
+export type BankTransaction = t.TypeOf<typeof bankTransaction>;
 
 const newBankTransaction = t.intersection([
   t.type({
@@ -649,11 +897,19 @@ const balance = t.type({
   amount: euroValue,
 });
 
-const newBankStatement = t.type({
+export const newBankStatement = t.type({
   id: t.string,
   accountIban: t.string,
   generatedAt: tt.date,
   transactions: t.array(newBankTransaction),
+  openingBalance: balance,
+  closingBalance: balance,
+});
+
+export const bankStatement = t.type({
+  id: t.string,
+  accountIban: t.string,
+  generatedAt: tt.date,
   openingBalance: balance,
   closingBalance: balance,
 });
@@ -670,8 +926,6 @@ export type DbBankStatement = {
   closing_balance: number;
 };
 
-export type Email = FromDbType<DbEmail>;
-
 export type DbPaymentEventTransactionMapping = {
   bank_transaction_id: string;
   payment_event_id: string;
@@ -681,7 +935,7 @@ export type DbReport = {
   id: string;
   status: 'generating' | 'failed' | 'finished';
   name: string;
-  generated_at: Date;
+  generated_at: Date | string;
   human_id: string;
   options: unknown;
   revision: number;
@@ -690,10 +944,32 @@ export type DbReport = {
   generated_by: string;
 };
 
-export type Report = Omit<FromDbType<DbReport>, 'history' | 'generatedBy'> & {
-  history: Array<Omit<Report, 'history'>>;
-  generatedBy: InternalIdentity | null;
-};
+export const reportStatus = t.union([
+  t.literal('generating'),
+  t.literal('failed'),
+  t.literal('finished'),
+]);
+
+export const reportWithoutHistory = t.type({
+  id: t.string,
+  status: reportStatus,
+  name: t.string,
+  generatedAt: tt.date,
+  humanId: t.string,
+  options: t.unknown,
+  revision: t.number,
+  type: t.union([t.null, t.string]),
+  generatedBy: t.union([t.null, internalIdentityT]),
+});
+
+export const report = t.intersection([
+  reportWithoutHistory,
+  t.type({
+    history: t.array(reportWithoutHistory),
+  }),
+]);
+
+export type Report = t.TypeOf<typeof report>;
 
 export type DebtLedgerOptions = {
   startDate: DbDateString;
@@ -713,7 +989,7 @@ export type AccountingPeriod = FromDbType<DbAccountingPeriod>;
 export type PaymentLedgerOptions = {
   startDate: DbDateString;
   endDate: DbDateString;
-  paymentType: null | 'invoice' | 'cash';
+  paymentType: null | 'invoice' | 'cash' | 'stripe';
   centers: null | Array<string>;
   eventTypes: null | Array<'created' | 'payment' | 'credited'>;
   groupBy: null | 'center' | 'payer';
