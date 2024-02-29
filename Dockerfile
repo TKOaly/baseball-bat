@@ -54,6 +54,7 @@ ENV ASSET_PATH /app/assets
 RUN corepack enable
 
 COPY --from=backend-builder /prod /app
+RUN mv /app/build/src /app/src
 COPY --from=backend-builder /prod/node_modules /app/node_modules
 
 WORKDIR /app

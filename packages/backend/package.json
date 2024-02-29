@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "start:dev": "node --watch -r esbuild-register --inspect=0.0.0.0 ./src/app.ts",
-    "start": "node -r tsconfig-paths/register ./build/src/app.js",
+    "start": "node -r tsconfig-paths/register ./src/app.js",
     "test:unit": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node --dns-result-order=ipv4first -r esbuild-register --test",
     "test:unit:all": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node --dns-result-order=ipv4first -r esbuild-register --test tests/unit/*.test.ts",
     "test:e2e": "playwright test",
