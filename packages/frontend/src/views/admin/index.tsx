@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
+import { PropsWithChildren, useEffect } from 'react';
 import { Route, Redirect, Switch, useLocation } from 'wouter';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
 import { Notification } from '@bbat/ui/notification';
@@ -125,7 +125,6 @@ const AccountingPeriodSelector = () => {
 };
 
 const Admin = () => {
-  const [width, setWidth] = useState<'narrow' | 'wide' | 'full'>('narrow');
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector(
@@ -179,40 +178,9 @@ const Admin = () => {
           <MenuItem path="#">Log out</MenuItem>
         </ul>
         <AccountingPeriodSelector />
-        <div className="flex-grow" />
-        <ul className="flex justify-center">
-          <li
-            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
-              width === 'narrow' && 'border-blue-500'
-            }`}
-            onClick={() => setWidth('narrow')}
-          >
-            Narrow
-          </li>
-          <li
-            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
-              width === 'wide' && 'border-blue-500'
-            }`}
-            onClick={() => setWidth('wide')}
-          >
-            Wide
-          </li>
-          <li
-            className={`px-4 py-2.5 border-b-4 cursor-pointer hover:bg-blue-50 ${
-              width === 'full' && 'border-blue-500'
-            }`}
-            onClick={() => setWidth('full')}
-          >
-            Full
-          </li>
-        </ul>
       </div>
       <div className="flex-grow flex justify-center items-start overflow-y-scroll">
-        <div
-          className={`flex-grow ${
-            { narrow: 'max-w-[50em]', wide: 'max-w-[80em]', full: '' }[width]
-          } py-5 mx-40`}
-        >
+        <div className="px-12 flex-grow">
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
             <Route
