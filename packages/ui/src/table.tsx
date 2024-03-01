@@ -559,13 +559,13 @@ export const Table = <
   return (
     <div
       role="table"
-      className="relative"
+      className={`relative aa ${!hideTools && 'pr-[6em]'}`}
       data-cy="table-view"
       data-visible-rows={sortedRows.length}
       data-total-rows={rows.length}
     >
       {!hideTools && (
-        <div className="absolute top-0 bottom-0 right-0 w-0">
+        <div className="absolute top-0 bottom-0 right-0 w-[6em]">
           <div className="flex flex-col gap-2 ml-5 mt-12 sticky top-12">
             <Dropdown
               label="Sort"
