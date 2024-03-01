@@ -86,7 +86,7 @@ export function Dropdown<P extends DropdownProps>({
           ref={refs.setReference}
           type="button"
           disabled={disabled}
-          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center dark:bg-blue-600 dark:disabled:hover:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center bg-blue-600 disabled:hover:bg-blue-600 hover:bg-blue-700 focus:ring-blue-800"
           {...getReferenceProps()}
         >
           {(options ?? []).find(
@@ -125,7 +125,7 @@ export function Dropdown<P extends DropdownProps>({
               divide-y
               divide-gray-100
               shadow
-              dark:bg-gray-700
+              bg-gray-700
               absolute
               scroll-bar-width-narrow
               ${scroll && 'max-h-[20em] overflow-y-auto'}
@@ -133,7 +133,7 @@ export function Dropdown<P extends DropdownProps>({
             {...getFloatingProps()}
           >
             <ul
-              className="py-1 text-sm text-gray-700 dark:text-gray-200"
+              className="py-1 text-sm text-gray-700 text-gray-200"
               aria-labelledby="dropdownDefault"
             >
               {(options ?? []).map((option, i) => {
@@ -146,7 +146,7 @@ export function Dropdown<P extends DropdownProps>({
                     <button
                       tabIndex={-1}
                       ref={el => (listRef.current[i] = el)}
-                      className="block w-full text-left py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white focus:bg-gray-100"
+                      className="block w-full text-left py-2 px-4 hover:bg-gray-100 focus:bg-gray-100"
                       {...getItemProps({
                         onClick(evt) {
                           evt.stopPropagation();

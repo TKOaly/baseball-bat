@@ -115,12 +115,12 @@ export const EditPayer = ({ params }: Props) => {
                     onClick={evt =>
                       setFieldValue('disabled', evt.currentTarget.checked)
                     }
-                    className="w-4 cursor-pointer h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="w-4 cursor-pointer h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2 bg-gray-700 border-gray-600"
                     id="toggle-disabled"
                   />
                   <label
                     htmlFor="toggle-disabled"
-                    className="cursor-pointer ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+                    className="cursor-pointer ml-2 text-sm font-medium text-gray-900 text-gray-300"
                   >
                     Disable profile
                   </label>
