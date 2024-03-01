@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { Route, Redirect, Switch, useLocation } from 'wouter';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
 import { Notification } from '@bbat/ui/notification';
@@ -40,6 +40,66 @@ import { JobsListing } from './jobs-listing';
 import { JobDetails } from './job-details';
 import { ImportXMLStatement } from './import-xml-statement';
 import { MassCreateDebts } from './mass-create-debts';
+import { cva } from 'class-variance-authority';
+import { Menu, X } from 'react-feather';
+
+const sidebarCva = cva(
+  `
+  flex-shrink-0
+  flex
+  flex-col
+  absolute
+  h-screen
+  duration-200
+  z-50
+  bg-gray-50
+  border-r
+  border-[#ececec]
+  w-[20em] 
+`,
+  {
+    variants: {
+      open: {
+        true: 'right-[calc(100%_-_20em)]',
+        undefined: 'right-full lg:right-[calc(100%_-_20em)]',
+        false: 'right-full',
+      },
+    },
+  },
+);
+
+const closeButtonCva = cva('', {
+  variants: {
+    open: {
+      true: 'block',
+      undefined: 'hidden lg:block',
+      false: 'hidden',
+    },
+  },
+});
+
+const openButtonCva = cva('', {
+  variants: {
+    open: {
+      true: 'hidden',
+      undefined: 'block lg:hidden',
+      false: 'block',
+    },
+  },
+});
+
+const contentCva = cva(
+  'flex-grow flex justify-center items-start overflow-y-scroll duration-200',
+  {
+    variants: {
+      sidebarOpen: {
+        true: 'xl:pl-[20em]',
+        undefined: 'xl:pl-[20em]',
+        false: '',
+      },
+    },
+  },
+);
 
 type MenuItemProps = PropsWithChildren<{
   path?: string;
@@ -125,6 +185,9 @@ const AccountingPeriodSelector = () => {
 };
 
 const Admin = () => {
+  const [sidebarOpen, setSidebarOpen] = useState<boolean | undefined>(
+    undefined,
+  );
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector(
@@ -156,7 +219,17 @@ const Admin = () => {
 
   return (
     <div className="flex flex-row h-screen bg-white">
-      <div className="flex-shrink-0 flex flex-col w-80 bg-gray-50 border-r border-[#ececec]">
+      <div className={sidebarCva({ open: sidebarOpen })}>
+        <div className="absolute left-full m-2 h-8 w-8 rounded-md flex items-center justify-center bg-gray-500/5 hover:bg-gray-500/10 cursor-pointer">
+          <X
+            className={closeButtonCva({ open: sidebarOpen })}
+            onClick={() => setSidebarOpen(false)}
+          />
+          <Menu
+            className={openButtonCva({ open: sidebarOpen })}
+            onClick={() => setSidebarOpen(true)}
+          />
+        </div>
         <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
         <TextField
           placeholder="Search..."
@@ -179,7 +252,7 @@ const Admin = () => {
         </ul>
         <AccountingPeriodSelector />
       </div>
-      <div className="flex-grow flex justify-center items-start overflow-y-scroll">
+      <div className={contentCva({ sidebarOpen })}>
         <div className="px-12 flex-grow">
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
