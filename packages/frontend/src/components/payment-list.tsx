@@ -28,10 +28,10 @@ export const PaymentList = ({ payments }: Props) => {
           },
         },
         {
-          name: 'Total',
-          getValue: row => {
-            return formatEuro(row.balance);
-          },
+          name: 'Balance',
+          getValue: 'balance',
+          align: 'right',
+          render: formatEuro,
         },
       ]}
     />
