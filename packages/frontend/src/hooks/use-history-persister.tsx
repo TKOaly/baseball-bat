@@ -1,5 +1,5 @@
-import { Persister } from "@bbat/ui/src/table";
-import { produce } from "immer";
+import { Persister } from '@bbat/ui/src/table';
+import { produce } from 'immer';
 
 export const useHistoryPersister = () => {
   return (name: string): Persister => ({
@@ -8,21 +8,25 @@ export const useHistoryPersister = () => {
       console.log('LOAD', name, state);
       return state;
     },
-    store: (tableState) => history.replaceState(produce(history.state, (state: any) => {
-        console.log('STORE', name, tableState);
+    store: tableState =>
+      history.replaceState(
+        produce(history.state, (state: any) => {
+          console.log('STORE', name, tableState);
 
-        if (!state) {
-          state = {};
-        }
+          if (!state) {
+            state = {};
+          }
 
-        if (!state.tables) {
-          state.tables = {};
-        }
+          if (!state.tables) {
+            state.tables = {};
+          }
 
-        state.tables[name] = tableState;
+          state.tables[name] = tableState;
 
-        return state;
-      }), '', ''),
+          return state;
+        }),
+        '',
+        '',
+      ),
   });
-}
-
+};

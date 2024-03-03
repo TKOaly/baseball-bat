@@ -320,7 +320,9 @@ export default createModule({
     );
 
     bus.register(defs.getPayerProfileByTkoalyIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`WHERE pp.tkoaly_user_id = ${id.value}`));
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
+        baseQuery().append(sql`WHERE pp.tkoaly_user_id = ${id.value}`),
+      );
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);
@@ -330,7 +332,9 @@ export default createModule({
     });
 
     bus.register(defs.getPayerProfileByInternalIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`WHERE pp.id = ${id.value}`));
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
+        baseQuery().append(sql`WHERE pp.id = ${id.value}`),
+      );
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);
@@ -340,9 +344,11 @@ export default createModule({
     });
 
     bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
+        baseQuery().append(sql`
         WHERE pp.id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled
-      `));
+      `),
+      );
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);

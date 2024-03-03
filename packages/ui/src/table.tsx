@@ -54,7 +54,7 @@ export type State = {
   sort?: [string, 'asc' | 'desc'];
   filters?: Record<string, FilterState>;
   rows?: (string | number)[];
-}
+};
 
 export interface Persister {
   load(): State;
@@ -490,12 +490,17 @@ export const Table = <
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
   const state = useMemo(() => persist?.load(), []);
 
-  const [selectedRows, setSelectedRows] = useState<Array<string | number>>(state?.rows ?? []);
+  const [selectedRows, setSelectedRows] = useState<Array<string | number>>(
+    state?.rows ?? [],
+  );
   const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
-    (state?.sort as any) ?? (initialSort ? [initialSort.column, initialSort.direction] : null),
+    (state?.sort as any) ??
+      (initialSort ? [initialSort.column, initialSort.direction] : null),
   );
 
-  const [filters, setFilters] = useState<Record<string, FilterState>>(state?.filters ?? {});
+  const [filters, setFilters] = useState<Record<string, FilterState>>(
+    state?.filters ?? {},
+  );
 
   const [expandedRows, setExpandedRows] = useState<unknown[]>([]);
 

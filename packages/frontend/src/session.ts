@@ -84,47 +84,48 @@ type RefreshSessionResponse = {
   authLevel: string;
   accessLevel: AccessLevel;
   preferences: PayerPreferences;
-}
+};
 
-export const refreshSession = createAsyncThunk<RefreshSessionResponse, void, { state: RootState }>(
-  'session/refresh',
-  async (_, thunkApi) => {
-    const state = thunkApi.getState();
-    const { token } = state.session;
+export const refreshSession = createAsyncThunk<
+  RefreshSessionResponse,
+  void,
+  { state: RootState }
+>('session/refresh', async (_, thunkApi) => {
+  const state = thunkApi.getState();
+  const { token } = state.session;
 
-    if (!token) {
-      return Promise.reject();
-    }
+  if (!token) {
+    return Promise.reject();
+  }
 
-    const res = await fetch(`${BACKEND_URL}/api/session`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  const res = await fetch(`${BACKEND_URL}/api/session`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
 
-    const body = await res.json();
+  const body = await res.json();
 
-    if (res.ok) {
-      return {
-        token,
-        authLevel: body.authLevel,
-        accessLevel: body.accessLevel,
-        preferences: body.preferences,
-        payerId: body.payerProfile?.id?.value,
-      };
-    } else {
-      return Promise.reject();
-    }
-  },
-);
+  if (res.ok) {
+    return {
+      token,
+      authLevel: body.authLevel,
+      accessLevel: body.accessLevel,
+      preferences: body.preferences,
+      payerId: body.payerProfile?.id?.value,
+    };
+  } else {
+    return Promise.reject();
+  }
+});
 
 export enum SessionStatus {
   INVALID = 'invalid',
   CREATING = 'creating',
   REFRESHING = 'refreshing',
   COMPLETED = 'completed',
-  FAILED = 'failed'
+  FAILED = 'failed',
 }
 
 export enum AccessLevel {
@@ -133,9 +134,9 @@ export enum AccessLevel {
 }
 
 export type SessionData = {
-  userId: string,
-  accessLevel: AccessLevel,
-  preferences: PayerPreferences,
+  userId: string;
+  accessLevel: AccessLevel;
+  preferences: PayerPreferences;
 };
 
 type SessionState = {
@@ -200,8 +201,7 @@ const sessionSlice = createSlice({
     });
 
     builder.addCase(refreshSession.fulfilled, (state, action) => {
-      const { payerId, accessLevel, preferences } =
-        action.payload;
+      const { payerId, accessLevel, preferences } = action.payload;
 
       state.status = SessionStatus.COMPLETED;
       state.data = {
