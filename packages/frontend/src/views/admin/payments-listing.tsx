@@ -20,14 +20,8 @@ export const PaymentsListing = () => {
         onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
         columns={[
           {
-            getValue: row => {
-              if (row.credited) {
-                return 'Credited';
-              }
-
-              return row.status;
-            },
-            name: 'Status',
+            getValue: row => row.paymentNumber,
+            name: 'No.',
           },
           {
             getValue: row => row.type,
@@ -42,8 +36,14 @@ export const PaymentsListing = () => {
             name: 'Payer',
           },
           {
-            getValue: row => row.paymentNumber,
-            name: 'No.',
+            getValue: row => {
+              if (row.credited) {
+                return 'Credited';
+              }
+
+              return row.status;
+            },
+            name: 'Status',
           },
           {
             name: 'Balance',
