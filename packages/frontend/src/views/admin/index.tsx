@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
+import { PropsWithChildren, useEffect, useRef, useState } from 'react';
 import { Route, Redirect, Switch, useLocation } from 'wouter';
 import { GlobalSearchDialog } from '../../components/dialogs/global-search-dialog';
 import { Notification } from '@bbat/ui/notification';
@@ -190,6 +190,7 @@ const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean | undefined>(
     undefined,
   );
+  const sidebarRef = useRef<HTMLDivElement>();
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector(
@@ -199,6 +200,23 @@ const Admin = () => {
     selectActiveNotifications(state),
   );
   const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const handler = (evt: MouseEvent) => {
+      if (
+        evt.target &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(evt.target as Node) &&
+        window.matchMedia('(max-width: 1280px)').matches
+      ) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handler);
+
+    return () => sidebarRef.current?.removeEventListener('click', handler);
+  }, [sidebarRef]);
 
   useEffect(() => {
     if (activeAccountingPeriod === null && accountingPeriods) {
@@ -235,7 +253,7 @@ const Admin = () => {
 
   return (
     <div className="flex flex-row h-screen bg-white">
-      <div className={sidebarCva({ open: sidebarOpen })}>
+      <div className={sidebarCva({ open: sidebarOpen })} ref={sidebarRef}>
         {sidebarToggleButton(true)}
         {sidebarToggleButton(false)}
         <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
