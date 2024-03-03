@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { identity } from 'fp-ts/lib/function';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -50,6 +50,17 @@ export type Column<R, Name extends string, Value> = {
   compareBy?: (value: Value) => any;
 };
 
+export type State = {
+  sort?: [string, 'asc' | 'desc'];
+  filters?: Record<string, FilterState>;
+  rows?: (string | number)[];
+}
+
+export interface Persister {
+  load(): State;
+  store(state: State): void;
+}
+
 export type TableViewProps<
   R extends Row<R>,
   ColumnNames extends string,
@@ -65,6 +76,7 @@ export type TableViewProps<
   emptyMessage?: JSX.Element | string;
   hideTools?: boolean;
   footer?: React.ReactNode;
+  persist?: Persister;
   initialSort?: {
     column: ColumnNames;
     direction: 'asc' | 'desc';
@@ -474,13 +486,26 @@ export const Table = <
   hideTools,
   footer,
   initialSort,
+  persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
-  const [selectedRows, setSelectedRows] = useState<Array<string | number>>([]);
+  const state = useMemo(() => persist?.load(), []);
+
+  const [selectedRows, setSelectedRows] = useState<Array<string | number>>(state?.rows ?? []);
   const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
-    initialSort ? [initialSort.column, initialSort.direction] : null,
+    (state?.sort as any) ?? (initialSort ? [initialSort.column, initialSort.direction] : null),
   );
-  const [filters, setFilters] = useState<Record<string, FilterState>>({});
+
+  const [filters, setFilters] = useState<Record<string, FilterState>>(state?.filters ?? {});
+
   const [expandedRows, setExpandedRows] = useState<unknown[]>([]);
+
+  useEffect(() => {
+    persist?.store({
+      rows: selectedRows,
+      sort: sorting ?? undefined,
+      filters,
+    });
+  }, [selectedRows, sorting, filters]);
 
   const sortedRows = useMemo(
     () =>

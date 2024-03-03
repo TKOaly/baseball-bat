@@ -12,6 +12,7 @@ import { NewPaymentLedgerDialog } from '../../components/dialogs/new-payment-led
 import { ReportHistoryDialog } from '../../components/dialogs/report-history-dialog';
 import { Table } from '@bbat/ui/table';
 import { ReactNode } from 'react';
+import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 const UserLink = ({ id }: { id: InternalIdentity }) => {
   const { data: user } = useGetPayerQuery(id.value);
@@ -32,6 +33,7 @@ export const ReportsListing = () => {
     pollingInterval: 3000,
   });
 
+  const historyPersiter = useHistoryPersister();
   const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
   const showNewPaymentLedgerDialog = useDialog(NewPaymentLedgerDialog);
   const showNewDebtStatusReportDialog = useDialog(NewDebtStatusReportDialog);
@@ -67,6 +69,7 @@ export const ReportsListing = () => {
       </div>
 
       <Table
+        persist={historyPersiter('reports')}
         initialSort={{
           column: 'Identifier',
           direction: 'asc',

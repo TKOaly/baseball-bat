@@ -1,10 +1,12 @@
 import { Table } from '@bbat/ui/table';
 import { useGetPaymentsQuery } from '../../api/payments';
 import { useLocation } from 'wouter';
+import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 export const PaymentsListing = () => {
   const { data: payments } = useGetPaymentsQuery();
   const [, setLocation] = useLocation();
+  const historyPersiter = useHistoryPersister();
 
   return (
     <>
@@ -12,6 +14,7 @@ export const PaymentsListing = () => {
 
       <Table
         selectable
+        persist={historyPersiter('payments')}
         rows={(payments ?? []).map(p => ({ ...p, key: p.id })) ?? []}
         onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
         columns={[
