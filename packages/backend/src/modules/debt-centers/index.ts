@@ -1,6 +1,6 @@
 import { DbDebtCenter, DebtCenter } from '@bbat/common/build/src/types';
 import accountingIface from '../accounting/definitions';
-import sql from 'sql-template-strings';
+import sql, { SQLStatement } from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
 import * as E from 'fp-ts/lib/Either';
 import routes from './api';
@@ -32,41 +32,57 @@ export default createModule({
   routes,
 
   async setup({ bus }) {
+    const debtCenterQuery = (where: SQLStatement) =>
+      sql`
+      WITH counts AS (
+        SELECT 
+          d.debt_center_id AS id,
+          COUNT(d.id) as debt_count,
+          COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+          COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
+        FROM debt d
+        LEFT JOIN debt_statuses ds USING (id) 
+        GROUP BY d.debt_center_id
+      ),
+      amounts AS (
+        SELECT
+          d.debt_center_id AS id,
+          SUM(dco.amount) AS total,
+          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
+        FROM debt d
+        LEFT JOIN debt_statuses ds USING (id)
+        LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
+        LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
+        GROUP BY d.debt_center_id
+      )
+      SELECT DISTINCT ON (dc.id)
+        dc.*,
+        counts.*,
+        amounts.*
+      FROM debt_center dc
+      LEFT JOIN counts USING (id)
+      LEFT JOIN amounts USING (id)
+      WHERE
+    `.append(where);
+
     bus.register(defs.getDebtCenters, async (_, { pg }) => {
       return pg
-        .many<DbDebtCenter>(
-          sql`
-          SELECT
-            dc.*,
-            COUNT(d.id) as debt_count,
-            COUNT(d.id) FILTER (WHERE ds.is_paid) AS paid_count,
-            COUNT(d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
-            SUM(dco.amount) AS total,
-            COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
-          FROM debt_center dc
-          LEFT JOIN debt d ON d.debt_center_id = dc.id
-          LEFT JOIN debt_statuses ds ON ds.id = d.id
-          LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
-          LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
-          WHERE NOT dc.deleted
-          GROUP BY dc.id
-        `,
-        )
+        .many<DbDebtCenter>(debtCenterQuery(sql`NOT dc.deleted`))
         .then(dbDebtCenters => dbDebtCenters.map(formatDebtCenter));
     });
 
     bus.register(defs.getDebtCenterByName, async (name, { pg }) => {
       const dbDebtCenter = await pg.one<DbDebtCenter>(
-        sql`SELECT * FROM debt_center WHERE name = ${name} AND NOT deleted`,
+        debtCenterQuery(sql`name = ${name} AND NOT deleted`),
       );
 
       return dbDebtCenter && formatDebtCenter(dbDebtCenter);
     });
 
     bus.register(defs.getDebtCenter, async (id, { pg }) => {
-      const dbDebtCenter = await pg.one<DbDebtCenter>(sql`
-        SELECT * FROM debt_center WHERE id = ${id} AND NOT deleted
-      `);
+      const dbDebtCenter = await pg.one<DbDebtCenter>(
+        debtCenterQuery(sql`id = ${id} AND NOT deleted`),
+      );
 
       return dbDebtCenter && formatDebtCenter(dbDebtCenter);
     });

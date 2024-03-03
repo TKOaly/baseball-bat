@@ -96,31 +96,37 @@ export async function queryDebts(
   where?: SQLStatement,
 ): Promise<Array<Debt>> {
   let query = sql`
+    WITH components AS (
+      SELECT
+        d.id,
+        ARRAY_AGG(TO_JSON(dc.*)) AS debt_components,
+        COALESCE(SUM(dc.amount), 0) AS total
+      FROM debt d
+      LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = d.id
+      LEFT JOIN debt_component dc ON debt_component_mapping.debt_component_id = dc.id
+      GROUP BY d.id
+    ),
+    tags AS (
+      SELECT t.debt_id AS id, ARRAY_AGG(TO_JSONB(t.*)) tags FROM debt_tags t GROUP BY id
+    )
     SELECT
       debt.*,
+      components.*,
+      tags.*,
       TO_JSON(payer_profiles.*) AS payer,
       TO_JSON(debt_center.*) AS debt_center,
-      CASE WHEN ( SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id ) THEN 'paid' ELSE 'unpaid' END AS status,
-      ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-      COALESCE((
-        SELECT SUM(dc.amount) AS total
-        FROM debt_component_mapping dcm
-        JOIN debt_component dc ON dc.id = dcm.debt_component_id
-        WHERE dcm.debt_id = debt.id
-      ), 0) AS total,
-      (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags
+      CASE WHEN ds.is_paid THEN 'paid' ELSE 'unpaid' END AS status
     FROM debt
-    JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-    JOIN debt_center ON debt_center.id = debt.debt_center_id
-    LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-    LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+    LEFT JOIN components USING (id)
+    LEFT JOIN tags USING (id)
+    LEFT JOIN debt_statuses ds USING (id)
+    LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+    LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
   `;
 
   if (where) {
-    query = query.append(' WHERE ').append(where).append(' ');
+    query = query.append(' WHERE ').append(where);
   }
-
-  query = query.append(sql`GROUP BY debt.id, payer_profiles.*, debt_center.*`);
 
   return pg.many<DbDebt>(query).then(debts => debts.map(formatDebt));
 }
