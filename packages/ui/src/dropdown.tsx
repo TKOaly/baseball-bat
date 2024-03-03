@@ -86,7 +86,7 @@ export function Dropdown<P extends DropdownProps>({
           ref={refs.setReference}
           type="button"
           disabled={disabled}
-          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center bg-blue-600 disabled:hover:bg-blue-600 hover:bg-blue-700 focus:ring-blue-800"
+          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center"
           {...getReferenceProps()}
         >
           {(options ?? []).find(
