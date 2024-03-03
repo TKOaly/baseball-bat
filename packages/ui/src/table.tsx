@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { identity } from 'fp-ts/lib/function';
+import { produce } from 'immer';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
@@ -22,13 +23,13 @@ function union<T>(a: T[], b: T[]): T[] {
 }
 
 const getRowColumnValue = <R extends Record<string, V>, V>(
-  column: { getValue: ((row: R) => V) | string },
+  column: Column<R, any, V>,
   row: R,
 ): V => {
-  if (typeof column.getValue === 'string') {
-    return row[column.getValue];
-  } else {
+  if (typeof column.getValue === 'function') {
     return column.getValue(row);
+  } else {
+    return row[column.getValue];
   }
 };
 
@@ -76,7 +77,7 @@ export type TableViewProps<
   emptyMessage?: JSX.Element | string;
   hideTools?: boolean;
   footer?: React.ReactNode;
-  persist?: Persister;
+  persist?: string;
   initialSort?: {
     column: ColumnNames;
     direction: 'asc' | 'desc';
@@ -87,11 +88,11 @@ const getColumnValue = <R extends Row, Value>(
   column: Column<R, any, Value>,
   row: R,
 ): Value => {
-  if (typeof column.getValue === 'string') {
-    return row[column.getValue as keyof R] as Value;
+  if (typeof column.getValue === 'function') {
+    return column.getValue(row);
   }
 
-  return column.getValue(row);
+  return row[column.getValue as keyof R] as Value;
 };
 
 type FilterState = {
@@ -472,6 +473,26 @@ const sortRows = <R extends Row<R>>(
   return tmpRows.filter(filter);
 };
 
+const loadInitialState = (key: string) => {
+  return history.state?.tables?.[key];
+};
+
+const saveState = (key: string, state: State) => {
+  const newState = produce(history.state, (draft: any) => {
+    if (!draft) {
+      return { [key]: state };
+    }
+
+    if (!draft.tables) {
+      draft.tables = {};
+    }
+
+    draft.tables[key] = state;
+  });
+
+  history.replaceState(newState, '', '');
+};
+
 export const Table = <
   R extends Row,
   ColumnNames extends string,
@@ -488,29 +509,34 @@ export const Table = <
   initialSort,
   persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
-  const state = useMemo(() => persist?.load(), []);
+  const initialState = useMemo(
+    () => (persist ? loadInitialState(persist) : undefined),
+    [persist],
+  );
 
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>(
-    state?.rows ?? [],
+    initialState?.rows ?? [],
   );
   const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
-    (state?.sort as any) ??
+    (initialState?.sort as any) ??
       (initialSort ? [initialSort.column, initialSort.direction] : null),
   );
 
   const [filters, setFilters] = useState<Record<string, FilterState>>(
-    state?.filters ?? {},
+    initialState?.filters ?? {},
   );
 
   const [expandedRows, setExpandedRows] = useState<unknown[]>([]);
 
   useEffect(() => {
-    persist?.store({
-      rows: selectedRows,
-      sort: sorting ?? undefined,
-      filters,
-    });
-  }, [selectedRows, sorting, filters]);
+    if (persist) {
+      saveState(persist, {
+        rows: selectedRows,
+        sort: sorting ?? undefined,
+        filters,
+      });
+    }
+  }, [persist, selectedRows, sorting, filters]);
 
   const sortedRows = useMemo(
     () =>

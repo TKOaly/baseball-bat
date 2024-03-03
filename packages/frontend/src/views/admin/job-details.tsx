@@ -15,7 +15,6 @@ import {
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
 import { pipe } from 'fp-ts/lib/function';
-import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 type Props = RouteComponentProps<{
   id: string;
@@ -29,7 +28,6 @@ const returnValueType = t.type({
 export const JobDetails = (props: Props) => {
   const { queue, id } = props.params;
   const { data: job } = useGetJobQuery({ queue, id }, { pollingInterval: 500 });
-  const historyPersister = useHistoryPersister();
   const [, setLocation] = useLocation();
 
   if (!job) {
@@ -80,7 +78,7 @@ export const JobDetails = (props: Props) => {
       </Section>
       <Section title="Children">
         <Table
-          persist={historyPersister('jobs')}
+          persist="jobs"
           rows={(job?.children ?? []).map(job => ({ ...job, key: job.id }))}
           onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
           columns={[

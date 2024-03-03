@@ -4,11 +4,9 @@ import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { Button, SecondaryButton } from '@bbat/ui/button';
 import { Table } from '@bbat/ui/table';
 import { cents, formatEuro } from '@bbat/common/src/currency';
-import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 export const DebtCentersListing = () => {
   const { data } = useGetDebtCentersQuery();
-  const historyPersister = useHistoryPersister();
 
   const [, setLocation] = useLocation();
 
@@ -38,7 +36,7 @@ export const DebtCentersListing = () => {
         </SecondaryButton>
       </div>
       <Table
-        persist={historyPersister('debt-centers')}
+        persist="debt-centers"
         rows={rows}
         onRowClick={item => setLocation(`/admin/debt-centers/${item.id}`)}
         columns={[

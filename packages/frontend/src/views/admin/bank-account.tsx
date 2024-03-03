@@ -16,14 +16,12 @@ import { useGetAccountTransactionsQuery } from '../../api/banking/transactions';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
 import { useGetBankAccountStatementsQuery } from '../../api/banking/statements';
-import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 export const BankAccount = ({ iban }: { iban: string }) => {
   const [, setLocation] = useLocation();
   const { data: account, isLoading } = useGetBankAccountQuery(iban);
   const { data: transactions } = useGetAccountTransactionsQuery(iban);
   const { data: statements } = useGetBankAccountStatementsQuery(iban);
-  const historyPersister = useHistoryPersister();
 
   if (isLoading || !account) {
     return 'Loading...';
@@ -55,7 +53,7 @@ export const BankAccount = ({ iban }: { iban: string }) => {
             Import bank statement
           </Button>
           <Table
-            persist={historyPersister('bank-statements')}
+            persist="bank-statement"
             rows={(statements ?? []).map(tx => ({ ...tx, key: tx.id }))}
             onRowClick={row =>
               setLocation(`/admin/banking/statements/${row.id}`)

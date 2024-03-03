@@ -2,18 +2,16 @@ import { format, formatDuration } from 'date-fns';
 import { useLocation } from 'wouter';
 import { useGetJobsQuery } from '../../api/jobs';
 import { Table } from '@bbat/ui/table';
-import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 export const JobsListing = () => {
   const { data: jobs } = useGetJobsQuery(undefined, { pollingInterval: 100 });
-  const historyPersister = useHistoryPersister();
   const [, setLocation] = useLocation();
 
   return (
     <div>
       <h1 className="text-2xl mt-10 mb-5">Jobs</h1>
       <Table
-        persist={historyPersister('jobs')}
+        persist="jobs"
         rows={(jobs ?? []).map(job => ({ ...job, key: job.id }))}
         onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
         columns={[

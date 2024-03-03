@@ -18,7 +18,6 @@ import { ErrorDialog } from '../../components/dialogs/error-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { useState } from 'react';
 import { PayerProfile } from '@bbat/common/src/types';
-import { useHistoryPersister } from '../../hooks/use-history-persister';
 
 const ratio = (a: number | undefined, b: number | undefined) => {
   if (a === undefined || b === undefined) {
@@ -31,7 +30,6 @@ const ratio = (a: number | undefined, b: number | undefined) => {
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
   const { data: payers } = useGetPayersQuery();
-  const historyPersiter = useHistoryPersister();
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
@@ -66,7 +64,7 @@ export const PayerListing = () => {
       <Table
         selectable
         rows={rows}
-        persist={historyPersiter('payers')}
+        persist="payers"
         onRowClick={({ id }) => setLocation(`/admin/payers/${id.value}`)}
         actions={[
           {
