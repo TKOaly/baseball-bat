@@ -44,7 +44,7 @@ export type Action<R> = {
 
 export type Column<R, Name extends string, Value> = {
   name: Name;
-  getValue: string | ((row: R) => Value);
+  getValue: keyof R | ((row: R) => Value);
   render?: (value: Value, row: R, depth: number) => any;
   align?: 'right';
   compareBy?: (value: Value) => any;
