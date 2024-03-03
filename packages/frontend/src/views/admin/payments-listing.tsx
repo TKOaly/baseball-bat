@@ -32,10 +32,6 @@ export const PaymentsListing = () => {
             name: 'Name',
           },
           {
-            getValue: row => row.payer?.name,
-            name: 'Payer',
-          },
-          {
             getValue: row => {
               if (row.credited) {
                 return 'Credited';
