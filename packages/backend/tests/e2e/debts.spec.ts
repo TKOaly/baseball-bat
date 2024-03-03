@@ -217,7 +217,7 @@ test('test publishing', async ({ page, bbat }) => {
   await expect(row.getCell('Name')).toHaveText('Test Debt');
   await expect(row.getCell('Status')).toHaveText('Unpaid');
   await expect(row.getCell('Number')).toHaveText(`${getYear(new Date())}-0000`);
-  await expect(row.getCell('Total')).toHaveText('−10,00 €');
+  await expect(row.getCell('Balance')).toHaveText(formatEuro(euro(-10)));
 
   const table2 = bbat.table(
     bbat.getResourceSection('Emails').getByRole('table'),

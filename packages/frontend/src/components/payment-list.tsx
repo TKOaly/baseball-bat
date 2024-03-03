@@ -43,14 +43,14 @@ export const PaymentList = ({ payments }: Props) => {
       rows={payments.map(p => ({ ...p, key: p.id }))}
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       initialSort={{
-        column: 'No.',
+        column: 'Number',
         direction: 'asc',
       }}
       persist="payments"
       columns={[
         {
           getValue: row => row.paymentNumber,
-          name: 'No.',
+          name: 'Number',
         },
         {
           getValue: row => row.type,
