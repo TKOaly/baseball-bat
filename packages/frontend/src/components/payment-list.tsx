@@ -85,6 +85,7 @@ export const PaymentList = ({ payments }: Props) => {
           align: 'right',
           getValue: row => row.balance,
           render: formatEuro,
+          compareBy: amount => amount.value,
         },
       ]}
     />

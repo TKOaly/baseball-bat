@@ -126,6 +126,7 @@ export const DebtList = (props: Props) => {
           getValue: 'total',
           align: 'right',
           render: formatEuro,
+          compareBy: amount => amount.value,
         },
         {
           name: 'Components',
