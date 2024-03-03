@@ -37,6 +37,7 @@ export const DebtList = (props: Props) => {
       onRowClick={row => setLocation(`/admin/debts/${row.id}`)}
       selectable
       rows={rows}
+      persist="debts"
       columns={[
         { name: 'Identifier', getValue: 'humanId' },
         { name: 'Name', getValue: 'name' },
