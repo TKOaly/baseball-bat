@@ -59,7 +59,7 @@ const sidebarCva = cva(
   {
     variants: {
       open: {
-        true: 'right-[calc(100%_-_20em)]',
+        true: 'shadow-lg xl:shadow-none right-[calc(100%_-_20em)]',
         undefined: 'right-full xl:right-[calc(100%_-_20em)]',
         false: 'right-full',
       },
