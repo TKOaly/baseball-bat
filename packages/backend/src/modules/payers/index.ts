@@ -78,24 +78,46 @@ export default createModule({
   routes,
 
   async setup({ bus }) {
-    bus.register(defs.getPayerProfiles, async (_, { pg }) => {
-      const dbProfiles = await pg.many<DbPayerProfileWithEmails>(sql`
-          SELECT
-            pp.*,
-            (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails,
-            COUNT(DISTINCT d.id) as debt_count,
-            COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
-            COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count,
-            COALESCE(SUM(dco.amount), 0) AS total,
-            COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid
-          FROM payer_profiles pp
-          LEFT JOIN debt d ON d.payer_id = pp.id
-          LEFT JOIN debt_statuses ds ON ds.id = d.id
-          LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
-          LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
-          GROUP BY pp.id
-        `);
+    const baseQuery = () => sql`
+      WITH counts AS (
+        SELECT
+          d.payer_id AS id,
+          COUNT(DISTINCT d.id) AS debt_count,
+          COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+          COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
+        FROM debt d
+        JOIN debt_statuses ds USING (id)
+        GROUP BY d.payer_id
+      ), totals AS (
+        SELECT
+          d.payer_id AS id,
+          COALESCE(SUM(dco.amount), 0) AS total,
+          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid
+        FROM debt d
+        LEFT JOIN debt_statuses ds ON ds.id = d.id
+        LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
+        LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
+        GROUP BY d.payer_id
+      ), emails AS (
+        SELECT
+          e.payer_id AS id,
+          ARRAY_AGG(TO_JSON(e.*)) AS emails
+        FROM payer_emails e
+        GROUP BY e.payer_id
+      )
+      SELECT
+        pp.*,
+        counts.*,
+        totals.*,
+        emails.*
+      FROM payer_profiles pp
+      LEFT JOIN counts USING (id)
+      LEFT JOIN totals USING (id)
+      LEFT JOIN emails USING (id)
+    `;
 
+    bus.register(defs.getPayerProfiles, async (_, { pg }) => {
+      const dbProfiles = await pg.many<DbPayerProfileWithEmails>(baseQuery());
       return dbProfiles.map(formatPayerProfile);
     });
 
@@ -298,12 +320,7 @@ export default createModule({
     );
 
     bus.register(defs.getPayerProfileByTkoalyIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
-          SELECT
-            pp.*,
-            (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
-          FROM payer_profiles pp
-          WHERE tkoaly_user_id = ${id.value}`);
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`WHERE pp.tkoaly_user_id = ${id.value}`));
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);
@@ -313,13 +330,7 @@ export default createModule({
     });
 
     bus.register(defs.getPayerProfileByInternalIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
-          SELECT
-            pp.*,
-            (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
-          FROM payer_profiles pp
-          WHERE id = ${id.value}
-        `);
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`WHERE pp.id = ${id.value}`));
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);
@@ -329,13 +340,9 @@ export default createModule({
     });
 
     bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(sql`
-        SELECT
-          pp.*,
-          (SELECT ARRAY_AGG(TO_JSON(e.*)) FROM payer_emails e WHERE e.payer_id = pp.id) AS emails
-        FROM payer_profiles pp
+      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(baseQuery().append(sql`
         WHERE pp.id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled
-      `);
+      `));
 
       if (dbProfile) {
         return formatPayerProfile(dbProfile);
