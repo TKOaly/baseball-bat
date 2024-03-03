@@ -480,7 +480,7 @@ const loadInitialState = (key: string) => {
 const saveState = (key: string, state: State) => {
   const newState = produce(history.state, (draft: any) => {
     if (!draft) {
-      return { [key]: state };
+      return { tables: { [key]: state } };
     }
 
     if (!draft.tables) {
