@@ -190,7 +190,7 @@ const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean | undefined>(
     undefined,
   );
-  const sidebarRef = useRef<HTMLDivElement>();
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const showSearchDialog = useDialog(GlobalSearchDialog);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
   const activeAccountingPeriod = useAppSelector(
