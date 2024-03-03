@@ -11,6 +11,7 @@ import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';
 import { sortBy } from 'remeda';
 import { isBefore } from 'date-fns';
+import { formatEuro } from '@bbat/common/src/currency';
 
 export type Props = {
   debts: (DebtWithPayer | Debt)[];
@@ -118,6 +119,12 @@ export const DebtList = (props: Props) => {
                 ),
               }[value];
             }),
+        },
+        {
+          name: 'Amount',
+          getValue: 'total',
+          align: 'right',
+          render: formatEuro,
         },
         {
           name: 'Components',

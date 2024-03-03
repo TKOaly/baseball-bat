@@ -2,6 +2,7 @@ import { Table } from '@bbat/ui/table';
 import { useGetPaymentsQuery } from '../../api/payments';
 import { useLocation } from 'wouter';
 import { useHistoryPersister } from '../../hooks/use-history-persister';
+import { formatEuro } from '@bbat/common/src/currency';
 
 export const PaymentsListing = () => {
   const { data: payments } = useGetPaymentsQuery();
@@ -43,6 +44,12 @@ export const PaymentsListing = () => {
           {
             getValue: row => row.paymentNumber,
             name: 'No.',
+          },
+          {
+            name: 'Balance',
+            align: 'right',
+            getValue: row => row.balance,
+            render: formatEuro,
           },
         ]}
       />
