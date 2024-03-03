@@ -243,6 +243,7 @@ const Admin = () => {
 
     return (
       <div
+        data-testid={`side-navigation-${open ? 'close' : 'open'}`}
         className={cva({ open: sidebarOpen })}
         onClick={() => setSidebarOpen(!open)}
       >

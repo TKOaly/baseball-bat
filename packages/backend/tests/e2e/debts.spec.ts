@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { addDays, format, getYear } from 'date-fns';
 import assert from 'assert';
@@ -61,6 +61,20 @@ const createDebt = async (
   await page.getByTestId('create-debt').click();
 };
 
+const navigate = async (page: Page, item: string) => {
+  const visible = await page.getByTestId('side-navigation-open').isVisible();
+
+  if (visible) {
+    await page.getByTestId('side-navigation-open').click();
+  }
+
+  await page.getByTestId('side-navigation').getByText(item).click();
+
+  if (visible) {
+    await page.getByTestId('side-navigation-close').click();
+  }
+};
+
 test('debt creation', async ({ page, bbat }) => {
   await page.goto(bbat.url);
 
@@ -110,7 +124,7 @@ test('debt creation', async ({ page, bbat }) => {
   await expect(page.getByRole('button', { name: 'Delete' })).not.toBeDisabled();
   await expect(page.getByRole('button', { name: 'Credit' })).not.toBeVisible();
 
-  await page.getByTestId('side-navigation').getByText('Debts').click();
+  await navigate(page, 'Debts');
   const table = bbat.table(page.getByRole('table'));
   await expect(table.rows()).toHaveCount(1);
   const row = table.getRowByColumnValue('Name', 'Test Debt');
@@ -154,13 +168,13 @@ test('debt deletion', async ({ page, bbat }) => {
     ],
   });
 
-  await page.getByTestId('side-navigation').getByText('Debts').click();
+  await navigate(page, 'Debts');
   const table = bbat.table(page.getByRole('table'));
   await expect(table.rows()).toHaveCount(1);
   const row = table.getRowByColumnValue('Name', 'Test Debt');
   await row.getCell('Identifier').click();
   await page.getByRole('button', { name: 'Delete' }).click();
-  await page.getByTestId('side-navigation').getByText('Debts').click();
+  await navigate(page, 'Debts');
 
   const table2 = bbat.table(page.getByRole('table'));
   await expect(table2.rows()).toHaveCount(0);
