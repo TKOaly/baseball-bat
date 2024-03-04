@@ -53,58 +53,54 @@ export const TableProvider = ({
   };
 
   useEffect(() => {
-    subscribe(
-      'row',
-      async (row: string) => {
-        if (props.validateRow) {
-          const rowHandle = createRowHandle(state, dispatch, row);
+    const validateRow = async (row: string) => {
+      if (props.validateRow) {
+        const rowHandle = createRowHandle(state, dispatch, row);
 
-          rowHandle.clearRowAnnotation({
-            id: 'row-validation',
-          });
+        rowHandle.clearRowAnnotation({
+          id: 'row-validation',
+        });
 
-          rowHandle.clearColumnAnnotation({
-            id: 'row-validation',
-          });
+        rowHandle.clearColumnAnnotation({
+          id: 'row-validation',
+        });
 
-          rowHandle.setRowAnnotation({
-            id: 'row-validation',
-            type: 'loading',
-            message: 'Validating...',
-          });
+        rowHandle.setRowAnnotation({
+          id: 'row-validation',
+          type: 'loading',
+          message: 'Validating...',
+        });
 
-          const errors = await props.validateRow(rowHandle);
+        const errors = await props.validateRow(rowHandle);
 
-          rowHandle.clearRowAnnotation({
-            id: 'row-validation',
-          });
+        rowHandle.clearRowAnnotation({
+          id: 'row-validation',
+        });
 
-          rowHandle.clearColumnAnnotation({
-            id: 'row-validation',
-          });
+        rowHandle.clearColumnAnnotation({
+          id: 'row-validation',
+        });
 
-          for (const error of errors) {
-            if (typeof error === 'string') {
-              rowHandle.setRowAnnotation({
+        for (const error of errors) {
+          if (typeof error === 'string') {
+            rowHandle.setRowAnnotation({
+              id: 'row-validation',
+              type: 'error',
+              message: error,
+            });
+          } else {
+            rowHandle.setColumnAnnotation({
+              column: error.column,
+              annotation: {
                 id: 'row-validation',
                 type: 'error',
-                message: error,
-              });
-            } else {
-              rowHandle.setColumnAnnotation({
-                column: error.column,
-                annotation: {
-                  id: 'row-validation',
-                  type: 'error',
-                  message: error.message,
-                },
-              });
-            }
+                message: error.message,
+              },
+            });
           }
         }
-      },
-      true,
-    );
+      }
+    };
 
     const validateCell = async ({
       row,
@@ -191,17 +187,22 @@ export const TableProvider = ({
       }
     };
 
+    const validateColumn = (column: string) => {
+      for (const { key: row } of state.data.values()) {
+        validateCell({ row, column });
+      }
+    };
+
+    subscribe('row', validateRow, true);
     subscribe('cell-value', validateCell, true);
-    subscribe(
-      'column',
-      column => {
-        for (const { key: row } of state.data.values()) {
-          validateCell({ row, column });
-        }
-      },
-      true,
-    );
-  }, [state, subscribe]);
+    subscribe('column', validateColumn, true);
+
+    return () => {
+      unsubscribe(validateRow);
+      unsubscribe(validateCell);
+      unsubscribe(validateColumn);
+    };
+  }, [state, subscribe, props.validateRow]);
 
   const useRows = useCreateInvalidableHook(
     () => ['rows'],
