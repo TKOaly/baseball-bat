@@ -379,7 +379,6 @@ const EditableTableWrapper = styled.div`
         border: 1px solid hsl(0, 0%, 90%);
         padding: 3px 0.5em;
         text-align: left;
-        background-clip: padding-box !important;
         position: relative;
         white-space: nowrap;
       }
