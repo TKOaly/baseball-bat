@@ -5,7 +5,7 @@ type State = {
   invalidationTimeout: ReturnType<typeof setTimeout> | null;
   subscriptions: Map<
     string,
-    Set<{ callback: (payload: any) => void; immediate: boolean }>
+    Set<{ callback: (...args: any[]) => void; immediate: boolean }>
   >;
 };
 
@@ -73,9 +73,15 @@ export const useInvalidation = () => {
   );
 
   const unsubscribe = useCallback(
-    (callback: () => void) => {
+    (callback: (...args: any[]) => void) => {
       for (const subscriptions of ref.current.subscriptions.values()) {
-        subscriptions.delete({ callback, immediate: true }); // FIXME
+        const match = [...subscriptions.values()].find(
+          sub => sub.callback === callback,
+        );
+
+        if (match) {
+          subscriptions.delete(match);
+        }
       }
     },
     [ref],
@@ -90,7 +96,7 @@ export interface Invalidation {
     callback: (payload: any) => void,
     immediate?: boolean,
   ) => void;
-  unsubscribe: (callback: () => void) => void;
+  unsubscribe: (callback: (...args: any) => void) => void;
 }
 
 export const createInvalidableHook = <A extends any[], T>(

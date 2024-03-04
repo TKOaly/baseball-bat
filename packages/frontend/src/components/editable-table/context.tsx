@@ -21,7 +21,7 @@ type TableContextValue = {
     callback: (payload: unknown) => void,
     immediate?: boolean,
   ) => void;
-  unsubscribe: <A extends unknown[]>(callback: (...args: A) => void) => void;
+  unsubscribe: (callback: (...args: any) => void) => void;
   useColumnState: (columnKey: string) => ColumnState | undefined;
   useCellState: (rowKey: string, columnKey: string) => CellState;
   useColumnOrder: () => Array<string>;
