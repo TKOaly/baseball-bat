@@ -1,0 +1,4 @@
+Title;Debt Center;Due Date;Description;Email;Payer Name;Discount;Surcharge
+Test Debt #1;Test Center;12.3.2030;Desc.;test@test.test;Teppo Testaaja;True;
+Test Debt #2;Test Center;12.3.2030;Desc.;test@test.test;Teppo Testaaja;True;True
+Test Debt #3;Test Center;12.3.2030;Desc.;test@test.test;Teppo Testaaja;;True

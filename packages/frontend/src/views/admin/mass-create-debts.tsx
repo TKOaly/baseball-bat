@@ -1,5 +1,6 @@
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
+import { produce } from 'immer';
 import * as uuid from 'uuid';
 import { uid } from 'uid';
 import { ResourceLink } from '../../components/resource-link';
@@ -8,13 +9,13 @@ import debtCentersApi, {
   useCreateDebtCenterMutation,
   useGetDebtCenterQuery,
 } from '../../api/debt-centers';
-import {
+import debtApi, {
   useCreateDebtComponentMutation,
   useCreateDebtMutation,
   CreateDebtPayload,
 } from '../../api/debt';
 import { Button } from '@bbat/ui/button';
-import { cents, EuroValue } from '@bbat/common/src/currency';
+import { cents, compareEuroValues, EuroValue } from '@bbat/common/src/currency';
 import { isMatch, parse, format, isValid } from 'date-fns';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppSelector } from '../../store';
@@ -31,10 +32,12 @@ import {
   dbDateString,
 } from '@bbat/common/src/types';
 import * as E from 'fp-ts/lib/Either';
-import { ExternalLink } from 'react-feather';
+import { CheckSquare, ExternalLink, Square } from 'react-feather';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { pipe } from 'fp-ts/lib/function';
 import * as t from 'io-ts';
+import { useDialog } from '../../components/dialog';
+import { CustomComponentColumnDialog } from '../../components/dialogs/custom-component-column-dialog';
 
 const errorResponse = t.type({
   message: t.string,
@@ -68,9 +71,17 @@ type Props = {
   debtCenterId?: string;
 };
 
+type CustomComponentDef = {
+  key: string;
+  name: string;
+  amount: EuroValue;
+};
+
 export const MassCreateDebts = ({ debtCenterId }: Props) => {
   const { data: debtCenter } = useGetDebtCenterQuery(debtCenterId ?? skipToken);
   const { data: accountingPeriods } = useGetAccountingPeriodsQuery();
+  const [getDebtComponentsByCenter] =
+    debtApi.endpoints.getDebtComponentsByCenter.useLazyQuery();
   const activeAccountingPeriod = useAppSelector(
     state => state.accountingPeriod.activePeriod,
   );
@@ -117,146 +128,192 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
     return null;
   }, []);
 
-  const columnTypes = useMemo<Array<ColumnType>>(
-    () => [
-      {
-        key: 'payment-condition',
-        label: 'Payment Condition',
-        validate: (value, row) => {
-          try {
-            parseInt(value, 10);
-          } catch (err) {
-            return 'Must be an integer.';
-          }
+  const customComponentPrompt = useDialog(CustomComponentColumnDialog);
 
-          if (row.columns['due-date']) {
-            return 'Cannot specify both a due date and a payment condition!';
-          }
+  const [customComponents, setCustomComponents] = useState<
+    CustomComponentDef[]
+  >([]);
 
+  const [columnTypes, setColumnTypes] = useState<Array<ColumnType>>([
+    {
+      key: 'payment-condition',
+      label: 'Payment Condition',
+      validate: (value, row) => {
+        try {
+          parseInt(value, 10);
+        } catch (err) {
+          return 'Must be an integer.';
+        }
+
+        if (row.columns['due-date']) {
+          return 'Cannot specify both a due date and a payment condition!';
+        }
+
+        return null;
+      },
+    },
+    {
+      key: 'date',
+      label: 'Date',
+    },
+    {
+      key: 'payer-name',
+      label: 'Payer name',
+      validate: async (value, row) => {
+        const email = row.columns.email;
+
+        if (!email) {
           return null;
-        },
-      },
-      {
-        key: 'date',
-        label: 'Date',
-      },
-      {
-        key: 'payer-name',
-        label: 'Payer name',
-        validate: async (value, row) => {
-          const email = row.columns.email;
+        }
 
-          if (!email) {
-            return null;
-          }
+        const { data } = await getPayerByEmail(email);
 
-          const { data } = await getPayerByEmail(email);
-
-          if (!data) {
-            return null;
-          }
-
-          if (data.name !== value) {
-            return {
-              type: 'info',
-              message: 'Name differs from the one on record: ' + data.name,
-            };
-          }
-
+        if (!data) {
           return null;
-        },
-      },
-      {
-        key: 'created-debt',
-        label: 'Created Debt',
-        readOnly: true,
-        allowSelection: false,
-        render: value =>
-          value ? <ResourceLink type="debt" id={value} /> : null,
-      },
-      {
-        key: 'created-payer',
-        label: 'Created Payer',
-        readOnly: true,
-        allowSelection: false,
-        render: value =>
-          value ? <ResourceLink type="payer" id={value} /> : null,
-      },
-      {
-        key: 'title',
-        label: 'Title',
-      },
-      {
-        key: 'description',
-        label: 'Description',
-      },
-      {
-        key: 'debt-center',
-        label: 'Debt Center',
-        aliases: ['Debt Center ID'],
-        validate: validateDebtCenter,
-      },
-      {
-        key: 'accounting-period',
-        label: 'Accounting Period',
-        align: 'right',
-      },
-      {
-        key: 'due-date',
-        label: 'Due date',
-        align: 'right',
-        validate: (value, row) => {
-          if (!isMatch(value, 'd.M.y')) {
-            return 'Dates must be in the dd.MM.yyyy format';
-          }
+        }
 
-          if (row.columns['payment-condition']) {
-            return 'Cannot specify both a due date and a payment condition!';
-          }
+        if (data.name !== value) {
+          return {
+            type: 'info',
+            message: 'Name differs from the one on record: ' + data.name,
+          };
+        }
 
+        return null;
+      },
+    },
+    {
+      key: 'created-debt',
+      label: 'Created Debt',
+      readOnly: true,
+      allowSelection: false,
+      render: value => (value ? <ResourceLink type="debt" id={value} /> : null),
+    },
+    {
+      key: 'created-payer',
+      label: 'Created Payer',
+      readOnly: true,
+      allowSelection: false,
+      render: value =>
+        value ? <ResourceLink type="payer" id={value} /> : null,
+    },
+    {
+      key: 'title',
+      label: 'Title',
+    },
+    {
+      key: 'description',
+      label: 'Description',
+    },
+    {
+      key: 'debt-center',
+      label: 'Debt Center',
+      aliases: ['Debt Center ID'],
+      validate: validateDebtCenter,
+    },
+    {
+      key: 'accounting-period',
+      label: 'Accounting Period',
+      align: 'right',
+    },
+    {
+      key: 'due-date',
+      label: 'Due date',
+      align: 'right',
+      validate: (value, row) => {
+        if (!isMatch(value, 'd.M.y')) {
+          return 'Dates must be in the dd.MM.yyyy format';
+        }
+
+        if (row.columns['payment-condition']) {
+          return 'Cannot specify both a due date and a payment condition!';
+        }
+
+        return null;
+      },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      validate: validateEmail,
+    },
+    {
+      key: 'reference',
+      label: 'Reference number',
+      align: 'right',
+    },
+    {
+      key: 'tags',
+      label: 'Tags',
+      render: value => (
+        <div className="flex gap-1">
+          {value
+            .split(',')
+            .map(tag => tag.trim())
+            .map(tag => (
+              <span
+                className="rounded-md px-1 text-gray-800 bg-gray-200"
+                key={tag}
+              >
+                {tag}
+              </span>
+            ))}
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      align: 'right',
+      input: (props: any) => (
+        <EuroField {...props} plain style={{ lineHeight: '1em' }} />
+      ),
+    },
+    {
+      key: 'component',
+      label: 'Custom component...',
+      onSelect: async () => {
+        const key = `custom-${uid()}`;
+
+        const result = await customComponentPrompt({});
+
+        if (!result) {
           return null;
-        },
+        }
+
+        const { name, amount } = result;
+
+        setColumnTypes(types =>
+          produce(types, draft => {
+            draft.splice(draft.length - 1, 0, {
+              key,
+              label: `Component: ${name}`,
+              render: value => (
+                <div className="flex items-center absolute inset-0 px-1 justify-end">
+                  {value ? (
+                    <CheckSquare className="text-green-500 w-4 h-4" />
+                  ) : (
+                    <Square className="text-red-500 w-4 h-4" />
+                  )}
+                </div>
+              ),
+            });
+          }),
+        );
+
+        setCustomComponents(components => [
+          ...components,
+          {
+            key,
+            name,
+            amount,
+          },
+        ]);
+
+        return key;
       },
-      {
-        key: 'email',
-        label: 'Email',
-        validate: validateEmail,
-      },
-      {
-        key: 'reference',
-        label: 'Reference number',
-        align: 'right',
-      },
-      {
-        key: 'tags',
-        label: 'Tags',
-        render: value => (
-          <div className="flex gap-1">
-            {value
-              .split(',')
-              .map(tag => tag.trim())
-              .map(tag => (
-                <span
-                  className="rounded-md px-1 text-gray-800 bg-gray-200"
-                  key={tag}
-                >
-                  {tag}
-                </span>
-              ))}
-          </div>
-        ),
-      },
-      {
-        key: 'amount',
-        label: 'Amount',
-        align: 'right',
-        input: (props: any) => (
-          <EuroField {...props} plain style={{ lineHeight: '1em' }} />
-        ),
-      },
-    ],
-    [validateEmail],
-  );
+    },
+  ]);
 
   const resolvePayer = useCallback(
     async (row: RowHandle, dryRun: boolean): Promise<PayerIdentity | null> => {
@@ -398,6 +455,57 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
     [],
   );
 
+  const componentRef = useRef<Map<string, string>>(new Map());
+
+  const resolveDebtComponent = useCallback(
+    async (
+      dryRun: boolean,
+      options: { name: string; amount: EuroValue; debtCenterId: string },
+    ) => {
+      const key = `${options.debtCenterId}|${options.name}|${options.amount.value}`;
+      const existing = componentRef.current.get(key);
+
+      if (existing) {
+        return existing;
+      }
+
+      const centerComponents = await getDebtComponentsByCenter(
+        options.debtCenterId,
+      );
+
+      if (centerComponents.data) {
+        const match = centerComponents.data.find(
+          ({ name, amount }) =>
+            name === options.name &&
+            compareEuroValues(amount, options.amount) === 0,
+        );
+
+        if (match) {
+          componentRef.current.set(key, match.id);
+          return match.id;
+        }
+      }
+
+      if (dryRun) {
+        return uid();
+      }
+
+      const result = await createDebtComponent({
+        ...options,
+        description: '',
+      });
+
+      if ('error' in result) {
+        return null;
+      }
+
+      componentRef.current.set(key, result.data.id);
+
+      return result.data.id;
+    },
+    [componentRef],
+  );
+
   const resolveDebtRow = useCallback(
     async (
       row: RowHandle,
@@ -478,11 +586,15 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         failed = true;
       }
 
-      if (!row.columns.amount) {
+      const hasCustomComponents = customComponents.some(
+        ({ key }) => !!row.columns[key],
+      );
+
+      if (!row.columns.amount && !hasCustomComponents) {
         row.setRowAnnotation({
           id: 'create-debt',
           type: 'error',
-          message: 'Amount is required!',
+          message: 'Debt has no monetary value!',
         });
 
         failed = true;
@@ -528,37 +640,58 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
       const amountValue = row.columns.amount;
       let amount: EuroValue | null = null;
 
-      if (!amountValue) {
-        row.setRowAnnotation({
-          id: 'create-debt',
-          type: 'error',
-          message: 'Amount is required!',
-        });
-
-        failed = true;
-      } else {
+      if (amountValue) {
         amount = parseEuros(amountValue);
       }
 
-      if (failed || !debtCenterId || !amount) {
+      if (failed || !debtCenterId) {
         return null;
       }
 
-      const componentResult = await createDebtComponent({
-        debtCenterId,
-        name: 'Osallistumismaksu // Participation fee',
-        description: '',
-        amount,
-      });
+      const components: string[] = [];
 
-      if ('error' in componentResult) {
-        row.setRowAnnotation({
-          type: 'error',
-          id: 'create-debt',
-          message: 'Failed to create debt contents!',
+      for (const { key, name, amount } of customComponents) {
+        if (!row.columns[key]) {
+          continue;
+        }
+
+        const component = await resolveDebtComponent(dryRun, {
+          debtCenterId,
+          name,
+          amount,
         });
 
-        return null;
+        if (!component) {
+          row.setRowAnnotation({
+            type: 'error',
+            id: 'create-debt',
+            message: 'Failed to create debt contents!',
+          });
+
+          return null;
+        } else {
+          components.push(component);
+        }
+      }
+
+      if (amount) {
+        const component = await resolveDebtComponent(dryRun, {
+          debtCenterId,
+          name: 'Osallistumismaksu // Participation fee',
+          amount,
+        });
+
+        if (!component) {
+          row.setRowAnnotation({
+            type: 'error',
+            id: 'create-debt',
+            message: 'Failed to create debt contents!',
+          });
+
+          return null;
+        }
+
+        components.push(component);
       }
 
       if (failed) {
@@ -584,7 +717,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         dueDate: (dueDate && parseDueDate(dueDate)) || null,
         paymentCondition: paymentCondition ?? null,
         tags,
-        components: [componentResult.data.id],
+        components,
         defaultPayment: {
           type: 'invoice',
           options: {
@@ -593,7 +726,14 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         },
       };
     },
-    [resolveDebtCenter, accountingPeriods, activeAccountingPeriod, batchTag],
+    [
+      resolveDebtCenter,
+      accountingPeriods,
+      activeAccountingPeriod,
+      batchTag,
+      customComponents,
+      resolveDebtComponent,
+    ],
   );
 
   const createDebt = useCallback(

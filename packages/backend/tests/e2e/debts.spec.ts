@@ -497,4 +497,106 @@ test.describe('CSV import', () => {
       'RF4974154318938921639933',
     );
   });
+
+  test('with multiple default components', async ({ page, bbat, context }) => {
+    await page.goto(bbat.url);
+
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+
+    await bbat.login({});
+
+    await page.goto(`${bbat.url}/admin/debts`);
+
+    await page.getByRole('button', { name: 'Mass Creation' }).click();
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+
+    await page
+      .getByRole('button', { name: 'upload one by clicking here' })
+      .click();
+
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles([
+      {
+        name: 'import.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          await bbat.readFixture('csv/multiple-with-default-component.csv'),
+          'utf-8',
+        ),
+      },
+    ]);
+
+    await page.getByRole('button', { name: 'Interpret as headers' }).click();
+
+    await page.getByText('No type').nth(0).click();
+    await page.getByRole('button', { name: 'Custom component...' }).click();
+
+    const dialog = bbat.getDialog();
+    await dialog.getByPlaceholder('Component name').fill('Discount');
+    await dialog.getByLabel('Amount').fill('2');
+    await dialog.getByRole('button', { name: 'Create' }).click();
+
+    await page.getByText('No type').nth(0).click();
+    await page.getByRole('button', { name: 'Custom component...' }).click();
+
+    await dialog.getByPlaceholder('Component name').fill('Surcharge');
+    await dialog.getByLabel('Amount').fill('10');
+    await dialog.getByRole('button', { name: 'Create' }).click();
+
+    await page.getByRole('button', { name: 'Create Debts' }).click();
+
+    await expect(page.locator('[data-loading="true"]')).toHaveCount(3);
+    await expect(page.locator('[data-loading="true"]')).toHaveCount(0, {
+      timeout: 10000,
+    });
+
+    const pagePromise = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'View created' }).click();
+
+    const newPage = await pagePromise;
+    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+
+    const message = newPage.getByText(
+      /Here are listed all debts associated with the tag "mass-import-batch-[a-z0-9]{11}"\./,
+    );
+    await expect(message).toBeVisible();
+    const messageContent = await message.innerText();
+    const match = messageContent.match(/mass-import-batch-[a-z0-9]{11}/);
+
+    assert.ok(match);
+
+    const tableLocator = newPage.getByRole('table');
+    await expect(tableLocator).toHaveCount(1);
+    const table = bbat.table(tableLocator);
+    await expect(table.rows()).toHaveCount(3);
+
+    const row1 = table.getRowByColumnValue('Name', 'Test Debt #1');
+    await expect(row1.getCell('Amount')).toHaveText(formatEuro(euro(2)));
+    await expect(row1.getCell('Components')).toHaveText(/Discount/);
+
+    const row2 = table.getRowByColumnValue('Name', 'Test Debt #2');
+    await expect(row2.getCell('Amount')).toHaveText(formatEuro(euro(12)));
+    await expect(row2.getCell('Components')).toHaveText(/Discount/);
+    await expect(row2.getCell('Components')).toHaveText(/Surcharge/);
+
+    const row3 = table.getRowByColumnValue('Name', 'Test Debt #3');
+    await expect(row3.getCell('Amount')).toHaveText(formatEuro(euro(10)));
+    await expect(row3.getCell('Components')).toHaveText(/Surcharge/);
+
+    await row2.getCell('Identifier').click();
+    await newBbat.getResourceField('Collection').getByRole('link').click();
+
+    const debts = newBbat.table(
+      newBbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debts.rows()).toHaveCount(3);
+
+    const components = newBbat.table(
+      newBbat.getResourceSection('Debt Components').getByRole('table'),
+    );
+    await expect(components.rows()).toHaveCount(2);
+  });
 });

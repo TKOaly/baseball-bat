@@ -31,8 +31,16 @@ export const DataRow = ({ rowKey }: { rowKey: string }) => {
     throw new Error('No such row!');
   }
 
+  const isLoading = [...row.annotations.values()].some(
+    a => a.type === 'loading',
+  );
+
   return (
-    <tr key={rowKey} className={row.locked ? 'locked' : ''}>
+    <tr
+      key={rowKey}
+      data-loading={isLoading}
+      className={row.locked ? 'locked' : ''}
+    >
       <th
         style={{ borderRightColor: '#fafafa', padding: '0' }}
         className="row-menu"

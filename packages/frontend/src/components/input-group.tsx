@@ -73,6 +73,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
       <div>
         <Component
           {...(props as any)}
+          aria-label={label}
           error={error}
           placeholder={props.placeholder ?? label}
         />
