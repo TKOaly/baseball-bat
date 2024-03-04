@@ -27,6 +27,7 @@ export type ColumnType = {
   align?: 'left' | 'right';
   readOnly?: boolean;
   allowSelection?: boolean;
+  onSelect?: () => Promise<string | null | undefined>;
   render?: (value: string) => React.ReactNode;
 };
 

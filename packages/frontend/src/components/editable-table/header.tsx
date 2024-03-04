@@ -14,11 +14,26 @@ export const ColumnHeader = ({ columnKey: key }: { columnKey: string }) => {
     return null;
   }
 
-  const handleColumnTypeChange = (column: string, type: string) =>
+  const handleColumnTypeChange = async (column: string, type: ColumnType) => {
+    let key = type.key;
+
+    if (type.onSelect) {
+      const dynamicKey = await type.onSelect();
+
+      if (dynamicKey) {
+        key = dynamicKey;
+      }
+
+      if (dynamicKey === null) {
+        return;
+      }
+    }
+
     dispatch({
       type: 'SET_COLUMN_TYPE',
-      payload: { column, type },
+      payload: { column, type: key },
     });
+  };
 
   const handleMouseDown: MouseEventHandler = evt => {
     if (!ref.current) {
@@ -92,7 +107,12 @@ export const ColumnHeader = ({ columnKey: key }: { columnKey: string }) => {
                 value: columnType.key,
                 text: columnType.label,
               }))}
-            onSelect={type => handleColumnTypeChange(key, type)}
+            onSelect={type =>
+              handleColumnTypeChange(
+                key,
+                props.columnTypes.find(t => t.key === type)!,
+              )
+            }
           />
           <div className="grow" />
           <Dropdown
