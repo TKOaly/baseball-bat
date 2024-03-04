@@ -177,7 +177,7 @@ export const DialogBase = <T,>({
   return (
     <div
       {...rest}
-      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-10 dialog-base"
+      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 dialog-base"
       onClick={() => onClose(null)}
     >
       <div
