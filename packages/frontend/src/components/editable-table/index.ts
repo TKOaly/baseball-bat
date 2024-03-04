@@ -1,0 +1,1 @@
+export { EditableTable } from './table';
