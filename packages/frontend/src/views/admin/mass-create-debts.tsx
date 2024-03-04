@@ -21,7 +21,7 @@ import { useAppSelector } from '../../store';
 import {
   ColumnType,
   EditableTable,
-  RowApi,
+  RowHandle,
   TableRef,
 } from '../../components/editable-table';
 import payersApi from '../../api/payers';
@@ -259,7 +259,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
   );
 
   const resolvePayer = useCallback(
-    async (row: RowApi, dryRun: boolean): Promise<PayerIdentity | null> => {
+    async (row: RowHandle, dryRun: boolean): Promise<PayerIdentity | null> => {
       const email = row.columns['email'];
       const name = row.columns['payer-name'];
 
@@ -315,7 +315,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
 
   const resolveDebtCenter = useCallback(
     async (
-      row: RowApi,
+      row: RowHandle,
       accountingPeriod: number,
       dryRun: boolean,
     ): Promise<string | null> => {
@@ -399,7 +399,10 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
   );
 
   const resolveDebtRow = useCallback(
-    async (row: RowApi, dryRun: boolean): Promise<CreateDebtPayload | null> => {
+    async (
+      row: RowHandle,
+      dryRun: boolean,
+    ): Promise<CreateDebtPayload | null> => {
       let failed = false;
 
       let accountingPeriod: null | number = null;
@@ -594,7 +597,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
   );
 
   const createDebt = useCallback(
-    async (row: RowApi) => {
+    async (row: RowHandle) => {
       /*if (row.isLocked()) {
       return;
     }*/
@@ -645,7 +648,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
   );
 
   const validateRow = useCallback(
-    async (row: RowApi) => {
+    async (row: RowHandle) => {
       /*const payerEmail = row.columns.email;
     const payerName = row.columns['payer-name'];
 
@@ -710,7 +713,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
       {
         key: 'create-debt',
         label: 'Create Debt',
-        execute: async (row: RowApi) => {
+        execute: async (row: RowHandle) => {
           if (!row.isLocked()) {
             await createDebt(row);
           }
