@@ -56,6 +56,10 @@ export class Connection {
     return new Connection(pid, conn);
   }
 
+  escapeIdentifier(id: string) {
+    return this.conn.escapeIdentifier(id);
+  }
+
   async commit() {
     await this.conn.query('COMMIT');
   }
