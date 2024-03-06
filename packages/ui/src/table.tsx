@@ -2,7 +2,7 @@
 
 import { identity } from 'fp-ts/lib/function';
 import { produce } from 'immer';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -73,6 +73,7 @@ export type TableViewProps<
     { [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]
   >;
   onRowClick?: (row: R) => void;
+  onEnd?: () => void;
   showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
@@ -508,6 +509,7 @@ export const Table = <
   showBottomLoading,
   emptyMessage,
   hideTools,
+  onEnd,
   footer,
   initialSort,
   persist,
@@ -552,6 +554,30 @@ export const Table = <
       ),
     [rows, sorting, columns, filters],
   );
+
+  const scrollDetectorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const callback: IntersectionObserverCallback = ([rect]) => {
+      if (rect.intersectionRatio === 1) {
+        onEnd?.();
+      }
+    };
+
+    const observer = new IntersectionObserver(callback, {
+      threshold: 1.0,
+    });
+
+    const el = scrollDetectorRef.current;
+
+    if (!el) {
+      return;
+    }
+
+    observer.observe(el);
+
+    return () => observer.unobserve(el);
+  }, [scrollDetectorRef, onEnd]);
 
   const toggleSelection = (row: Row['key']) => {
     const newSet = [...selectedRows];
@@ -785,6 +811,7 @@ export const Table = <
               sorting={sorting}
             />
           ))}
+          <div className="col-span-full" ref={scrollDetectorRef}></div>
           {showBottomLoading && (
             <div className="col-span-full border-x border-t border-t-gray-100 border-x-gray-200 flex items-center justify-center">
               <Loader className="animate-[spin_3s_linear_infinite] my-4 mr-2 text-blue-600" />
