@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  Loader,
   MinusSquare,
   MoreVertical,
   PlusSquare,
@@ -72,6 +73,7 @@ export type TableViewProps<
     { [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]
   >;
   onRowClick?: (row: R) => void;
+  showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
   emptyMessage?: JSX.Element | string;
@@ -503,6 +505,7 @@ export const Table = <
   selectable,
   actions,
   onRowClick,
+  showBottomLoading,
   emptyMessage,
   hideTools,
   footer,
@@ -782,6 +785,12 @@ export const Table = <
               sorting={sorting}
             />
           ))}
+          {showBottomLoading && (
+            <div className="col-span-full border-x border-t border-t-gray-100 border-x-gray-200 flex items-center justify-center">
+              <Loader className="animate-[spin_3s_linear_infinite] my-4 mr-2 text-blue-600" />
+              <span className="text-gray-800">Loading...</span>
+            </div>
+          )}
           {rows.length === 0 && (
             <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
               <div className="w-[30em] text-gray-800 py-3">
