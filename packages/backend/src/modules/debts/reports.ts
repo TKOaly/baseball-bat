@@ -74,7 +74,7 @@ export default (bus: LocalBus<BusContext>) => {
           .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
       }
 
-      const debts = await queryDebts(pg, criteria);
+      const { rows: debts } = await queryDebts(pg, { where: criteria });
       let groups;
 
       if (options.groupBy) {
@@ -114,6 +114,7 @@ export default (bus: LocalBus<BusContext>) => {
 
         groups = await pipe(
           debts,
+          A.map(formatDebt),
           groupBy(getGroupKey),
           toArray,
           A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),

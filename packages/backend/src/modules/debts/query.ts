@@ -1,4 +1,3 @@
-import { Connection } from '@/db/connection';
 import {
   DbDebt,
   DbDebtCenter,
@@ -13,11 +12,12 @@ import {
   euro,
   internalIdentity,
 } from '@bbat/common/types';
-import sql, { SQLStatement } from 'sql-template-strings';
+import sql from 'sql-template-strings';
 import { formatPayerProfile } from '../payers';
 import { addDays } from 'date-fns';
 import { formatDebtCenter } from '../debt-centers';
 import { cents } from '@bbat/common/currency';
+import { createPaginatedQuery } from '@/db/pagination';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -91,11 +91,8 @@ export const formatDebtComponent = (
   updatedAt: null,
 });
 
-export async function queryDebts(
-  pg: Connection,
-  where?: SQLStatement,
-): Promise<Array<Debt>> {
-  let query = sql`
+export const queryDebts = createPaginatedQuery<DbDebt>(
+  sql`
     WITH components AS (
       SELECT
         d.id,
@@ -110,9 +107,12 @@ export async function queryDebts(
       SELECT t.debt_id AS id, ARRAY_AGG(TO_JSONB(t.*)) tags FROM debt_tags t GROUP BY id
     )
     SELECT
+      debt.id AS cursor_id,
       debt.*,
-      components.*,
-      tags.*,
+      components.total,
+      components.debt_components,
+      tags.tags,
+      payer_profiles.name AS payer_name,
       TO_JSON(payer_profiles.*) AS payer,
       TO_JSON(debt_center.*) AS debt_center,
       CASE WHEN ds.is_paid THEN 'paid' ELSE 'unpaid' END AS status
@@ -122,11 +122,6 @@ export async function queryDebts(
     LEFT JOIN debt_statuses ds USING (id)
     LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
     LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
-  `;
-
-  if (where) {
-    query = query.append(' WHERE ').append(where);
-  }
-
-  return pg.many<DbDebt>(query).then(debts => debts.map(formatDebt));
-}
+  `,
+  'human_id',
+);
