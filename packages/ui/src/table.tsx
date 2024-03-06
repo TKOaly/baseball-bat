@@ -46,6 +46,7 @@ export type Action<R> = {
 
 export type Column<R, Name extends string, Value> = {
   name: Name;
+  sortable?: boolean;
   getValue: keyof R | ((row: R) => Value);
   render?: (value: Value, row: R, depth: number) => any;
   align?: 'right';
@@ -632,6 +633,10 @@ export const Table = <
   }, [selectedRows, actions]);
 
   const handleColumnHeaderClick = (column: Column<any, any, any>) => {
+    if (column.sortable === false) {
+      return;
+    }
+
     if (!sorting || sorting[0] !== column.name) {
       setSorting([column.name, 'desc']);
     } else if (sorting[1] === 'desc') {
