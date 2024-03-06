@@ -10,7 +10,7 @@ export type Props<T, Q extends PaginatedBaseQuery> = Omit<
   endpoint: QueryHooks<
     QueryDefinition<Q, any, any, { result: T[]; nextCursor?: string }>
   >;
-  query: Omit<Q, 'cursor' | 'sort'>;
+  query?: Omit<Q, 'cursor' | 'sort'>;
 };
 
 export type PaginatedBaseQuery = {
