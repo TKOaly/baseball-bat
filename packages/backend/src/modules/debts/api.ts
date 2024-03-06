@@ -122,9 +122,27 @@ const factory: RouterFactory = route => {
   const getDebts = route
     .get('/')
     .use(auth())
-    .handler(async ({ bus }) => {
-      const debts = await bus.exec(debtService.getDebts);
-      return ok(debts);
+    .use(
+      Parser.query(
+        t.partial({
+          cursor: t.string,
+          sort: t.type({
+            column: t.string,
+            dir: t.union([t.literal('asc'), t.literal('desc')]),
+          }),
+        }),
+      ),
+    )
+    .handler(async ({ bus, query }) => {
+      const debts = await bus.exec(debtService.getDebts, {
+        cursor: query.cursor,
+        sort: query.sort,
+      });
+
+      return ok({
+        result: debts.rows,
+        nextCursor: debts.nextCursor,
+      });
     });
 
   const getDebtsByTag = route

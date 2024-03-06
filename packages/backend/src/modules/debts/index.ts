@@ -1121,10 +1121,19 @@ export default createModule({
       return rows.map(formatDebt);
     });
 
-    bus.register(defs.getDebts, async (_, { pg }) => {
-      const res = await queryDebts(pg, {});
+    bus.register(defs.getDebts, async ({ cursor, sort }, { pg }) => {
+      const res = await queryDebts(pg, {
+        limit: 30,
+        cursor,
+        order: sort
+          ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+          : undefined,
+      });
 
-      return res.rows.map(formatDebt);
+      return {
+        rows: res.rows.map(formatDebt),
+        nextCursor: res.nextCursor,
+      };
     });
 
     async function createDefaultPaymentFor(

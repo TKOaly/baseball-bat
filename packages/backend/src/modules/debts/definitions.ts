@@ -234,8 +234,17 @@ export const sendAllReminders = scope.defineProcedure({
 
 export const getDebts = scope.defineProcedure({
   name: 'getDebts',
-  payload: t.void,
-  response: t.array(types.debt),
+  payload: t.partial({
+    cursor: t.string,
+    sort: t.type({
+      column: t.string,
+      dir: t.union([t.literal('asc'), t.literal('desc')]),
+    }),
+  }),
+  response: t.type({
+    rows: t.array(types.debt),
+    nextCursor: t.union([t.string, t.null]),
+  }),
 });
 
 export const getDebtsByTag = scope.defineProcedure({
