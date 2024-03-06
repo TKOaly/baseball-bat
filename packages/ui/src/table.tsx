@@ -46,6 +46,7 @@ export type Action<R> = {
 
 export type Column<R, Name extends string, Value> = {
   name: Name;
+  key?: string;
   sortable?: boolean;
   getValue: keyof R | ((row: R) => Value);
   render?: (value: Value, row: R, depth: number) => any;
@@ -75,6 +76,7 @@ export type TableViewProps<
   >;
   onRowClick?: (row: R) => void;
   onEnd?: () => void;
+  onSortChange?: (column?: string, direction?: 'asc' | 'desc') => void;
   showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
@@ -512,6 +514,7 @@ export const Table = <
   hideTools,
   onEnd,
   footer,
+  onSortChange,
   initialSort,
   persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
@@ -523,10 +526,31 @@ export const Table = <
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>(
     initialState?.rows ?? [],
   );
-  const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
+  const [sorting, _setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
     (initialState?.sort as any) ??
       (initialSort ? [initialSort.column, initialSort.direction] : null),
   );
+
+  useEffect(() => {
+    if (sorting) {
+      const column = columns.find(c => c.name === sorting[0]);
+
+      if (column) {
+        onSortChange?.(column.key ?? column.name, sorting[1]);
+      }
+    }
+  }, []);
+
+  const setSorting = (value: [ColumnNames, 'asc' | 'desc'] | null) => {
+    _setSorting(value);
+
+    if (value) {
+      const column = columns.find(c => c.name === value[0])!;
+      onSortChange?.(column.key ?? column.name, value[1]);
+    } else {
+      onSortChange?.();
+    }
+  };
 
   const [filters, setFilters] = useState<Record<string, FilterState>>(
     initialState?.filters ?? {},
@@ -544,17 +568,19 @@ export const Table = <
     }
   }, [persist, selectedRows, sorting, filters]);
 
-  const sortedRows = useMemo(
-    () =>
-      sortRows(
+  const sortedRows = useMemo(() => {
+    if (!onSortChange) {
+      return sortRows(
         rows,
         columns.find(c => c.name === sorting?.[0]),
         sorting?.[1] ?? 'asc',
         columns,
         filters,
-      ),
-    [rows, sorting, columns, filters],
-  );
+      );
+    } else {
+      return sortRows(rows, undefined, 'asc', columns, filters);
+    }
+  }, [rows, sorting, columns, filters]);
 
   const scrollDetectorRef = useRef<HTMLDivElement>(null);
 
