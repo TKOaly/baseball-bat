@@ -128,7 +128,7 @@ export default createModule({
     bus.provide(iface, {
       async getDebt(id, { pg }) {
         const {
-          rows: [debt],
+          result: [debt],
         } = await queryDebts(pg, {
           where: sql`id = ${id}`,
         });
@@ -136,19 +136,19 @@ export default createModule({
         return debt ? formatDebt(debt) : null;
       },
 
-      async getDebtsByCenter({ centerId, cursor, sort }, { pg }) {
+      async getDebtsByCenter({ centerId, cursor, sort, limit }, { pg }) {
         const result = await queryDebts(pg, {
           where: sql`debt_center_id = ${centerId}`,
-          limit: 30,
           cursor,
+          limit,
           order: sort
             ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
             : undefined,
         });
 
         return {
-          result: result.rows.map(formatDebt),
-          nextCursor: result.nextCursor,
+          result: result.result.map(formatDebt),
+          nextCursor: result.nextCursor ?? undefined,
         };
       },
 
@@ -468,8 +468,8 @@ export default createModule({
         });
 
         return {
-          result: result.rows.map(formatDebt),
-          nextCursor: result.nextCursor,
+          result: result.result.map(formatDebt),
+          nextCursor: result.nextCursor ?? undefined,
         };
       },
 
@@ -1133,11 +1133,11 @@ export default createModule({
     );
 
     bus.register(defs.getDebtsByTag, async (tag, { pg }) => {
-      const { rows } = await queryDebts(pg, {
+      const { result } = await queryDebts(pg, {
         where: sql`id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tag})`,
       });
 
-      return rows.map(formatDebt);
+      return result.map(formatDebt);
     });
 
     bus.register(defs.getDebts, async ({ cursor, sort }, { pg }) => {
@@ -1150,8 +1150,8 @@ export default createModule({
       });
 
       return {
-        rows: res.rows.map(formatDebt),
-        nextCursor: res.nextCursor,
+        result: res.result.map(formatDebt),
+        nextCursor: res.nextCursor ?? undefined,
       };
     });
 
@@ -1483,11 +1483,11 @@ export default createModule({
     });
 
     async function getOverdueDebts(pg: Connection) {
-      const { rows } = await queryDebts(pg, {
+      const { result } = await queryDebts(pg, {
         where: sql`due_date < NOW() AND published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
       });
 
-      return rows.map(formatDebt);
+      return result.map(formatDebt);
 
       /*const debts = await pg.any<DbDebt>(sql`
         SELECT

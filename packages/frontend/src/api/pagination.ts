@@ -1,22 +1,13 @@
 import {
+  PaginationQueryArgs,
+  PaginationQueryResponse,
+} from '@bbat/common/src/types';
+import {
   EndpointBuilder,
   QueryDefinition,
 } from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { OmitFromUnion } from '@reduxjs/toolkit/dist/query/tsHelpers';
 import { FetchArgs, fetchBaseQuery } from '@reduxjs/toolkit/query';
-
-export type PaginatedQueryResponse<T> = {
-  result: T[];
-  nextCursor?: string;
-};
-
-export type PaginatedQueryArg = {
-  cursor?: string;
-  sort?: {
-    column: string;
-    dir: 'asc' | 'desc';
-  };
-};
 
 export type TagTypesFromBuilder<B extends EndpointBuilder<any, any, any>> =
   B extends EndpointBuilder<any, infer T, any> ? T : never;
@@ -27,18 +18,18 @@ export const createPaginatedQuery =
     builder: B,
     options: OmitFromUnion<
       QueryDefinition<
-        Q & PaginatedQueryArg,
+        Q & PaginationQueryArgs,
         ReturnType<typeof fetchBaseQuery>,
         TagTypesFromBuilder<B>,
-        PaginatedQueryResponse<T>,
+        PaginationQueryResponse<T>,
         any
       >,
       'type'
     > & { paginationTag?: TagTypesFromBuilder<B> },
   ) =>
-    builder.query<PaginatedQueryResponse<T>, Q & PaginatedQueryArg>({
+    builder.query<PaginationQueryResponse<T>, Q & PaginationQueryArgs>({
       ...(options as any),
-      query: ({ cursor, sort, ...rest }) => {
+      query: ({ cursor, sort, limit, ...rest }) => {
         const query = options.query?.(rest as any);
 
         let url;
@@ -67,6 +58,10 @@ export const createPaginatedQuery =
               search.append('cursor', cursor);
             }
 
+            if (limit) {
+              search.append('limit', limit.toString());
+            }
+
             if (sort) {
               search.append('sort[column]', sort.column);
               search.append('sort[dir]', sort.dir);
@@ -84,6 +79,10 @@ export const createPaginatedQuery =
 
           if (cursor) {
             opts.params.cursor = cursor;
+          }
+
+          if (limit) {
+            opts.params.limit = limit;
           }
 
           if (sort) {
@@ -114,7 +113,7 @@ export const createPaginatedQuery =
         return newArgs;
       },
       merge: (
-        currentCache: PaginatedQueryResponse<T> & { prevCursors?: string[] },
+        currentCache: PaginationQueryResponse<T> & { prevCursors?: string[] },
         newItems,
         { arg },
       ) => {

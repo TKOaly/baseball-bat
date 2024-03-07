@@ -17,6 +17,7 @@ import {
   euro,
   NewDebtTag,
   newInvoicePartial,
+  paginationQuery,
   tkoalyIdentity,
 } from '@bbat/common/build/src/types';
 import { validateBody } from '@/validate-middleware';
@@ -122,27 +123,13 @@ const factory: RouterFactory = route => {
   const getDebts = route
     .get('/')
     .use(auth())
-    .use(
-      Parser.query(
-        t.partial({
-          cursor: t.string,
-          sort: t.type({
-            column: t.string,
-            dir: t.union([t.literal('asc'), t.literal('desc')]),
-          }),
-        }),
-      ),
-    )
+    .use(Parser.query(paginationQuery))
     .handler(async ({ bus, query }) => {
-      const debts = await bus.exec(debtService.getDebts, {
-        cursor: query.cursor,
-        sort: query.sort,
+      const result = bus.exec(debtService.getDebts, {
+        ...query,
       });
 
-      return ok({
-        result: debts.rows,
-        nextCursor: debts.nextCursor,
-      });
+      return ok(result);
     });
 
   const getDebtsByTag = route

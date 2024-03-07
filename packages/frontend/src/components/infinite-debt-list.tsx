@@ -21,7 +21,7 @@ import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 export type Props<Q extends PaginatedBaseQuery> = {
   payer?: PayerProfile;
   endpoint: QueryHooks<PaginatedQueryDefinition<DebtWithPayer, Q>>;
-  query?: Omit<Q, 'cursor' | 'sort'>;
+  query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
 };
 
 export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
@@ -31,13 +31,8 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
   const [, setLocation] = useLocation();
   const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog);
 
-  const TypedInfiniteTable = InfiniteTable as typeof InfiniteTable<
-    DebtWithPayer,
-    any
-  >;
-
   return (
-    <TypedInfiniteTable
+    <InfiniteTable
       onRowClick={row => setLocation(`/admin/debts/${row.id}`)}
       selectable
       endpoint={props.endpoint}

@@ -1,3 +1,4 @@
+import { PaginationQueryResponse } from '@bbat/common/src/types';
 import { TableViewProps, Table } from '@bbat/ui/src/table';
 import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { QueryDefinition } from '@reduxjs/toolkit/query';
@@ -8,24 +9,27 @@ export type Props<T, Q extends PaginatedBaseQuery> = Omit<
   'rows' | 'loading'
 > & {
   endpoint: QueryHooks<
-    QueryDefinition<Q, any, any, { result: T[]; nextCursor?: string }>
+    QueryDefinition<Q, any, any, PaginationQueryResponse<T>>
   >;
-  query?: Omit<Q, 'cursor' | 'sort'>;
+  query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
+  chunk?: number;
 };
 
 export type PaginatedBaseQuery = {
   cursor?: string;
   sort?: { column: string; dir: 'asc' | 'desc' };
+  limit?: number;
 };
 export type PaginatedQueryDefinition<
   T,
   Q extends PaginatedBaseQuery,
-> = QueryDefinition<Q, any, any, { result: T[]; nextCursor?: string }>;
+> = QueryDefinition<Q, any, any, PaginationQueryResponse<T>>;
 
 export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
   columns,
   query,
   endpoint,
+  chunk: limit = 30,
   ...props
 }: Props<T, Q>) => {
   const [sort, setSort] = useState<[string, 'asc' | 'desc']>();
@@ -33,6 +37,7 @@ export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
   const [fetchMore] = endpoint.useLazyQuery();
   const { data } = endpoint.useQuery({
     ...query,
+    limit,
     sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
   } as Q);
 
@@ -41,6 +46,7 @@ export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
       fetchMore({
         ...query,
         sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
+        limit,
         cursor: data.nextCursor,
       } as Q);
     }

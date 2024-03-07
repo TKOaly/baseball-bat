@@ -74,7 +74,7 @@ export default (bus: LocalBus<BusContext>) => {
           .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
       }
 
-      const { rows: debts } = await queryDebts(pg, { where: criteria });
+      const { result: debts } = await queryDebts(pg, { where: criteria });
       let groups;
 
       if (options.groupBy) {

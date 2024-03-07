@@ -187,8 +187,6 @@ export const Main = () => {
 
   const dispatch = useAppDispatch();
 
-  const debts = debtsResult?.result;
-
   const handlePayAll = async () => {
     dispatch(
       paymentPoolSlice.actions.setSelectedPayments(unpaidDepts.map(p => p.id)),

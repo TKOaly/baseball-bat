@@ -5,6 +5,7 @@ import {
   convertToDbDate,
   Registration,
   createDebtCenterFromEventBody,
+  paginationQuery,
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
@@ -55,22 +56,11 @@ const factory: RouterFactory = route => {
   const getDebtsByCenter = route
     .get('/:id/debts')
     .use(auth())
-    .use(
-      Parser.query(
-        t.partial({
-          cursor: t.string,
-          sort: t.type({
-            column: t.string,
-            dir: t.union([t.literal('asc'), t.literal('desc')]),
-          }),
-        }),
-      ),
-    )
+    .use(Parser.query(paginationQuery))
     .handler(async ({ bus, query, ...ctx }) => {
       const debts = await bus.exec(debtService.getDebtsByCenter, {
         centerId: ctx.routeParams.id,
-        cursor: query.cursor,
-        sort: query.sort,
+        ...query,
       });
 
       return ok(debts);

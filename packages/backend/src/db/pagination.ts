@@ -40,7 +40,7 @@ export const createPaginatedQuery =
   async (
     conn: Connection,
     { where, limit, cursor: cursorStr, order }: QueryOptions,
-  ): Promise<{ rows: T[]; nextCursor: string | null }> => {
+  ): Promise<{ result: T[]; nextCursor: string | null }> => {
     const cursor = pipe(
       cursorStr,
       O.fromNullable,
@@ -158,7 +158,7 @@ export const createPaginatedQuery =
     const last = rows[rows.length - 1];
 
     return {
-      rows: rows as T[],
+      result: rows as T[],
       nextCursor:
         rows.length === limit
           ? serializeCursor(

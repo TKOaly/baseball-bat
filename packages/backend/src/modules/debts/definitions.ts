@@ -64,18 +64,9 @@ const iface = createInterface('debts', builder => ({
   getDebtsByCenter: builder.proc({
     payload: t.intersection([
       t.type({ centerId: t.string }),
-      t.partial({
-        cursor: t.string,
-        sort: t.type({
-          column: t.string,
-          dir: t.union([t.literal('asc'), t.literal('desc')]),
-        }),
-      }),
+      types.paginationQueryPayload,
     ]),
-    response: t.type({
-      result: t.array(types.debt),
-      nextCursor: t.union([t.string, t.null]),
-    }),
+    response: types.paginationQueryResponse(types.debt),
   }),
   createDebtComponent: builder.proc({
     payload: t.type({
@@ -148,19 +139,9 @@ const iface = createInterface('debts', builder => ({
         includeDrafts: t.boolean,
         includeCredited: t.boolean,
       }),
-      t.partial({
-        cursor: t.string,
-        limit: t.number,
-        sort: t.type({
-          column: t.string,
-          dir: t.union([t.literal('asc'), t.literal('desc')]),
-        }),
-      }),
+      types.paginationQueryPayload,
     ]),
-    response: t.type({
-      result: t.array(types.debt),
-      nextCursor: t.union([t.string, t.null]),
-    }),
+    response: types.paginationQueryResponse(types.debt),
   }),
   createPayment: builder.proc({
     payload: t.intersection([
@@ -259,17 +240,8 @@ export const sendAllReminders = scope.defineProcedure({
 
 export const getDebts = scope.defineProcedure({
   name: 'getDebts',
-  payload: t.partial({
-    cursor: t.string,
-    sort: t.type({
-      column: t.string,
-      dir: t.union([t.literal('asc'), t.literal('desc')]),
-    }),
-  }),
-  response: t.type({
-    rows: t.array(types.debt),
-    nextCursor: t.union([t.string, t.null]),
-  }),
+  payload: types.paginationQueryPayload,
+  response: types.paginationQueryResponse(types.debt),
 });
 
 export const getDebtsByTag = scope.defineProcedure({

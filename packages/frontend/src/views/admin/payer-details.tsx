@@ -149,7 +149,7 @@ export const PayerDetails = ({ params }: Props) => {
         <SectionContent>
           <DebtList
             endpoint={payersApi.endpoints.getPayerDebts}
-            query={{ id: params.id, limit: 30 }}
+            query={{ id: params.id }}
           />
         </SectionContent>
       </Section>

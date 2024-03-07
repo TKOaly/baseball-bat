@@ -3,12 +3,13 @@ import rtkApi from './rtk-api';
 import {
   DebtComponentDetails,
   DebtWithPayer,
+  PaginationQueryResponse,
   PayerEmail,
   PayerEmailPriority,
   PayerPreferences,
   PayerProfile,
 } from '@bbat/common/types';
-import { PaginatedQueryResponse, createPaginatedQuery } from './pagination';
+import { createPaginatedQuery } from './pagination';
 
 export type UpdatePayerEmailsQueryPayload = {
   payerId: string;
@@ -114,7 +115,7 @@ const payersApi = rtkApi.injectEndpoints({
       }),
       paginationTag: 'Debt',
       transformResponse: (
-        response: PaginatedQueryResponse<
+        response: PaginationQueryResponse<
           Omit<
             DebtWithPayer & DebtComponentDetails,
             'date' | 'publishedAt' | 'dueDate'
