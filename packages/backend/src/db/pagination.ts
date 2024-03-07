@@ -28,19 +28,28 @@ const parseCursor = (cursorString: string) => {
   return res;
 };
 
-type QueryOptions = {
+type QueryOptions<Row, Result> = {
   where?: SQLStatement;
   order?: Array<[string, 'desc' | 'asc']>;
   cursor?: string;
   limit?: number;
+  map?: (row: Row) => Result;
 };
 
+type ResultType<T extends QueryOptions<any, any>> = T extends {
+  map: (row: any) => infer Result;
+}
+  ? Result
+  : T extends QueryOptions<infer Row, any>
+    ? Row
+    : never;
+
 export const createPaginatedQuery =
-  <T>(query: SQLStatement, paginateBy: string) =>
-  async (
+  <Row>(query: SQLStatement, paginateBy: string) =>
+  async <Result, Options extends QueryOptions<Row, Result>>(
     conn: Connection,
-    { where, limit, cursor: cursorStr, order }: QueryOptions,
-  ): Promise<{ result: T[]; nextCursor: string | null }> => {
+    { where, map, limit, cursor: cursorStr, order }: Options,
+  ): Promise<{ result: ResultType<Options>[]; nextCursor: string | null }> => {
     const cursor = pipe(
       cursorStr,
       O.fromNullable,
@@ -157,15 +166,24 @@ export const createPaginatedQuery =
 
     const last = rows[rows.length - 1];
 
-    return {
-      result: rows as T[],
-      nextCursor:
-        rows.length === limit
-          ? serializeCursor(
-              Object.fromEntries(
-                orderCols.map(([col, dir]) => [col, [last[col], dir]]),
-              ),
-            )
-          : null,
-    };
+    const nextCursor =
+      rows.length === limit
+        ? serializeCursor(
+            Object.fromEntries(
+              orderCols.map(([col, dir]) => [col, [last[col], dir]]),
+            ),
+          )
+        : null;
+
+    let result;
+
+    if (map) {
+      result = (rows as Row[]).map(map) as ResultType<Options>[];
+
+      return { result, nextCursor };
+    } else {
+      result = rows as ResultType<Options>[];
+
+      return { result, nextCursor };
+    }
   };

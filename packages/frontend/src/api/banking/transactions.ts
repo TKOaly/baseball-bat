@@ -1,6 +1,11 @@
-import { BankTransaction, PaymentEvent } from '@bbat/common/types';
+import {
+  BankTransaction,
+  PaginationQueryResponse,
+  PaymentEvent,
+} from '@bbat/common/types';
 import rtkApi from '../rtk-api';
 import { parseISO } from 'date-fns';
+import { createPaginatedQuery } from '../pagination';
 
 const transactionsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
@@ -13,16 +18,23 @@ const transactionsApi = rtkApi.injectEndpoints({
       invalidatesTags: [{ type: 'BankTransaction', id: 'LIST' }],
     }),
 
-    getAccountTransactions: builder.query<BankTransaction[], string>({
-      query: iban => `/banking/accounts/${iban}/transactions`,
-      providesTags: [{ type: 'BankTransaction', id: 'LIST' }],
+    getAccountTransactions: createPaginatedQuery<
+      BankTransaction,
+      { iban: string }
+    >()(builder, {
+      query: ({ iban }) => `/banking/accounts/${iban}/transactions`,
+      paginationTag: 'BankTransaction',
       transformResponse: (
-        response: (Omit<BankTransaction, 'date'> & { date: string })[],
-      ) =>
-        response.map(tx => ({
+        response: PaginationQueryResponse<
+          Omit<BankTransaction, 'date'> & { date: string }
+        >,
+      ) => ({
+        ...response,
+        result: response.result.map(tx => ({
           ...tx,
           date: parseISO(tx.date),
         })),
+      }),
     }),
 
     getStatementTransactions: builder.query<BankTransaction[], string>({

@@ -47,8 +47,11 @@ const iface = createInterface('banking', builder => ({
   }),
 
   getAccountTransactions: builder.proc({
-    payload: t.string,
-    response: t.array(types.bankTransaction),
+    payload: t.intersection([
+      t.type({ iban: t.string }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.bankTransaction),
   }),
 
   getTransactionsByReference: builder.proc({

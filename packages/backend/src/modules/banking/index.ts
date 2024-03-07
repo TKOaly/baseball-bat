@@ -13,6 +13,7 @@ import iface, { onTransaction } from './definitions';
 import routes from './api';
 import { parseISO } from 'date-fns';
 import { createModule } from '@/module';
+import { createPaginatedQuery } from '@/db/pagination';
 
 const formatBankStatement = (
   stmt: DbBankStatement,
@@ -45,6 +46,37 @@ const formatBankTransaction = (tx: DbBankTransaction): BankTransaction => ({
   reference: tx.reference,
   payments: (tx.payments ?? []).map(formatPayment),
 });
+
+const transactionQuery = createPaginatedQuery<DbBankTransaction>(
+  sql`
+  WITH payments AS  (
+    SELECT
+      ARRAY_AGG(TO_JSONB(ps.*)) payments,
+      COUNT(*) payment_count,
+      ps.bank_transaction_id
+    FROM (
+      SELECT
+        p.*,
+        s.balance,
+        s.status,
+        s.payer,
+        petm.bank_transaction_id,
+        (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+        (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+        COALESCE(s.updated_at, p.created_at) AS updated_at
+      FROM payment_event_transaction_mapping petm
+      JOIN payment_events pe ON pe.id = petm.payment_event_id
+      JOIN payments p ON pe.payment_id = p.id
+      JOIN payment_statuses s ON s.id = p.id
+    ) ps
+    GROUP BY ps.bank_transaction_id
+  )
+  SELECT bt.*, payments.*
+  FROM bank_transactions bt
+  LEFT JOIN payments ON bt.id = payments.bank_transaction_id 
+`,
+  'id',
+);
 
 export default createModule({
   name: 'banking',
@@ -175,32 +207,14 @@ export default createModule({
         return transactions.map(formatBankTransaction);
       },
 
-      async getAccountTransactions(iban, { pg }) {
-        const transactions = await pg.many<DbBankTransaction>(sql`
-          SELECT
-            bt.*,
-            (
-              SELECT ARRAY_AGG(TO_JSONB(ps.*)) FROM (
-                SELECT
-                  p.*,
-                  s.balance,
-                  s.status,
-                  s.payer,
-                  (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-                  (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-                  COALESCE(s.updated_at, p.created_at) AS updated_at
-                FROM payment_event_transaction_mapping petm
-                JOIN payment_events pe ON pe.id = petm.payment_event_id
-                JOIN payments p ON pe.payment_id = p.id
-                JOIN payment_statuses s ON s.id = p.id
-                WHERE petm.bank_transaction_id = bt.id
-              ) ps
-            ) AS payments
-          FROM bank_transactions bt
-          WHERE account = ${iban}
-        `);
-
-        return transactions.map(formatBankTransaction);
+      async getAccountTransactions({ iban, cursor, limit, sort }, { pg }) {
+        return transactionQuery(pg, {
+          where: sql`account = ${iban}`,
+          map: formatBankTransaction,
+          cursor,
+          limit,
+          order: sort ? [[sort.column, sort.dir]] : undefined,
+        });
       },
 
       async getTransactionsByReference(reference, { pg }) {
