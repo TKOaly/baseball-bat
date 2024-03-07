@@ -37,16 +37,23 @@ const transactionsApi = rtkApi.injectEndpoints({
       }),
     }),
 
-    getStatementTransactions: builder.query<BankTransaction[], string>({
-      query: id => `/banking/statements/${id}/transactions`,
+    getStatementTransactions: createPaginatedQuery<
+      BankTransaction,
+      { id: string }
+    >()(builder, {
+      query: ({ id }) => `/banking/statements/${id}/transactions`,
       providesTags: [{ type: 'BankTransaction', id: 'LIST' }],
       transformResponse: (
-        response: (Omit<BankTransaction, 'date'> & { date: string })[],
-      ) =>
-        response.map(tx => ({
+        response: PaginationQueryResponse<
+          Omit<BankTransaction, 'date'> & { date: string }
+        >,
+      ) => ({
+        ...response,
+        result: response.result.map(tx => ({
           ...tx,
           date: parseISO(tx.date),
         })),
+      }),
     }),
 
     autoregister: builder.mutation<void, void>({

@@ -71,8 +71,9 @@ const transactionQuery = createPaginatedQuery<DbBankTransaction>(
     ) ps
     GROUP BY ps.bank_transaction_id
   )
-  SELECT bt.*, payments.*
+  SELECT bt.*, payments.*, bstm.bank_statement_id
   FROM bank_transactions bt
+  LEFT JOIN bank_statement_transaction_mapping bstm ON bstm.bank_transaction_id = bt.id
   LEFT JOIN payments ON bt.id = payments.bank_transaction_id 
 `,
   'id',
@@ -286,33 +287,14 @@ export default createModule({
         return statement && formatBankStatement(statement);
       },
 
-      async getBankStatementTransactions(id, { pg }) {
-        const transactions = await pg.many<DbBankTransaction>(sql`
-          SELECT
-            bt.*,
-            (
-              SELECT ARRAY_AGG(TO_JSONB(ps.*)) FROM (
-                SELECT
-                  p.*,
-                  s.balance,
-                  s.status,
-                  s.payer,
-                  (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-                  (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-                  COALESCE(s.updated_at, p.created_at) AS updated_at
-                FROM payment_event_transaction_mapping petm
-                JOIN payment_events pe ON pe.id = petm.payment_event_id
-                JOIN payments p ON pe.payment_id = p.id
-                JOIN payment_statuses s ON s.id = p.id
-                WHERE petm.bank_transaction_id = bt.id
-              ) ps
-            ) AS payments
-          FROM bank_statement_transaction_mapping bstm
-          JOIN bank_transactions bt ON bt.id = bstm.bank_transaction_id
-          WHERE bstm.bank_statement_id = ${id}
-        `);
-
-        return transactions.map(formatBankTransaction);
+      async getBankStatementTransactions({ id, cursor, limit, sort }, { pg }) {
+        return transactionQuery(pg, {
+          where: sql`bank_statement_id = ${id}`,
+          map: formatBankTransaction,
+          cursor,
+          limit,
+          order: sort ? [[sort.column, sort.dir]] : undefined,
+        });
       },
     });
   },

@@ -121,10 +121,16 @@ const factory: RouterFactory = route => {
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query: { cursor, limit, sort }, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getBankStatementTransactions,
-        ctx.routeParams.id,
+        {
+          id: ctx.routeParams.id,
+          cursor,
+          limit,
+          sort,
+        },
       );
 
       return ok(transactions);

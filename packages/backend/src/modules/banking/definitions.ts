@@ -80,8 +80,11 @@ const iface = createInterface('banking', builder => ({
   }),
 
   getBankStatementTransactions: builder.proc({
-    payload: t.string,
-    response: t.array(types.bankTransaction),
+    payload: t.intersection([
+      t.type({ id: t.string }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.bankTransaction),
   }),
 }));
 
