@@ -125,7 +125,7 @@ const factory: RouterFactory = route => {
     .use(auth())
     .use(Parser.query(paginationQuery))
     .handler(async ({ bus, query }) => {
-      const result = bus.exec(debtService.getDebts, {
+      const result = await bus.exec(debtService.getDebts, {
         ...query,
       });
 
