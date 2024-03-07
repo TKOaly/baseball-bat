@@ -137,19 +137,15 @@ export default createModule({
       },
 
       async getDebtsByCenter({ centerId, cursor, sort, limit }, { pg }) {
-        const result = await queryDebts(pg, {
+        return queryDebts(pg, {
           where: sql`debt_center_id = ${centerId}`,
           cursor,
           limit,
           order: sort
             ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
             : undefined,
+          map: formatDebt,
         });
-
-        return {
-          result: result.result.map(formatDebt),
-          nextCursor: result.nextCursor ?? undefined,
-        };
       },
 
       async getDebtsByPayment(paymentId, { pg }) {
@@ -454,7 +450,7 @@ export default createModule({
         { id, includeDrafts, includeCredited, cursor, sort, limit },
         { pg },
       ) {
-        const result = await queryDebts(pg, {
+        return queryDebts(pg, {
           where: sql`
             payer_id = ${id.value}
               AND (${includeDrafts} OR published_at IS NOT NULL)
@@ -465,12 +461,8 @@ export default createModule({
             ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
             : undefined,
           limit,
+          map: formatDebt,
         });
-
-        return {
-          result: result.result.map(formatDebt),
-          nextCursor: result.nextCursor ?? undefined,
-        };
       },
 
       async createPayment({ debts: ids, payment, options }, { pg }, bus) {
@@ -1140,19 +1132,15 @@ export default createModule({
       return result.map(formatDebt);
     });
 
-    bus.register(defs.getDebts, async ({ cursor, sort }, { pg }) => {
-      const res = await queryDebts(pg, {
-        limit: 30,
+    bus.register(defs.getDebts, async ({ cursor, sort, limit }, { pg }) => {
+      return queryDebts(pg, {
+        limit,
         cursor,
         order: sort
           ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
           : undefined,
+        map: formatDebt,
       });
-
-      return {
-        result: res.result.map(formatDebt),
-        nextCursor: res.nextCursor ?? undefined,
-      };
     });
 
     async function createDefaultPaymentFor(

@@ -36,20 +36,37 @@ type QueryOptions<Row, Result> = {
   map?: (row: Row) => Result;
 };
 
-type ResultType<T extends QueryOptions<any, any>> = T extends {
-  map: (row: any) => infer Result;
-}
-  ? Result
-  : T extends QueryOptions<infer Row, any>
-    ? Row
-    : never;
+type RowOf<T extends QueryOptions<any, any>> = T extends QueryOptions<
+  infer R,
+  any
+>
+  ? R
+  : never;
+type Coalesce<T, D> = T extends undefined | null
+  ? D
+  : unknown extends T
+    ? D
+    : T;
+type ResultOf<T extends QueryOptions<any, any>> = T extends QueryOptions<
+  any,
+  infer R
+>
+  ? R
+  : never;
+type MappedResult<T extends QueryOptions<any, any>> = Coalesce<
+  ResultOf<T>,
+  RowOf<T>
+>;
 
 export const createPaginatedQuery =
   <Row>(query: SQLStatement, paginateBy: string) =>
-  async <Result, Options extends QueryOptions<Row, Result>>(
+  async <Options extends QueryOptions<Row, any>>(
     conn: Connection,
     { where, map, limit, cursor: cursorStr, order }: Options,
-  ): Promise<{ result: ResultType<Options>[]; nextCursor: string | null }> => {
+  ): Promise<{
+    result: Coalesce<ResultOf<Options>, Row>[];
+    nextCursor: string | null;
+  }> => {
     const cursor = pipe(
       cursorStr,
       O.fromNullable,
@@ -178,11 +195,11 @@ export const createPaginatedQuery =
     let result;
 
     if (map) {
-      result = (rows as Row[]).map(map) as ResultType<Options>[];
+      result = (rows as Row[]).map(map) as MappedResult<Options>[];
 
       return { result, nextCursor };
     } else {
-      result = rows as ResultType<Options>[];
+      result = rows as MappedResult<Options>[];
 
       return { result, nextCursor };
     }

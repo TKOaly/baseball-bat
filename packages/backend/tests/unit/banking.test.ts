@@ -266,23 +266,20 @@ setup('Banking service', ({ test }) => {
       closingBalance: statement2.closingBalance,
     });
 
-    const transactions1 = await bus.exec(
-      defs.getBankStatementTransactions,
-      statement1.id,
-    );
-    assert.equal(transactions1.length, 1);
+    const transactions1 = await bus.exec(defs.getBankStatementTransactions, {
+      id: statement1.id,
+    });
+    assert.equal(transactions1.result.length, 1);
 
-    const transactions2 = await bus.exec(
-      defs.getBankStatementTransactions,
-      statement2.id,
-    );
-    assert.equal(transactions2.length, 2);
+    const transactions2 = await bus.exec(defs.getBankStatementTransactions, {
+      id: statement2.id,
+    });
+    assert.equal(transactions2.result.length, 2);
 
-    const accountTransactions = await bus.exec(
-      defs.getAccountTransactions,
-      IBAN,
-    );
-    assert.equal(accountTransactions.length, 2);
+    const accountTransactions = await bus.exec(defs.getAccountTransactions, {
+      iban: IBAN,
+    });
+    assert.equal(accountTransactions.result.length, 2);
 
     assert.equal(txSpy.calls.length, 2);
   });
