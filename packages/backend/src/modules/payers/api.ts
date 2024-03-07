@@ -4,6 +4,7 @@ import * as payerService from '@/modules/payers/definitions';
 import auth from '@/auth-middleware';
 import * as debtService from '@/modules/debts/definitions';
 import * as t from 'io-ts';
+import * as tt from 'io-ts-types';
 import {
   emailIdentity,
   internalIdentity,
@@ -138,7 +139,19 @@ const factory: RouterFactory = route => {
   const getPayerDebts = route
     .get('/:id/debts')
     .use(auth({ accessLevel: 'normal' }))
-    .handler(async ({ bus, ...ctx }) => {
+    .use(
+      Parser.query(
+        t.partial({
+          cursor: t.string,
+          limit: tt.NumberFromString,
+          sort: t.type({
+            column: t.string,
+            dir: t.union([t.literal('asc'), t.literal('desc')]),
+          }),
+        }),
+      ),
+    )
+    .handler(async ({ bus, query, ...ctx }) => {
       let id;
 
       if (ctx.routeParams.id === 'me') {
@@ -159,6 +172,9 @@ const factory: RouterFactory = route => {
         id,
         includeDrafts,
         includeCredited: true,
+        cursor: query.cursor,
+        limit: query.limit,
+        sort: query.sort,
       });
 
       return ok(debts);

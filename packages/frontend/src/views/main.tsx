@@ -179,10 +179,15 @@ const DebtCard: React.FC<DebtCardProps> = ({ debt }) => {
 export const Main = () => {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { data: debts } = useGetPayerDebtsQuery({ id: 'me' });
+  const { data: debtsResult } = useGetPayerDebtsQuery({ id: 'me' });
   const { data: payments } = useGetOwnPaymentsQuery();
   const { data: profile } = useGetPayerQuery('me');
+
+  const debts = debtsResult?.result;
+
   const dispatch = useAppDispatch();
+
+  const debts = debtsResult?.result;
 
   const handlePayAll = async () => {
     dispatch(

@@ -1,13 +1,14 @@
 import { parseISO } from 'date-fns';
 import rtkApi from './rtk-api';
 import {
-  Debt,
   DebtComponentDetails,
+  DebtWithPayer,
   PayerEmail,
   PayerEmailPriority,
   PayerPreferences,
   PayerProfile,
 } from '@bbat/common/types';
+import { PaginatedQueryResponse, createPaginatedQuery } from './pagination';
 
 export type UpdatePayerEmailsQueryPayload = {
   payerId: string;
@@ -100,33 +101,34 @@ const payersApi = rtkApi.injectEndpoints({
         payer ? [{ type: 'Payer', id: payer.id.value }] : [],
     }),
 
-    getPayerDebts: builder.query<
-      (Debt & DebtComponentDetails)[],
-      { id: string; includeDrafts?: boolean }
-    >({
-      query: ({ id, includeDrafts }) => ({
+    getPayerDebts: createPaginatedQuery<
+      DebtWithPayer & DebtComponentDetails,
+      { id: string; includeDrafts?: boolean; limit?: number }
+    >()(builder, {
+      query: ({ id, includeDrafts, limit }) => ({
         url: `/payers/${id}/debts`,
         params: {
           includeDrafts: includeDrafts ? 'true' : 'false',
+          limit: limit,
         },
       }),
+      paginationTag: 'Debt',
       transformResponse: (
-        response: (Omit<
-          Debt & DebtComponentDetails,
-          'date' | 'publishedAt' | 'dueDate'
-        > & { date: string; publishedAt: string; dueDate: string })[],
-      ) =>
-        response.map(debt => ({
+        response: PaginatedQueryResponse<
+          Omit<
+            DebtWithPayer & DebtComponentDetails,
+            'date' | 'publishedAt' | 'dueDate'
+          > & { date: string; publishedAt: string; dueDate: string }
+        >,
+      ) => ({
+        ...response,
+        result: response.result.map(debt => ({
           ...debt,
           date: parseISO(debt.date),
           publishedAt: parseISO(debt.publishedAt),
           dueDate: parseISO(debt.dueDate),
         })),
-      providesTags: debts =>
-        (debts ?? []).flatMap(({ id }) => [
-          { type: 'Debt', id: 'LIST' },
-          { type: 'Debt', id },
-        ]),
+      }),
     }),
 
     sendPayerDebtReminder: builder.mutation<

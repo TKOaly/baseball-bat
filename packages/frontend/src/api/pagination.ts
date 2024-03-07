@@ -27,7 +27,7 @@ export const createPaginatedQuery =
     builder: B,
     options: OmitFromUnion<
       QueryDefinition<
-        Q,
+        Q & PaginatedQueryArg,
         ReturnType<typeof fetchBaseQuery>,
         TagTypesFromBuilder<B>,
         PaginatedQueryResponse<T>,
@@ -37,8 +37,9 @@ export const createPaginatedQuery =
     > & { paginationTag?: TagTypesFromBuilder<B> },
   ) =>
     builder.query<PaginatedQueryResponse<T>, Q & PaginatedQueryArg>({
+      ...(options as any),
       query: ({ cursor, sort, ...rest }) => {
-        const query = options.query?.(rest as Q);
+        const query = options.query?.(rest as any);
 
         let url;
         let opts: Omit<FetchArgs, 'url'> = {};

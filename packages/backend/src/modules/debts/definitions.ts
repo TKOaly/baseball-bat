@@ -142,12 +142,25 @@ const iface = createInterface('debts', builder => ({
     response: t.union([t.null, types.debtComponent]),
   }),
   getDebtsByPayer: builder.proc({
-    payload: t.type({
-      id: types.internalIdentityT,
-      includeDrafts: t.boolean,
-      includeCredited: t.boolean,
+    payload: t.intersection([
+      t.type({
+        id: types.internalIdentityT,
+        includeDrafts: t.boolean,
+        includeCredited: t.boolean,
+      }),
+      t.partial({
+        cursor: t.string,
+        limit: t.number,
+        sort: t.type({
+          column: t.string,
+          dir: t.union([t.literal('asc'), t.literal('desc')]),
+        }),
+      }),
+    ]),
+    response: t.type({
+      result: t.array(types.debt),
+      nextCursor: t.union([t.string, t.null]),
     }),
-    response: t.array(types.debt),
   }),
   createPayment: builder.proc({
     payload: t.intersection([

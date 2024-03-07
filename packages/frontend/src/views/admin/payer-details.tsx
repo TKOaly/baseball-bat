@@ -1,11 +1,11 @@
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
-import {
+import payersApi, {
   useGetPayerDebtsQuery,
   useGetPayerEmailsQuery,
   useGetPayerQuery,
   useSendPayerDebtReminderMutation,
 } from '../../api/payers';
-import { DebtList } from '../../components/debt-list';
+import { DebtList } from '../../components/infinite-debt-list';
 import {
   Page,
   Header,
@@ -48,7 +48,7 @@ export const PayerDetails = ({ params }: Props) => {
 
   if (!payer || !emails) return 'Loading...';
 
-  const overdue = (debts ?? []).filter(
+  const overdue = (debts?.result ?? []).filter(
     d => d.dueDate && dfns.isPast(d.dueDate),
   );
 
@@ -147,7 +147,10 @@ export const PayerDetails = ({ params }: Props) => {
       </Section>
       <Section title="Debts">
         <SectionContent>
-          <DebtList debts={debts ?? []} />
+          <DebtList
+            endpoint={payersApi.endpoints.getPayerDebts}
+            query={{ id: params.id, limit: 30 }}
+          />
         </SectionContent>
       </Section>
     </Page>

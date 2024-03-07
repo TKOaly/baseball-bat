@@ -450,16 +450,27 @@ export default createModule({
 
         return formatDebtComponent(updated);
       },
-      async getDebtsByPayer({ id, includeDrafts, includeCredited }, { pg }) {
+      async getDebtsByPayer(
+        { id, includeDrafts, includeCredited, cursor, sort, limit },
+        { pg },
+      ) {
         const result = await queryDebts(pg, {
           where: sql`
             payer_id = ${id.value}
               AND (${includeDrafts} OR published_at IS NOT NULL)
               AND (${includeCredited} OR NOT credited)
           `,
+          cursor,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
+          limit,
         });
 
-        return result.rows.map(formatDebt);
+        return {
+          result: result.rows.map(formatDebt),
+          nextCursor: result.nextCursor,
+        };
       },
 
       async createPayment({ debts: ids, payment, options }, { pg }, bus) {
@@ -1672,7 +1683,7 @@ export default createModule({
     bus.register(
       defs.sendPaymentRemindersByPayer,
       async ({ payer, send, ignoreCooldown }, _, bus) => {
-        const debts = await bus.exec(defs.getDebtsByPayer, {
+        const { result: debts } = await bus.exec(defs.getDebtsByPayer, {
           id: payer,
           includeCredited: false,
           includeDrafts: false,
