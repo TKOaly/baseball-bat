@@ -77,6 +77,7 @@ export type TableViewProps<
   onRowClick?: (row: R) => void;
   onEnd?: () => void;
   onSortChange?: (column?: string, direction?: 'asc' | 'desc') => void;
+  loading?: boolean;
   showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
@@ -509,6 +510,7 @@ export const Table = <
   selectable,
   actions,
   onRowClick,
+  loading,
   showBottomLoading,
   emptyMessage,
   hideTools,
@@ -843,13 +845,13 @@ export const Table = <
             />
           ))}
           <div className="col-span-full" ref={scrollDetectorRef}></div>
-          {showBottomLoading && (
+          {(loading || showBottomLoading) && (
             <div className="col-span-full border-x border-t border-t-gray-100 border-x-gray-200 flex items-center justify-center">
               <Loader className="animate-[spin_3s_linear_infinite] my-4 mr-2 text-blue-600" />
               <span className="text-gray-800">Loading...</span>
             </div>
           )}
-          {rows.length === 0 && (
+          {!loading && rows.length === 0 && (
             <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
               <div className="w-[30em] text-gray-800 py-3">
                 {emptyMessage ?? 'No rows to display.'}
