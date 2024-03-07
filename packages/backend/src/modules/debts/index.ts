@@ -136,12 +136,20 @@ export default createModule({
         return debt ? formatDebt(debt) : null;
       },
 
-      async getDebtsByCenter(centerId, { pg }) {
+      async getDebtsByCenter({ centerId, cursor, sort }, { pg }) {
         const result = await queryDebts(pg, {
           where: sql`debt_center_id = ${centerId}`,
+          limit: 30,
+          cursor,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
         });
 
-        return result.rows.map(formatDebt);
+        return {
+          result: result.rows.map(formatDebt),
+          nextCursor: result.nextCursor,
+        };
       },
 
       async getDebtsByPayment(paymentId, { pg }) {

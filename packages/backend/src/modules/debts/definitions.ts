@@ -62,8 +62,20 @@ const iface = createInterface('debts', builder => ({
     response: types.reportWithoutHistory,
   }),
   getDebtsByCenter: builder.proc({
-    payload: t.string,
-    response: t.array(types.debt),
+    payload: t.intersection([
+      t.type({ centerId: t.string }),
+      t.partial({
+        cursor: t.string,
+        sort: t.type({
+          column: t.string,
+          dir: t.union([t.literal('asc'), t.literal('desc')]),
+        }),
+      }),
+    ]),
+    response: t.type({
+      result: t.array(types.debt),
+      nextCursor: t.union([t.string, t.null]),
+    }),
   }),
   createDebtComponent: builder.proc({
     payload: t.type({

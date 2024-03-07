@@ -1,4 +1,4 @@
-import { router } from 'typera-express';
+import { Parser, router } from 'typera-express';
 import { ok, badRequest, notFound } from 'typera-express/response';
 import {
   emailIdentity,
@@ -55,11 +55,24 @@ const factory: RouterFactory = route => {
   const getDebtsByCenter = route
     .get('/:id/debts')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
-      const debts = await bus.exec(
-        debtService.getDebtsByCenter,
-        ctx.routeParams.id,
-      );
+    .use(
+      Parser.query(
+        t.partial({
+          cursor: t.string,
+          sort: t.type({
+            column: t.string,
+            dir: t.union([t.literal('asc'), t.literal('desc')]),
+          }),
+        }),
+      ),
+    )
+    .handler(async ({ bus, query, ...ctx }) => {
+      const debts = await bus.exec(debtService.getDebtsByCenter, {
+        centerId: ctx.routeParams.id,
+        cursor: query.cursor,
+        sort: query.sort,
+      });
+
       return ok(debts);
     });
 
@@ -106,10 +119,9 @@ const factory: RouterFactory = route => {
     .delete('/:id')
     .use(auth())
     .handler(async ({ bus, ...ctx }) => {
-      const debts = await bus.exec(
-        debtService.getDebtsByCenter,
-        ctx.routeParams.id,
-      );
+      const { result: debts } = await bus.exec(debtService.getDebtsByCenter, {
+        centerId: ctx.routeParams.id,
+      });
 
       if (debts.length > 0) {
         return badRequest({
