@@ -6,7 +6,12 @@ import { useCallback, useState } from 'react';
 
 export type Props<T, Q extends PaginatedBaseQuery> = Omit<
   TableViewProps<T & { key: string }, any, any>,
-  'rows' | 'loading'
+  | 'rows'
+  | 'loading'
+  | 'refreshing'
+  | 'showBottomLoading'
+  | 'onEnd'
+  | 'onSortChange'
 > & {
   endpoint: QueryHooks<
     QueryDefinition<Q, any, any, PaginationQueryResponse<T>>
@@ -26,7 +31,6 @@ export type PaginatedQueryDefinition<
 > = QueryDefinition<Q, any, any, PaginationQueryResponse<T>>;
 
 export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
-  columns,
   query,
   endpoint,
   chunk: limit = 30,
@@ -62,7 +66,6 @@ export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
       loading={isLoading}
       refreshing={isFetching}
       showBottomLoading={!!data?.nextCursor}
-      columns={columns}
       onSortChange={(col, dir) =>
         col && dir ? setSort([col, dir]) : setSort(undefined)
       }

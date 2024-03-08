@@ -45,9 +45,6 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
     ComponentProps<typeof InfiniteTable<DebtWithPayer & { key: string }, any>>
   > = {
     onRowClick: (row: DebtWithPayer) => setLocation(`/admin/debts/${row.id}`),
-    onEnd: undefined,
-    onSortChange: undefined,
-    showBottomLoading: undefined,
     selectable: true,
     columns: [
       { key: 'human_id', name: 'Identifier', getValue: 'humanId' },

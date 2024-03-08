@@ -42,11 +42,8 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
     footer: undefined,
     selectable: undefined,
     onRowClick: undefined,
-    showBottomLoading: undefined,
     emptyMessage: undefined,
     hideTools: undefined,
-    onEnd: undefined,
-    onSortChange: undefined,
     initialSort: undefined,
     persist: undefined,
     columns: [
