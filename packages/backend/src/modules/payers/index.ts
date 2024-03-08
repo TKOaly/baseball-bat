@@ -349,7 +349,7 @@ export default createModule({
         limit: 1,
       });
 
-      return result[0];
+      return result[0] ?? null;
     });
 
     bus.register(defs.getPayerProfileByInternalIdentity, async (id, { pg }) => {
@@ -359,7 +359,7 @@ export default createModule({
         limit: 1,
       });
 
-      return result[0];
+      return result[0] ?? null;
     });
 
     bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
@@ -369,7 +369,7 @@ export default createModule({
         limit: 1,
       });
 
-      return result[0];
+      return result[0] ?? null;
     });
 
     bus.register(
