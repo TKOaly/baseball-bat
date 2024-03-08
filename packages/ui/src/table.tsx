@@ -78,6 +78,7 @@ export type TableViewProps<
   onEnd?: () => void;
   onSortChange?: (column?: string, direction?: 'asc' | 'desc') => void;
   loading?: boolean;
+  refreshing?: boolean;
   showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
@@ -281,7 +282,7 @@ const TableRow = <R extends Row>({
       <div
         role="row"
         data-row={rowIndex}
-        className="contents"
+        className="contents row"
         onClick={() => (
           onRowClick && onRowClick(data), toggleRowExpanded(data.key)
         )}
@@ -517,6 +518,7 @@ export const Table = <
   onEnd,
   footer,
   onSortChange,
+  refreshing,
   initialSort,
   persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
@@ -677,7 +679,9 @@ export const Table = <
   return (
     <div
       role="table"
-      className={`relative aa ${!hideTools && 'pr-[6em]'}`}
+      className={`table-component relative aa ${!hideTools && 'pr-[6em]'} ${
+        refreshing ? 'refreshing' : ''
+      }`}
       data-cy="table-view"
       data-visible-rows={sortedRows.length}
       data-total-rows={rows.length}
@@ -806,6 +810,7 @@ export const Table = <
                 border-l
                 border-t sticky top-0 z-10 text-gray-700 px-3 py-2
                 bg-gray-50 border-b text-sm font-bold
+                whitespace-nowrap
                 cursor-pointer
                 flex items-center
                 justify-between
