@@ -364,7 +364,7 @@ export default createModule({
 
     bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
       const { result } = await baseQuery(pg, {
-        where: sql`id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled`,
+        where: sql`id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT disabled`,
         map: formatPayerProfile,
         limit: 1,
       });
