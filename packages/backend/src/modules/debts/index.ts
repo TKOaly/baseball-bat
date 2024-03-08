@@ -607,6 +607,8 @@ export default createModule({
               total: null,
               debtCount: null,
               totalPaid: null,
+              primaryEmail: null,
+              paidRatio: 0,
             };
           } else {
             return await bus.exec(
@@ -635,6 +637,8 @@ export default createModule({
               totalPaid: null,
               unpaidCount: null,
               mergedTo: null,
+              primaryEmail: null,
+              paidRatio: 0,
             };
           } else {
             const payer = await bus.exec(

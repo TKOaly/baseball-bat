@@ -70,8 +70,9 @@ const factory: RouterFactory = route => {
   const getPayers = route
     .get('/')
     .use(auth())
-    .handler(async ({ bus }) => {
-      const payers = await bus.exec(payerService.getPayerProfiles);
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query }) => {
+      const payers = await bus.exec(payerService.getPayerProfiles, query);
       return ok(payers);
     });
 

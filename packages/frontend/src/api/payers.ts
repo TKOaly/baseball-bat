@@ -24,9 +24,10 @@ export type UpdatePayerPayload = {
 
 const payersApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getPayers: builder.query<PayerProfile[], void>({
+    getPayers: createPaginatedQuery<PayerProfile>()(builder, {
       query: () => '/payers',
-      providesTags: [{ type: 'Payer', id: 'LIST' }],
+      paginationTag: 'Payer',
+      id: payer => payer.id.value,
     }),
 
     getPayer: builder.query<PayerProfile, string>({

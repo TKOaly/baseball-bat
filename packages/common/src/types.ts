@@ -271,6 +271,7 @@ export type DbPayerProfile = {
   id: string;
   tkoaly_user_id?: number;
   stripe_customer_id: string;
+  primary_email?: string;
   created_at: Date;
   updated_at: Date;
   name: string;
@@ -281,6 +282,7 @@ export type DbPayerProfile = {
   debt_count?: number;
   total?: number;
   total_paid?: number;
+  paid_ratio?: number;
 };
 
 export const payerProfile = t.type({
@@ -297,6 +299,8 @@ export const payerProfile = t.type({
   total: nullable(euroValue),
   totalPaid: nullable(euroValue),
   emails: t.array(payerEmail),
+  primaryEmail: nullable(t.string),
+  paidRatio: t.number,
 });
 
 export type PayerProfile = t.TypeOf<typeof payerProfile>;

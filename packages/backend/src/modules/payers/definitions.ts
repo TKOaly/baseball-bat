@@ -110,8 +110,8 @@ export const getPayerEmails = scope.defineProcedure({
 
 export const getPayerProfiles = scope.defineProcedure({
   name: 'getPaytkoalyIdentity(erProfiles',
-  payload: t.void,
-  response: t.array(types.payerProfile),
+  payload: types.paginationQueryPayload,
+  response: types.paginationQueryResponse(types.payerProfile),
 });
 
 export const addPayerEmail = scope.defineProcedure({

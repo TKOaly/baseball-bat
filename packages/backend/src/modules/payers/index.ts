@@ -23,6 +23,7 @@ import { ExecutionContext } from '@/bus';
 import { Connection } from '@/db/connection';
 import routes from './api';
 import { createModule } from '@/module';
+import { createPaginatedQuery } from '@/db/pagination';
 
 export type DbPayerProfileWithEmails = DbPayerProfile & {
   emails: DbPayerEmail[];
@@ -47,6 +48,7 @@ export const formatPayerProfile = (
   tkoalyUserId: !profile.tkoaly_user_id
     ? null
     : tkoalyIdentity(profile.tkoaly_user_id),
+  primaryEmail: profile.primary_email ?? null,
   name: profile.name,
   createdAt: profile.created_at,
   updatedAt: profile.updated_at,
@@ -61,6 +63,7 @@ export const formatPayerProfile = (
     profile.total_paid === null
       ? null
       : cents(parseInt('' + profile.total_paid)),
+  paidRatio: profile.paid_ratio as any,
 });
 
 const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
@@ -72,54 +75,74 @@ const formatPayerEmail = (email: DbPayerEmail): PayerEmail => ({
   updatedAt: email.updated_at,
 });
 
+const baseQuery = createPaginatedQuery<DbPayerProfile>(
+  sql`
+  WITH counts AS (
+    SELECT
+      d.payer_id,
+      COUNT(DISTINCT d.id) AS debt_count,
+      COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
+      COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
+    FROM debt d
+    JOIN debt_statuses ds USING (id)
+    GROUP BY d.payer_id
+  ), totals AS (
+    SELECT
+      d.payer_id,
+      COALESCE(SUM(dco.amount), 0) AS total,
+      COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid
+    FROM debt d
+    LEFT JOIN debt_statuses ds ON ds.id = d.id
+    LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
+    LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
+    GROUP BY d.payer_id
+  ), emails AS (
+    SELECT
+      e.payer_id,
+      ARRAY_AGG(TO_JSON(e.*)) AS emails,
+      ARRAY_AGG(e.email) FILTER (WHERE e.priority = 'primary') primary_emails
+    FROM payer_emails e
+    GROUP BY e.payer_id
+  )
+  SELECT
+    pp.*,
+    COALESCE(totals.total, 0) AS total,
+    COALESCE(totals.total_paid, 0) AS total_paid,
+    CASE
+      WHEN totals.total IS NOT NULL THEN
+        COALESCE(totals.total_paid::float, 0) / totals.total::float
+      ELSE 0
+    END AS paid_ratio,
+    COALESCE(counts.debt_count, 0) AS debt_count,
+    COALESCE(counts.paid_count, 0) AS paid_count,
+    COALESCE(counts.unpaid_count, 0) AS unpaid_count,
+    emails.*,
+    (SELECT email FROM payer_emails WHERE payer_id = pp.id AND priority = 'primary') AS primary_email
+  FROM payer_profiles pp
+  LEFT JOIN counts ON pp.id = counts.payer_id
+  LEFT JOIN totals ON pp.id = totals.payer_id
+  LEFT JOIN emails ON pp.id = emails.payer_id
+`,
+  'id',
+);
+
 export default createModule({
   name: 'payers',
 
   routes,
 
   async setup({ bus }) {
-    const baseQuery = () => sql`
-      WITH counts AS (
-        SELECT
-          d.payer_id AS id,
-          COUNT(DISTINCT d.id) AS debt_count,
-          COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
-          COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid) AS unpaid_count
-        FROM debt d
-        JOIN debt_statuses ds USING (id)
-        GROUP BY d.payer_id
-      ), totals AS (
-        SELECT
-          d.payer_id AS id,
-          COALESCE(SUM(dco.amount), 0) AS total,
-          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid
-        FROM debt d
-        LEFT JOIN debt_statuses ds ON ds.id = d.id
-        LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
-        LEFT JOIN debt_component dco ON dco.id = dcm.debt_component_id
-        GROUP BY d.payer_id
-      ), emails AS (
-        SELECT
-          e.payer_id AS id,
-          ARRAY_AGG(TO_JSON(e.*)) AS emails
-        FROM payer_emails e
-        GROUP BY e.payer_id
-      )
-      SELECT
-        pp.*,
-        counts.*,
-        totals.*,
-        emails.*
-      FROM payer_profiles pp
-      LEFT JOIN counts USING (id)
-      LEFT JOIN totals USING (id)
-      LEFT JOIN emails USING (id)
-    `;
-
-    bus.register(defs.getPayerProfiles, async (_, { pg }) => {
-      const dbProfiles = await pg.many<DbPayerProfileWithEmails>(baseQuery());
-      return dbProfiles.map(formatPayerProfile);
-    });
+    bus.register(
+      defs.getPayerProfiles,
+      async ({ cursor, sort, limit }, { pg }) => {
+        return baseQuery(pg, {
+          map: formatPayerProfile,
+          limit,
+          cursor,
+          order: sort ? [[sort.column, sort.dir]] : undefined,
+        });
+      },
+    );
 
     bus.register(defs.getPayerProfileByIdentity, async (id, _, bus) => {
       if (isTkoalyIdentity(id)) {
@@ -320,41 +343,33 @@ export default createModule({
     );
 
     bus.register(defs.getPayerProfileByTkoalyIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
-        baseQuery().append(sql`WHERE pp.tkoaly_user_id = ${id.value}`),
-      );
+      const { result } = await baseQuery(pg, {
+        where: sql`tkoaly_user_id = ${id.value}`,
+        map: formatPayerProfile,
+        limit: 1,
+      });
 
-      if (dbProfile) {
-        return formatPayerProfile(dbProfile);
-      }
-
-      return null;
+      return result[0];
     });
 
     bus.register(defs.getPayerProfileByInternalIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
-        baseQuery().append(sql`WHERE pp.id = ${id.value}`),
-      );
+      const { result } = await baseQuery(pg, {
+        where: sql`id = ${id.value}`,
+        map: formatPayerProfile,
+        limit: 1,
+      });
 
-      if (dbProfile) {
-        return formatPayerProfile(dbProfile);
-      }
-
-      return null;
+      return result[0];
     });
 
     bus.register(defs.getPayerProfileByEmailIdentity, async (id, { pg }) => {
-      const [dbProfile] = await pg.many<DbPayerProfileWithEmails>(
-        baseQuery().append(sql`
-        WHERE pp.id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled
-      `),
-      );
+      const { result } = await baseQuery(pg, {
+        where: sql`id IN (SELECT payer_id FROM payer_emails WHERE email = ${id.value}) AND NOT pp.disabled`,
+        map: formatPayerProfile,
+        limit: 1,
+      });
 
-      if (dbProfile) {
-        return formatPayerProfile(dbProfile);
-      }
-
-      return null;
+      return result[0];
     });
 
     bus.register(
