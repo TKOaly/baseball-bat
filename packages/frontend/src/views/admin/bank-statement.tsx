@@ -7,7 +7,7 @@ import {
   TextField,
   SectionContent,
 } from '../../components/resource-page/resource-page';
-import { TransactionList } from '../../components/infinite-transaction-list';
+import { TransactionList } from '../../components/transaction-list';
 import { useGetBankStatementQuery } from '../../api/banking/statements';
 import transactionsApi from '../../api/banking/transactions';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';

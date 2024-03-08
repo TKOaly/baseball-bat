@@ -9,7 +9,7 @@ import {
 } from '../../components/resource-page/resource-page';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
 import { Button } from '@bbat/ui/button';
-import { TransactionList } from '../../components/infinite-transaction-list';
+import { TransactionList } from '../../components/transaction-list';
 import { Link, useLocation } from 'wouter';
 import { Table } from '@bbat/ui/table';
 import transactionsApi from '../../api/banking/transactions';
