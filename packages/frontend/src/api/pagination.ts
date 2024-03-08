@@ -13,7 +13,7 @@ export type TagTypesFromBuilder<B extends EndpointBuilder<any, any, any>> =
   B extends EndpointBuilder<any, infer T, any> ? T : never;
 
 export const createPaginatedQuery =
-  <T extends { id: string | number }, Q = void>() =>
+  <T extends Record<string, unknown>, Q = Record<never, void>>() =>
   <B extends EndpointBuilder<any, any, any>>(
     builder: B,
     options: OmitFromUnion<
@@ -25,7 +25,11 @@ export const createPaginatedQuery =
         any
       >,
       'type'
-    > & { paginationTag?: TagTypesFromBuilder<B> },
+    > & { paginationTag?: TagTypesFromBuilder<B> } & (T extends {
+        id: string | number;
+      }
+        ? Record<never, void>
+        : { id: (item: T) => string | number }),
   ) =>
     builder.query<PaginationQueryResponse<T>, Q & PaginationQueryArgs>({
       ...(options as any),
@@ -104,7 +108,11 @@ export const createPaginatedQuery =
               { type: 'Debt' as const, id: 'LIST' },
               ...(result?.result ?? []).map(debt => ({
                 type: 'Debt' as const,
-                id: debt.id,
+                id:
+                  'id' in debt &&
+                  (typeof debt.id === 'string' || typeof debt.id === 'number')
+                    ? debt.id
+                    : options.id(debt),
               })),
             ]),
       serializeQueryArgs: args => {
