@@ -71,9 +71,8 @@ const transactionQuery = createPaginatedQuery<DbBankTransaction>(
     ) ps
     GROUP BY ps.bank_transaction_id
   )
-  SELECT bt.*, payments.*, bstm.bank_statement_id
+  SELECT bt.*, payments.*
   FROM bank_transactions bt
-  LEFT JOIN bank_statement_transaction_mapping bstm ON bstm.bank_transaction_id = bt.id
   LEFT JOIN payments ON bt.id = payments.bank_transaction_id 
 `,
   'id',
@@ -289,7 +288,7 @@ export default createModule({
 
       async getBankStatementTransactions({ id, cursor, limit, sort }, { pg }) {
         return transactionQuery(pg, {
-          where: sql`bank_statement_id = ${id}`,
+          where: sql`id IN (SELECT bank_transaction_id FROM bank_statement_transaction_mapping WHERE bank_statement_id = ${id})`,
           map: formatBankTransaction,
           cursor,
           limit,
