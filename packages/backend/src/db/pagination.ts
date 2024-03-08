@@ -1,4 +1,5 @@
 import * as t from 'io-ts';
+import * as tt from 'io-ts-types';
 import sql, { SQLStatement } from 'sql-template-strings';
 import { Connection } from './connection';
 import { flow, pipe } from 'fp-ts/lib/function';
@@ -7,7 +8,7 @@ import * as O from 'fp-ts/Option';
 const cursor = t.record(
   t.string,
   t.tuple([
-    t.union([t.string, t.number]),
+    t.union([t.string, t.number, t.null, tt.DateFromISOString]),
     t.union([t.literal('desc'), t.literal('asc')]),
   ]),
 );
@@ -21,11 +22,7 @@ const parseCursor = (cursorString: string) => {
   const json = JSON.parse(
     Buffer.from(cursorString, 'base64').toString('utf-8'),
   );
-  const res = cursor.decode(json);
-
-  console.log(res);
-
-  return res;
+  return cursor.decode(json);
 };
 
 type QueryOptions<Row, Result> = {
@@ -99,52 +96,84 @@ export const createPaginatedQuery =
     }
 
     if (cursor) {
-      const entries = Object.entries(cursor).filter(
-        ([col]) => col !== paginateBy,
-      );
+      const entries = Object.entries(cursor);
 
-      const lhsTuple = sql``;
-      const rhsTuple = sql``;
+      const compare = ([[col, [val, dir]], ...rest]: [
+        string,
+        [any, 'asc' | 'desc'],
+      ][]) => {
+        const c = sql``;
 
-      entries.forEach(([col, [val, dir]], i) => {
-        if (i > 0) {
-          lhsTuple.append(', ');
-          rhsTuple.append(', ');
+        const escaped = conn.escapeIdentifier(col);
+
+        // The following if-else-mess generates a different comparison expression
+        // depending on the ordering and the nulliness of the cursorc value.
+        // This complexity is required in order to handle NULLs correctly,
+        // as they do not play well with the comparison operators (<, >, <=, >=).
+        //
+        // The permutations and the resulting SQL expressions are written out below:
+        //
+        // [desc, not null]: col IS NULL OR col < val [OR (col = val AND ...)]
+        // [desc,     null]: col IS NULL [AND ...]
+        // [ asc, not null]: col IS NOT NULL AND col > val [OR (col = val AND ...)]
+        // [ asc,     null]: col IS NOT NULL [OR (col IS NULL AND ...)]
+
+        if (dir === 'desc' && val !== null) {
+          c.append(escaped);
+          c.append(' IS NULL OR ');
+          c.append(escaped);
+          c.append(sql` < ${val}`);
+
+          if (rest.length > 0) {
+            c.append(' OR (');
+            c.append(escaped);
+            c.append(sql` = ${val} AND (`);
+            c.append(compare(rest));
+            c.append('))');
+          }
+        } else if (dir === 'desc' && val === null) {
+          c.append(escaped);
+          c.append(' IS NULL');
+
+          if (rest.length > 0) {
+            c.append(' AND (');
+            c.append(compare(rest));
+            c.append(')');
+          }
+        } else if (dir === 'asc' && val !== null) {
+          c.append(escaped);
+          c.append(sql` IS NOT NULL AND `);
+          c.append(escaped);
+          c.append(sql` > ${val}`);
+
+          if (rest.length > 0) {
+            c.append(' OR (');
+            c.append(escaped);
+            c.append(sql` = ${val} AND (`);
+            c.append(compare(rest));
+            c.append('))');
+          }
+        } else if (dir === 'asc' && val === null) {
+          c.append(escaped);
+          c.append(' IS NOT NULL');
+
+          if (rest.length > 0) {
+            c.append(' OR (');
+            c.append(escaped);
+            c.append(' IS NULL AND (');
+            c.append(compare(rest));
+            c.append('))');
+          }
+        } else {
+          throw new Error('Unreachable!');
         }
 
-        const [valueTuple, columnTuple] =
-          dir === 'asc' ? [lhsTuple, rhsTuple] : [rhsTuple, lhsTuple];
-
-        columnTuple.append(conn.escapeIdentifier(col));
-        valueTuple.append(sql`${val}`);
-      });
-
-      const cond = sql``;
-
-      const [val, dir] = cursor[paginateBy];
+        return c;
+      };
 
       if (entries.length > 0) {
-        cond
-          .append(lhsTuple)
-          .append(' < ')
-          .append(rhsTuple)
-          .append(' OR (')
-          .append(lhsTuple)
-          .append(' = ')
-          .append(rhsTuple)
-          .append(' AND ');
+        conditions.push(compare(entries));
       }
-
-      cond
-        .append(conn.escapeIdentifier(paginateBy))
-        .append(dir === 'asc' ? ' > ' : ' < ')
-        .append(sql`${val}`);
-
-      if (entries.length > 0) {
-        cond.append(')');
-      }
-
-      conditions.push(cond);
     }
 
     if (conditions.length > 0) {
@@ -170,7 +199,7 @@ export const createPaginatedQuery =
         q.append(
           `${
             typeof col === 'string' ? conn.escapeIdentifier(col) : col
-          } ${dir.toUpperCase()}`,
+          } ${dir.toUpperCase()} NULLS ${dir === 'asc' ? 'FIRST' : 'LAST'}`,
         );
       });
     }
