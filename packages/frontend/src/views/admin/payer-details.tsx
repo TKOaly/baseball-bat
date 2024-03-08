@@ -5,7 +5,7 @@ import payersApi, {
   useGetPayerQuery,
   useSendPayerDebtReminderMutation,
 } from '../../api/payers';
-import { DebtList } from '../../components/infinite-debt-list';
+import { DebtList } from '../../components/debt-list';
 import {
   Page,
   Header,

@@ -14,7 +14,7 @@ import {
   useDeleteDebtCenterMutation,
   useGetDebtCenterQuery,
 } from '../../api/debt-centers';
-import { DebtList } from '../../components/infinite-debt-list';
+import { DebtList } from '../../components/debt-list';
 import { Link, useLocation } from 'wouter';
 import { Table } from '@bbat/ui/table';
 import debtApi, {

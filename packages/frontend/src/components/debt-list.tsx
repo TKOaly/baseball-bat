@@ -1,5 +1,4 @@
-import { Table } from '@bbat/ui/table';
-import { Debt, DebtWithPayer, PayerProfile } from '@bbat/common/src/types';
+import { DebtWithPayer } from '@bbat/common/src/types';
 import { Link, useLocation } from 'wouter';
 import {
   useDeleteDebtMutation,
@@ -12,195 +11,230 @@ import { useDialog } from './dialog';
 import { sortBy } from 'remeda';
 import { isBefore } from 'date-fns';
 import { formatEuro } from '@bbat/common/src/currency';
+import {
+  InfiniteTable,
+  PaginatedBaseQuery,
+  PaginatedQueryDefinition,
+} from './infinite-table';
+import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
+import { ComponentProps } from 'react';
+import { Table } from '@bbat/ui/src/table';
 
-export type Props = {
-  debts: (DebtWithPayer | Debt)[];
-  payer?: PayerProfile;
+export type Props<Q extends PaginatedBaseQuery> =
+  | {
+      endpoint: QueryHooks<PaginatedQueryDefinition<DebtWithPayer, Q>>;
+      query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
+    }
+  | {
+      debts: DebtWithPayer[];
+    };
+
+type Common<A, B> = {
+  [P in keyof A & keyof B]: A[P] | B[P];
 };
 
-export const DebtList = (props: Props) => {
+export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
   const [publishDebts] = usePublishDebtsMutation();
   const [deleteDebt] = useDeleteDebtMutation();
   const [sendAllReminders] = useSendAllRemindersMutation();
   const [, setLocation] = useLocation();
   const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog);
 
-  const rows: (DebtWithPayer & { key: string })[] = (props.debts ?? []).map(
-    d =>
-      props.payer
-        ? { ...d, payer: props.payer, key: d.id }
-        : { ...d, key: d.id },
-  ) as any; // eslint-disable-line
+  const commonProps: Common<
+    ComponentProps<typeof Table<DebtWithPayer & { key: string }, any, any>>,
+    ComponentProps<typeof InfiniteTable<DebtWithPayer & { key: string }, any>>
+  > = {
+    onRowClick: (row: DebtWithPayer) => setLocation(`/admin/debts/${row.id}`),
+    onEnd: undefined,
+    onSortChange: undefined,
+    showBottomLoading: undefined,
+    selectable: true,
+    columns: [
+      { key: 'human_id', name: 'Identifier', getValue: 'humanId' },
+      { key: 'name', name: 'Name', getValue: 'name' },
+      {
+        key: 'payer_name',
+        name: 'Payer',
+        getValue: row => row.payer.name,
+        render: (_value, row) => (
+          <Link
+            onClick={e => e.stopPropagation()}
+            to={`/admin/payers/${row.payer.id.value}`}
+            className="flex gap-1 items-center"
+          >
+            {row.payer.name} <ExternalLink className="text-blue-500 h-4" />
+          </Link>
+        ),
+      },
+      {
+        key: 'status',
+        name: 'Status',
+        getValue: row => {
+          const badges = [];
 
-  return (
-    <Table
-      onRowClick={row => setLocation(`/admin/debts/${row.id}`)}
-      selectable
-      rows={rows}
-      persist="debts"
-      columns={[
-        { name: 'Identifier', getValue: 'humanId' },
-        { name: 'Name', getValue: 'name' },
-        {
-          name: 'Payer',
-          getValue: row => row.payer.name,
-          render: (_value, row) => (
-            <Link
-              onClick={e => e.stopPropagation()}
-              to={`/admin/payers/${row.payer.id.value}`}
-              className="flex gap-1 items-center"
+          if (row.credited) {
+            badges.push('Credited');
+          }
+
+          if (row.draft) {
+            badges.push('Draft');
+          }
+
+          if (row.status === 'paid') {
+            badges.push('Paid');
+          }
+
+          if (row.status === 'unpaid') {
+            badges.push('Unpaid');
+          }
+
+          if (row.status === 'mispaid') {
+            badges.push('Mispaid');
+          }
+
+          if (row.dueDate && isBefore(row.dueDate, new Date())) {
+            badges.push('Overdue');
+          }
+
+          return badges;
+        },
+        render: (value: string[]) =>
+          value.map(value => {
+            return {
+              Draft: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white mr-1">
+                  Draft
+                </span>
+              ),
+              Unpaid: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-1">
+                  Unpaid
+                </span>
+              ),
+              Mispaid: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
+                  Mispaid
+                </span>
+              ),
+              Overdue: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
+                  Overdue
+                </span>
+              ),
+              Paid: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">
+                  Paid
+                </span>
+              ),
+              Credited: (
+                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">
+                  Credited
+                </span>
+              ),
+            }[value];
+          }),
+      },
+      {
+        key: 'total',
+        name: 'Amount',
+        getValue: 'total',
+        align: 'right',
+        render: formatEuro,
+        compareBy: amount => amount.value,
+      },
+      {
+        name: 'Components',
+        sortable: false,
+        getValue: debt => sortBy(debt.debtComponents, dc => dc.name),
+        compareBy: value => value.id,
+        render: (value: { name: string; id: string }[]) =>
+          value.map(({ name, id }) => (
+            <span
+              className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
+              key={id}
             >
-              {row.payer.name} <ExternalLink className="text-blue-500 h-4" />
-            </Link>
-          ),
+              {name}
+            </span>
+          )),
+      },
+      {
+        name: 'Tags',
+        sortable: false,
+        getValue: debt => sortBy(debt.tags, dc => dc.name),
+        compareBy: value => value.name,
+        render: (value: { name: string }[]) =>
+          value.map(({ name }) => (
+            <span
+              className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
+              key={name}
+            >
+              {name}
+            </span>
+          )),
+      },
+    ],
+    actions: [
+      {
+        key: 'delete',
+        text: 'Delete',
+        disabled: row => !row.draft,
+        onSelect: async rows => {
+          await Promise.all(rows.map(({ id }) => deleteDebt(id)));
         },
-        {
-          name: 'Status',
-          getValue: row => {
-            const badges = [];
+      },
+      {
+        key: 'publish',
+        text: 'Publish',
+        disabled: row => !row.draft,
+        onSelect: async rows => {
+          await publishDebts(rows.map(r => r.id));
+        },
+      },
+      {
+        key: 'send-reminder',
+        text: 'Send Reminder',
+        disabled: row => row.draft,
+        onSelect: async rows => {
+          await sendAllReminders({
+            debts: rows.map(row => row.id),
+            send: true,
+            ignoreCooldown: true,
+          });
+        },
+      },
+      {
+        key: 'edit',
+        text: 'Edit',
+        onSelect: async debts => {
+          if (debts.length === 1) {
+            setLocation(`/admin/debts/${debts[0].id}/edit`);
+            return;
+          }
 
-            if (row.credited) {
-              badges.push('Credited');
-            }
+          await showMassEditDebtsDialog({
+            debts,
+          });
+        },
+      },
+    ],
+    persist: 'debts',
+    initialSort: {
+      column: 'human_id',
+      direction: 'desc',
+    },
+    emptyMessage: undefined,
+    hideTools: undefined,
+    footer: undefined,
+  };
 
-            if (row.draft) {
-              badges.push('Draft');
-            }
-
-            if (row.status === 'paid') {
-              badges.push('Paid');
-            }
-
-            if (row.status === 'unpaid') {
-              badges.push('Unpaid');
-            }
-
-            if (row.status === 'mispaid') {
-              badges.push('Mispaid');
-            }
-
-            if (row.dueDate && isBefore(row.dueDate, new Date())) {
-              badges.push('Overdue');
-            }
-
-            return badges;
-          },
-          render: (value: string[]) =>
-            value.map(value => {
-              return {
-                Draft: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white mr-1">
-                    Draft
-                  </span>
-                ),
-                Unpaid: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-1">
-                    Unpaid
-                  </span>
-                ),
-                Mispaid: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
-                    Mispaid
-                  </span>
-                ),
-                Overdue: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
-                    Overdue
-                  </span>
-                ),
-                Paid: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">
-                    Paid
-                  </span>
-                ),
-                Credited: (
-                  <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">
-                    Credited
-                  </span>
-                ),
-              }[value];
-            }),
-        },
-        {
-          name: 'Amount',
-          getValue: 'total',
-          align: 'right',
-          render: formatEuro,
-          compareBy: amount => amount.value,
-        },
-        {
-          name: 'Components',
-          getValue: debt => sortBy(debt.debtComponents, dc => dc.name),
-          compareBy: value => value.id,
-          render: (value: { name: string; id: string }[]) =>
-            value.map(({ name, id }) => (
-              <span
-                className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
-                key={id}
-              >
-                {name}
-              </span>
-            )),
-        },
-        {
-          name: 'Tags',
-          getValue: debt => sortBy(debt.tags, dc => dc.name),
-          compareBy: value => value.name,
-          render: (value: { name: string }[]) =>
-            value.map(({ name }) => (
-              <span
-                className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
-                key={name}
-              >
-                {name}
-              </span>
-            )),
-        },
-      ]}
-      actions={[
-        {
-          key: 'delete',
-          text: 'Delete',
-          disabled: row => !row.draft,
-          onSelect: async rows => {
-            await Promise.all(rows.map(({ id }) => deleteDebt(id)));
-          },
-        },
-        {
-          key: 'publish',
-          text: 'Publish',
-          disabled: row => !row.draft,
-          onSelect: async rows => {
-            await publishDebts(rows.map(r => r.id));
-          },
-        },
-        {
-          key: 'send-reminder',
-          text: 'Send Reminder',
-          disabled: row => row.draft,
-          onSelect: async rows => {
-            await sendAllReminders({
-              debts: rows.map(row => row.id),
-              send: true,
-              ignoreCooldown: true,
-            });
-          },
-        },
-        {
-          key: 'edit',
-          text: 'Edit',
-          onSelect: async debts => {
-            if (debts.length === 1) {
-              setLocation(`/admin/debts/${debts[0].id}/edit`);
-              return;
-            }
-
-            await showMassEditDebtsDialog({
-              debts,
-            });
-          },
-        },
-      ]}
-    />
-  );
+  if ('endpoint' in props) {
+    return <InfiniteTable {...commonProps} {...props} />;
+  } else {
+    return (
+      <Table
+        {...commonProps}
+        rows={props.debts.map(debt => ({ key: debt.id, ...debt }))}
+      />
+    );
+  }
 };

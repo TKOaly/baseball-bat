@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
-import { DebtList } from '../../components/infinite-debt-list';
+import { DebtList } from '../../components/debt-list';
 
 export const DebtListing = () => {
   const search = useSearch();
