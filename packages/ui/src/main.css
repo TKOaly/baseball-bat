@@ -11,3 +11,13 @@
     width: 100%;
   }
 }
+
+.table-component.refreshing {
+  & > * {
+    cursor: wait !important;
+  }
+
+  .contents > * {
+    filter: grayscale() opacity(0.75);
+  }
+}

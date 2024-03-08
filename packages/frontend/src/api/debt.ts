@@ -15,6 +15,7 @@ import {
 } from '@bbat/common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns';
+import { createPaginatedQuery } from './pagination';
 
 export type DebtResponse = DebtWithPayer & {
   debtComponents: Array<DebtComponent>;
@@ -82,12 +83,12 @@ const debtApi = rtkApi.injectEndpoints({
       query: id => `/debtCenters/${id}/components`,
     }),
 
-    getDebtsByCenter: builder.query<DebtWithPayer[], string>({
-      query: id => `/debtCenters/${id}/debts`,
-      providesTags: result => [
-        { type: 'Debt' as const, id: 'LIST' },
-        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
-      ],
+    getDebtsByCenter: createPaginatedQuery<
+      DebtWithPayer,
+      { centerId: string }
+    >()(builder, {
+      query: ({ centerId }) => `/debtCenters/${centerId}/debts`,
+      paginationTag: 'Debt',
     }),
 
     getDebtsByTag: builder.query<Debt[], string>({
@@ -121,12 +122,9 @@ const debtApi = rtkApi.injectEndpoints({
         },
     }),
 
-    getDebts: builder.query<DebtWithPayer[], void>({
+    getDebts: createPaginatedQuery<DebtWithPayer>()(builder, {
       query: () => '/debt',
-      providesTags: result => [
-        { type: 'Debt' as const, id: 'LIST' },
-        ...(result ?? []).map(debt => ({ type: 'Debt' as const, id: debt.id })),
-      ],
+      paginationTag: 'Debt',
     }),
 
     getDebtsByPayment: builder.query<DebtWithPayer[], string>({

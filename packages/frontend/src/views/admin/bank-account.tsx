@@ -12,7 +12,7 @@ import { Button } from '@bbat/ui/button';
 import { TransactionList } from '../../components/transaction-list';
 import { Link, useLocation } from 'wouter';
 import { Table } from '@bbat/ui/table';
-import { useGetAccountTransactionsQuery } from '../../api/banking/transactions';
+import transactionsApi from '../../api/banking/transactions';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 import { format } from 'date-fns';
 import { useGetBankAccountStatementsQuery } from '../../api/banking/statements';
@@ -20,7 +20,6 @@ import { useGetBankAccountStatementsQuery } from '../../api/banking/statements';
 export const BankAccount = ({ iban }: { iban: string }) => {
   const [, setLocation] = useLocation();
   const { data: account, isLoading } = useGetBankAccountQuery(iban);
-  const { data: transactions } = useGetAccountTransactionsQuery(iban);
   const { data: statements } = useGetBankAccountStatementsQuery(iban);
 
   if (isLoading || !account) {
@@ -90,7 +89,10 @@ export const BankAccount = ({ iban }: { iban: string }) => {
       </Section>
       <Section title="Transactions">
         <SectionContent>
-          <TransactionList transactions={transactions ?? []} />
+          <TransactionList
+            endpoint={transactionsApi.endpoints.getAccountTransactions}
+            query={{ iban }}
+          />
         </SectionContent>
       </Section>
     </Page>

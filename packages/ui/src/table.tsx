@@ -2,11 +2,12 @@
 
 import { identity } from 'fp-ts/lib/function';
 import { produce } from 'immer';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
   Circle,
+  Loader,
   MinusSquare,
   MoreVertical,
   PlusSquare,
@@ -45,6 +46,8 @@ export type Action<R> = {
 
 export type Column<R, Name extends string, Value> = {
   name: Name;
+  key?: string;
+  sortable?: boolean;
   getValue: keyof R | ((row: R) => Value);
   render?: (value: Value, row: R, depth: number) => any;
   align?: 'right';
@@ -72,6 +75,11 @@ export type TableViewProps<
     { [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]
   >;
   onRowClick?: (row: R) => void;
+  onEnd?: () => void;
+  onSortChange?: (column?: string, direction?: 'asc' | 'desc') => void;
+  loading?: boolean;
+  refreshing?: boolean;
+  showBottomLoading?: boolean;
   selectable?: boolean;
   actions?: Array<Action<R>>;
   emptyMessage?: JSX.Element | string;
@@ -274,7 +282,7 @@ const TableRow = <R extends Row>({
       <div
         role="row"
         data-row={rowIndex}
-        className="contents"
+        className="contents row"
         onClick={() => (
           onRowClick && onRowClick(data), toggleRowExpanded(data.key)
         )}
@@ -503,9 +511,14 @@ export const Table = <
   selectable,
   actions,
   onRowClick,
+  loading,
+  showBottomLoading,
   emptyMessage,
   hideTools,
+  onEnd,
   footer,
+  onSortChange,
+  refreshing,
   initialSort,
   persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
@@ -517,10 +530,31 @@ export const Table = <
   const [selectedRows, setSelectedRows] = useState<Array<string | number>>(
     initialState?.rows ?? [],
   );
-  const [sorting, setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
+  const [sorting, _setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
     (initialState?.sort as any) ??
       (initialSort ? [initialSort.column, initialSort.direction] : null),
   );
+
+  useEffect(() => {
+    if (sorting) {
+      const column = columns.find(c => c.name === sorting[0]);
+
+      if (column) {
+        onSortChange?.(column.key ?? column.name, sorting[1]);
+      }
+    }
+  }, []);
+
+  const setSorting = (value: [ColumnNames, 'asc' | 'desc'] | null) => {
+    _setSorting(value);
+
+    if (value) {
+      const column = columns.find(c => c.name === value[0])!;
+      onSortChange?.(column.key ?? column.name, value[1]);
+    } else {
+      onSortChange?.();
+    }
+  };
 
   const [filters, setFilters] = useState<Record<string, FilterState>>(
     initialState?.filters ?? {},
@@ -538,17 +572,43 @@ export const Table = <
     }
   }, [persist, selectedRows, sorting, filters]);
 
-  const sortedRows = useMemo(
-    () =>
-      sortRows(
+  const sortedRows = useMemo(() => {
+    if (!onSortChange) {
+      return sortRows(
         rows,
         columns.find(c => c.name === sorting?.[0]),
         sorting?.[1] ?? 'asc',
         columns,
         filters,
-      ),
-    [rows, sorting, columns, filters],
-  );
+      );
+    } else {
+      return sortRows(rows, undefined, 'asc', columns, filters);
+    }
+  }, [rows, sorting, columns, filters]);
+
+  const scrollDetectorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const callback: IntersectionObserverCallback = ([rect]) => {
+      if (rect.intersectionRatio === 1) {
+        onEnd?.();
+      }
+    };
+
+    const observer = new IntersectionObserver(callback, {
+      threshold: 1.0,
+    });
+
+    const el = scrollDetectorRef.current;
+
+    if (!el) {
+      return;
+    }
+
+    observer.observe(el);
+
+    return () => observer.unobserve(el);
+  }, [scrollDetectorRef, onEnd]);
 
   const toggleSelection = (row: Row['key']) => {
     const newSet = [...selectedRows];
@@ -603,6 +663,10 @@ export const Table = <
   }, [selectedRows, actions]);
 
   const handleColumnHeaderClick = (column: Column<any, any, any>) => {
+    if (column.sortable === false) {
+      return;
+    }
+
     if (!sorting || sorting[0] !== column.name) {
       setSorting([column.name, 'desc']);
     } else if (sorting[1] === 'desc') {
@@ -615,7 +679,9 @@ export const Table = <
   return (
     <div
       role="table"
-      className={`relative aa ${!hideTools && 'pr-[6em]'}`}
+      className={`table-component relative aa ${!hideTools && 'pr-[6em]'} ${
+        refreshing ? 'refreshing' : ''
+      }`}
       data-cy="table-view"
       data-visible-rows={sortedRows.length}
       data-total-rows={rows.length}
@@ -744,6 +810,7 @@ export const Table = <
                 border-l
                 border-t sticky top-0 z-10 text-gray-700 px-3 py-2
                 bg-gray-50 border-b text-sm font-bold
+                whitespace-nowrap
                 cursor-pointer
                 flex items-center
                 justify-between
@@ -782,7 +849,14 @@ export const Table = <
               sorting={sorting}
             />
           ))}
-          {rows.length === 0 && (
+          <div className="col-span-full" ref={scrollDetectorRef}></div>
+          {(loading || showBottomLoading) && (
+            <div className="col-span-full border-x border-t border-t-gray-100 border-x-gray-200 flex items-center justify-center">
+              <Loader className="animate-[spin_3s_linear_infinite] my-4 mr-2 text-blue-600" />
+              <span className="text-gray-800">Loading...</span>
+            </div>
+          )}
+          {!loading && rows.length === 0 && (
             <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
               <div className="w-[30em] text-gray-800 py-3">
                 {emptyMessage ?? 'No rows to display.'}

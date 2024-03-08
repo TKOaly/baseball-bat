@@ -1,6 +1,6 @@
-import { Middleware, router } from 'typera-express';
+import { Middleware, Parser, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
-import { bankAccount } from '@bbat/common/build/src/types';
+import { bankAccount, paginationQuery } from '@bbat/common/build/src/types';
 import * as bankingService from '@/modules/banking/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '@/validate-middleware';
@@ -91,10 +91,16 @@ const factory: RouterFactory = route => {
   const getAccountTransactions = route
     .get('/accounts/:iban/transactions')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getAccountTransactions,
-        ctx.routeParams.iban,
+        {
+          iban: ctx.routeParams.iban,
+          cursor: query.cursor,
+          sort: query.sort,
+          limit: query.limit,
+        },
       );
 
       return ok(transactions);
@@ -115,10 +121,16 @@ const factory: RouterFactory = route => {
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query: { cursor, limit, sort }, ...ctx }) => {
       const transactions = await bus.exec(
         bankingService.getBankStatementTransactions,
-        ctx.routeParams.id,
+        {
+          id: ctx.routeParams.id,
+          cursor,
+          limit,
+          sort,
+        },
       );
 
       return ok(transactions);

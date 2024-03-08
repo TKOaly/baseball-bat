@@ -1,8 +1,4 @@
-import { Table } from '@bbat/ui/table';
-import {
-  useGetPayersQuery,
-  useSendPayerDebtReminderMutation,
-} from '../../api/payers';
+import payersApi, { useSendPayerDebtReminderMutation } from '../../api/payers';
 import { useLocation } from 'wouter';
 import { cents, formatEuro } from '@bbat/common/src/currency';
 import { useDialog } from '../../components/dialog';
@@ -18,28 +14,16 @@ import { ErrorDialog } from '../../components/dialogs/error-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { useState } from 'react';
 import { PayerProfile } from '@bbat/common/src/types';
-
-const ratio = (a: number | undefined, b: number | undefined) => {
-  if (a === undefined || b === undefined) {
-    return 1;
-  }
-
-  return a / b;
-};
+import { InfiniteTable } from '../../components/infinite-table';
 
 export const PayerListing = () => {
   const [, setLocation] = useLocation();
-  const { data: payers } = useGetPayersQuery();
   const [sendPayerDebtReminder] = useSendPayerDebtReminderMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const showSendRemindersDialog = useDialog(SendRemindersDialog);
   const showErrorDialog = useDialog(ErrorDialog);
   const showMergeProfilesDialog = useDialog(MergeProfilesDialog);
   const [showDisabled, setShowDisabled] = useState(false);
-
-  const rows = (payers ?? [])
-    .filter(payer => showDisabled || !payer.disabled)
-    .map(payer => ({ ...payer, key: payer.id.value }));
 
   return (
     <div>
@@ -61,9 +45,9 @@ export const PayerListing = () => {
         </label>
       </div>
 
-      <Table
+      <InfiniteTable
         selectable
-        rows={rows}
+        endpoint={payersApi.endpoints.getPayers}
         persist="payers"
         onRowClick={({ id }) => setLocation(`/admin/payers/${id.value}`)}
         actions={[
@@ -138,14 +122,17 @@ export const PayerListing = () => {
         columns={[
           {
             name: 'Name',
+            key: 'name',
             getValue: 'name',
           },
           {
             name: 'Email',
-            getValue: p => p.emails.find(e => e.priority === 'primary')?.email,
+            key: 'primary_email',
+            getValue: 'primaryEmail',
           },
           {
             name: 'Membership',
+            key: 'tkoaly_user_id',
             getValue: p => (p.tkoalyUserId?.value ? 'Member' : 'Non-member'),
             render: (_, p) =>
               p.tkoalyUserId?.value ? (
@@ -163,6 +150,7 @@ export const PayerListing = () => {
             : [
                 {
                   name: 'Disabled',
+                  key: 'disabled',
                   getValue: (p: PayerProfile) => (p.disabled ? 'Yes' : 'No'),
                   render: (_: any, p: PayerProfile) =>
                     p.disabled ? (
@@ -178,7 +166,8 @@ export const PayerListing = () => {
               ]),
           {
             name: 'Paid percentage',
-            getValue: row => ratio(row.totalPaid?.value, row.total?.value),
+            key: 'paid_ratio',
+            getValue: 'paidRatio',
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
@@ -191,16 +180,28 @@ export const PayerListing = () => {
               </div>
             ),
           },
-          { name: 'Paid', getValue: 'paidCount', align: 'right' },
-          { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
+          {
+            name: 'Paid',
+            key: 'paid_count',
+            getValue: 'paidCount',
+            align: 'right',
+          },
+          {
+            name: 'Debts Count',
+            key: 'debt_count',
+            getValue: 'debtCount',
+            align: 'right',
+          },
           {
             name: 'Paid value',
+            key: 'total_paid',
             getValue: row => row.totalPaid?.value ?? 0,
             align: 'right',
             render: value => formatEuro(cents(value)),
           },
           {
             name: 'Total value',
+            key: 'total',
             getValue: row => row.total?.value ?? 0,
             align: 'right',
             render: value => formatEuro(cents(value)),

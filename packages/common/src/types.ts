@@ -271,6 +271,7 @@ export type DbPayerProfile = {
   id: string;
   tkoaly_user_id?: number;
   stripe_customer_id: string;
+  primary_email?: string;
   created_at: Date;
   updated_at: Date;
   name: string;
@@ -281,6 +282,7 @@ export type DbPayerProfile = {
   debt_count?: number;
   total?: number;
   total_paid?: number;
+  paid_ratio?: number;
 };
 
 export const payerProfile = t.type({
@@ -297,6 +299,8 @@ export const payerProfile = t.type({
   total: nullable(euroValue),
   totalPaid: nullable(euroValue),
   emails: t.array(payerEmail),
+  primaryEmail: nullable(t.string),
+  paidRatio: t.number,
 });
 
 export type PayerProfile = t.TypeOf<typeof payerProfile>;
@@ -1095,6 +1099,37 @@ export const createDebtCenterFromEventBody = t.type({
     ),
   }),
 });
+
+export const paginationQuery = t.partial({
+  cursor: t.string,
+  limit: tt.NumberFromString,
+  sort: t.type({
+    column: t.string,
+    dir: t.union([t.literal('asc'), t.literal('desc')]),
+  }),
+});
+
+export type PaginationQuery = t.TypeOf<typeof paginationQuery>;
+
+export const paginationQueryPayload = t.partial({
+  cursor: t.string,
+  limit: t.number,
+  sort: t.type({
+    column: t.string,
+    dir: t.union([t.literal('asc'), t.literal('desc')]),
+  }),
+});
+
+export const paginationQueryResponse = <T extends t.Any>(type: T) =>
+  t.type({
+    result: t.array(type),
+    nextCursor: t.union([t.string, t.null]),
+  });
+
+export type PaginationQueryArgs = t.TypeOf<typeof paginationQueryPayload>;
+export type PaginationQueryResponse<T> = t.TypeOf<
+  ReturnType<typeof paginationQueryResponse<t.Type<T, any, any>>>
+>;
 
 export type CreateDebtCenterFromEventBody = t.TypeOf<
   typeof createDebtCenterFromEventBody

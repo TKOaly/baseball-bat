@@ -17,7 +17,7 @@ import {
 import { DebtList } from '../../components/debt-list';
 import { Link, useLocation } from 'wouter';
 import { Table } from '@bbat/ui/table';
-import {
+import debtApi, {
   useGetDebtComponentsByCenterQuery,
   useGetDebtsByCenterQuery,
 } from '../../api/debt';
@@ -31,14 +31,12 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
   const [, setLocation] = useLocation();
   const { data: debtCenter, isLoading } = useGetDebtCenterQuery(id);
   const { data: components } = useGetDebtComponentsByCenterQuery(id);
-  const { data: debts } = useGetDebtsByCenterQuery(id);
+  const { data: debts } = useGetDebtsByCenterQuery({
+    centerId: id,
+  });
   const [deleteDebtCenter] = useDeleteDebtCenterMutation();
   const showInfoDialog = useDialog(InfoDialog);
   const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
-
-  if (isLoading || !debtCenter) {
-    return <div>Loading....</div>;
-  }
 
   const handleDelete = async () => {
     const result = await deleteDebtCenter(id);
@@ -46,12 +44,16 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
     if ('data' in result) {
       await showInfoDialog({
         title: 'Debt Center Deleted',
-        content: `Debt center ${debtCenter.name} deleted successfully.`,
+        content: `Debt center ${debtCenter?.name} deleted successfully.`,
       });
 
       setLocation('/admin/debt-centers');
     }
   };
+
+  if (isLoading || !debtCenter) {
+    return <div>Loading....</div>;
+  }
 
   return (
     <Page>
@@ -66,7 +68,7 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
           />
         </Title>
         <Actions>
-          {debts?.length === 0 && (
+          {debts?.result?.length === 0 && (
             <ActionButton secondary onClick={handleDelete}>
               Delete
             </ActionButton>
@@ -142,7 +144,10 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
           </div>
         </SectionDescription>
         <SectionContent>
-          <DebtList debts={debts ?? []} />
+          <DebtList
+            endpoint={debtApi.endpoints.getDebtsByCenter}
+            query={{ centerId: id }}
+          />
         </SectionContent>
       </Section>
     </Page>

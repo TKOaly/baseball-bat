@@ -61,7 +61,8 @@ type Props = RouteComponentProps<{ id: string }>;
 export const EditDebt = ({ params }: Props) => {
   const { id } = params;
   const { data: users } = useGetUpstreamUsersQuery();
-  const { data: payers } = useGetPayersQuery();
+  const { data: payersResult } = useGetPayersQuery({});
+  const payers = payersResult?.result;
   const { data: debt } = useGetDebtQuery(id);
   const { data: debtCenters } = useGetDebtCentersQuery();
   const [debtCenterId, setDebtCenterId] = useState(debt?.debtCenterId);

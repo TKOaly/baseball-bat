@@ -1,10 +1,11 @@
-import { router } from 'typera-express';
+import { Parser, router } from 'typera-express';
 import { ok, badRequest, notFound } from 'typera-express/response';
 import {
   emailIdentity,
   convertToDbDate,
   Registration,
   createDebtCenterFromEventBody,
+  paginationQuery,
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/lib/Either';
@@ -55,11 +56,13 @@ const factory: RouterFactory = route => {
   const getDebtsByCenter = route
     .get('/:id/debts')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
-      const debts = await bus.exec(
-        debtService.getDebtsByCenter,
-        ctx.routeParams.id,
-      );
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query, ...ctx }) => {
+      const debts = await bus.exec(debtService.getDebtsByCenter, {
+        centerId: ctx.routeParams.id,
+        ...query,
+      });
+
       return ok(debts);
     });
 
@@ -106,10 +109,9 @@ const factory: RouterFactory = route => {
     .delete('/:id')
     .use(auth())
     .handler(async ({ bus, ...ctx }) => {
-      const debts = await bus.exec(
-        debtService.getDebtsByCenter,
-        ctx.routeParams.id,
-      );
+      const { result: debts } = await bus.exec(debtService.getDebtsByCenter, {
+        centerId: ctx.routeParams.id,
+      });
 
       if (debts.length > 0) {
         return badRequest({

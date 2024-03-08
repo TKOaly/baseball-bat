@@ -9,7 +9,7 @@ import {
 } from '../../components/resource-page/resource-page';
 import { TransactionList } from '../../components/transaction-list';
 import { useGetBankStatementQuery } from '../../api/banking/statements';
-import { useGetStatementTransactionsQuery } from '../../api/banking/transactions';
+import transactionsApi from '../../api/banking/transactions';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
 import { format } from 'date-fns';
 import { formatEuro } from '@bbat/common/src/currency';
@@ -17,7 +17,6 @@ import { skipToken } from '@reduxjs/toolkit/query';
 
 export const BankStatement = ({ id }: { id: string }) => {
   const { data: statement, isLoading } = useGetBankStatementQuery(id);
-  const { data: transactions } = useGetStatementTransactionsQuery(id);
   const { data: account } = useGetBankAccountQuery(
     statement?.accountIban ?? skipToken,
   );
@@ -61,7 +60,10 @@ export const BankStatement = ({ id }: { id: string }) => {
       </Section>
       <Section title="Transactions">
         <SectionContent>
-          <TransactionList transactions={transactions ?? []} />
+          <TransactionList
+            endpoint={transactionsApi.endpoints.getStatementTransactions}
+            query={{ id }}
+          />
         </SectionContent>
       </Section>
     </Page>

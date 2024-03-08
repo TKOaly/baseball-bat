@@ -62,8 +62,11 @@ const iface = createInterface('debts', builder => ({
     response: types.reportWithoutHistory,
   }),
   getDebtsByCenter: builder.proc({
-    payload: t.string,
-    response: t.array(types.debt),
+    payload: t.intersection([
+      t.type({ centerId: t.string }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.debt),
   }),
   createDebtComponent: builder.proc({
     payload: t.type({
@@ -130,12 +133,15 @@ const iface = createInterface('debts', builder => ({
     response: t.union([t.null, types.debtComponent]),
   }),
   getDebtsByPayer: builder.proc({
-    payload: t.type({
-      id: types.internalIdentityT,
-      includeDrafts: t.boolean,
-      includeCredited: t.boolean,
-    }),
-    response: t.array(types.debt),
+    payload: t.intersection([
+      t.type({
+        id: types.internalIdentityT,
+        includeDrafts: t.boolean,
+        includeCredited: t.boolean,
+      }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.debt),
   }),
   createPayment: builder.proc({
     payload: t.intersection([
@@ -234,8 +240,8 @@ export const sendAllReminders = scope.defineProcedure({
 
 export const getDebts = scope.defineProcedure({
   name: 'getDebts',
-  payload: t.void,
-  response: t.array(types.debt),
+  payload: types.paginationQueryPayload,
+  response: types.paginationQueryResponse(types.debt),
 });
 
 export const getDebtsByTag = scope.defineProcedure({

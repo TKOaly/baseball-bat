@@ -1,25 +1,15 @@
 import { Button, SecondaryButton } from '@bbat/ui/button';
-import {
-  useGetDebtsQuery,
-  useGetDebtsByTagQuery,
-  useSendAllRemindersMutation,
-} from '../../api/debt';
+import debtApi, { useSendAllRemindersMutation } from '../../api/debt';
 import { useSearch } from 'wouter';
 import { useLocation } from 'wouter';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
 import { DebtList } from '../../components/debt-list';
-import { skipToken } from '@reduxjs/toolkit/query';
 
 export const DebtListing = () => {
   const search = useSearch();
   const tag = new URLSearchParams(search).get('tag');
-
-  const { data: allDebts } = useGetDebtsQuery(undefined, { skip: !!tag });
-  const { data: debtsByTag } = useGetDebtsByTagQuery(tag ?? skipToken);
-
-  const debts = tag ? debtsByTag : allDebts;
 
   const [sendAllReminders] = useSendAllRemindersMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
@@ -66,7 +56,7 @@ export const DebtListing = () => {
           Send all reminders
         </SecondaryButton>
       </div>
-      <DebtList debts={debts ?? []} />
+      <DebtList endpoint={debtApi.endpoints.getDebts} />
     </>
   );
 };

@@ -7,6 +7,7 @@ import * as t from 'io-ts';
 import {
   emailIdentity,
   internalIdentity,
+  paginationQuery,
   PayerEmailPriority,
   tkoalyIdentity,
 } from '@bbat/common/build/src/types';
@@ -69,8 +70,9 @@ const factory: RouterFactory = route => {
   const getPayers = route
     .get('/')
     .use(auth())
-    .handler(async ({ bus }) => {
-      const payers = await bus.exec(payerService.getPayerProfiles);
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query }) => {
+      const payers = await bus.exec(payerService.getPayerProfiles, query);
       return ok(payers);
     });
 
@@ -138,7 +140,8 @@ const factory: RouterFactory = route => {
   const getPayerDebts = route
     .get('/:id/debts')
     .use(auth({ accessLevel: 'normal' }))
-    .handler(async ({ bus, ...ctx }) => {
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query, ...ctx }) => {
       let id;
 
       if (ctx.routeParams.id === 'me') {
@@ -159,6 +162,9 @@ const factory: RouterFactory = route => {
         id,
         includeDrafts,
         includeCredited: true,
+        cursor: query.cursor,
+        limit: query.limit,
+        sort: query.sort,
       });
 
       return ok(debts);

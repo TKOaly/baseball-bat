@@ -127,12 +127,25 @@ export default createModule({
 
     bus.provide(iface, {
       async getDebt(id, { pg }) {
-        const [debts] = await queryDebts(pg, sql`debt.id = ${id}`);
-        return debts ?? null;
+        const {
+          result: [debt],
+        } = await queryDebts(pg, {
+          where: sql`id = ${id}`,
+        });
+
+        return debt ? formatDebt(debt) : null;
       },
 
-      async getDebtsByCenter(id, { pg }) {
-        return queryDebts(pg, sql`debt.debt_center_id = ${id}`);
+      async getDebtsByCenter({ centerId, cursor, sort, limit }, { pg }) {
+        return queryDebts(pg, {
+          where: sql`debt_center_id = ${centerId}`,
+          cursor,
+          limit,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
+          map: formatDebt,
+        });
       },
 
       async getDebtsByPayment(paymentId, { pg }) {
@@ -433,15 +446,23 @@ export default createModule({
 
         return formatDebtComponent(updated);
       },
-      async getDebtsByPayer({ id, includeDrafts, includeCredited }, { pg }) {
-        return queryDebts(
-          pg,
-          sql`
-          debt.payer_id = ${id.value}
-            AND (${includeDrafts} OR debt.published_at IS NOT NULL)
-            AND (${includeCredited} OR NOT debt.credited)
-        `,
-        );
+      async getDebtsByPayer(
+        { id, includeDrafts, includeCredited, cursor, sort, limit },
+        { pg },
+      ) {
+        return queryDebts(pg, {
+          where: sql`
+            payer_id = ${id.value}
+              AND (${includeDrafts} OR published_at IS NOT NULL)
+              AND (${includeCredited} OR NOT credited)
+          `,
+          cursor,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
+          limit,
+          map: formatDebt,
+        });
       },
 
       async createPayment({ debts: ids, payment, options }, { pg }, bus) {
@@ -586,6 +607,8 @@ export default createModule({
               total: null,
               debtCount: null,
               totalPaid: null,
+              primaryEmail: null,
+              paidRatio: 0,
             };
           } else {
             return await bus.exec(
@@ -614,6 +637,8 @@ export default createModule({
               totalPaid: null,
               unpaidCount: null,
               mergedTo: null,
+              primaryEmail: null,
+              paidRatio: 0,
             };
           } else {
             const payer = await bus.exec(
@@ -1104,13 +1129,23 @@ export default createModule({
     );
 
     bus.register(defs.getDebtsByTag, async (tag, { pg }) => {
-      return queryDebts(
-        pg,
-        sql`debt.id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tag})`,
-      );
+      const { result } = await queryDebts(pg, {
+        where: sql`id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tag})`,
+      });
+
+      return result.map(formatDebt);
     });
 
-    bus.register(defs.getDebts, (_, { pg }) => queryDebts(pg));
+    bus.register(defs.getDebts, async ({ cursor, sort, limit }, { pg }) => {
+      return queryDebts(pg, {
+        limit,
+        cursor,
+        order: sort
+          ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+          : undefined,
+        map: formatDebt,
+      });
+    });
 
     async function createDefaultPaymentFor(
       pg: Connection,
@@ -1440,10 +1475,11 @@ export default createModule({
     });
 
     async function getOverdueDebts(pg: Connection) {
-      return queryDebts(
-        pg,
-        sql`debt.due_date < NOW() AND debt.published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
-      );
+      const { result } = await queryDebts(pg, {
+        where: sql`due_date < NOW() AND published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
+      });
+
+      return result.map(formatDebt);
 
       /*const debts = await pg.any<DbDebt>(sql`
         SELECT
@@ -1639,7 +1675,7 @@ export default createModule({
     bus.register(
       defs.sendPaymentRemindersByPayer,
       async ({ payer, send, ignoreCooldown }, _, bus) => {
-        const debts = await bus.exec(defs.getDebtsByPayer, {
+        const { result: debts } = await bus.exec(defs.getDebtsByPayer, {
           id: payer,
           includeCredited: false,
           includeDrafts: false,

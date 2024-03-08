@@ -67,8 +67,9 @@ type DebtFormValues = {
 
 export const CreateDebt = (props: { debtCenterId?: string }) => {
   const { data: users } = useGetUpstreamUsersQuery();
-  const { data: payers } = useGetPayersQuery();
+  const { data: payersResult } = useGetPayersQuery({});
   const { data: debtCenters } = useGetDebtCentersQuery();
+  const payers = payersResult?.result;
   const [debtCenterId, setDebtCenterId] = useState<null | string>(
     props.debtCenterId ?? null,
   );
