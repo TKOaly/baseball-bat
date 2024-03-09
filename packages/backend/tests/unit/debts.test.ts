@@ -84,7 +84,7 @@ setup('Debts service', ({ test }) => {
     assert.ok(!newDebt.draft);
     assert.ok(!newDebt.credited);
 
-    const emails = await bus.exec(getEmails);
+    const { result: emails } = await bus.exec(getEmails, {});
 
     assert.equal(emails.length, 1);
     assert.equal(emails[0].template, 'new-invoice');
@@ -141,7 +141,7 @@ setup('Debts service', ({ test }) => {
     assert.ok(!newDebt.draft);
     assert.ok(newDebt.credited);
 
-    const emails = await bus.exec(getEmails);
+    const { result: emails } = await bus.exec(getEmails, {});
 
     assert.equal(emails.length, 1);
     // FIXME: Should send credited email!
