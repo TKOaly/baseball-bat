@@ -6,19 +6,15 @@ import { useLocation } from 'wouter';
 import { useDialog } from './dialog';
 import { TransactionRegistrationDialog } from './dialogs/transaction-registration-dialog';
 import {
+  Props as InfiniteTableProps,
   InfiniteTable,
   PaginatedBaseQuery,
-  PaginatedQueryDefinition,
 } from './infinite-table';
-import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { ComponentProps } from 'react';
 import { Table } from '@bbat/ui/src/table';
 
 export type Props<Q extends PaginatedBaseQuery> =
-  | {
-      endpoint: QueryHooks<PaginatedQueryDefinition<BankTransaction, Q>>;
-      query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
-    }
+  | Omit<InfiniteTableProps<BankTransaction, Q>, 'columns' | 'actions'>
   | {
       transactions: BankTransaction[];
     };

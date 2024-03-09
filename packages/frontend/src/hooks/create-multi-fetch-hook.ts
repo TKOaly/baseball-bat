@@ -1,15 +1,14 @@
-import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
 import { useState, useEffect } from 'react';
 import {
+  ApiEndpointQuery,
   QueryArgFrom,
   ResultTypeFrom,
-} from '@reduxjs/toolkit/dist/query/endpointDefinitions';
+} from '@reduxjs/toolkit/query/react';
 import { RootState, useAppDispatch, useAppSelector } from '../store';
 import { createSelector } from '@reduxjs/toolkit';
 
-type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any>
-  ? D
-  : never; // eslint-disable-line
+type EndpointDefinitionFrom<E> =
+  E extends ApiEndpointQuery<infer D, any> ? D : never; // eslint-disable-line
 
 // eslint-disable-next-line
 export function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(

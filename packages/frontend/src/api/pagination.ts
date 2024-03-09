@@ -4,10 +4,14 @@ import {
 } from '@bbat/common/src/types';
 import {
   EndpointBuilder,
+  FetchArgs,
   QueryDefinition,
-} from '@reduxjs/toolkit/dist/query/endpointDefinitions';
-import { OmitFromUnion } from '@reduxjs/toolkit/dist/query/tsHelpers';
-import { FetchArgs, fetchBaseQuery } from '@reduxjs/toolkit/query';
+  fetchBaseQuery,
+} from '@reduxjs/toolkit/query';
+
+export type OmitFromUnion<T, K extends keyof T> = T extends any
+  ? Omit<T, K>
+  : never;
 
 export type TagTypesFromBuilder<B extends EndpointBuilder<any, any, any>> =
   B extends EndpointBuilder<any, infer T, any> ? T : never;
@@ -105,14 +109,10 @@ export const createPaginatedQuery =
         (!options.paginationTag
           ? undefined
           : result => [
-              { type: 'Debt' as const, id: 'LIST' },
-              ...(result?.result ?? []).map(debt => ({
-                type: 'Debt' as const,
-                id:
-                  'id' in debt &&
-                  (typeof debt.id === 'string' || typeof debt.id === 'number')
-                    ? debt.id
-                    : options.id(debt),
+              { type: options.paginationTag, id: 'LIST' },
+              ...(result?.result ?? []).map(item => ({
+                type: options.paginationTag,
+                id: 'id' in options && options.id ? options.id(item) : item.id,
               })),
             ]),
       serializeQueryArgs: args => {

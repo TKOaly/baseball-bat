@@ -12,19 +12,15 @@ import { sortBy } from 'remeda';
 import isBefore from 'date-fns/isBefore';
 import { formatEuro } from '@bbat/common/src/currency';
 import {
+  Props as InfiniteTableProps,
   InfiniteTable,
   PaginatedBaseQuery,
-  PaginatedQueryDefinition,
 } from './infinite-table';
-import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { ComponentProps } from 'react';
 import { Table } from '@bbat/ui/src/table';
 
 export type Props<Q extends PaginatedBaseQuery> =
-  | {
-      endpoint: QueryHooks<PaginatedQueryDefinition<DebtWithPayer, Q>>;
-      query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
-    }
+  | Omit<InfiniteTableProps<DebtWithPayer, Q>, 'columns' | 'actions'>
   | {
       debts: DebtWithPayer[];
     };

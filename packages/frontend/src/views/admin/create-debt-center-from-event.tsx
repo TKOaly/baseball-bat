@@ -37,11 +37,6 @@ import { DropdownField } from '@bbat/ui/dropdown-field';
 import { Button, DisabledButton, SecondaryButton } from '@bbat/ui/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
-import { ApiEndpointQuery } from '@reduxjs/toolkit/dist/query/core/module';
-import {
-  QueryArgFrom,
-  ResultTypeFrom,
-} from '@reduxjs/toolkit/dist/query/endpointDefinitions';
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
 import { DateField } from '@bbat/ui/datetime-field';
 import { Link, useLocation } from 'wouter';
@@ -53,6 +48,11 @@ import {
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import * as t from 'io-ts';
 import { isLeft } from 'fp-ts/Either';
+import {
+  ApiEndpointQuery,
+  QueryArgFrom,
+  ResultTypeFrom,
+} from '@reduxjs/toolkit/query/react';
 
 type EventSelectionViewProps = {
   state: State;
@@ -596,7 +596,7 @@ const SettingsView = ({
                       label="Price"
                       component={EuroField}
                       value={amount.value / 100}
-                      onChange={evt =>
+                      onChange={(evt: any) =>
                         dispatch({
                           type: 'UPDATE_COMPONENT',
                           payload: {
@@ -1397,7 +1397,7 @@ export const CreateDebtCenterFromEvent = () => {
       registrations: participants.map(r => r.id),
       settings: {
         ...state.basicSettings,
-        accountingPeriod,
+        accountingPeriod: accountingPeriod as any,
         dueDate: result.right,
         components: state.components,
       },

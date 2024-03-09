@@ -1,9 +1,9 @@
 import { ComponentProps } from 'react';
-import NumberFormat, { NumberFormatProps } from 'react-number-format';
+import { NumericFormat, NumericFormatProps } from 'react-number-format';
 import { TextField } from '@bbat/ui/text-field';
 
 export type Props = Omit<
-  NumberFormatProps<ComponentProps<typeof TextField>>,
+  NumericFormatProps<ComponentProps<typeof TextField>>,
   'onChange'
 > & {
   onChange: (evt: {
@@ -12,7 +12,7 @@ export type Props = Omit<
 };
 
 export const EuroField = ({ name, value, onChange, ...props }: Props) => (
-  <NumberFormat
+  <NumericFormat
     value={value}
     onValueChange={value => {
       onChange({

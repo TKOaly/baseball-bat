@@ -1,10 +1,18 @@
-import { PaginationQueryResponse } from '@bbat/common/src/types';
+import {
+  PaginationQueryArgs,
+  PaginationQueryResponse,
+} from '@bbat/common/src/types';
 import { TableViewProps, Table } from '@bbat/ui/src/table';
-import { QueryHooks } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { QueryDefinition } from '@reduxjs/toolkit/query';
+import { TypedUseLazyQuery, TypedUseQuery } from '@reduxjs/toolkit/query/react';
 import { useCallback, useState } from 'react';
 
-export type Props<T, Q extends PaginatedBaseQuery> = Omit<
+export type Hooks<T, Q extends PaginationQueryArgs> = {
+  useQuery: TypedUseQuery<PaginationQueryResponse<T>, Q, any>;
+  useLazyQuery: TypedUseLazyQuery<PaginationQueryResponse<T>, Q, any>;
+};
+
+export type Props<T, Q extends PaginationQueryArgs> = Omit<
   TableViewProps<T & { key: string }, any, any>,
   | 'rows'
   | 'loading'
@@ -13,11 +21,9 @@ export type Props<T, Q extends PaginatedBaseQuery> = Omit<
   | 'onEnd'
   | 'onSortChange'
 > & {
-  endpoint: QueryHooks<
-    QueryDefinition<Q, any, any, PaginationQueryResponse<T>>
-  >;
-  query?: Omit<Q, 'cursor' | 'sort' | 'limit'>;
+  endpoint: Hooks<T, Q>;
   chunk?: number;
+  query?: Omit<Q, keyof PaginatedBaseQuery>;
 };
 
 export type PaginatedBaseQuery = {
@@ -30,31 +36,39 @@ export type PaginatedQueryDefinition<
   Q extends PaginatedBaseQuery,
 > = QueryDefinition<Q, any, any, PaginationQueryResponse<T>>;
 
-export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
-  query,
+export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
   endpoint,
   chunk: limit = 30,
   ...props
 }: Props<T, Q>) => {
   const [sort, setSort] = useState<[string, 'asc' | 'desc']>();
 
+  const createQuery = (opts: PaginatedBaseQuery): Q => {
+    return {
+      ...opts,
+      ...('query' in props ? { query: props.query } : {}),
+    } as Q;
+  };
+
   const [fetchMore] = endpoint.useLazyQuery();
-  const { data, isLoading, isFetching, originalArgs } = endpoint.useQuery({
-    ...query,
-    limit,
-    sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
-  } as Q);
+  const { data, isLoading, isFetching, originalArgs } = endpoint.useQuery(
+    createQuery({
+      limit,
+      sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
+    }),
+  );
 
   const onEnd = useCallback(() => {
     if (data?.nextCursor) {
-      fetchMore({
-        ...query,
-        sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
-        limit,
-        cursor: data.nextCursor,
-      } as Q);
+      fetchMore(
+        createQuery({
+          sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
+          limit,
+          cursor: data.nextCursor,
+        }),
+      );
     }
-  }, [data, fetchMore, sort, query]);
+  }, [data, fetchMore, sort, props]);
 
   const rows = (data?.result ?? []).map(item => ({
     key: (item as any).id,

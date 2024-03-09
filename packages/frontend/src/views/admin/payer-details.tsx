@@ -26,7 +26,7 @@ import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dia
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
 import { internalIdentity } from '@bbat/common/src/types';
 import { Link, RouteComponentProps, useLocation } from 'wouter';
-import { skipToken } from '@reduxjs/toolkit/dist/query/react';
+import { skipToken } from '@reduxjs/toolkit/query/react';
 
 type Props = RouteComponentProps<{ id: string }>;
 
