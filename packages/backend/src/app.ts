@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import { Config } from './config';
-import Stripe from 'stripe';
 import { Pool, Connection } from './db/connection';
 import * as redis from 'redis';
 import {
@@ -14,10 +13,6 @@ import server from './server';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
-
-const stripeClient = new Stripe(config.stripeSecretKey, {
-  apiVersion: '2020-08-27',
-});
 
 const pool = new Pool(config.dbUrl);
 
@@ -48,7 +43,6 @@ const moduleDeps = {
   config,
   bus,
   redis: redisClient,
-  stripe: stripeClient,
   jobs,
   emailTransport,
 };

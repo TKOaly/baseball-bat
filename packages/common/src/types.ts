@@ -1012,6 +1012,7 @@ export type JobStatus =
   | 'active'
   | 'delayed'
   | 'waiting'
+  | 'prioritized'
   | 'waiting-children'
   | 'unknown';
 
@@ -1128,6 +1129,7 @@ export const paginationQueryResponse = <T extends t.Any>(type: T) =>
 
 export type PaginationQueryArgs = t.TypeOf<typeof paginationQueryPayload>;
 export type PaginationQueryResponse<T> = t.TypeOf<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ReturnType<typeof paginationQueryResponse<t.Type<T, any, any>>>
 >;
 

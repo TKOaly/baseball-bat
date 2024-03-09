@@ -46,7 +46,7 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
   const createQuery = (opts: PaginatedBaseQuery): Q => {
     return {
       ...opts,
-      ...('query' in props ? { query: props.query } : {}),
+      ...('query' in props ? props.query : {}),
     } as Q;
   };
 

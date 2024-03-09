@@ -15,7 +15,7 @@ export default createModule({
 
   async setup({ bus, config }) {
     const stripe = new Stripe(config.stripeSecretKey, {
-      apiVersion: '2020-08-27',
+      apiVersion: '2023-10-16',
     });
 
     bus.provideNamed(paymentTypeIface, 'stripe', {

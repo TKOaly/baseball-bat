@@ -11,8 +11,8 @@
     "canvas": "^2.11.2",
     "date-fns": "^2.28.0",
     "finnish-bank-utils": "git+https://github.com/vkomulai/finnish-bank-utils.git#b660a75",
-    "fp-ts": "^2.11.8",
-    "io-ts": "^2.2.16",
+    "fp-ts": "^2.16.2",
+    "io-ts": "^2.2.21",
     "io-ts-types": "^0.5.19",
     "jsbarcode": "^3.11.5",
     "monocle-ts": "^2.3.13",
@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@types/xml2js": "^0.4.11",
-    "typescript": "5.2.2",
+    "typescript": "^5.4.2",
     "prettier": "^3.0.3",
     "eslint": "^8.53.0",
     "lint-staged": "^14.0.1"
