@@ -34,7 +34,7 @@ import { euro, sumEuroValues } from '@bbat/common/src/currency';
 import React from 'react';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
-import { useGetEmailsByDebtQuery } from '../../api/email';
+import emailApi from '../../api/email';
 import { EmailList } from '../../components/email-list';
 
 type Props = RouteComponentProps<{ id: string }>;
@@ -42,7 +42,6 @@ type Props = RouteComponentProps<{ id: string }>;
 export const DebtDetails = ({ params }: Props) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
   const { data: payments } = useGetPaymentsByDebtQuery(params.id);
-  const { data: emails } = useGetEmailsByDebtQuery(params.id);
   const [deleteDebt] = useDeleteDebtMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const [creditDebt] = useCreditDebtMutation();
@@ -257,7 +256,10 @@ export const DebtDetails = ({ params }: Props) => {
           List of email communication regarding this debt.
         </SectionDescription>
         <SectionContent>
-          <EmailList emails={emails ?? []} />
+          <EmailList
+            endpoint={emailApi.endpoints.getEmailsByDebt}
+            query={{ debtId: params.id }}
+          />
         </SectionContent>
       </Section>
     </Page>

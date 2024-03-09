@@ -1,28 +1,31 @@
-import { router } from 'typera-express';
+import { Parser, router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import * as emailService from '@/modules/email/definitions';
 import auth from '@/auth-middleware';
 import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';
 import { RouterFactory } from '@/module';
+import { paginationQuery } from '@bbat/common/types';
 
 const factory: RouterFactory = route => {
   const getEmails = route
     .get('/')
     .use(auth())
-    .handler(async ({ bus }) => {
-      const emails = await bus.exec(emailService.getEmails);
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ query, bus }) => {
+      const emails = await bus.exec(emailService.getEmails, query);
       return ok(emails);
     });
 
   const getEmailsByDebt = route
     .get('/by-debt/:debt')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
-      const emails = await bus.exec(
-        emailService.getEmailsByDebt,
-        ctx.routeParams.debt,
-      );
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query, ...ctx }) => {
+      const emails = await bus.exec(emailService.getEmailsByDebt, {
+        debtId: ctx.routeParams.debt,
+        ...query,
+      });
       return ok(emails);
     });
 

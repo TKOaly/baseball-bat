@@ -1,41 +1,51 @@
 import { format } from 'date-fns';
 import { useLocation } from 'wouter';
-import { Email } from '@bbat/common/src/types';
 import { useSendEmailsMutation } from '../api/email';
-import { Table } from '@bbat/ui/table';
+import {
+  InfiniteTable,
+  Props as InfiniteTableProps,
+  PaginatedBaseQuery,
+} from './infinite-table';
+import { Email } from '@bbat/common/src/types';
 
-export interface Props {
-  emails: Email[];
-}
+export type Props<Q extends PaginatedBaseQuery> = Omit<
+  InfiniteTableProps<Email, Q>,
+  'columns' | 'actions'
+>;
 
-export const EmailList = (props: Props) => {
+export const EmailList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
   const [, setLocation] = useLocation();
   const [sendEmails] = useSendEmailsMutation();
 
   return (
-    <Table
-      rows={(props.emails ?? []).map(e => ({ ...e, key: e.id })) ?? []}
+    <InfiniteTable
+      {...props}
       columns={[
         {
           name: 'Recipient',
+          key: 'recipient',
           getValue: 'recipient',
         },
         {
           name: 'Subject',
+          key: 'subject',
           getValue: 'subject',
         },
         {
           name: 'Created',
+          key: 'created_at',
           getValue: 'createdAt',
           render: value => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Sent',
+          key: 'sent_at',
           getValue: 'sentAt',
           render: value => value && format(new Date(value), 'dd.MM.yyyy HH:mm'),
         },
         {
           name: 'Status',
+          key: 'draft',
           getValue: row => {
             if (row.draft) {
               return 'Draft';

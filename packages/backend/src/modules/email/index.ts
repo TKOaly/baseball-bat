@@ -27,6 +27,7 @@ import iface, * as defs from './definitions';
 import { Connection } from '@/db/connection';
 import { ExecutionContext } from '@/bus';
 import { createModule } from '@/module';
+import { createPaginatedQuery } from '@/db/pagination';
 
 const formatEmail = (email: DbEmail): Email => ({
   id: email.id,
@@ -134,6 +135,11 @@ const TemplateType = {
 };
 
 type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
+
+const emailQuery = createPaginatedQuery<DbEmail>(
+  sql`SELECT * FROM emails`,
+  'id',
+);
 
 export default createModule({
   name: 'emails',
@@ -271,10 +277,12 @@ export default createModule({
         await jobs.createJob(description);
       },
 
-      async getEmails(_, { pg }) {
-        const emails = await pg.many<DbEmail>(sql`SELECT * FROM emails`);
-
-        return emails.map(formatEmail);
+      async getEmails(query, { pg }) {
+        return emailQuery(pg, {
+          ...query,
+          order: query.sort ? [[query.sort.column, query.sort.dir]] : undefined,
+          map: formatEmail,
+        });
       },
 
       async getEmail(id, { pg }) {
@@ -285,15 +293,13 @@ export default createModule({
         return email && formatEmail(email);
       },
 
-      async getEmailsByDebt(debt, { pg }) {
-        const emails = await pg.many<DbEmail>(sql`
-            SELECT emails.*
-            FROM email_debt_mapping edm
-            JOIN emails ON emails.id = edm.email_id
-            WHERE edm.debt_id = ${debt}
-          `);
-
-        return emails.map(formatEmail);
+      async getEmailsByDebt({ debtId, ...query }, { pg }) {
+        return emailQuery(pg, {
+          ...query,
+          where: sql`id IN (SELECT email_id FROM email_debt_mapping WHERE debt_id = ${debtId})`,
+          order: query.sort ? [[query.sort.column, query.sort.dir]] : undefined,
+          map: formatEmail,
+        });
       },
     });
 

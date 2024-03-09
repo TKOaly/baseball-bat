@@ -36,12 +36,15 @@ const iface = createInterface('email', builder => ({
     response: t.void,
   }),
   getEmails: builder.proc({
-    payload: t.void,
-    response: t.array(types.email),
+    payload: types.paginationQueryPayload,
+    response: types.paginationQueryResponse(types.email),
   }),
   getEmailsByDebt: builder.proc({
-    payload: t.string,
-    response: t.array(types.email),
+    payload: t.intersection([
+      t.type({ debtId: t.string }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.email),
   }),
 }));
 

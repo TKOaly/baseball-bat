@@ -1,29 +1,21 @@
+import { createPaginatedQuery } from './pagination';
 import rtkApi from './rtk-api';
 import { Email } from '@bbat/common/types';
 
 const emailApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getEmails: builder.query<Email[], void>({
+    getEmails: createPaginatedQuery<Email>()(builder, {
       query: () => '/emails',
-      providesTags: result => [
-        { type: 'Email' as const, id: 'LIST' },
-        ...(result ?? []).map(email => ({
-          type: 'Email' as const,
-          id: email.id,
-        })),
-      ],
+      paginationTag: 'Email',
     }),
 
-    getEmailsByDebt: builder.query<Email[], string>({
-      query: id => `/emails/by-debt/${id}`,
-      providesTags: result => [
-        { type: 'Email' as const, id: 'LIST' },
-        ...(result ?? []).map(email => ({
-          type: 'Email' as const,
-          id: email.id,
-        })),
-      ],
-    }),
+    getEmailsByDebt: createPaginatedQuery<Email, { debtId: string }>()(
+      builder,
+      {
+        query: ({ debtId }) => `/emails/by-debt/${debtId}`,
+        paginationTag: 'Email',
+      },
+    ),
 
     getEmail: builder.query<Email, string>({
       query: id => `/emails/${id}`,
@@ -51,3 +43,5 @@ export const {
   useSendEmailsMutation,
   useGetEmailsByDebtQuery,
 } = emailApi;
+
+export default emailApi;
