@@ -2,10 +2,10 @@ import { DbDebtCenter, DebtCenter } from '@bbat/common/build/src/types';
 import accountingIface from '../accounting/definitions';
 import sql, { SQLStatement } from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
-import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/Either';
 import routes from './api';
 import * as defs from './definitions';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import { createModule } from '@/module';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({

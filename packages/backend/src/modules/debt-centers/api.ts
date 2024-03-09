@@ -8,14 +8,14 @@ import {
   paginationQuery,
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
-import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/Either';
 import * as debtCentersService from '@/modules/debt-centers/definitions';
 import * as debtService from '@/modules/debts/definitions';
 import * as eventsService from '@/modules/events/definitions';
 import * as payerService from '@/modules/payers/definitions';
 import auth from '@/auth-middleware';
 import { validateBody } from '@/validate-middleware';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import { euroValue } from '@bbat/common/build/src/currency';
 import { RouterFactory } from '@/module';
 

@@ -28,7 +28,7 @@ import {
 import { ResourceSelectField } from '../resource-select-field';
 import { Table } from '@bbat/ui/table';
 import { AddTagDialog } from './add-tag-dialog';
-import { isRight, left } from 'fp-ts/lib/Either';
+import { isRight, left } from 'fp-ts/Either';
 
 type Props = {
   onClose: () => void;

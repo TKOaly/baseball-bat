@@ -49,7 +49,7 @@ import {
 } from '@bbat/common/src/currency';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import * as t from 'io-ts';
-import { isLeft } from 'fp-ts/lib/Either';
+import { isLeft } from 'fp-ts/Either';
 
 type EventSelectionViewProps = {
   state: State;

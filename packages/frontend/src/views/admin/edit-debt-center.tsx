@@ -9,11 +9,11 @@ import { Link, RouteComponentProps, useLocation } from 'wouter';
 import { InputGroup } from '../../components/input-group';
 import { TextField } from '@bbat/ui/text-field';
 import { Textarea } from '@bbat/ui/textarea';
-import * as A from 'fp-ts/lib/Array';
-import * as O from 'fp-ts/lib/Option';
-import * as TE from 'fp-ts/lib/TaskEither';
-import * as E from 'fp-ts/lib/Either';
-import * as S from 'fp-ts/lib/string';
+import * as A from 'fp-ts/Array';
+import * as O from 'fp-ts/Option';
+import * as TE from 'fp-ts/TaskEither';
+import * as E from 'fp-ts/Either';
+import * as S from 'fp-ts/string';
 import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { EuroField } from '../../components/euro-field';
 import {
@@ -23,10 +23,10 @@ import {
   useUpdateDebtComponentMutation,
 } from '../../api/debt';
 import { DebtComponent, euro, NewDebtComponent } from '@bbat/common/src/types';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import { useDialog } from '../../components/dialog';
 import { DebtCenterConfirmationDialog } from '../../components/dialogs/debt-center-edit-confirmation-dialog';
-import { contramap } from 'fp-ts/lib/Eq';
+import { contramap } from 'fp-ts/Eq';
 import { uid } from 'uid';
 
 type FormComponentValue = {

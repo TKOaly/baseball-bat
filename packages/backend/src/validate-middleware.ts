@@ -1,6 +1,6 @@
 import { Middleware, Response } from 'typera-express';
-import { pipe } from 'fp-ts/lib/function';
-import { foldW } from 'fp-ts/lib/Either';
+import { pipe } from 'fp-ts/function';
+import { foldW } from 'fp-ts/Either';
 import * as t from 'io-ts';
 
 export const validateBody =

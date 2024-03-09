@@ -13,8 +13,8 @@ import {
   DateField,
 } from '../../components/resource-page/resource-page';
 import * as t from 'io-ts';
-import * as E from 'fp-ts/lib/Either';
-import { pipe } from 'fp-ts/lib/function';
+import * as E from 'fp-ts/Either';
+import { pipe } from 'fp-ts/function';
 
 type Props = RouteComponentProps<{
   id: string;

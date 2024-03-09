@@ -7,7 +7,7 @@ import {
   ComponentProps,
 } from 'react';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
-import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/Either';
 import { DropdownField } from '@bbat/ui/dropdown-field';
 import { EuroField } from '../../components/euro-field';
 import { DateField } from '@bbat/ui/datetime-field';
@@ -34,7 +34,7 @@ import {
 } from '../../api/debt';
 import { useGetUpstreamUsersQuery } from '../../api/upstream-users';
 import { useLocation } from 'wouter';
-import { isRight } from 'fp-ts/lib/Either';
+import { isRight } from 'fp-ts/Either';
 import { useAppSelector } from '../../store';
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { CreatePayerDialog } from '../../components/dialogs/create-payer-dialog';
@@ -42,7 +42,7 @@ import { useDialog } from '../../components/dialog';
 import { useGetPayersQuery } from '../../api/payers';
 import { uid } from 'uid';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 
 type DebtFormComponentValue = {
   component: string | { name: string };

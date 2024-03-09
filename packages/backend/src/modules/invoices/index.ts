@@ -9,10 +9,10 @@ import {
 } from '../payments/definitions';
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
-import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/Either';
 import { ExecutionContext } from '@/bus';
 import { formatISO, isBefore, parseISO, subDays } from 'date-fns';
-import { isLeft } from 'fp-ts/lib/Either';
+import { isLeft } from 'fp-ts/Either';
 import {
   DbPaymentEventTransactionMapping,
   Payment,

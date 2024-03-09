@@ -5,10 +5,10 @@ import {
 } from '@bbat/common/build/src/types';
 import * as defs from './definitions';
 import * as t from 'io-ts';
-import * as T from 'fp-ts/lib/Task';
-import * as E from 'fp-ts/lib/Either';
-import * as O from 'fp-ts/lib/Option';
-import { flow, pipe } from 'fp-ts/lib/function';
+import * as T from 'fp-ts/Task';
+import * as E from 'fp-ts/Either';
+import * as O from 'fp-ts/Option';
+import { flow, pipe } from 'fp-ts/function';
 import { createModule } from '@/module';
 
 const apiUpstreamUser = t.type({

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { identity } from 'fp-ts/lib/function';
+import { identity } from 'fp-ts/function';
 import { produce } from 'immer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {

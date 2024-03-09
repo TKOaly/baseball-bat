@@ -9,11 +9,11 @@ import {
   defineProcedure,
 } from './procedure';
 import { Decode, Encode, Type } from 'io-ts';
-import * as T from 'fp-ts/lib/Task';
-import * as TE from 'fp-ts/lib/TaskEither';
-import * as E from 'fp-ts/lib/Either';
+import * as T from 'fp-ts/Task';
+import * as TE from 'fp-ts/TaskEither';
+import * as E from 'fp-ts/Either';
 import { Middleware } from 'typera-express';
-import { flow, pipe } from 'fp-ts/lib/function';
+import { flow, pipe } from 'fp-ts/function';
 
 type ProcedureImplementations<I extends Interface, C> = {
   [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;

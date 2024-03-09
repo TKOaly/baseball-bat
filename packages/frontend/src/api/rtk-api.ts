@@ -1,7 +1,7 @@
 import { RootState } from '../store';
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { BaseQueryFn, fetchBaseQuery } from '@reduxjs/toolkit/query';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import sessionSlice from '../session';
 
 const sessionAwareBaseQuery =

@@ -21,7 +21,7 @@ import {
   sumEuroValues,
 } from '@bbat/common/build/src/currency';
 import * as datefns from 'date-fns';
-import { isRight } from 'fp-ts/lib/Either';
+import { isRight } from 'fp-ts/Either';
 import {
   generateDebtLedger,
   generateDebtStatusReport,

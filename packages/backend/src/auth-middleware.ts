@@ -5,12 +5,12 @@ import {
   internalIdentityT,
 } from '@bbat/common/build/src/types';
 import { v4 as uuid } from 'uuid';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import { commandOptions, createClient } from 'redis';
 import * as t from 'io-ts';
-import { range, reduce, map } from 'fp-ts/lib/NonEmptyArray';
-import { randomElem } from 'fp-ts/lib/Random';
-import { split } from 'fp-ts/lib/string';
+import { range, reduce, map } from 'fp-ts/NonEmptyArray';
+import { randomElem } from 'fp-ts/Random';
+import { split } from 'fp-ts/string';
 import { BusContext } from './app';
 import { getPayerProfileByIdentity } from './modules/payers/definitions';
 import { getUpstreamUserById } from './modules/users/definitions';

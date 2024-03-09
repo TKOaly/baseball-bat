@@ -1,12 +1,12 @@
 import * as t from 'io-ts';
-import * as Either from 'fp-ts/lib/Either';
+import * as Either from 'fp-ts/Either';
 import * as tt from 'io-ts-types';
-import { flow, pipe } from 'fp-ts/lib/function';
+import { flow, pipe } from 'fp-ts/function';
 import { EuroValue, euro, euroValue } from './currency';
 import { isMatch } from 'date-fns';
-import { split } from 'fp-ts/lib/string';
-import { reduce, reverse } from 'fp-ts/lib/ReadonlyNonEmptyArray';
-import { foldW } from 'fp-ts/lib/Either';
+import { split } from 'fp-ts/string';
+import { reduce, reverse } from 'fp-ts/ReadonlyNonEmptyArray';
+import { foldW } from 'fp-ts/Either';
 export { type EuroValue, euro };
 
 const date = new t.Type(

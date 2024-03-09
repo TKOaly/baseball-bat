@@ -31,10 +31,10 @@ import {
   PayerIdentity,
   dbDateString,
 } from '@bbat/common/src/types';
-import * as E from 'fp-ts/lib/Either';
+import * as E from 'fp-ts/Either';
 import { CheckSquare, ExternalLink, Square } from 'react-feather';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/function';
 import * as t from 'io-ts';
 import { useDialog } from '../../components/dialog';
 import { CustomComponentColumnDialog } from '../../components/dialogs/custom-component-column-dialog';

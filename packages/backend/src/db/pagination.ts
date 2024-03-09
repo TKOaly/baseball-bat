@@ -2,7 +2,7 @@ import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
 import sql, { SQLStatement } from 'sql-template-strings';
 import { Connection } from './connection';
-import { flow, pipe } from 'fp-ts/lib/function';
+import { flow, pipe } from 'fp-ts/function';
 import * as O from 'fp-ts/Option';
 
 const cursor = t.record(

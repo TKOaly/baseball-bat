@@ -13,8 +13,8 @@ import {
   tkoalyIdentity,
 } from '@bbat/common/types';
 import { parseISO } from 'date-fns';
-import * as Either from 'fp-ts/lib/Either';
-import { pipe } from 'fp-ts/lib/function';
+import * as Either from 'fp-ts/Either';
+import { pipe } from 'fp-ts/function';
 import { createModule } from '@/module';
 
 const getEuro = (value: string): EuroValue | undefined =>
