@@ -7,7 +7,9 @@ import {
   NewDebtComponent,
   PayerIdentity,
 } from '@bbat/common/src/types';
-import * as dfns from 'date-fns';
+import parse from 'date-fns/parse';
+import format from 'date-fns/format';
+import isMatch from 'date-fns/isMatch';
 import {
   useCreateDebtComponentMutation,
   useGetDebtComponentsByCenterQuery,
@@ -249,7 +251,7 @@ export const EditDebt = ({ params }: Props) => {
       name: values.name,
       description: values.description,
       dueDate: values.due_date
-        ? dfns.parse(values.due_date, 'dd.MM.yyyy', new Date())
+        ? parse(values.due_date, 'dd.MM.yyyy', new Date())
         : null,
       date,
       paymentCondition: values.payment_condition
@@ -272,9 +274,9 @@ export const EditDebt = ({ params }: Props) => {
         center: debt.debtCenterId,
         description: debt.description,
         due_date: debt.dueDate
-          ? dfns.format(new Date(debt.dueDate), 'dd.MM.yyyy')
+          ? format(new Date(debt.dueDate), 'dd.MM.yyyy')
           : null,
-        date: debt.date ? dfns.format(new Date(debt.date), 'dd.MM.yyyy') : null,
+        date: debt.date ? format(new Date(debt.date), 'dd.MM.yyyy') : null,
         payment_condition: debt.paymentCondition,
         payer: debt.payerId,
         components: debt.debtComponents.map(({ id, amount }) => ({
@@ -287,7 +289,7 @@ export const EditDebt = ({ params }: Props) => {
         name: '',
         center: { name: '' },
         description: '',
-        due_date: dfns.format(new Date(), 'dd.MM.yyyy'),
+        due_date: format(new Date(), 'dd.MM.yyyy'),
         date: null,
         payment_condition: null,
         payer: null,
@@ -366,7 +368,7 @@ export const EditDebt = ({ params }: Props) => {
           if (values.due_date) {
             if (!/^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$/.test(values.due_date)) {
               errors.due_date = 'Date must be in format <day>.<month>.<year>';
-            } else if (!dfns.isMatch(values.due_date, 'dd.MM.yyyy')) {
+            } else if (!isMatch(values.due_date, 'dd.MM.yyyy')) {
               errors.due_date = 'Invalid date';
             }
           }

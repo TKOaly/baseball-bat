@@ -4,7 +4,7 @@ import { useGetPaymentQuery } from '../api/payments';
 import { useGetDebtsByPaymentQuery } from '../api/debt';
 import { formatEuro, euro, sumEuroValues } from '@bbat/common/src/currency';
 import { isPaymentInvoice, Payment } from '@bbat/common/src/types';
-import { differenceInDays } from 'date-fns';
+import differenceInDays from 'date-fns/differenceInDays';
 import { RouteComponentProps } from 'wouter';
 
 const formatDate = (date: Date | string) => {

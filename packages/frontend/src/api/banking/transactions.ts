@@ -4,7 +4,7 @@ import {
   PaymentEvent,
 } from '@bbat/common/types';
 import rtkApi from '../rtk-api';
-import { parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
 import { createPaginatedQuery } from '../pagination';
 
 const transactionsApi = rtkApi.injectEndpoints({

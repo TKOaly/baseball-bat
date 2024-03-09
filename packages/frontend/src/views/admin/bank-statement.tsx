@@ -11,7 +11,7 @@ import { TransactionList } from '../../components/transaction-list';
 import { useGetBankStatementQuery } from '../../api/banking/statements';
 import transactionsApi from '../../api/banking/transactions';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
-import { format } from 'date-fns';
+import format from 'date-fns/format';
 import { formatEuro } from '@bbat/common/src/currency';
 import { skipToken } from '@reduxjs/toolkit/query';
 

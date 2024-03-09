@@ -11,7 +11,9 @@ import {
   formatEuro,
   sumEuroValues,
 } from '@bbat/common/src/currency';
-import { format, isPast, parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
+import isPast from 'date-fns/isPast';
+import format from 'date-fns/format';
 import { Button } from '@bbat/ui/button';
 import { useAppDispatch, useAppSelector } from '../store';
 import { useGetOwnPaymentsQuery } from '../api/payments';

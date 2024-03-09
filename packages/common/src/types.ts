@@ -3,7 +3,7 @@ import * as Either from 'fp-ts/Either';
 import * as tt from 'io-ts-types';
 import { flow, pipe } from 'fp-ts/function';
 import { EuroValue, euro, euroValue } from './currency';
-import { isMatch } from 'date-fns';
+import isMatch from 'date-fns/isMatch';
 import { split } from 'fp-ts/string';
 import { reduce, reverse } from 'fp-ts/ReadonlyNonEmptyArray';
 import { foldW } from 'fp-ts/Either';

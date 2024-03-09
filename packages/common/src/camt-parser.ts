@@ -1,5 +1,5 @@
 import { EuroValue, cents } from './currency';
-import { parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
 import * as xml2js from 'xml2js';
 import xpath from 'xml2js-xpath';
 

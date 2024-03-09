@@ -10,7 +10,8 @@ import {
 import { useGetPaymentsByDebtQuery } from '../../api/payments';
 import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
-import * as dfns from 'date-fns';
+import format from 'date-fns/format';
+import isPast from 'date-fns/isPast';
 import { TextField as InputTextField } from '@bbat/ui/text-field';
 import { EuroField } from '../../components/euro-field';
 import {
@@ -147,13 +148,11 @@ export const DebtDetails = ({ params }: Props) => {
               Mark paid with cash
             </ActionButton>
           )}
-          {debt?.draft === false &&
-            debt.dueDate &&
-            dfns.isPast(debt.dueDate) && (
-              <ActionButton secondary onClick={handleReminder}>
-                Send reminder
-              </ActionButton>
-            )}
+          {debt?.draft === false && debt.dueDate && isPast(debt.dueDate) && (
+            <ActionButton secondary onClick={handleReminder}>
+              Send reminder
+            </ActionButton>
+          )}
           <ActionButton
             secondary
             onClick={() => setLocation(`/admin/debts/${debt.id}/edit`)}
@@ -185,12 +184,12 @@ export const DebtDetails = ({ params }: Props) => {
         <Field label="Published at">
           {debt.publishedAt === null
             ? 'Not published'
-            : dfns.format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
+            : format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
         </Field>
         {debt.dueDate !== null && (
           <Field label="Due Date">
-            {dfns.format(debt.dueDate, 'dd.MM.yyyy')}
-            {dfns.isPast(debt.dueDate) && (
+            {format(debt.dueDate, 'dd.MM.yyyy')}
+            {isPast(debt.dueDate) && (
               <div
                 className={
                   'ml-2 inline-block rounded-full bg-red-600 px-2.5 py-1 text-sm text-white'

@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
-import { format, parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
+import format from 'date-fns/format';
 import { useGetDebtCentersQuery } from '../../api/debt-centers';
 import { Button, SecondaryButton } from '@bbat/ui/button';
 import { Table } from '@bbat/ui/table';

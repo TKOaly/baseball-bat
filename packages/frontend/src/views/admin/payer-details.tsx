@@ -19,7 +19,7 @@ import {
   BadgeField,
   LinkField,
 } from '../../components/resource-page/resource-page';
-import * as dfns from 'date-fns';
+import isPast from 'date-fns/isPast';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';
@@ -49,7 +49,7 @@ export const PayerDetails = ({ params }: Props) => {
   if (!payer || !emails) return 'Loading...';
 
   const overdue = (debts?.result ?? []).filter(
-    d => d.dueDate && dfns.isPast(d.dueDate),
+    d => d.dueDate && isPast(d.dueDate),
   );
 
   const handleSendReminder = async () => {

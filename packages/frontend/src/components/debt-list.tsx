@@ -9,7 +9,7 @@ import { ExternalLink } from 'react-feather';
 import { MassEditDebtsDialog } from './dialogs/mass-edit-debts-dialog';
 import { useDialog } from './dialog';
 import { sortBy } from 'remeda';
-import { isBefore } from 'date-fns';
+import isBefore from 'date-fns/isBefore';
 import { formatEuro } from '@bbat/common/src/currency';
 import {
   InfiniteTable,

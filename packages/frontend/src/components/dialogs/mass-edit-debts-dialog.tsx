@@ -20,7 +20,8 @@ import {
   EuroValue,
 } from '@bbat/common/src/types';
 import { useMemo } from 'react';
-import * as dfns from 'date-fns';
+import format from 'date-fns/format';
+import parse from 'date-fns/parse';
 import {
   useGetDebtComponentsByCenterQuery,
   useUpdateMultipleDebtsMutation,
@@ -126,10 +127,10 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
   const initialValues = useMemo<FormValues>(() => {
     const names = uniqBy(debts, d => d.name);
     const dueDates = uniqBy(debts, d =>
-      d.dueDate ? dfns.format(d.dueDate, 'dd.MM.yyyy') : '',
+      d.dueDate ? format(d.dueDate, 'dd.MM.yyyy') : '',
     );
     const dates = uniqBy(debts, d =>
-      d.date === null ? null : dfns.format(new Date(d.date), 'dd.MM.yyyy'),
+      d.date === null ? null : format(new Date(d.date), 'dd.MM.yyyy'),
     );
     const paymentConditions = uniqBy(debts, d => d.paymentCondition);
     const debtCenters = uniqBy(debts, d => d.debtCenterId);
@@ -176,9 +177,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
 
     const date =
       dates.length === 1 && dates[0].date !== null
-        ? dbDateString.decode(
-            dfns.format(new Date(dates[0].date), 'yyyy-MM-dd'),
-          )
+        ? dbDateString.decode(format(new Date(dates[0].date), 'yyyy-MM-dd'))
         : left(null);
 
     return {
@@ -186,7 +185,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
       date: isRight(date) ? date.right : null,
       dueDate:
         dueDates.length === 1 && dueDates[0].dueDate
-          ? dfns.format(dueDates[0].dueDate, 'dd.MM.yyyy')
+          ? format(dueDates[0].dueDate, 'dd.MM.yyyy')
           : null,
       debtCenter:
         debtCenters.length === 1
@@ -212,7 +211,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         dueDate:
           values.dueDate === null
             ? null
-            : dfns.parse(values.dueDate, 'dd.MM.yyyy', new Date()),
+            : parse(values.dueDate, 'dd.MM.yyyy', new Date()),
         date: isRight(date) ? date.right : null,
         centerId: values.debtCenter?.id,
         paymentCondition: values.paymentCondition

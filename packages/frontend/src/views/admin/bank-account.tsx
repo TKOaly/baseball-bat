@@ -14,7 +14,7 @@ import { Link, useLocation } from 'wouter';
 import { Table } from '@bbat/ui/table';
 import transactionsApi from '../../api/banking/transactions';
 import { cents, formatEuro } from '@bbat/common/src/currency';
-import { format } from 'date-fns';
+import format from 'date-fns/format';
 import { useGetBankAccountStatementsQuery } from '../../api/banking/statements';
 
 export const BankAccount = ({ iban }: { iban: string }) => {

@@ -8,7 +8,7 @@ import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { Button, SecondaryButton } from '@bbat/ui/button';
 import { formatEuro, EuroValue } from '@bbat/common/src/currency';
-import { format } from 'date-fns';
+import format from 'date-fns/format';
 
 export const ActionButton: React.FC<
   {

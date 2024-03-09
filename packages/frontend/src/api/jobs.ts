@@ -1,4 +1,4 @@
-import { parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
 import { Job, JobStatus } from '@bbat/common/types';
 

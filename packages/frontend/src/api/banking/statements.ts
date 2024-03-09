@@ -1,4 +1,4 @@
-import { parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
 import rtkApi from '../rtk-api';
 import { BankStatement, EuroValue } from '@bbat/common/types';
 

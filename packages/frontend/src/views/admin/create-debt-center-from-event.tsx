@@ -23,7 +23,10 @@ import {
 } from '@bbat/common/src/types';
 import { TextField } from '@bbat/ui/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
-import { addDays, format, isMatch, subYears } from 'date-fns';
+import addDays from 'date-fns/addDays';
+import format from 'date-fns/format';
+import isMatch from 'date-fns/isMatch';
+import subYears from 'date-fns/subYears';
 import { FilledDisc } from '@bbat/ui/filled-disc';
 import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';
@@ -140,9 +143,8 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EndpointDefinitionFrom<E> = E extends ApiEndpointQuery<infer D, any>
-  ? D
-  : never;
+type EndpointDefinitionFrom<E> =
+  E extends ApiEndpointQuery<infer D, any> ? D : never;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMultiFetchHook<E extends ApiEndpointQuery<any, any>>(

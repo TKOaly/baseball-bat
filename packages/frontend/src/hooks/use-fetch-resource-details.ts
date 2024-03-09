@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { format, parseISO } from 'date-fns';
+import format from 'date-fns/format';
+import parseISO from 'date-fns/parseISO';
 import { useEffect } from 'react';
 import { formatEuro } from '@bbat/common/src/currency';
 import { isPaymentInvoice } from '@bbat/common/src/types';

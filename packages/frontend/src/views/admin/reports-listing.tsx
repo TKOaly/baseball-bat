@@ -1,4 +1,5 @@
-import { format, parseISO } from 'date-fns';
+import parseISO from 'date-fns/parseISO';
+import format from 'date-fns/format';
 import { CheckCircle, ExternalLink, Loader, XCircle } from 'react-feather';
 import { Link } from 'wouter';
 import { InternalIdentity } from '@bbat/common/src/types';

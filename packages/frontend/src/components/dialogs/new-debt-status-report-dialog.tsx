@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import format from 'date-fns/format';
 import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGenerateDebtStatusReportMutation } from '../../api/report';

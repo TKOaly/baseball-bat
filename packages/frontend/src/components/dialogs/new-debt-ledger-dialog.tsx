@@ -1,4 +1,6 @@
-import { endOfMonth, format, startOfMonth } from 'date-fns';
+import format from 'date-fns/format';
+import endOfMonth from 'date-fns/endOfMonth';
+import startOfMonth from 'date-fns/startOfMonth';
 import { Formik } from 'formik';
 import { DbDateString, Report } from '@bbat/common/src/types';
 import { useGenerateDebtLedgerMutation } from '../../api/report';
