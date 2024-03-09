@@ -93,3 +93,15 @@
   animation-timing-function: ease-in-out;
   border-radius: 9999px;
 }
+
+body, #root {
+  min-height: 100vh;
+}
+
+#landing {
+  background-color: hsla(240,5%,26%,1);
+  background-image:
+    radial-gradient(at 47% 88%, hsla(240,3%,46%,1) 0px, transparent 50%),
+    radial-gradient(at 76% 36%, hsla(240,3%,15%,1) 0px, transparent 50%),
+    radial-gradient(at 42% 30%, hsla(38,81%,46%,1) 0px, transparent 50%);
+}

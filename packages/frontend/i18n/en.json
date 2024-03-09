@@ -94,6 +94,21 @@
     "stripeReturnPageCancel": "Cancel",
     "stripeReturnPageContinue": "Continue",
     "stripePaymentSucceededHeader": "Payment complete",
-    "stripePaymentSucceededMessage": "The following payment was processed successfully."
+    "stripePaymentSucceededMessage": "The following payment was processed successfully.",
+    "landing": {
+      "heroTitle": "Baseball Bat",
+      "heroParagraph1": "Baseball Bat is TKO-äly ry's online receivables management and payment service.",
+      "heroParagraph2": "By authenticating on the right, you can view your open and closed payments, as well as pay your dues online.",
+      "heroButton": "Organization's homepage",
+      "authHeader": "Authenticate",
+      "authDescription": "Authentication is required for using the service. Authentication can be done via email by using the field below or by using a TKO-äly member's account.",
+      "authTKOalyButton": "Log in with TKO-äly account",
+      "authEmailPlaceholder": "Your email address",
+      "authContinue": "Continue",
+      "authOr": "or",
+      "authSentMessage": "We sent a verification code to your email. Please open your email app and enter the code you received in the field below.",
+      "noSuchEmailError": "No account with such email exists!",
+      "invalidCodeError": "Invalid verification code!"
+    }
   }
 }

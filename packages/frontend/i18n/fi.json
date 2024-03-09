@@ -96,6 +96,21 @@
     "pay": "Maksa",
     "select": "Valitse",
     "unselect": "Poista valinta",
-    "viewDetails": "Tiedot"
+    "viewDetails": "Tiedot",
+    "landing": {
+      "heroTitle": "Baseball Bat",
+      "heroParagraph1": "Baseball Bat on TKO-äly ry:n sähköinen saatavien hallinta- ja maksujärjestelmä.",
+      "heroParagraph2": "Tunnistautumalla sivun oikeassa laidassa pääset tarkastelemaan avoimia sekä suoritettuja maksujasi, sekä suorittamaan maksusi käyttäen verkkomaksua.",
+      "heroButton": "Järjestön kotisivulle",
+      "authHeader": "Tunnistaudu",
+      "authDescription": "Palvelun käyttäminen vaatii tunnistautumisen. Voit tunnistautua käyttämällä sähköpostiosoitettasi tai käyttämällä TKO-äly–tunnustasi.",
+      "authTKOalyButton": "Kirjaudu TKO-äly–tunnuksella",
+      "authEmailPlaceholder": "Sähköpostisi",
+      "authContinue": "Jatka",
+      "authOr": "tai",
+      "authSentMessage": "Lähetimme varmistuskoodin antamaasi sähköpostiin. Avaa sähköpostiohjelmasi ja syötä saamasi koodi alla olevaan kenttään jatkaaksesi.",
+      "noSuchEmailError": "Sähköpostilla ei ole käyttäjää!",
+      "invalidCodeError": "Virheellinen koodi!"
+    }
   }
 }

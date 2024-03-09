@@ -4,15 +4,13 @@ import { Provider } from 'react-redux';
 import { NewPayment } from './views/new-payment';
 import { store } from './store';
 import { PaymentSelectionSidebar } from './components/payment-selection-sidebar';
-import { EmailAuth } from './views/email-auth';
 import { DebtDetails } from './views/debt-details';
-// import { InvalidMagicLink } from './views/invalid-magic-link';
 import { PaymentDetails } from './views/payment-details';
-import { ConfirmEmailAuth } from './views/confirm-email-auth';
 import { Settings } from './views/settings';
 import {
   Redirect,
   Route,
+  Router,
   Switch,
   useLocation,
   useRoute,
@@ -104,14 +102,14 @@ const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({
   sidebars,
 }) => (
   <Provider store={store}>
-    <div className="min-h-screen w-screen justify-center gap-5 bg-[#fbfbfb] pb-10 md:pt-10">
+    <div className="relative z-0 min-h-screen w-screen justify-center gap-5 bg-gray-100 pb-10 pt-20">
       <div className="md:grid-cols-main grid grid-cols-1 justify-center gap-5">
         <h1 className="hidden text-center text-3xl font-bold text-gray-600 md:col-span-3 md:mb-5 md:block">
           TKO-äly ry - Maksupalvelu
         </h1>
         <div className="flex md:justify-end">{sidebars && <Navigation />}</div>
         <div className="mx-3 flex flex-col items-stretch md:w-[40em] md:max-w-[40em]">
-          <div className="flex-grow rounded-lg border border-gray-100 bg-white p-5 shadow-lg">
+          <div className="flex-grow rounded-lg border border-gray-100 bg-white/90 p-5 shadow-lg backdrop-blur-lg">
             {children}
           </div>
         </div>
@@ -174,16 +172,12 @@ const Routes = () => {
       <Route path="/admin/*">
         <LazyAdmin />
       </Route>
+      <Route path="/auth" nest>
+        <Landing />
+      </Route>
       <Route>
         <PublicLayout sidebars={!!session.data?.accessLevel}>
-          <Switch>
-            <Route path="/auth" component={Landing} />
-            <Route path="/auth/email" component={EmailAuth} />
-            <Route
-              path="/auth/email/confirm/:id"
-              component={ConfirmEmailAuth}
-            />
-            {/*<Route path="/magic/invalid" component={InvalidMagicLink} />*/}
+          <Router>
             {session.data !== null && (
               <>
                 <Route path="/">
@@ -203,7 +197,7 @@ const Routes = () => {
                 />
               </>
             )}
-          </Switch>
+          </Router>
         </PublicLayout>
       </Route>
     </Switch>

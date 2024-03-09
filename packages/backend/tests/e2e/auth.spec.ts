@@ -32,12 +32,9 @@ test('email auth', async ({ page, bbat }) => {
   const email = await bbat.mockEmailTransport();
 
   await page.goto(bbat.url);
-  await page.getByText('Email').click();
-  await page.getByPlaceholder('Email').fill('test@test.test');
-  await page.getByText('Send Confirmation').click();
-  expect(page.getByText('No user with such email in the system.')).toHaveCount(
-    0,
-  );
+  await page.getByPlaceholder('Sähköpostisi').fill('test@test.test');
+  await page.getByText('Jatka').click();
+  expect(page.getByText('Sähköpostilla ei ole käyttäjää!')).toHaveCount(0);
 
   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -49,10 +46,7 @@ test('email auth', async ({ page, bbat }) => {
   const content = (email.calls[0].arguments[0] as any).text as string;
   const code = content.match(codeRegex)![1];
 
-  await page.getByPlaceholder('Confirmation Code').fill(code);
-  await page.locator('button').getByText('Confirmation').click();
-
-  await page.getByText('Continue').click();
+  await page.getByTestId('auth-code-0').fill(code);
 
   await expect(page.getByText(/Hi, Teppo Testaaja!/)).toHaveCount(1);
 });
