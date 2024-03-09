@@ -46,7 +46,7 @@ export const InputGroup = <C extends ComponentType<any>>({
         />
       </div>
       {meta.error && typeof meta.error === 'string' && (
-        <span className="text-xs text-red-600 mt-1">{'' + meta.error}</span>
+        <span className="mt-1 text-xs text-red-600">{'' + meta.error}</span>
       )}
     </div>
   );
@@ -79,7 +79,7 @@ export const StandaloneInputGroup = <C extends ComponentType<any>>({
         />
       </div>
       {error && typeof error === 'string' && (
-        <span className="text-xs text-red-600 mt-1">{'' + error}</span>
+        <span className="mt-1 text-xs text-red-600">{'' + error}</span>
       )}
     </div>
   );

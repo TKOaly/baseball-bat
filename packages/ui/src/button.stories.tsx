@@ -5,7 +5,7 @@ export default {
   title: 'Button',
   decorators: [
     Story => (
-      <div className="flex items-center justify-center absolute inset-0">
+      <div className="absolute inset-0 flex items-center justify-center">
         <div className="max-w-[20em]">
           <Story />
         </div>

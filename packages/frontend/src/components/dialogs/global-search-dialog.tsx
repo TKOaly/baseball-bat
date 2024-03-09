@@ -38,13 +38,13 @@ const SearchResultItem = ({
 
   return (
     <div
-      className="rounded-md border border-gray-300 focus:border-blue-500 mt-2 p-2 shadow-sm cursor-pointer"
+      className="mt-2 cursor-pointer rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500"
       tabIndex={0}
       onKeyDown={evt => evt.code === 'Enter' && onSelect()}
       onClick={() => onSelect()}
     >
       <h1 className="flex items-start">
-        <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">
+        <span className="mr-3 rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold capitalize text-white">
           {type.replace(/_/g, ' ')}
         </span>
         <span>{details?.name ?? name}</span>
@@ -63,7 +63,7 @@ const SearchResultItem = ({
 
           return (
             <tr key={label}>
-              <th className="text-left text-gray-700 pr-2">{label}</th>
+              <th className="pr-2 text-left text-gray-700">{label}</th>
               <td>{value}</td>
             </tr>
           );
@@ -124,7 +124,7 @@ export const GlobalSearchDialog = ({
       <DialogHeader>{title ?? 'Search'}</DialogHeader>
       <DialogContent>
         <p>{prompt}</p>
-        <div className="flex gap-3 items-center">
+        <div className="flex items-center gap-3">
           {!isTypeLocked && (
             <Dropdown
               options={[
@@ -150,7 +150,7 @@ export const GlobalSearchDialog = ({
           />
         </div>
 
-        <div className="overflow-y-scroll max-h-80 px-5 mt-3 -mb-3 -mx-3 border-t overflow-hidden">
+        <div className="-mx-3 -mb-3 mt-3 max-h-80 overflow-hidden overflow-y-scroll border-t px-5">
           {(results ?? []).map(({ type, name, id }) => (
             <SearchResultItem
               key={id}

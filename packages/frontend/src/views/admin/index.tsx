@@ -128,14 +128,14 @@ const MenuItem: React.FC<MenuItemProps> = ({
     <li
       className={twMerge(
         `
-        px-4
-        py-1
+        group
         relative
         cursor-pointer
         border-b-2
         border-t-2
         border-gray-50
-        group
+        px-4
+        py-1
         hover:bg-gray-100
         ${matched && 'bg-gray-100'}
       `,
@@ -150,9 +150,9 @@ const MenuItem: React.FC<MenuItemProps> = ({
       }}
     >
       <div
-        className={`absolute left-0 top-0 bottom-0 ${
-          matched ? 'bg-blue-500 w-1.5' : 'bg-gray-300 w-0'
-        } group-hover:w-1.5 duration-200`}
+        className={`absolute bottom-0 left-0 top-0 ${
+          matched ? 'w-1.5 bg-blue-500' : 'w-0 bg-gray-300'
+        } duration-200 group-hover:w-1.5`}
       />
       {children}
     </li>
@@ -167,7 +167,7 @@ const AccountingPeriodSelector = () => {
   const dispatch = useAppDispatch();
 
   return (
-    <div className="flex gap-2 items-center px-4 mt-3">
+    <div className="mt-3 flex items-center gap-2 px-4">
       <span className="text-sm">Accounting Period: </span>
       <Dropdown
         label={
@@ -253,11 +253,11 @@ const Admin = () => {
   };
 
   return (
-    <div className="flex flex-row h-screen bg-white">
+    <div className="flex h-screen flex-row bg-white">
       <div className={sidebarCva({ open: sidebarOpen })} ref={sidebarRef}>
         {sidebarToggleButton(true)}
         {sidebarToggleButton(false)}
-        <h1 className="text-xl text-center py-5">TKO-äly / Laskutuspalvelu</h1>
+        <h1 className="py-5 text-center text-xl">TKO-äly / Laskutuspalvelu</h1>
         <TextField
           placeholder="Search..."
           className="mx-3 mb-5"
@@ -280,7 +280,7 @@ const Admin = () => {
         <AccountingPeriodSelector />
       </div>
       <div className={contentCva({ sidebarOpen })}>
-        <div className="px-12 flex-grow w-full">
+        <div className="w-full flex-grow px-12">
           <Switch>
             <Route path="/admin/debt-centers" component={DebtCentersListing} />
             <Route
@@ -350,7 +350,7 @@ const Admin = () => {
       <div onClick={evt => evt.stopPropagation()} data-cy="dialogs">
         <DialogTarget />
       </div>
-      <div className="absolute right-0 top-0 h-[100vh] flex flex-col justify-end w-[25em] p-4 gap-3 pointer-events-none">
+      <div className="pointer-events-none absolute right-0 top-0 flex h-[100vh] w-[25em] flex-col justify-end gap-3 p-4">
         {notifications.map(notification => (
           <Notification
             key={notification.id}

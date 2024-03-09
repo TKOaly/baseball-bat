@@ -64,19 +64,19 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
   return (
     <div>
       <h3 className="text-2xl">{t('stripeFlowHeading')}</h3>
-      <p className="text-sm mt-3 text-gray-600 mb-5">
+      <p className="mb-5 mt-3 text-sm text-gray-600">
         {t('stripeLongDescription')}
       </p>
       <div className="mb-4">{debts && <PaymentBreakdown debts={debts} />}</div>
-      <h3 className="text-lg font-normal border-b border-gray-300 pb-1 mt-5 mb-3">
+      <h3 className="mb-3 mt-5 border-b border-gray-300 pb-1 text-lg font-normal">
         {t('selectPaymentMethod')}
       </h3>
-      <p className="text-sm mt-3 text-gray-600 mb-5">
+      <p className="mb-5 mt-3 text-sm text-gray-600">
         {t('stripeInstructions')}
       </p>
       {errorMessage !== null && (
-        <div className="rounded-md p-2 border shadow-md border-red-300 bg-red-50 mb-5 text-sm text-red-800 shadow-red-700/10">
-          <h4 className="font-bold mb-1">{t('stripeErrorHeader')}</h4>
+        <div className="mb-5 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-800 shadow-md shadow-red-700/10">
+          <h4 className="mb-1 font-bold">{t('stripeErrorHeader')}</h4>
           <p>{errorMessage}</p>
         </div>
       )}
@@ -85,7 +85,7 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
           layout: 'accordion',
         }}
       />
-      <div className="mt-4 flex gap-3 items-start">
+      <div className="mt-4 flex items-start gap-3">
         <Button
           disabled={!stripe || !elements}
           loading={isLoading}

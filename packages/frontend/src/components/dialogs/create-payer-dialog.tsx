@@ -40,7 +40,7 @@ export const CreatePayerDialog = ({ onClose, name, email }: Props) => {
         <DialogBase onClose={() => onClose(null)}>
           <DialogHeader>New payer</DialogHeader>
           <DialogContent>
-            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+            <div className="gap grid grid-cols-4 gap-x-8 px-4">
               <InputGroup
                 label="Payer name"
                 name="name"

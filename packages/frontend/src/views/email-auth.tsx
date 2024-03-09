@@ -55,7 +55,7 @@ const SendStep = ({
   return (
     <Formik initialValues={{ email: '' }} onSubmit={sendAuthCode}>
       {({ submitForm }) => (
-        <div className="w-80 mx-auto py-5">
+        <div className="mx-auto w-80 py-5">
           <InputGroup
             label="Email"
             name="email"
@@ -116,7 +116,7 @@ const ConfirmStep = ({ state, onCompletion }: StepComponentProps) => {
       }}
     >
       {({ submitForm, setFieldValue }) => (
-        <div className="w-80 mx-auto py-5">
+        <div className="mx-auto w-80 py-5">
           <InputGroup
             name="code"
             label="Confirmation Code"
@@ -190,7 +190,7 @@ export const EmailAuth = () => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">Email Authentication</h3>
+      <h3 className="text-xl font-bold text-gray-500">Email Authentication</h3>
 
       <p className="my-5">
         If you do not have a TKO-äly member account, you can authenticate with a
@@ -198,7 +198,7 @@ export const EmailAuth = () => {
         does not have any other authentication mechanism enabled.
       </p>
 
-      <div className="-mx-5 border-b mb-5"></div>
+      <div className="-mx-5 mb-5 border-b"></div>
 
       <div className="mx-5">
         <Stepper

@@ -44,11 +44,11 @@ const NotificationIcon = (props: { type: NotificationType }) => {
 };
 
 const NotificationProgress = (props: { value: number; max?: number }) => (
-  <div className="flex gap-1.5 pl-3 items-center mr-3 col-[2_/_span_2]">
-    <div className="text-sm mr-0.5 relative t-[-1px]">
+  <div className="col-[2_/_span_2] mr-3 flex items-center gap-1.5 pl-3">
+    <div className="t-[-1px] relative mr-0.5 text-sm">
       {Math.round((props.value / (props.max ?? 1)) * 100)}%
     </div>
-    <div className="h-1 rounded-full bg-white/25 overflow-hidden flex-grow">
+    <div className="h-1 flex-grow overflow-hidden rounded-full bg-white/25">
       <div
         className="h-full bg-white/50"
         style={{
@@ -60,7 +60,7 @@ const NotificationProgress = (props: { value: number; max?: number }) => (
 );
 
 const NotificationButton = (props: NotificationButton) => (
-  <button className="px-1.5 mt-1 text-sm py-0.5 bg-white/10 rounded-sm inline-block">
+  <button className="mt-1 inline-block rounded-sm bg-white/10 px-1.5 py-0.5 text-sm">
     {props.label}
   </button>
 );
@@ -99,18 +99,18 @@ export const Notification = (props: Props) => {
       className={baseClasses({ type: props.type })}
       style={{ gridTemplateColumns: 'min-content auto min-content' }}
     >
-      <div className="w-10 flex items-start pt-4 justify-center row-span-2 pl-3">
+      <div className="row-span-2 flex w-10 items-start justify-center pl-3 pt-4">
         <div>
           <NotificationIcon type={props.type} />
         </div>
       </div>
-      <div className="flex-grow py-2 px-3">
+      <div className="flex-grow px-3 py-2">
         <h1 className="font-bold">{props.title}</h1>
         <p>{props.body}</p>
       </div>
       <div>
         <button
-          className="rounded-sm hover:bg-black/10 inline-block mt-2 mr-2 h-6 w-6 flex items-center justify-center cursor-pointer"
+          className="mr-2 mt-2 inline-block flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm hover:bg-black/10"
           onClick={() => props.onDismiss()}
         >
           <X className="h-5" />
@@ -119,7 +119,7 @@ export const Notification = (props: Props) => {
       {props.progress !== undefined && (
         <NotificationProgress value={props.progress} max={props.progressMax} />
       )}
-      <div className="flex justify-end col-span-3 mr-3 mb-2 gap-2">
+      <div className="col-span-3 mb-2 mr-3 flex justify-end gap-2">
         {(props.buttons ?? []).map(button => (
           <NotificationButton key={button.id} {...button} />
         ))}

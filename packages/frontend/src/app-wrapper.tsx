@@ -44,30 +44,30 @@ const Navigation = () => {
   };
 
   return (
-    <ul className="flex md:flex-col gap-2 px-3 items-stretch pt-5 w-full jusify-items-stretch">
+    <ul className="jusify-items-stretch flex w-full items-stretch gap-2 px-3 pt-5 md:flex-col">
       <li
-        className="bg-gray-200 cursor-pointer rounded-lg py-2 px-3 flex-grow md:flex-grow-0 text-center md:text-left"
+        className="flex-grow cursor-pointer rounded-lg bg-gray-200 px-3 py-2 text-center md:flex-grow-0 md:text-left"
         onClick={() => setLocation('/')}
       >
         {t('navigation.debts')}
       </li>
       <li
-        className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
+        className="flex-grow cursor-pointer rounded-lg px-3 py-2 text-center hover:bg-gray-100 md:flex-grow-0 md:text-left"
         onClick={() => setLocation('/settings')}
       >
         {t('navigation.settings')}
       </li>
       <li
-        className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
+        className="flex-grow cursor-pointer rounded-lg px-3 py-2 text-center hover:bg-gray-100 md:flex-grow-0 md:text-left"
         onClick={() => handleLogOut()}
       >
         {t('navigation.logOut')}
       </li>
       {session.data?.accessLevel === 'admin' && (
         <>
-          <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
+          <li className="w-[2px] bg-gray-100 md:h-[2px] md:w-auto"></li>
           <li
-            className="hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0"
+            className="flex-grow cursor-pointer rounded-lg px-3 py-2 text-center hover:bg-gray-100 md:flex-grow-0 md:text-left"
             onClick={() => setLocation('/admin/debt-centers')}
           >
             {t('navigation.administration')}
@@ -75,10 +75,10 @@ const Navigation = () => {
         </>
       )}
       <>
-        <li className="w-[2px] md:w-auto md:h-[2px] bg-gray-100"></li>
+        <li className="w-[2px] bg-gray-100 md:h-[2px] md:w-auto"></li>
         <li
           className={`
-            hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0
+            flex-grow cursor-pointer rounded-lg px-3 py-2 text-center hover:bg-gray-100 md:flex-grow-0 md:text-left
             ${i18n.language === 'fi' && 'bg-gray-200'}
           `}
           onClick={() => i18n.changeLanguage('fi')}
@@ -87,7 +87,7 @@ const Navigation = () => {
         </li>
         <li
           className={`
-            hover:bg-gray-100 cursor-pointer rounded-lg py-2 px-3 flex-grow text-center md:text-left md:flex-grow-0
+            flex-grow cursor-pointer rounded-lg px-3 py-2 text-center hover:bg-gray-100 md:flex-grow-0 md:text-left
             ${i18n.language === 'en' && 'bg-gray-200'}
           `}
           onClick={() => i18n.changeLanguage('en')}
@@ -104,14 +104,14 @@ const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({
   sidebars,
 }) => (
   <Provider store={store}>
-    <div className="bg-[#fbfbfb] w-screen pb-10 min-h-screen justify-center md:pt-10 gap-5">
-      <div className="grid justify-center gap-5 grid-cols-1 md:grid-cols-main">
-        <h1 className="text-center md:mb-5 hidden md:block text-3xl font-bold text-gray-600 md:col-span-3">
+    <div className="min-h-screen w-screen justify-center gap-5 bg-[#fbfbfb] pb-10 md:pt-10">
+      <div className="md:grid-cols-main grid grid-cols-1 justify-center gap-5">
+        <h1 className="hidden text-center text-3xl font-bold text-gray-600 md:col-span-3 md:mb-5 md:block">
           TKO-äly ry - Maksupalvelu
         </h1>
         <div className="flex md:justify-end">{sidebars && <Navigation />}</div>
-        <div className="mx-3 md:max-w-[40em] md:w-[40em] flex flex-col items-stretch">
-          <div className="rounded-lg bg-white border border-gray-100 shadow-lg flex-grow p-5">
+        <div className="mx-3 flex flex-col items-stretch md:w-[40em] md:max-w-[40em]">
+          <div className="flex-grow rounded-lg border border-gray-100 bg-white p-5 shadow-lg">
             {children}
           </div>
         </div>
@@ -119,7 +119,7 @@ const PublicLayout: React.FC<PropsWithChildren<{ sidebars: boolean }>> = ({
           {sidebars && <PaymentSelectionSidebar />}
         </div>
       </div>
-      <div className="fixed bottom-0 md:hidden flex items-center bg-white border-t shadow py-2 px-3 w-full">
+      <div className="fixed bottom-0 flex w-full items-center border-t bg-white px-3 py-2 shadow md:hidden">
         <div className="flex-grow">
           Valittu 2 maksua.
           <br /> Yhteensä 33,00 euroa.

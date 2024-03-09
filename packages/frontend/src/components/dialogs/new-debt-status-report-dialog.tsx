@@ -63,7 +63,7 @@ export const NewDebtStatusReportDialog = ({
         <DialogBase onClose={() => onClose(null)}>
           <DialogHeader>Generate a new debt status report</DialogHeader>
           <DialogContent>
-            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+            <div className="gap grid grid-cols-4 gap-x-8 px-4">
               <InputGroup
                 label="Date"
                 name="date"

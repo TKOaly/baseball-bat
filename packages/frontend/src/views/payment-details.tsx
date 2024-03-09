@@ -33,48 +33,48 @@ const InvoiceDetails = ({ payment }: { payment: Payment }) => {
     <div className="p-3">
       <table>
         <tr>
-          <th className="text-right pr-3">{t('invoiceTitleHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceTitleHeader')}</th>
           <td>{payment.title}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceNumberHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceNumberHeader')}</th>
           <td>{payment.paymentNumber}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceCreatedAtHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceCreatedAtHeader')}</th>
           <td>{formatDate(payment.createdAt)}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceDueDateHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceDueDateHeader')}</th>
           <td>
             {formatDate(new Date(payment.data.due_date))} (
             {formatDateRelative(payment.data.due_date)})
           </td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceAmountHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceAmountHeader')}</th>
           <td>{formatEuro(payment.balance)}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3 h-4">
+          <th className="h-4 pr-3 text-right">
             {t('invoiceReferenceNumberHeader')}
           </th>
           <td>{payment.data.reference_number}</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">
+          <th className="pr-3 text-right">
             {t('invoiceBeneficaryNameHeader')}
           </th>
           <td>TKO-äly ry</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">
+          <th className="pr-3 text-right">
             {t('invoiceBeneficaryAccountHeader')}
           </th>
           <td>FI89 7997 7995 1312 86</td>
         </tr>
         <tr>
-          <th className="text-right pr-3">{t('invoiceBICHeader')}</th>
+          <th className="pr-3 text-right">{t('invoiceBICHeader')}</th>
           <td>HOLVFIHH</td>
         </tr>
       </table>
@@ -99,34 +99,34 @@ export const PaymentDetails = ({ params }: Props) => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">
+      <h3 className="text-xl font-bold text-gray-500">
         Payment: {payment.title} ({payment.paymentNumber})
       </h3>
 
       <div className="my-3">
         <table>
           <tr>
-            <th className="text-left pr-3">{t('createdAt')}</th>
+            <th className="pr-3 text-left">{t('createdAt')}</th>
             <td>{formatDate(payment.createdAt)}</td>
           </tr>
           <tr>
-            <th className="text-left pr-3">{t('toBePaid')}</th>
+            <th className="pr-3 text-left">{t('toBePaid')}</th>
             <td>{formatEuro(payment.balance)}</td>
           </tr>
           <tr>
-            <th className="text-left pr-3">{t('paymentMethod')}</th>
+            <th className="pr-3 text-left">{t('paymentMethod')}</th>
             <td>{payment.type}</td>
           </tr>
         </table>
       </div>
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('paymentMessage')}
       </h3>
 
       <p className="whitespace-pre p-3">{payment.message}</p>
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('paymentSummary')}
       </h3>
 
@@ -134,7 +134,7 @@ export const PaymentDetails = ({ params }: Props) => {
         {debtsAreLoading && 'Loading...'}
         {(debts ?? []).map(debt => (
           <li className="mb-2 tabular-nums" key={debt.id}>
-            <h4 className="font-bold flex">
+            <h4 className="flex font-bold">
               <span className="flex-grow">{debt.name}</span>
               <span>
                 {formatEuro(
@@ -158,7 +158,7 @@ export const PaymentDetails = ({ params }: Props) => {
           </li>
         ))}
         <li>
-          <h4 className="font-bold flex">
+          <h4 className="flex font-bold">
             <span className="flex-grow">{t('total')}</span>
             <span>
               {formatEuro(
@@ -172,13 +172,13 @@ export const PaymentDetails = ({ params }: Props) => {
         </li>
       </ul>
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('paymentDetailsHeader')}
       </h3>
 
       {payment.type === 'invoice' && <InvoiceDetails payment={payment} />}
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('paymentEventTimeline')}
       </h3>
 

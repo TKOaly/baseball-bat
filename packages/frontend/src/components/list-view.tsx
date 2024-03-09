@@ -7,15 +7,15 @@ const ListViewCardContainer = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={`
+      cursor-pointer
       rounded-md
-      p-5
-      bg-white
-      shadow-sm
       border
       border-gray-100
+      bg-white
+      p-5
+      shadow-sm
       hover:border
       hover:border-yellow-300
-      cursor-pointer
       hover:shadow-sm
       ${className}
     `}
@@ -29,19 +29,19 @@ const ListViewRowContainer = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={`
-      rounded-md
+      flex
+      cursor-pointer
+      items-center
       gap-3
+      rounded-md
+      border
+      bg-white
       px-5
       py-3
-      flex
-      bg-white
       shadow-sm
-      border
       hover:border
       hover:border-blue-200
-      cursor-pointer
       hover:shadow-sm
-      items-center
       ${className}
     `}
     {...props}
@@ -74,16 +74,16 @@ const ListViewCard = ({ item, onSelected }: ListViewItemProps) => {
 
   return (
     <ListViewCardContainer tabIndex={0} onClick={onSelected}>
-      <div className="flex items-center mb-3">
-        <h3 className="text-lg flex-grow mt-0">{item.title}</h3>
-        <span className="text-gray-600 text-right">{item.label}</span>
+      <div className="mb-3 flex items-center">
+        <h3 className="mt-0 flex-grow text-lg">{item.title}</h3>
+        <span className="text-right text-gray-600">{item.label}</span>
       </div>
       <div>{item.description}</div>
       {item.badges.map(badge => (
         <span
-          className={`rounded-md mr-2 bg-gradient-to-br ${
+          className={`mr-2 rounded-md bg-gradient-to-br ${
             colors[badge.color]
-          } py-0.5 px-2`}
+          } px-2 py-0.5`}
           key={badge.label}
         >
           {badge.label}
@@ -100,7 +100,7 @@ const ListViewRow = ({ item, onSelected }: ListViewItemProps) => {
       <div>
         {item.badges.map(badge => (
           <span
-            className={`rounded-md mr-2 bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 py-0.5 px-2`}
+            className={`mr-2 rounded-md bg-gradient-to-br from-${badge.color}-200 to-${badge.color}-300 px-2 py-0.5`}
             key={badge.label}
           >
             {badge.label}
@@ -128,7 +128,7 @@ export const ListView = ({ items, actions, onSelected }: Props) => {
 
   return (
     <div>
-      <div className="flex gap-2 items-center mb-5">
+      <div className="mb-5 flex items-center gap-2">
         {actions}
         <div className="flex-grow"></div>
         <ButtonGroupSelector
@@ -149,9 +149,9 @@ export const ListView = ({ items, actions, onSelected }: Props) => {
       </div>
 
       <div
-        className={`grid items-stretch grid-cols-1 ${
+        className={`grid grid-cols-1 items-stretch ${
           mode === 'cards' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'
-        } gap-3 w-full`}
+        } w-full gap-3`}
       >
         {items.length === 0 && (
           <ListViewCard

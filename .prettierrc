@@ -4,5 +4,6 @@
   "semi": true,
   "arrowParens": "avoid",
   "printWidth": 80,
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "plugins": ["prettier-plugin-tailwindcss"],
 }

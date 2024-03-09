@@ -86,7 +86,7 @@ export function Dropdown<P extends DropdownProps>({
           ref={refs.setReference}
           type="button"
           disabled={disabled}
-          className="text-gray-600 inline-flex disabled:hover:bg-inherit hover:bg-gray-50 focus:outline-none font-medium rounded-lg text-sm text-center items-center"
+          className="inline-flex items-center rounded-lg text-center text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none disabled:hover:bg-inherit"
           {...getReferenceProps()}
         >
           {(options ?? []).find(
@@ -117,28 +117,28 @@ export function Dropdown<P extends DropdownProps>({
               width: 'max-content',
             }}
             className={`
+              scroll-bar-width-narrow
+              absolute
               z-10
               w-44
-              bg-white
-              border
-              rounded
               divide-y
               divide-gray-100
-              shadow
+              rounded
+              border
               bg-gray-700
-              absolute
-              scroll-bar-width-narrow
+              bg-white
+              shadow
               ${scroll && 'max-h-[20em] overflow-y-auto'}
             `}
             {...getFloatingProps()}
           >
             <ul
-              className="py-1 text-sm text-gray-700 text-gray-200"
+              className="py-1 text-sm text-gray-200 text-gray-700"
               aria-labelledby="dropdownDefault"
             >
               {(options ?? []).map((option, i) => {
                 if (option.divider) {
-                  return <li className="h-[1px] bg-gray-200 my-1" key={i}></li>;
+                  return <li className="my-1 h-[1px] bg-gray-200" key={i}></li>;
                 }
 
                 return (
@@ -146,7 +146,7 @@ export function Dropdown<P extends DropdownProps>({
                     <button
                       tabIndex={-1}
                       ref={el => (listRef.current[i] = el)}
-                      className="block w-full text-left py-2 px-4 hover:bg-gray-100 focus:bg-gray-100"
+                      className="block w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100"
                       {...getItemProps({
                         onClick(evt) {
                           evt.stopPropagation();

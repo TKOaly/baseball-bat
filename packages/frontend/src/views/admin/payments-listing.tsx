@@ -6,7 +6,7 @@ export const PaymentsListing = () => {
 
   return (
     <>
-      <h1 className="text-2xl mt-10 mb-5">Payments</h1>
+      <h1 className="mb-5 mt-10 text-2xl">Payments</h1>
       <PaymentList payments={payments ?? []} />
     </>
   );

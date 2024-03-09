@@ -57,37 +57,37 @@ const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className="rounded-md border group border-gray-300 hover:border-blue-300 mt-5 shadow-sm cursor-pointer"
+      className="group mt-5 cursor-pointer rounded-md border border-gray-300 shadow-sm hover:border-blue-300"
       onClick={() => selectable && onChangeSelected?.(!selected)}
     >
       <div className="flex items-center p-4">
         {selectable &&
           (selected ? (
             <FilledDisc
-              className="text-blue-500 group-hover:text-blue-500 mr-4"
+              className="mr-4 text-blue-500 group-hover:text-blue-500"
               style={{ width: '1em', strokeWidth: '2.5px' }}
             />
           ) : (
             <Circle
-              className="text-gray-500 group-hover:text-blue-500 mr-4"
+              className="mr-4 text-gray-500 group-hover:text-blue-500"
               style={{ width: '1em', strokeWidth: '2.5px' }}
             />
           ))}
         <div>
           <h4 className="mb-0">{title}</h4>
-          <div className="text-gray-400 mr-2 text-sm">{subtitle}</div>
+          <div className="mr-2 text-sm text-gray-400">{subtitle}</div>
         </div>
         <div className="flex-grow" />
         {status && (
           <div
-            className={`py-0.5 px-1 text-xs rounded-sm mx-2 font-bold ${status.className}`}
+            className={`mx-2 rounded-sm px-1 py-0.5 text-xs font-bold ${status.className}`}
           >
             {status.label}
           </div>
         )}
         <span className="font-bold text-gray-600">{formatEuro(amount)}</span>
       </div>
-      <div className="border-t px-2.5 py-3 flex gap-1">{actions}</div>
+      <div className="flex gap-1 border-t px-2.5 py-3">{actions}</div>
     </div>
   );
 };
@@ -99,7 +99,7 @@ const CardAction: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   ...props
 }) => (
   <button
-    className={`uppercase text-xs font-bold py-1.5 px-2 rounded ${className}`}
+    className={`rounded px-2 py-1.5 text-xs font-bold uppercase ${className}`}
     onClick={evt => {
       evt.stopPropagation();
       onClick?.(evt);
@@ -211,7 +211,7 @@ export const Main = () => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold">
+      <h3 className="text-xl font-bold text-gray-500">
         {t('welcomeHeader', { name: profile?.name })}
       </h3>
       <p className="mt-3">
@@ -242,7 +242,7 @@ export const Main = () => {
 
       {/*<WelcomeDialog />*/}
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('unpaidDebts')}
       </h3>
 
@@ -251,13 +251,13 @@ export const Main = () => {
       ))}
 
       {unpaidDepts.length === 0 && (
-        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-3 py-3 text-gray-600 shadow">
           <Info />
           {t('noUnpaidDebts')}
         </div>
       )}
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('openInvoices')}
       </h3>
 
@@ -288,13 +288,13 @@ export const Main = () => {
       ))}
 
       {openInvoices.length === 0 && (
-        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-3 py-3 text-gray-600 shadow">
           <Info />
           {t('noOpenInvoices')}
         </div>
       )}
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('closedInvoices')}
       </h3>
 
@@ -354,13 +354,13 @@ export const Main = () => {
           p.type === 'invoice' &&
           isPaymentInvoice(p),
       ).length === 0 && (
-        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-100 border shadow border-gray-300 rounded-md mt-3">
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-3 py-3 text-gray-600 shadow">
           <Info />
           {t('noClosedInvoices')}
         </div>
       )}
 
-      <h3 className="border-b-2 text-xl font-bold pb-1 mt-5 text-gray-600">
+      <h3 className="mt-5 border-b-2 pb-1 text-xl font-bold text-gray-600">
         {t('paidDebts')}
       </h3>
 
@@ -390,7 +390,7 @@ export const Main = () => {
       ))}
 
       {paidDepts.length === 0 && (
-        <div className="py-3 flex items-center text-gray-600 gap-3 px-3 bg-gray-50 border shadow border-gray-300 rounded-md mt-3">
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-gray-600 shadow">
           <Info />
           {t('noPaidDebts')}
         </div>

@@ -56,13 +56,13 @@ export const CreateDebtCenter = () => {
 
   return (
     <div>
-      <h1 className="text-2xl mb-5 mt-10">
+      <h1 className="mb-5 mt-10 text-2xl">
         <Breadcrumbs
           linkComponent={Link}
           segments={[{ text: 'Debt Center', url: '/admin' }, 'Create']}
         />
       </h1>
-      <p className="text-gray-800 mb-7 text-md"></p>
+      <p className="text-md mb-7 text-gray-800"></p>
       <Formik
         initialValues={initialValues}
         enableReinitialize
@@ -143,11 +143,11 @@ export const CreateDebtCenter = () => {
         }}
       >
         {({ submitForm, isSubmitting }) => (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
-            <div className="col-span-full border-b mb-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
+          <div className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+            <div className="col-span-full mb-4 border-b px-1 pb-2 text-xs font-bold uppercase text-gray-400">
               Basic Information
             </div>
-            <p className="col-span-full text-sm mb-2">
+            <p className="col-span-full mb-2 text-sm">
               Lorem ipsum dolor sit amet.
             </p>
             <InputGroup narrow label="Name" name="name" component={TextField} />
@@ -201,12 +201,12 @@ export const CreateDebtCenter = () => {
                 description: '',
               })}
             />
-            <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-              <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+            <div className="col-span-full mt-2 flex items-center justify-end gap-3">
+              <button className="rounded-md bg-gray-100 px-3 py-1.5 font-bold text-gray-500 shadow-sm hover:bg-gray-200 active:ring-2">
                 Cancel
               </button>
               <button
-                className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                className="rounded-md bg-blue-500 px-3 py-1.5 font-bold text-white shadow-sm hover:bg-blue-600 active:ring-2 disabled:bg-gray-400"
                 onClick={submitForm}
                 disabled={isSubmitting}
               >

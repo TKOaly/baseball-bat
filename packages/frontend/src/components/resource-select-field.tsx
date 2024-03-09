@@ -73,13 +73,13 @@ export const ResourceSelectField = (props: Props) => {
     <div>
       <div
         ref={setTriggerRef}
-        className="bg-white mt-1 cursor-pointer flex items-center px-2 w-full border rounded-md shadow-sm inline-block border-gray-200"
+        className="mt-1 inline-block flex w-full cursor-pointer items-center rounded-md border border-gray-200 bg-white px-2 shadow-sm"
         style={{ height: '42px' }}
         onClick={() => handleOpen()}
       >
         {selected && (
           <>
-            <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize whitespace-nowrap">
+            <span className="mr-3 whitespace-nowrap rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold capitalize text-white">
               {selected.type.replace(/_/g, ' ')}
             </span>
             <span>{resourceDetails?.name}</span>
@@ -95,12 +95,12 @@ export const ResourceSelectField = (props: Props) => {
       </div>
       {visible && selected && resourceDetails && (
         <div ref={setTooltipRef} {...getTooltipProps({ className: 'py-1' })}>
-          <div className="rounded-md border border-gray-200 shadow-md bg-white z-10 p-2">
+          <div className="z-10 rounded-md border border-gray-200 bg-white p-2 shadow-md">
             <table className="text-sm">
               <tr>
                 <td colSpan={2}>
-                  <div className="flex items-center mb-2">
-                    <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-2 capitalize">
+                  <div className="mb-2 flex items-center">
+                    <span className="mr-2 rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold capitalize text-white">
                       {resourceDetails.type.replace(/_/g, ' ')}
                     </span>
                     <span>{resourceDetails.name}</span>
@@ -120,7 +120,7 @@ export const ResourceSelectField = (props: Props) => {
 
                 return (
                   <tr key={label}>
-                    <th className="text-left text-gray-700 pr-2">{label}</th>
+                    <th className="pr-2 text-left text-gray-700">{label}</th>
                     <td>{value}</td>
                   </tr>
                 );
@@ -129,7 +129,7 @@ export const ResourceSelectField = (props: Props) => {
           </div>
           <div {...getArrowProps()}>
             <div
-              className="w-2 h-2 bg-white absolute border-r border-b border-gray-200"
+              className="absolute h-2 w-2 border-b border-r border-gray-200 bg-white"
               style={{
                 marginTop: '-1px',
                 transform: 'rotate(45deg) translate(-50%, 0%)',

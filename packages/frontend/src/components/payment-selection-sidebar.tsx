@@ -17,7 +17,7 @@ export const PaymentSelectionSidebar = () => {
   const { data: selectedDebts } = useFetchDebts(selectedDebtIds);
 
   return (
-    <div className="rounded-lg bg-white mx-3 border border-gray-100 shadow-lg p-5 self-start mt-5">
+    <div className="mx-3 mt-5 self-start rounded-lg border border-gray-100 bg-white p-5 shadow-lg">
       {t('selectedDebtCount', { count: selectedDebts?.length })}
       <br />
       {t('selectedDebtTotal', {

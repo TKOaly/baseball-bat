@@ -193,7 +193,7 @@ export const DebtDetails = ({ params }: Props) => {
             {dfns.isPast(debt.dueDate) && (
               <div
                 className={
-                  'ml-2 py-1 px-2.5 text-sm inline-block rounded-full text-white bg-red-600'
+                  'ml-2 inline-block rounded-full bg-red-600 px-2.5 py-1 text-sm text-white'
                 }
               >
                 Overdue

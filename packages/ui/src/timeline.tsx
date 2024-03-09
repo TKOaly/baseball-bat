@@ -16,7 +16,7 @@ export const Timeline = ({ events }: TimelineProps) => {
     <ul className="px-3">
       {events.map((event, i) => (
         <li className="flex items-start" key={String(event.time)}>
-          <div className="flex flex-col self-stretch items-center mr-3">
+          <div className="mr-3 flex flex-col items-center self-stretch">
             <div className={`h-8 ${i > 0 ? 'w-0.5 bg-gray-300' : ''}`}></div>
             <Circle
               className="text-xs text-blue-500 group-hover:text-blue-500"
@@ -27,10 +27,10 @@ export const Timeline = ({ events }: TimelineProps) => {
             )}
           </div>
           <div>
-            <span className="text-xs capitalize text-gray-600 pl-2">
+            <span className="pl-2 text-xs capitalize text-gray-600">
               {formatRelative(event.time, Date.now())}
             </span>
-            <div className="rounded-md border border-gray-300 bg-gray-50 py-2 px-3 shadow-sm text-sm mb-3">
+            <div className="mb-3 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm">
               <h4 className="font-bold text-gray-700">{event.title}</h4>
               <p>{event.body}</p>
             </div>

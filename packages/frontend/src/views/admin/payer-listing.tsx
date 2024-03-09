@@ -27,19 +27,19 @@ export const PayerListing = () => {
 
   return (
     <div>
-      <h1 className="text-2xl mt-10 md-5">Payers</h1>
+      <h1 className="md-5 mt-10 text-2xl">Payers</h1>
 
-      <div className="flex items-center my-4">
+      <div className="my-4 flex items-center">
         <input
           type="checkbox"
           checked={showDisabled}
-          className="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500 focus:ring-blue-600 ring-offset-gray-800 focus:ring-2 bg-gray-700 border-gray-600"
+          className="h-4 w-4 rounded border-gray-300 border-gray-600 bg-gray-100 bg-gray-700 text-blue-600 ring-offset-gray-800 focus:ring-2 focus:ring-blue-500 focus:ring-blue-600"
           onClick={evt => setShowDisabled(evt.currentTarget.checked)}
           id="show-disabled-checkbox"
         />
         <label
           htmlFor="show-disabled-checkbox"
-          className="ml-2 text-sm font-medium text-gray-900 text-gray-300"
+          className="ml-2 text-sm font-medium text-gray-300 text-gray-900"
         >
           Show disabled profiles
         </label>
@@ -136,11 +136,11 @@ export const PayerListing = () => {
             getValue: p => (p.tkoalyUserId?.value ? 'Member' : 'Non-member'),
             render: (_, p) =>
               p.tkoalyUserId?.value ? (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">
+                <span className="rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Member
                 </span>
               ) : (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">
+                <span className="rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-700">
                   Non-member
                 </span>
               ),
@@ -154,11 +154,11 @@ export const PayerListing = () => {
                   getValue: (p: PayerProfile) => (p.disabled ? 'Yes' : 'No'),
                   render: (_: any, p: PayerProfile) =>
                     p.disabled ? (
-                      <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-600 text-xs font-bold text-white">
+                      <span className="rounded-[2pt] bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
                         Yes
                       </span>
                     ) : (
-                      <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">
+                      <span className="rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-700">
                         No
                       </span>
                     ),
@@ -171,7 +171,7 @@ export const PayerListing = () => {
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                <div className="h-1.5 bg-gray-200 w-full rounded-full overflow-hidden">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
                     className="h-full bg-green-400"
                     style={{ width: `${(value * 100).toFixed()}%` }}

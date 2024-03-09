@@ -9,7 +9,7 @@ export const JobsListing = () => {
 
   return (
     <div>
-      <h1 className="text-2xl mt-10 mb-5">Jobs</h1>
+      <h1 className="mb-5 mt-10 text-2xl">Jobs</h1>
       <Table
         persist="jobs"
         rows={(jobs ?? []).map(job => ({ ...job, key: job.id }))}
@@ -57,7 +57,7 @@ export const JobsListing = () => {
               return (
                 <div className="w-full">
                   <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                  <div className="h-1.5 bg-gray-200 w-full rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                     <div
                       className={`h-full ${color}`}
                       style={{ width: `${(value * 100).toFixed()}%` }}

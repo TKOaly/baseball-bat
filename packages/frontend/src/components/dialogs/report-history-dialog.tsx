@@ -25,9 +25,9 @@ const UserLink = ({ id }: { id: InternalIdentity }) => {
     <Link
       onClick={e => e.stopPropagation()}
       to={`/admin/payers/${id.value}`}
-      className="flex gap-1 items-center"
+      className="flex items-center gap-1"
     >
-      {user?.name} <ExternalLink className="text-blue-500 h-4" />
+      {user?.name} <ExternalLink className="h-4 text-blue-500" />
     </Link>
   );
 };
@@ -69,16 +69,16 @@ export const ReportHistoryDialog = ({ onClose, reports }: Params) => {
               name: 'Status',
               getValue: 'status',
               render: status => (
-                <div className="flex gap-1 items-center">
+                <div className="flex items-center gap-1">
                   {
                     (
                       {
                         generating: (
-                          <Loader className="text-blue-600 h-4 animate-[spin_3s_linear_infinite]" />
+                          <Loader className="h-4 animate-[spin_3s_linear_infinite] text-blue-600" />
                         ),
-                        failed: <XCircle className="text-red-600 h-4" />,
+                        failed: <XCircle className="h-4 text-red-600" />,
                         finished: (
-                          <CheckCircle className="text-green-600 h-4" />
+                          <CheckCircle className="h-4 text-green-600" />
                         ),
                       } as Record<string, ReactNode>
                     )[status]

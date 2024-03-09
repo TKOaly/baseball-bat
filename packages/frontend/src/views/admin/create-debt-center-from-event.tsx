@@ -81,7 +81,7 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
 
   return (
     <>
-      <div className="flex gap-5 items-center">
+      <div className="flex items-center gap-5">
         <TextField
           value={search}
           onChange={evt => setSearch(evt.target.value)}
@@ -90,10 +90,10 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
           className="my-5 flex-grow"
         />
         {selected.length === 0 ? (
-          <DisabledButton className="h-[40px] mt-1">Continue</DisabledButton>
+          <DisabledButton className="mt-1 h-[40px]">Continue</DisabledButton>
         ) : (
           <Button
-            className="h-[40px] mt-1"
+            className="mt-1 h-[40px]"
             onClick={() =>
               dispatch({
                 type: 'SELECT_EVENTS',
@@ -113,7 +113,7 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
         )
         .map(event => (
           <div
-            className={`p-3 hover:border-blue-400 cursor-pointer rounded-md bg-white border shadow-sm mt-2 flex items-center ${
+            className={`mt-2 flex cursor-pointer items-center rounded-md border bg-white p-3 shadow-sm hover:border-blue-400 ${
               selected.indexOf(event.id) > -1 && 'border-blue-400'
             }`}
             onClick={() => handleSelect(event)}
@@ -121,12 +121,12 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
           >
             {selected.indexOf(event.id) === -1 ? (
               <Circle
-                className="text-gray-400 mr-3"
+                className="mr-3 text-gray-400"
                 style={{ width: '1em', strokeWidth: '2.5px' }}
               />
             ) : (
               <FilledDisc
-                className="text-blue-500 mr-3"
+                className="mr-3 text-blue-500"
                 style={{ width: '1em', strokeWidth: '2.5px' }}
               />
             )}
@@ -375,7 +375,7 @@ const PricingRuleModal = forwardRef<
                 }))}
               />
             </div>
-            <div className="flex justify-end gap-4 mt-3">
+            <div className="mt-3 flex justify-end gap-4">
               <SecondaryButton
                 onClick={() => {
                   promiseRef.current?.[1]?.();
@@ -485,7 +485,7 @@ const SettingsView = ({
   }
 
   return (
-    <div className="grid gap-x-5 gap-y-2 grid-cols-4">
+    <div className="grid grid-cols-4 gap-x-5 gap-y-2">
       {eventCustomFields && (
         <PricingRuleModal
           ref={promptRef}
@@ -535,7 +535,7 @@ const SettingsView = ({
       >
         {({ submitForm }) => (
           <>
-            <div className="col-span-full border-b mt-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
+            <div className="col-span-full mt-4 border-b px-1 pb-2 text-xs font-bold uppercase text-gray-400">
               Common information
             </div>
             <InputGroup label="Name" name="name" component={TextField} />
@@ -564,14 +564,14 @@ const SettingsView = ({
               fullWidth
               component={Textarea}
             />
-            <div className="col-span-full border-b mb-4 pb-2 uppercase text-xs font-bold text-gray-400 px-1">
+            <div className="col-span-full mb-4 border-b px-1 pb-2 text-xs font-bold uppercase text-gray-400">
               Answer specific pricing
             </div>
             <div className="col-span-full">
               {state.components.map(
                 ({ id: componentId, name, amount, rules }) => (
                   <div
-                    className="px-3 grid gap-x-2 grid-cols-2 mb-3 rounded-md bg-white border shadow-sm mt-2 flex"
+                    className="mb-3 mt-2 flex grid grid-cols-2 gap-x-2 rounded-md border bg-white px-3 shadow-sm"
                     key={componentId}
                   >
                     <StandaloneInputGroup
@@ -620,7 +620,7 @@ const SettingsView = ({
                           if (type === 'CUSTOM_FIELD') {
                             return (
                               <div
-                                className="flex items-center border-b last:border-0 py-2 px-3"
+                                className="flex items-center border-b px-3 py-2 last:border-0"
                                 key={ruleId}
                               >
                                 <Breadcrumbs
@@ -780,10 +780,10 @@ type CustomFieldAnswer = Registration['answers'][0];
 
 const QuestionBadge = ({ question }: { question: CustomFieldAnswer }) => (
   <div className="flex">
-    <span className="py-0.5 max-w-[7em] overflow-hidden text-ellipsis whitespace-nowrap pl-1.5 pr-1 rounded-l-[2pt] bg-gray-500 text-xs font-bold text-gray-200">
+    <span className="max-w-[7em] overflow-hidden text-ellipsis whitespace-nowrap rounded-l-[2pt] bg-gray-500 py-0.5 pl-1.5 pr-1 text-xs font-bold text-gray-200">
       {question.question}
     </span>
-    <span className="py-0.5 whitespace-wrap pr-1.5 pl-1 rounded-r-[2pt] bg-gray-300 text-xs font-bold text-gray-600">
+    <span className="whitespace-wrap rounded-r-[2pt] bg-gray-300 py-0.5 pl-1 pr-1.5 text-xs font-bold text-gray-600">
       {question.answer}
     </span>
   </div>
@@ -794,7 +794,7 @@ const ComponentBadge = ({
 }: {
   component: EvaluatedDebtComponent;
 }) => (
-  <span className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600">
+  <span className="mr-1 whitespace-nowrap rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-600">
     {component.name} ({formatEuro(component.amount)})
   </span>
 );
@@ -891,14 +891,14 @@ const ParticipantsView: React.FC<ParticipantsViewProps> = ({
 
   return (
     <div className="pt-3">
-      <div className="flex items-center mt-10 mb-5">
+      <div className="mb-5 mt-10 flex items-center">
         <div className="h-[1px] w-3 bg-gray-300" />
-        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">
+        <div className="mx-2 text-xs font-bold uppercase text-gray-500">
           Participants
         </div>
-        <div className="h-[1px] bg-gray-300 flex-grow" />
+        <div className="h-[1px] flex-grow bg-gray-300" />
       </div>
-      <p className="mt-5 mb-7 px-3">
+      <p className="mb-7 mt-5 px-3">
         Below are listed the registrations for the users who fit into the
         event&apos;s participant quota. A debt will be created for each of these
         users. You can move participants from this list to the queue below if
@@ -916,14 +916,14 @@ const ParticipantsView: React.FC<ParticipantsViewProps> = ({
         }
         actionLabel="Move to queue"
       />
-      <div className="flex items-center mt-10 mb-5">
+      <div className="mb-5 mt-10 flex items-center">
         <div className="h-[1px] w-3 bg-gray-300" />
-        <div className="text-gray-500 mx-2 text-xs font-bold uppercase">
+        <div className="mx-2 text-xs font-bold uppercase text-gray-500">
           Queue
         </div>
-        <div className="h-[1px] bg-gray-300 flex-grow" />
+        <div className="h-[1px] flex-grow bg-gray-300" />
       </div>
-      <p className="mt-5 mb-7 px-3">
+      <p className="mb-7 mt-5 px-3">
         Below is a list of users who have registered to the event but will not
         be charged. Initially this list contains users in the registration
         queue.
@@ -940,7 +940,7 @@ const ParticipantsView: React.FC<ParticipantsViewProps> = ({
         }
         actionLabel="Move to participants"
       />
-      <div className="flex gap-3 justify-end">
+      <div className="flex justify-end gap-3">
         <Button
           secondary
           className="mt-5 inline-block"
@@ -1039,7 +1039,7 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({
           },
         ]}
       />
-      <div className="flex justify-end gap-3 mt-5">
+      <div className="mt-5 flex justify-end gap-3">
         <Button secondary onClick={() => dispatch({ type: 'PREVIOUS_STEP' })}>
           Back
         </Button>
@@ -1434,7 +1434,7 @@ export const CreateDebtCenterFromEvent = () => {
 
   return (
     <>
-      <h1 className="text-2xl mt-10 mb-5">
+      <h1 className="mb-5 mt-10 text-2xl">
         <Breadcrumbs
           linkComponent={Link}
           segments={[

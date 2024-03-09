@@ -54,13 +54,13 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
         render: value => {
           if (value === 'credit') {
             return (
-              <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white">
+              <span className="rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold text-white">
                 Credit
               </span>
             );
           } else if (value === 'debit') {
             return (
-              <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-700">
+              <span className="rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-700">
                 Debit
               </span>
             );
@@ -109,11 +109,11 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
 
             return (
               <div
-                className="flex items-center cursor-pointer gap-1"
+                className="flex cursor-pointer items-center gap-1"
                 onClick={() => setLocation(`/admin/payments/${payment.id}`)}
               >
                 {payment.paymentNumber}
-                <ExternalLink className="h-4 text-blue-500 relative" />
+                <ExternalLink className="relative h-4 text-blue-500" />
               </div>
             );
           }

@@ -264,7 +264,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
 
   return (
     <div>
-      <h1 className="text-2xl mt-10 mb-5">
+      <h1 className="mb-5 mt-10 text-2xl">
         <Breadcrumbs
           segments={[
             {
@@ -321,7 +321,7 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
           }
 
           return (
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-x-8">
+            <div className="grid grid-cols-2 gap-x-8 xl:grid-cols-4">
               <InputGroup label="Name" name="name" component={TextField} />
               <InputGroup
                 label="Center"
@@ -489,12 +489,12 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
                   },
                 ]}
               />
-              <div className="col-span-full flex items-center justify-end gap-3 mt-2">
-                <button className="bg-gray-100 hover:bg-gray-200 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-gray-500 font-bold">
+              <div className="col-span-full mt-2 flex items-center justify-end gap-3">
+                <button className="rounded-md bg-gray-100 px-3 py-1.5 font-bold text-gray-500 shadow-sm hover:bg-gray-200 active:ring-2">
                   Cancel
                 </button>
                 <button
-                  className="bg-blue-500 disabled:bg-gray-400 hover:bg-blue-600 active:ring-2 shadow-sm rounded-md py-1.5 px-3 text-white font-bold"
+                  className="rounded-md bg-blue-500 px-3 py-1.5 font-bold text-white shadow-sm hover:bg-blue-600 active:ring-2 disabled:bg-gray-400"
                   onClick={submitForm}
                   disabled={isSubmitting}
                   data-testid="create-debt"

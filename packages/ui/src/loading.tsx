@@ -25,7 +25,7 @@ const Wrapper = styled.div`
 
 export const Loading = () => {
   return (
-    <Wrapper className="w-screen h-screen flex items-center justify-center">
+    <Wrapper className="flex h-screen w-screen items-center justify-center">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="24"

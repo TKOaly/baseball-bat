@@ -23,7 +23,7 @@ export const CustomComponentColumnDialog = ({ onClose }: Props) => {
     <DialogBase onClose={() => onClose(null)}>
       <DialogHeader>Create a custom component column</DialogHeader>
       <DialogContent>
-        <div className="flex items-center mb-4 gap-6 mx-4">
+        <div className="mx-4 mb-4 flex items-center gap-6">
           <StandaloneInputGroup
             name="name"
             label="Component name"

@@ -115,20 +115,20 @@ export const DropdownField = memo(
           tabIndex={allowCustom ? -2 : 0}
           className={`
           relative
-          bg-white
-          cursor-pointer
           w-full
+          cursor-pointer
+          bg-white
           ${rounding}
-          border
-          py-2
-          px-3
           mt-1
-          shadow-sm
-          active:ring-2
-          ring-red-600
           flex
           items-center
           overflow-hidden
+          border
+          px-3
+          py-2
+          shadow-sm
+          ring-red-600
+          active:ring-2
         `}
           ref={refs.setReference}
           {...getReferenceProps({
@@ -144,7 +144,7 @@ export const DropdownField = memo(
               <input
                 ref={inputRef}
                 type="text"
-                className="flex-grow bg-transparent border-0 p-0 outline-0 box-shadow-[none] absolute inset-0 h-full w-full py-2 px-3"
+                className="box-shadow-[none] absolute inset-0 h-full w-full flex-grow border-0 bg-transparent p-0 px-3 py-2 outline-0"
                 onChange={evt => setSearch(evt.currentTarget.value)}
                 value={search ?? selectedLabel}
               />
@@ -155,7 +155,7 @@ export const DropdownField = memo(
           )}
           <div className="flex items-center gap-1">
             {allowCustom && !selectedOption && value && (
-              <span className="rounded-sm py-0.5 px-1 text-white text-xs bg-blue-500">
+              <span className="rounded-sm bg-blue-500 px-1 py-0.5 text-xs text-white">
                 New
               </span>
             )}
@@ -171,13 +171,13 @@ export const DropdownField = memo(
           {open && (
             <div
               className={`
-              bg-white
-              border
-              rounded-md
+              z-50
               mt-1
               overflow-hidden
+              rounded-md
+              border
+              bg-white
               shadow-lg
-              z-50
             `}
               style={{
                 position: strategy,
@@ -190,9 +190,9 @@ export const DropdownField = memo(
               <ul
                 className={`
                 flex
+                max-h-[10em]
                 flex-col
                 gap-y-1
-                max-h-[10em]
                 overflow-y-auto
                 overflow-x-hidden
                 p-1
@@ -203,13 +203,13 @@ export const DropdownField = memo(
                   <li
                     key={JSON.stringify(option.value)}
                     className={`
-                      py-1
-                      px-2
-                      hover:bg-gray-50
-                      rounded-sm
-                      cursor-pointer
                       flex
+                      cursor-pointer
                       items-center
+                      rounded-sm
+                      px-2
+                      py-1
+                      hover:bg-gray-50
                       ${value === option.value && 'bg-gray-50'}
                     `}
                     tabIndex={-1}
@@ -230,7 +230,7 @@ export const DropdownField = memo(
                   >
                     <span className="flex-grow">{option.text}</span>
                     {option.label && (
-                      <span className="text-gray-500 text-sm">
+                      <span className="text-sm text-gray-500">
                         {option.label}
                       </span>
                     )}
@@ -239,12 +239,12 @@ export const DropdownField = memo(
                 {search && allowCustom && (
                   <li
                     className={`
-                      py-1
-                      px-2
-                      hover:bg-gray-50
-                      rounded-sm
                       cursor-pointer
+                      rounded-sm
+                      px-2
+                      py-1
                       text-gray-700
+                      hover:bg-gray-50
                     `}
                     tabIndex={-1}
                     ref={node => {

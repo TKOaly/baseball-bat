@@ -21,7 +21,7 @@ export const AddTagDialog = ({ onClose }: Props) => {
       <DialogHeader>Add tag</DialogHeader>
       <DialogContent>
         <p className="mb-4 text-sm">Create a new tag for the selected debts.</p>
-        <div className="flex items-center mb-4">
+        <div className="mb-4 flex items-center">
           <StandaloneInputGroup
             name="tag-name"
             label="Tag name"

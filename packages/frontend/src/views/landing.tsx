@@ -7,15 +7,15 @@ export const Landing = () => {
 
   return (
     <>
-      <h3 className="text-xl text-gray-500 font-bold mb-5">Authenticate</h3>
+      <h3 className="mb-5 text-xl font-bold text-gray-500">Authenticate</h3>
       <p>
         Authentication is required in order to view your personal payment
         information. Choose a method of authentication from the list below:
       </p>
-      <ul className="flex flex-col gap-3 w-80 mx-auto my-10">
+      <ul className="mx-auto my-10 flex w-80 flex-col gap-3">
         <li className="">
           <Button
-            className="bg-yellow-300 hover:bg-yellow-400 w-full text-black shadow"
+            className="w-full bg-yellow-300 text-black shadow hover:bg-yellow-400"
             onClick={() =>
               window.location.replace(`${BACKEND_URL}/api/session/login`)
             }

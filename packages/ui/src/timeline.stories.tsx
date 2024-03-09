@@ -7,7 +7,7 @@ const meta: Meta<typeof Timeline> = {
   title: 'Timeline',
   decorators: [
     Story => (
-      <div className="flex items-center justify-center absolute inset-0">
+      <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-[20em]">
           <Story />
         </div>

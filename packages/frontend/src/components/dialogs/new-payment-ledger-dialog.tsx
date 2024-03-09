@@ -67,7 +67,7 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
         <DialogBase onClose={() => onClose(null)}>
           <DialogHeader>Generate a new payment ledger</DialogHeader>
           <DialogContent>
-            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+            <div className="gap grid grid-cols-4 gap-x-8 px-4">
               <InputGroup
                 label="Start Date"
                 name="startDate"

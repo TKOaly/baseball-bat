@@ -266,8 +266,8 @@ export const TransactionRegistrationDialog = ({
               },
             ]}
             footer={
-              <div className="flex w-full -ml-4 items-center">
-                <span className="text-gray-600 text-sm">
+              <div className="-ml-4 flex w-full items-center">
+                <span className="text-sm text-gray-600">
                   Total: {formatEuro(registrationTotal)}{' '}
                   <span
                     className={

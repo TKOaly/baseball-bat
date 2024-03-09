@@ -119,7 +119,7 @@ export const PayerDetails = ({ params }: Props) => {
           {emails.map(email => (
             <span
               title={`Source: ${email.source}`}
-              className={`rounded-[3pt] text-sm py-0.5 px-2 ${
+              className={`rounded-[3pt] px-2 py-0.5 text-sm ${
                 {
                   primary: 'bg-blue-500 text-white',
                   default: 'bg-gray-500 text-black',

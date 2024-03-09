@@ -35,15 +35,15 @@ export const DebtListing = () => {
 
   return (
     <>
-      <h1 className="text-2xl mb-5 mt-10">Debts {tag && `(Tag: "${tag}")`}</h1>
-      <p className="text-gray-800 mb-7 text-md">
+      <h1 className="mb-5 mt-10 text-2xl">Debts {tag && `(Tag: "${tag}")`}</h1>
+      <p className="text-md mb-7 text-gray-800">
         {tag
           ? `Here are listed all debts associated with the tag "${tag}".`
           : 'Here are listed all individual debts in the system.'}
         A debt corresponds usually to a single event registration, but may not
         have one-to-one mapping to a payment.
       </p>
-      <div className="flex gap-3 mb-7">
+      <div className="mb-7 flex gap-3">
         <Button onClick={() => setLocation('/admin/debts/create')}>
           Create
         </Button>

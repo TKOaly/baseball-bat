@@ -37,13 +37,13 @@ export const ActionButton: React.FC<
 export const Section: React.FC<
   PropsWithChildren<{ title: string; columns?: 1 | 2 }>
 > = ({ title, columns = 1, children }) => (
-  <div className={'mt-5 mb-10 resource-section'}>
-    <div className="flex items-center mt-4 mb-5">
+  <div className={'resource-section mb-10 mt-5'}>
+    <div className="mb-5 mt-4 flex items-center">
       <div className="h-[1px] w-3 bg-gray-300" />
-      <div className="text-gray-500 mx-2 text-xs font-bold uppercase resource-section-title">
+      <div className="resource-section-title mx-2 text-xs font-bold uppercase text-gray-500">
         {title}
       </div>
-      <div className="h-[1px] bg-gray-300 flex-grow" />
+      <div className="h-[1px] flex-grow bg-gray-300" />
     </div>
     <div
       className={`px-1 ${
@@ -71,10 +71,10 @@ export const Field: React.FC<PropsWithChildren<FieldProps>> = ({
   children,
 }) => (
   <div className={`${fullWidth ? 'col-span-full' : ''} resource-field`}>
-    <div className="resource-field-label text-gray-500 text-xs font-bold uppercase">
+    <div className="resource-field-label text-xs font-bold uppercase text-gray-500">
       {label}
     </div>
-    <div className="mt-1 resource-field-content">
+    <div className="resource-field-content mt-1">
       <DataWrapper>{children}</DataWrapper>
     </div>
   </div>
@@ -86,7 +86,7 @@ export const SectionDescription: React.FC<{ children?: ReactNode }> = ({
 
 export const Actions: React.FC<{ children?: ReactNode }> = ({ children }) => {
   return (
-    <div className="flex flex-col items-end lg:items-center lg:flex-row gap-2 text-base">
+    <div className="flex flex-col items-end gap-2 text-base lg:flex-row lg:items-center">
       {children}
     </div>
   );
@@ -97,7 +97,7 @@ export const Title: React.FC<{ children?: ReactNode }> = ({ children }) => {
 };
 
 export const Header: React.FC<{ children?: ReactNode }> = ({ children }) => {
-  return <h1 className="text-2xl mt-10 mb-5 flex">{children}</h1>;
+  return <h1 className="mb-5 mt-10 flex text-2xl">{children}</h1>;
 };
 
 export const Page: React.FC<{ children?: ReactNode }> = ({ children }) => {
@@ -120,11 +120,11 @@ export const LinkField: React.FC<FieldProps & { to: string; text: string }> = ({
     <Field {...props}>
       <a
         href="#"
-        className="flex items-center cursor-pointer gap-1"
+        className="flex cursor-pointer items-center gap-1"
         onClick={() => setLocation(to)}
       >
         {text}
-        <ExternalLink className="h-4 text-blue-500 relative" />
+        <ExternalLink className="relative h-4 text-blue-500" />
       </a>
     </Field>
   );
@@ -164,7 +164,7 @@ export const BadgeField: React.FC<
 > = ({ color, text, ...props }) => (
   <Field {...props}>
     <div
-      className={`py-1 px-2.5 text-sm inline-block rounded-full ${badgeColorClasses[color]}`}
+      className={`inline-block rounded-full px-2.5 py-1 text-sm ${badgeColorClasses[color]}`}
     >
       {text}
     </div>

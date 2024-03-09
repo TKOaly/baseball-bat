@@ -62,7 +62,7 @@ export const StatusIndicator = (props: StatusIndicatorProps) => {
         loading: (props: any) => (
           <Loader
             className={
-              'animate-[spin_3s_linear_infinite] duration-200 text-blue-500'
+              'animate-[spin_3s_linear_infinite] text-blue-500 duration-200'
             }
             {...props}
           />
@@ -107,14 +107,14 @@ export const StatusIndicator = (props: StatusIndicatorProps) => {
               return (
                 <div
                   key={id}
-                  className={`text-sm py-1 px-2 flex gap-2 items-center ${
+                  className={`flex items-center gap-2 px-2 py-1 text-sm ${
                     {
                       error: 'bg-red-500',
                       warning: 'bg-red-500',
                       info: 'bg-blue-500',
                       loading: 'bg-blue-500',
                     }[type]
-                  } rounded shadow-md text-white`}
+                  } rounded text-white shadow-md`}
                 >
                   <Icon
                     className="text-white"

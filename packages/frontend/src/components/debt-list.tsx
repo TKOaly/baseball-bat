@@ -57,9 +57,9 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           <Link
             onClick={e => e.stopPropagation()}
             to={`/admin/payers/${row.payer.id.value}`}
-            className="flex gap-1 items-center"
+            className="flex items-center gap-1"
           >
-            {row.payer.name} <ExternalLink className="text-blue-500 h-4" />
+            {row.payer.name} <ExternalLink className="h-4 text-blue-500" />
           </Link>
         ),
       },
@@ -99,32 +99,32 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           value.map(value => {
             return {
               Draft: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-500 text-xs font-bold text-white mr-1">
+                <span className="mr-1 rounded-[2pt] bg-gray-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Draft
                 </span>
               ),
               Unpaid: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600 mr-1">
+                <span className="mr-1 rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-600">
                   Unpaid
                 </span>
               ),
               Mispaid: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
+                <span className="mr-1 rounded-[2pt] bg-red-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Mispaid
                 </span>
               ),
               Overdue: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-red-500 text-xs font-bold text-white mr-1">
+                <span className="mr-1 rounded-[2pt] bg-red-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Overdue
                 </span>
               ),
               Paid: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-green-500 text-xs font-bold text-white mr-1">
+                <span className="mr-1 rounded-[2pt] bg-green-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Paid
                 </span>
               ),
               Credited: (
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-1">
+                <span className="mr-1 rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Credited
                 </span>
               ),
@@ -147,7 +147,7 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
         render: (value: { name: string; id: string }[]) =>
           value.map(({ name, id }) => (
             <span
-              className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
+              className="mr-1 whitespace-nowrap rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-600"
               key={id}
             >
               {name}
@@ -162,7 +162,7 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
         render: (value: { name: string }[]) =>
           value.map(({ name }) => (
             <span
-              className="py-0.5 whitespace-nowrap px-1.5 mr-1 rounded-[2pt] bg-gray-300 text-xs font-bold text-gray-600"
+              className="mr-1 whitespace-nowrap rounded-[2pt] bg-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-600"
               key={name}
             >
               {name}

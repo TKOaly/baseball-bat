@@ -84,7 +84,7 @@ export const ImportXMLStatement = () => {
 
   return (
     <div>
-      <h1 className="text-2xl mb-5 mt-10">
+      <h1 className="mb-5 mt-10 text-2xl">
         <Breadcrumbs
           segments={[
             { text: 'Banking', url: '/admin/banking' },
@@ -94,41 +94,41 @@ export const ImportXMLStatement = () => {
       </h1>
 
       {parsedStatement && (
-        <div className="rounded-md px-3 py-2 border shadow-sm mb-5">
+        <div className="mb-5 rounded-md border px-3 py-2 shadow-sm">
           <table>
             <tr>
-              <th className="text-left pr-2 text-gray">Period</th>
+              <th className="text-gray pr-2 text-left">Period</th>
               <td>
                 {format(parsedStatement.openingBalance.date, 'dd.MM.yyyy')} –{' '}
                 {format(parsedStatement.closingBalance.date, 'dd.MM.yyyy')}
               </td>
             </tr>
             <tr>
-              <th className="text-left pr-2 text-gray">Bank</th>
+              <th className="text-gray pr-2 text-left">Bank</th>
               <td>
                 {parsedStatement.servicer.name} ({parsedStatement.servicer.bic})
               </td>
             </tr>
             <tr>
-              <th className="text-left pr-2 text-gray">Account</th>
+              <th className="text-gray pr-2 text-left">Account</th>
               <td className="flex items-center">
                 {parsedStatement.account.iban}
                 {accounts &&
                   accounts
                     .map(a => a.iban)
                     .indexOf(parsedStatement.account.iban) === -1 && (
-                    <span className="rounded-sm py-0.5 px-1 text-white text-xs bg-red-600 ml-2">
+                    <span className="ml-2 rounded-sm bg-red-600 px-1 py-0.5 text-xs text-white">
                       Not found!
                     </span>
                   )}
               </td>
             </tr>
             <tr>
-              <th className="text-left pr-2">Transactions</th>
+              <th className="pr-2 text-left">Transactions</th>
               <td>{parsedStatement.entries.length}</td>
             </tr>
             <tr>
-              <th className="text-left pr-2">Debit</th>
+              <th className="pr-2 text-left">Debit</th>
               <td>
                 {formatEuro(
                   parsedStatement.entries
@@ -139,7 +139,7 @@ export const ImportXMLStatement = () => {
               </td>
             </tr>
             <tr>
-              <th className="text-left pr-2">Credit</th>
+              <th className="pr-2 text-left">Credit</th>
               <td>
                 {formatEuro(
                   parsedStatement.entries
@@ -150,11 +150,11 @@ export const ImportXMLStatement = () => {
               </td>
             </tr>
             <tr>
-              <th className="text-left pr-2">Opening balance</th>
+              <th className="pr-2 text-left">Opening balance</th>
               <td>{formatEuro(parsedStatement.openingBalance.amount)}</td>
             </tr>
             <tr>
-              <th className="text-left pr-2">Closing balance</th>
+              <th className="pr-2 text-left">Closing balance</th>
               <td>
                 {formatEuro(parsedStatement.closingBalance.amount)}{' '}
                 <span className="text-gray-500">

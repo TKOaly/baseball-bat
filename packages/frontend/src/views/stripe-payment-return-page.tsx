@@ -62,13 +62,13 @@ export const StripePaymentReturnPage = (props: Props) => {
           ? t('stripePaymentFailedHeader')
           : t('stripePaymentSucceededHeader')}
       </h3>
-      <p className="text-sm mt-3 text-gray-600 mb-5">
+      <p className="mb-5 mt-3 text-sm text-gray-600">
         {failed
           ? t('stripePaymentFailedMessage')
           : t('stripePaymentSucceededMessage')}
       </p>
       <div className="mb-4">{debts && <PaymentBreakdown debts={debts} />}</div>
-      <div className="flex gap-3 items-start">{actions}</div>
+      <div className="flex items-start gap-3">{actions}</div>
     </div>
   );
 };

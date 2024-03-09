@@ -61,44 +61,44 @@ export const NewPayment = () => {
     <>
       <h3 className="text-2xl">{t('newPaymentHeader')}</h3>
 
-      <p className="text-sm mt-3 text-gray-600 mb-5">
+      <p className="mb-5 mt-3 text-sm text-gray-600">
         {t('newPaymentDescription')}
       </p>
 
       {debts && <PaymentBreakdown debts={debts} />}
 
-      <h3 className="text-lg font-normal border-b border-gray-300 pb-1 mt-5">
+      <h3 className="mt-5 border-b border-gray-300 pb-1 text-lg font-normal">
         {t('selectPaymentMethod')}
       </h3>
 
-      <p className="text-sm mt-3 text-gray-600">
+      <p className="mt-3 text-sm text-gray-600">
         {t('selectPaymentMethodInstruction')}
       </p>
 
       <div>
         <div
-          className="rounded-md flex items-center border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
+          className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 p-4 shadow-sm hover:border-blue-400"
           onClick={() => handleCreateInvoice()}
         >
-          <InvoiceIcon className="w-5 h-5 mr-3 text-gray-300" />
+          <InvoiceIcon className="mr-3 h-5 w-5 text-gray-300" />
           <div className="flex-grow">
             <h3 className="font-bold">{t('invoice')}</h3>
             <p className="text-sm text-gray-700">{t('invoiceDescription')}</p>
           </div>
-          <ChevronRight className="h-8 w-8 text-gray-400 ml-3 hover:bg-gray-200 rounded-full" />
+          <ChevronRight className="ml-3 h-8 w-8 rounded-full text-gray-400 hover:bg-gray-200" />
         </div>
 
         {import.meta.env.DEV && (
           <div
-            className="rounded-md flex items-center border group border-gray-300 hover:border-blue-400 mt-5 p-4 shadow-sm cursor-pointer"
+            className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 p-4 shadow-sm hover:border-blue-400"
             onClick={() => handleCreateStripePayment()}
           >
-            <StripeIcon className="w-5 h-5 mr-3 text-gray-300" />
+            <StripeIcon className="mr-3 h-5 w-5 text-gray-300" />
             <div className="flex-grow">
               <h3 className="font-bold">{t('stripe')}</h3>
               <p className="text-sm text-gray-700">{t('stripeDescription')}</p>
             </div>
-            <ChevronRight className="h-8 w-8 text-gray-400 ml-3 rounded-full" />
+            <ChevronRight className="ml-3 h-8 w-8 rounded-full text-gray-400" />
           </div>
         )}
       </div>

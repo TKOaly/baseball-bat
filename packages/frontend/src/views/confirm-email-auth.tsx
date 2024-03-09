@@ -7,12 +7,12 @@ export const ConfirmEmailAuth = () => {
         Authentication Successful
       </h1>
 
-      <p className="mt-5 mb-7">
+      <p className="mb-7 mt-5">
         Authentication was succesfull. You can begin a session in this browser
         or the one from which you initiated the authentication.
       </p>
 
-      <ul className="flex flex-col gap-2 items-center">
+      <ul className="flex flex-col items-center gap-2">
         <li className="inline">
           <Button>Continue Here</Button>
         </li>

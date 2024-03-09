@@ -113,7 +113,7 @@ export const TabularFieldList = <
 
       if (!readOnly && !disableRemove) {
         fields.push(
-          <div className="px-2 text-gray-600 flex items-center mt-1">
+          <div className="mt-1 flex items-center px-2 text-gray-600">
             <button onClick={() => tools.remove(rowIndex)}>
               <Cross />
             </button>
@@ -126,7 +126,7 @@ export const TabularFieldList = <
           const error = errors?.[`${name}.${rowIndex}.${key}`];
 
           return (
-            <div className="text-sm text-red-500 px-1" key={key}>
+            <div className="px-1 text-sm text-red-500" key={key}>
               {error && `${error}`}
             </div>
           );
@@ -140,7 +140,7 @@ export const TabularFieldList = <
       return fields;
     }),
     !readOnly && createNew !== undefined && (
-      <div className="col-span-full flex justify-end pt-1 pr-2 text-gray-600">
+      <div className="col-span-full flex justify-end pr-2 pt-1 text-gray-600">
         <button
           onClick={() => tools.push(createNew())}
           data-testid="tabular-field-list-add-button"
@@ -177,7 +177,7 @@ export const TabularFieldList = <
 
   return (
     <div
-      className="flex mt-1 col-span-full grid items-center"
+      className="col-span-full mt-1 flex grid items-center"
       style={{
         gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))${
           readOnly || disableRemove ? '' : ' min-content'
@@ -186,7 +186,7 @@ export const TabularFieldList = <
     >
       {columns.map(column => (
         <div
-          className="text-xs font-bold text-gray-500 pl-1.5"
+          className="pl-1.5 text-xs font-bold text-gray-500"
           key={column.key}
         >
           {column.header}

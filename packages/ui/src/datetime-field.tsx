@@ -61,7 +61,7 @@ export const DateField = ({
   ]);
 
   return (
-    <div className="flex flex-col items-center relative" ref={ref}>
+    <div className="relative flex flex-col items-center" ref={ref}>
       <div
         ref={refs.setReference}
         className="relative w-full"
@@ -71,15 +71,15 @@ export const DateField = ({
           type="text"
           className={`
             w-full
-            bg-white
             w-full
             rounded-md
+            bg-white
             ${props.error ? 'border-red-400' : 'border-gray-200'}
             mt-1
-            shadow-sm
-            py-2
-            px-3
             border
+            px-3
+            py-2
+            shadow-sm
           `}
           value={displayValue}
           onChange={evt => {
@@ -109,7 +109,7 @@ export const DateField = ({
             props?.onBlur?.(evt);
           }}
         />
-        <div className="absolute right-0 top-0 flex items-center mr-2 pt-1 bottom-0">
+        <div className="absolute bottom-0 right-0 top-0 mr-2 flex items-center pt-1">
           <Calendar
             className={`cursor-pointer ${
               calendarOpen
@@ -129,7 +129,7 @@ export const DateField = ({
               top: y ?? 0,
               left: x ?? 0,
             }}
-            className="bg-white rounded-b-md absolute top-full z-10 border shadow-xl border-gray-200 mt-[-1px]"
+            className="absolute top-full z-10 mt-[-1px] rounded-b-md border border-gray-200 bg-white shadow-xl"
             {...getFloatingProps()}
           >
             <DayPicker

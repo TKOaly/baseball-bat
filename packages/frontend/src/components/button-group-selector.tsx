@@ -15,7 +15,7 @@ export function ButtonGroupSelector<V>({
   disabled = false,
 }: Props<V>) {
   return (
-    <div className="rounded-md border overflow-hidden inline-flex shadow-sm bg-white">
+    <div className="inline-flex overflow-hidden rounded-md border bg-white shadow-sm">
       {options.map(option => {
         const active =
           value === option.value
@@ -26,7 +26,7 @@ export function ButtonGroupSelector<V>({
           <button
             className={`px-4 py-2 text-gray-700 ${
               disabled ? 'text-gray-300' : undefined
-            } ${active} outline-offset-[-2px] text-sm border-r select-none`}
+            } ${active} select-none border-r text-sm outline-offset-[-2px]`}
             onClick={() => onChange(option.value)}
             tabIndex={0}
             key={option.text}

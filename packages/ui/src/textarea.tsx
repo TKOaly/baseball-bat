@@ -4,7 +4,7 @@ export const Textarea: React.FC<
   TextareaHTMLAttributes<HTMLTextAreaElement>
 > = ({ value, ...props }) => (
   <textarea
-    className="bg-white w-full rounded-md border-gray-200 mt-1 shadow-sm"
+    className="mt-1 w-full rounded-md border-gray-200 bg-white shadow-sm"
     placeholder="Description"
     {...props}
   >

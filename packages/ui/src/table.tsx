@@ -149,7 +149,7 @@ const FilterDropdownItem = ({
           } items-center ${props.style}`}
         >
           <span className="flex-grow">{column.name}</span>
-          <span className="text-gray-400 relative">
+          <span className="relative text-gray-400">
             {options.allowlist.length + options.blocklist.length > 0
               ? 'Active'
               : 'Any'}
@@ -182,9 +182,9 @@ const FilterDropdownItem = ({
           const compareValue = compareBy(value);
 
           if (options.allowlist.includes(compareValue)) {
-            icon = <PlusSquare className="text-green-500 h-4" />;
+            icon = <PlusSquare className="h-4 text-green-500" />;
           } else if (options.blocklist.includes(compareValue)) {
-            icon = <MinusSquare className="text-red-500 h-4" />;
+            icon = <MinusSquare className="h-4 text-red-500" />;
           }
 
           let displayValue = String(value);
@@ -282,7 +282,7 @@ const TableRow = <R extends Row>({
       <div
         role="row"
         data-row={rowIndex}
-        className="contents row"
+        className="row contents"
         onClick={() => (
           onRowClick && onRowClick(data), toggleRowExpanded(data.key)
         )}
@@ -290,7 +290,7 @@ const TableRow = <R extends Row>({
         {selectable && (
           <div
             className={`
-              border-l border-b-gray-100 relative px-3 py-2 flex items-center justify-center
+              relative flex items-center justify-center border-l border-b-gray-100 px-3 py-2
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
           >
@@ -330,16 +330,16 @@ const TableRow = <R extends Row>({
               data-column={column.name}
               data-value={`${value}`}
               className={`
-                  whitespace-nowrap
-                  overflow-hidden
-                  min-w-0
-                  flex
-                  items-center
                   relative
+                  flex
+                  min-w-0
+                  items-center
+                  overflow-hidden
+                  whitespace-nowrap
+                  border-l
+                  border-b-gray-100
                   px-3
                   py-2
-                  border-b-gray-100
-                  border-l
                   ${
                     !actions && columnIndex === columns.length - 1 && 'border-r'
                   }
@@ -356,7 +356,7 @@ const TableRow = <R extends Row>({
         {actions && (
           <div
             className={`
-              border-b-gray-100 border-l-gray-100 border-l border-r relative px-2 py-2 flex items-center justify-center
+              relative flex items-center justify-center border-l border-r border-b-gray-100 border-l-gray-100 px-2 py-2
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
           >
@@ -679,7 +679,7 @@ export const Table = <
   return (
     <div
       role="table"
-      className={`table-component relative aa ${!hideTools && 'pr-[6em]'} ${
+      className={`table-component aa relative ${!hideTools && 'pr-[6em]'} ${
         refreshing ? 'refreshing' : ''
       }`}
       data-cy="table-view"
@@ -687,8 +687,8 @@ export const Table = <
       data-total-rows={rows.length}
     >
       {!hideTools && (
-        <div className="absolute top-0 bottom-0 right-0 w-[6em]">
-          <div className="flex flex-col gap-2 ml-5 mt-12 sticky top-12">
+        <div className="absolute bottom-0 right-0 top-0 w-[6em]">
+          <div className="sticky top-12 ml-5 mt-12 flex flex-col gap-2">
             <Dropdown
               label="Sort"
               options={columns.map(col => ({
@@ -740,7 +740,7 @@ export const Table = <
                 { divider: true },
                 {
                   text: (
-                    <div className="flex items-center gap-1 -ml-2">
+                    <div className="-ml-2 flex items-center gap-1">
                       <Square className="h-4 text-gray-500" /> TKO-äly member
                     </div>
                   ),
@@ -793,7 +793,7 @@ export const Table = <
           }}
         >
           {selectable && (
-            <div className="sticky top-0 z-10 rounded-tl-md border-l border-t border-b bg-gray-50" />
+            <div className="sticky top-0 z-10 rounded-tl-md border-b border-l border-t bg-gray-50" />
           )}
           {columns.map((column, i) => (
             <div
@@ -807,13 +807,13 @@ export const Table = <
                   i == columns.length - 1 &&
                   'rounded-tr-md border-r'
                 }
-                border-l
-                border-t sticky top-0 z-10 text-gray-700 px-3 py-2
-                bg-gray-50 border-b text-sm font-bold
-                whitespace-nowrap
-                cursor-pointer
-                flex items-center
-                justify-between
+                sticky
+                top-0 z-10 flex cursor-pointer items-center justify-between whitespace-nowrap
+                border-b border-l border-t bg-gray-50
+                px-3
+                py-2
+                text-sm font-bold
+                text-gray-700
               `}
             >
               {column.name}
@@ -830,7 +830,7 @@ export const Table = <
             </div>
           ))}
           {actions && (
-            <div className="sticky rounded-tr-md border-t top-0 z-10 bg-gray-50 border-b border-l border-r" />
+            <div className="sticky top-0 z-10 rounded-tr-md border-b border-l border-r border-t bg-gray-50" />
           )}
           {sortedRows.flatMap((row, i) => (
             <TableRow
@@ -851,27 +851,27 @@ export const Table = <
           ))}
           <div className="col-span-full" ref={scrollDetectorRef}></div>
           {(loading || showBottomLoading) && (
-            <div className="col-span-full border-x border-t border-t-gray-100 border-x-gray-200 flex items-center justify-center">
-              <Loader className="animate-[spin_3s_linear_infinite] my-4 mr-2 text-blue-600" />
+            <div className="col-span-full flex items-center justify-center border-x border-t border-x-gray-200 border-t-gray-100">
+              <Loader className="my-4 mr-2 animate-[spin_3s_linear_infinite] text-blue-600" />
               <span className="text-gray-800">Loading...</span>
             </div>
           )}
           {!loading && rows.length === 0 && (
-            <div className="col-span-full py-2 px-3 text-center text-sm flex justify-center">
-              <div className="w-[30em] text-gray-800 py-3">
+            <div className="col-span-full flex justify-center px-3 py-2 text-center text-sm">
+              <div className="w-[30em] py-3 text-gray-800">
                 {emptyMessage ?? 'No rows to display.'}
               </div>
             </div>
           )}
         </div>
         {footer !== false && (
-          <div className="sticky bottom-0 border rounded-b-md py-2 px-3 flex justify-end gap-3 bg-gray-50 border-t items-center">
+          <div className="sticky bottom-0 flex items-center justify-end gap-3 rounded-b-md border border-t bg-gray-50 px-3 py-2">
             {selectedRows.length > 0 && (
               <span className="text-sm text-gray-700">
                 Selected: {selectedRows.length}
               </span>
             )}
-            <div className="flex-grow h-[1.5em]" />
+            <div className="h-[1.5em] flex-grow" />
             {footer}
           </div>
         )}

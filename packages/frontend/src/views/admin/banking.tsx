@@ -11,8 +11,8 @@ export const Banking = () => {
 
   return (
     <>
-      <h1 className="text-2xl mb-5 mt-10">Banking</h1>
-      <p className="text-gray-800 mb-7 text-md"></p>
+      <h1 className="mb-5 mt-10 text-2xl">Banking</h1>
+      <p className="text-md mb-7 text-gray-800"></p>
       <ListView
         actions={
           <>

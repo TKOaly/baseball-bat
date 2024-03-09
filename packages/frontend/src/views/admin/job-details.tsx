@@ -115,7 +115,7 @@ export const JobDetails = (props: Props) => {
                 return (
                   <div className="w-full">
                     <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                    <div className="h-1.5 bg-gray-200 w-full relative rounded-full overflow-hidden">
+                    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                       <div
                         className={`h-full ${
                           job.status === 'failed'

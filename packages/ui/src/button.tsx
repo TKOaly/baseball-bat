@@ -83,7 +83,7 @@ export const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
     >
       <Loader
-        className={`animate-[spin_3s_linear_infinite] -ml-1 h-5 duration-200 ${
+        className={`-ml-1 h-5 animate-[spin_3s_linear_infinite] duration-200 ${
           loading ? 'w-5' : 'w-0'
         } overflow-hidden`}
       />

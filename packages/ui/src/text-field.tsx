@@ -57,7 +57,7 @@ export const TextField = React.forwardRef<HTMLInputElement, Props>(
           />
         )}
         {props.iconRight && (
-          <div className="absolute h-full right-0 inset-y-0 flex items-center pr-3 pt-1 text-gray-400">
+          <div className="absolute inset-y-0 right-0 flex h-full items-center pr-3 pt-1 text-gray-400">
             {props.iconRight}
           </div>
         )}

@@ -177,7 +177,7 @@ export const DialogBase = <T,>({
   return (
     <div
       {...rest}
-      className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 dialog-base"
+      className="dialog-base absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
       onClick={() => onClose(null)}
     >
       <div
@@ -192,7 +192,7 @@ export const DialogBase = <T,>({
 
 export const DialogContent = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="flex-grow max-h-[80vh] overflow-y-auto">
+    <div className="max-h-[80vh] flex-grow overflow-y-auto">
       <div className="p-3">{children}</div>
     </div>
   );
@@ -200,7 +200,7 @@ export const DialogContent = ({ children }: { children: ReactNode }) => {
 
 export const DialogHeader = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="dialog-header flex gap-3 items-center p-3 border-b">
+    <div className="dialog-header flex items-center gap-3 border-b p-3">
       {children}
     </div>
   );
@@ -208,7 +208,7 @@ export const DialogHeader = ({ children }: { children: ReactNode }) => {
 
 export const DialogFooter = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="flex justify-end border-t p-3 text-sm gap-2">
+    <div className="flex justify-end gap-2 border-t p-3 text-sm">
       {children}
     </div>
   );
@@ -227,7 +227,7 @@ export const Dialog = ({
   noClose?: boolean;
 }>) => {
   let close: ReactNode | null = (
-    <X className="text-gray-400 rounded-full hover:bg-gray-100 p-0.5 h-6 w-6" />
+    <X className="h-6 w-6 rounded-full p-0.5 text-gray-400 hover:bg-gray-100" />
   );
 
   if (closeButton) {
@@ -240,9 +240,9 @@ export const Dialog = ({
 
   return (
     <Portal containerId="dialog-container">
-      <div className="rounded-lg bg-white border shadow-lg p-3 min-w-[35em] min-h-[15em]">
-        <div className="flex gap-5 items-center mb-3">
-          <span className="font-bold flex-grow">{title}</span>
+      <div className="min-h-[15em] min-w-[35em] rounded-lg border bg-white p-3 shadow-lg">
+        <div className="mb-3 flex items-center gap-5">
+          <span className="flex-grow font-bold">{title}</span>
           {close}
         </div>
         <div>{children}</div>

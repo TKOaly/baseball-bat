@@ -7,8 +7,8 @@ const meta: Meta<typeof TextField> = {
   title: 'Text Field',
   decorators: [
     Story => (
-      <div className="flex items-center justify-center absolute inset-0">
-        <div className="max-w-[20em] flex">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex max-w-[20em]">
           <Story />
         </div>
       </div>

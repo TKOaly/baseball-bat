@@ -252,7 +252,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
             .map(tag => tag.trim())
             .map(tag => (
               <span
-                className="rounded-md px-1 text-gray-800 bg-gray-200"
+                className="rounded-md bg-gray-200 px-1 text-gray-800"
                 key={tag}
               >
                 {tag}
@@ -289,11 +289,11 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
               key,
               label: `Component: ${name}`,
               render: value => (
-                <div className="flex items-center absolute inset-0 px-1 justify-end">
+                <div className="absolute inset-0 flex items-center justify-end px-1">
                   {value ? (
-                    <CheckSquare className="text-green-500 w-4 h-4" />
+                    <CheckSquare className="h-4 w-4 text-green-500" />
                   ) : (
-                    <Square className="text-red-500 w-4 h-4" />
+                    <Square className="h-4 w-4 text-red-500" />
                   )}
                 </div>
               ),
@@ -865,7 +865,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
 
   return (
     <div>
-      <h1 className="text-2xl mt-10 mb-5">
+      <h1 className="mb-5 mt-10 text-2xl">
         <Breadcrumbs
           segments={[
             {
@@ -927,7 +927,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
               );
             }}
           >
-            View created <ExternalLink className="h-4 w-4 ml-0.5" />
+            View created <ExternalLink className="ml-0.5 h-4 w-4" />
           </Button>
         </div>
 

@@ -14,13 +14,13 @@ export const DebtCentersListing = () => {
 
   return (
     <>
-      <h1 className="text-2xl mb-5 mt-10">Debt Centers</h1>
-      <p className="text-gray-800 mb-5 text-md">
+      <h1 className="mb-5 mt-10 text-2xl">Debt Centers</h1>
+      <p className="text-md mb-5 text-gray-800">
         Debt centers are organizational groupings of debts, usually
         corresponding to events or other batches of sales. Here you can view and
         create new debt centers. <br />
       </p>
-      <div className="flex gap-3 mb-7">
+      <div className="mb-7 flex gap-3">
         <Button onClick={() => setLocation('/admin/debt-centers/create')}>
           Create
         </Button>
@@ -54,7 +54,7 @@ export const DebtCentersListing = () => {
             render: value => (
               <div className="w-full">
                 <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                <div className="h-1.5 bg-gray-200 w-full rounded-full overflow-hidden">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
                     className="h-full bg-green-400"
                     style={{ width: `${(value * 100).toFixed()}%` }}

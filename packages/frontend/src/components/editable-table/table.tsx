@@ -271,14 +271,14 @@ export const EditableTableInner = forwardRef((props: Props, ref) => {
             ))}
           </table>
           <div
-            className="flex p-3 text-gray-500 text-sm items-center gap-1 cursor-pointer"
+            className="flex cursor-pointer items-center gap-1 p-3 text-sm text-gray-500"
             onClick={handleAppendNewRow}
           >
             <PlusSquare />
             Add row
           </div>
         </div>
-        <div className="table-right-content flex flex-col grow">
+        <div className="table-right-content flex grow flex-col">
           <div
             className="new-column-action cursor-pointer"
             onClick={handleAppendNewColumn}
@@ -286,11 +286,11 @@ export const EditableTableInner = forwardRef((props: Props, ref) => {
             <PlusSquare />
             Add column
           </div>
-          <div className="text-gray-500 text-sm p-5 self-center">
+          <div className="self-center p-5 text-sm text-gray-500">
             Drag and drop CSV files here <br /> or{' '}
             <button
               onClick={handleFileUpload}
-              className="underline font-semibold"
+              className="font-semibold underline"
             >
               upload one by clicking here
             </button>

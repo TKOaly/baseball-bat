@@ -257,7 +257,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
         <DialogBase onClose={() => onClose()}>
           <DialogHeader>Edit {debts.length} debts</DialogHeader>
           <DialogContent>
-            <div className="grid gap grid-cols-4 gap-x-8 px-4">
+            <div className="gap grid grid-cols-4 gap-x-8 px-4">
               <InputGroup
                 fullWidth
                 label="Name"
@@ -303,7 +303,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
               {values.tags.length > 0 && (
                 <>
                   <div className="col-span-full">
-                    <span className="text-sm font-bold text-gray-800 mb-1 block">
+                    <span className="mb-1 block text-sm font-bold text-gray-800">
                       Tags
                     </span>
                     <Table
@@ -353,9 +353,9 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                               <span
                                 className={`${
                                   newPresence !== null
-                                    ? 'line-through text-gray-500 bg-gray-200'
+                                    ? 'bg-gray-200 text-gray-500 line-through'
                                     : 'bg-gray-300'
-                                } px-1.5 text-sm rounded-sm`}
+                                } rounded-sm px-1.5 text-sm`}
                               >
                                 {originalPresence}
                               </span>
@@ -365,7 +365,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                                     newPresence === 'All'
                                       ? 'bg-green-500'
                                       : 'bg-red-500'
-                                  } text-white px-1.5 text-sm rounded-sm`}
+                                  } rounded-sm px-1.5 text-sm text-white`}
                                 >
                                   {newPresence}
                                 </span>
@@ -497,7 +497,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
               {values.components.length > 0 && (
                 <>
                   <div className="col-span-full mt-3">
-                    <span className="text-sm font-bold text-gray-800 mb-1 block">
+                    <span className="mb-1 block text-sm font-bold text-gray-800">
                       Components
                     </span>
                     <Table
@@ -547,9 +547,9 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                               <span
                                 className={`${
                                   newPresence !== null
-                                    ? 'line-through text-gray-500 bg-gray-200'
+                                    ? 'bg-gray-200 text-gray-500 line-through'
                                     : 'bg-gray-300'
-                                } px-1.5 text-sm rounded-sm`}
+                                } rounded-sm px-1.5 text-sm`}
                               >
                                 {originalPresence}
                               </span>
@@ -559,7 +559,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                                     newPresence === 'All'
                                       ? 'bg-green-500'
                                       : 'bg-red-500'
-                                  } text-white px-1.5 text-sm rounded-sm`}
+                                  } rounded-sm px-1.5 text-sm text-white`}
                                 >
                                   {newPresence}
                                 </span>

@@ -53,7 +53,7 @@ export const MergeProfilesDialog = (props: Props) => {
       <DialogContent>
         <table>
           <tr>
-            <th className="text-left pr-3">Merge from</th>
+            <th className="pr-3 text-left">Merge from</th>
             <td>
               <ResourceSelectField
                 type="payer"
@@ -63,7 +63,7 @@ export const MergeProfilesDialog = (props: Props) => {
             </td>
           </tr>
           <tr>
-            <th className="text-left pr-3">Merge to</th>
+            <th className="pr-3 text-left">Merge to</th>
             <td>
               <ResourceSelectField
                 type="payer"

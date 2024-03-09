@@ -39,8 +39,8 @@ export const DebtAssociatedResourceCreationConfirmationDialog = ({
         <ul className="mt-3">
           {resources.map(({ type, name }) => (
             <li key={`${type}-${name}`}>
-              <div className="rounded-md shadow-sm border p-1.5 text-sm items-center inline-flex pr-3 mb-2">
-                <span className="py-0.5 px-1.5 rounded-[2pt] bg-blue-500 text-xs font-bold text-white mr-3 capitalize">
+              <div className="mb-2 inline-flex items-center rounded-md border p-1.5 pr-3 text-sm shadow-sm">
+                <span className="mr-3 rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold capitalize text-white">
                   {type}
                 </span>
                 <span>{name}</span>
