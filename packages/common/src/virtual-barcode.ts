@@ -1,7 +1,7 @@
 import FinnishBankUtils from 'finnish-bank-utils';
 import { createCanvas } from 'canvas';
 import JsBarcode from 'jsbarcode';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 
 export const formatBarcode = (
   iban: string,
