@@ -39,7 +39,7 @@ export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
   const [sort, setSort] = useState<[string, 'asc' | 'desc']>();
 
   const [fetchMore] = endpoint.useLazyQuery();
-  const { data, isLoading, isFetching } = endpoint.useQuery({
+  const { data, isLoading, isFetching, originalArgs } = endpoint.useQuery({
     ...query,
     limit,
     sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
@@ -64,7 +64,7 @@ export const InfiniteTable = <T, Q extends PaginatedBaseQuery>({
   return (
     <Table
       loading={isLoading}
-      refreshing={isFetching}
+      refreshing={isFetching && !originalArgs?.cursor}
       showBottomLoading={!!data?.nextCursor}
       onSortChange={(col, dir) =>
         col && dir ? setSort([col, dir]) : setSort(undefined)
