@@ -23,10 +23,10 @@ import {
 } from '@bbat/common/src/types';
 import { TextField } from '@bbat/ui/text-field';
 import eventsApi, { useGetEventsQuery } from '../../api/events';
-import addDays from 'date-fns/addDays';
-import format from 'date-fns/format';
-import isMatch from 'date-fns/isMatch';
-import subYears from 'date-fns/subYears';
+import { addDays } from 'date-fns/addDays';
+import { format } from 'date-fns/format';
+import { isMatch } from 'date-fns/isMatch';
+import { subYears } from 'date-fns/subYears';
 import { FilledDisc } from '@bbat/ui/filled-disc';
 import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';

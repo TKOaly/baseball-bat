@@ -1,5 +1,5 @@
-import format from 'date-fns/format';
-import formatDuration from 'date-fns/formatDuration';
+import { format } from 'date-fns/format';
+import { formatDuration } from 'date-fns/formatDuration';
 import { useLocation } from 'wouter';
 import { useGetJobsQuery } from '../../api/jobs';
 import { Table } from '@bbat/ui/table';

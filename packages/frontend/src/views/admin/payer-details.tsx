@@ -19,7 +19,7 @@ import {
   BadgeField,
   LinkField,
 } from '../../components/resource-page/resource-page';
-import isPast from 'date-fns/isPast';
+import { isPast } from 'date-fns/isPast';
 import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import { SendRemindersDialog } from '../../components/dialogs/send-reminders-dialog';

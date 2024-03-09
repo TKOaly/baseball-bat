@@ -1,4 +1,4 @@
-import parseISO from 'date-fns/parseISO';
+import { parseISO } from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
 import {
   DebtComponentDetails,

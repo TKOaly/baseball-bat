@@ -7,9 +7,9 @@ import {
   NewDebtComponent,
   PayerIdentity,
 } from '@bbat/common/src/types';
-import parse from 'date-fns/parse';
-import format from 'date-fns/format';
-import isMatch from 'date-fns/isMatch';
+import { parse } from 'date-fns/parse';
+import { format } from 'date-fns/format';
+import { isMatch } from 'date-fns/isMatch';
 import {
   useCreateDebtComponentMutation,
   useGetDebtComponentsByCenterQuery,

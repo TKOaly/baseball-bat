@@ -1,6 +1,6 @@
 import { BankTransaction } from '@bbat/common/src/types';
 import { formatEuro, cents } from '@bbat/common/src/currency';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import { ExternalLink } from 'react-feather';
 import { useLocation } from 'wouter';
 import { useDialog } from './dialog';

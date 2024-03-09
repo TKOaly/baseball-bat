@@ -7,8 +7,8 @@ import {
 import { Button } from '@bbat/ui/button';
 import { Table } from '@bbat/ui/table';
 import { InternalIdentity, Report } from '@bbat/common/src/types';
-import format from 'date-fns/format';
-import parseISO from 'date-fns/parseISO';
+import { format } from 'date-fns/format';
+import { parseISO } from 'date-fns/parseISO';
 import { CheckCircle, ExternalLink, Loader, XCircle } from 'react-feather';
 import { useGetPayerQuery } from '../../api/payers';
 import { Link } from 'wouter';

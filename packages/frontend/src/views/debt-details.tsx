@@ -1,6 +1,6 @@
-import isPast from 'date-fns/isPast';
-import differenceInDays from 'date-fns/differenceInDays';
-import format from 'date-fns/format';
+import { isPast } from 'date-fns/isPast';
+import { differenceInDays } from 'date-fns/differenceInDays';
+import { format } from 'date-fns/format';
 import { AlertCircle, AlertTriangle, CheckCircle, Loader } from 'react-feather';
 import { useTranslation } from 'react-i18next';
 import { formatEuro, euro, sumEuroValues } from '@bbat/common/src/currency';

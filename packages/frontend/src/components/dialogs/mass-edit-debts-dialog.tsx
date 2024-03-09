@@ -20,8 +20,8 @@ import {
   EuroValue,
 } from '@bbat/common/src/types';
 import { useMemo } from 'react';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
+import { format } from 'date-fns/format';
+import { parse } from 'date-fns/parse';
 import {
   useGetDebtComponentsByCenterQuery,
   useUpdateMultipleDebtsMutation,

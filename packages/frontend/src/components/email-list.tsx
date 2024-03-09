@@ -1,4 +1,4 @@
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import { useLocation } from 'wouter';
 import { useSendEmailsMutation } from '../api/email';
 import {

@@ -14,7 +14,7 @@ import {
   MassCreateDebtsPayload,
 } from '@bbat/common/types';
 import { omit } from 'remeda';
-import parseISO from 'date-fns/parseISO';
+import { parseISO } from 'date-fns/parseISO';
 import { createPaginatedQuery } from './pagination';
 
 export type DebtResponse = DebtWithPayer & {

@@ -7,7 +7,7 @@ import {
   parseCamtStatement,
 } from '@bbat/common/src/camt-parser';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import { useGetBankAccountsQuery } from '../../api/banking/accounts';
 import {
   euro,

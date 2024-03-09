@@ -10,8 +10,8 @@ import {
 import { useGetPaymentsByDebtQuery } from '../../api/payments';
 import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
-import format from 'date-fns/format';
-import isPast from 'date-fns/isPast';
+import { format } from 'date-fns/format';
+import { isPast } from 'date-fns/isPast';
 import { TextField as InputTextField } from '@bbat/ui/text-field';
 import { EuroField } from '../../components/euro-field';
 import {
