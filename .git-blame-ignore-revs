@@ -13,3 +13,6 @@ c0deab992578e4e7d34fa8a513fdab1b9f66bce9
 
 # Fix linter warnings after migration to Vite
 f38ea659305e6169c0cc1cd0c0d63f49359efea7
+
+# Add TailwindCSS Prettier plugin
+960f5fa917f6048dc78f325c73bf51be90c695ce
