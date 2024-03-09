@@ -204,7 +204,7 @@ export const sendPaymentRemindersByPayer = scope.defineProcedure({
 export const getDebtsByEmail = scope.defineProcedure({
   name: 'getDebtsByEmail',
   payload: t.string,
-  response: t.union([t.null, types.debt]),
+  response: t.array(types.debt),
 });
 
 export const sendReminder = scope.defineProcedure({

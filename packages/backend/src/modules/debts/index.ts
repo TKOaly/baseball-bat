@@ -1664,13 +1664,14 @@ export default createModule({
       },
     );
 
-    /*async function getDebtsByEmail(emailId: string) {
-      const debts = await queryDebts(
-        sql`debt.id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
-      );
+    bus.register(defs.getDebtsByEmail, async (emailId, { pg }) => {
+      const { result: debts } = await queryDebts(pg, {
+        where: sql`id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
+        map: formatDebt,
+      });
 
       return debts;
-    }*/
+    });
 
     bus.register(
       defs.sendPaymentRemindersByPayer,
