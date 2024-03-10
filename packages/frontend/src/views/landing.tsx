@@ -105,7 +105,7 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
 
     const code = inputRefs.current.map(el => el.value).join('');
 
-    if (code.length === 8) {
+    if (code.length === 8 && i + ch === 8) {
       const result = await validateAuthCode({
         id: params.id,
         code,
