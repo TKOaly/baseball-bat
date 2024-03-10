@@ -122,10 +122,33 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
     }
   };
 
+  const handleKeyDown: KeyboardEventHandler<HTMLInputElement> = evt => {
+    const i = inputRefs.current.indexOf(evt.currentTarget);
+    let next;
+
+    switch (evt.key) {
+      case 'ArrowLeft':
+        next = i - 1;
+        break;
+
+      case 'ArrowRight':
+        next = i + 1;
+        break;
+
+      default:
+        return;
+    }
+
+    inputRefs.current.at(next % inputRefs.current.length)?.focus();
+    inputRefs.current.at(next % inputRefs.current.length)?.select();
+    evt.preventDefault();
+  };
+
   const createInput = (i: number) => (
     <input
       onInput={handleCodeInput}
       onFocus={evt => evt.currentTarget.select()}
+      onKeyDown={handleKeyDown}
       data-testid={`auth-code-${i}`}
       ref={setRef(i)}
       type="text"
