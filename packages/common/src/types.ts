@@ -392,8 +392,10 @@ export type DbPayment = {
   human_id_nonce?: number;
   accounting_period: number;
   type: 'invoice';
+  initial_amount: number;
   title: string;
   payer_id: string;
+  paid_at: Date | null;
   data: Record<string, unknown>;
   message: string;
   balance: number;
@@ -756,6 +758,8 @@ export const payment = t.type({
   status: paymentStatus,
   updatedAt: tt.date,
   events: t.array(paymentEvent),
+  paidAt: nullable(tt.date),
+  initialAmount: euroValue,
 });
 
 export type Payment = {
@@ -763,6 +767,8 @@ export type Payment = {
   humanId: string;
   humanIdNonce: number | null;
   accountingPeriod: number;
+  paidAt: Date | null;
+  initialAmount: EuroValue;
   paymentNumber: string;
   type: 'invoice' | 'cash' | 'stripe';
   data: Record<string, unknown> | null;

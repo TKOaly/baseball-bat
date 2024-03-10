@@ -61,6 +61,8 @@ const transactionQuery = createPaginatedQuery<DbBankTransaction>(
         s.status,
         s.payer,
         petm.bank_transaction_id,
+        (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+        (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
         (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
         (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
         COALESCE(s.updated_at, p.created_at) AS updated_at

@@ -93,11 +93,13 @@ export const formatPayment = (db: DbPayment): Payment => ({
   humanId: db.human_id,
   humanIdNonce: db.human_id_nonce ?? null,
   accountingPeriod: db.accounting_period,
+  paidAt: db.paid_at ? mapDate(db.paid_at) : null,
   type: db.type,
   title: db.title,
   paymentNumber: db.payment_number,
   data: db.data,
   message: db.message,
+  initialAmount: cents(db.initial_amount ?? 0),
   balance: cents(db.balance),
   status: db.status,
   updatedAt: mapDate(db.updated_at),
@@ -119,6 +121,8 @@ export default createModule({
             s.balance,
             s.status,
             s.payer,
+            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
             (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
             (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
             COALESCE(s.updated_at, p.created_at) AS updated_at
@@ -136,6 +140,8 @@ export default createModule({
             s.balance,
             s.status,
             s.payer,
+            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
             (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
             (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
             COALESCE(s.updated_at, p.created_at) AS updated_at
@@ -157,6 +163,8 @@ export default createModule({
           s.balance,
           s.status,
           s.payer,
+          (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+          (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
           (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
           (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
@@ -265,6 +273,8 @@ export default createModule({
           s.status,
           s.payer,
           s.payer->>'id' AS payer_id,
+            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
           (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
           COALESCE(s.updated_at, p.created_at) AS updated_at
         FROM payments p
@@ -311,6 +321,8 @@ export default createModule({
             s.status,
             s.payer,
             s.payer->>'id' AS payer_id,
+            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
             (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
             COALESCE(s.updated_at, p.created_at) AS updated_at
           FROM payments p
@@ -334,6 +346,8 @@ export default createModule({
             s.status,
             s.payer,
             s.payer->>'id' AS payer_id,
+            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
             (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
             COALESCE(s.updated_at, p.created_at) AS updated_at
           FROM payments p
