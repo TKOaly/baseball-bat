@@ -1,8 +1,8 @@
 import { useLocation } from 'wouter';
-import { useGetDebtsByPaymentQuery } from '../api/debt';
+import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@bbat/ui/button';
-import { PaymentBreakdown } from '../components/payment-breakdown';
+import { PaymentBreakdown } from '../../components/payment-breakdown';
 
 export type Props = {
   params: {

@@ -2,6 +2,10 @@ module.exports = {
   content: ['src/**/*.tsx'],
   theme: {
     extend: {
+      fontFamily: {
+        'dm-serif': ['DM Serif Display', 'serif'],
+        'sans': ['Montserrat', 'sans-serif'],
+      },
       gridTemplateColumns: {
         main: '15em auto 15em',
       },

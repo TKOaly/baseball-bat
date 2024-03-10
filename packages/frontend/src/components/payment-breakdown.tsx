@@ -15,9 +15,9 @@ export const PaymentBreakdown = ({ debts }: Props) => {
   const { t } = useTranslation();
 
   return (
-    <ul className="rounded-md border border-gray-300 shadow-sm">
+    <ul className="rounded-md border border-gray-300 bg-white/50 shadow-md">
       {debts.map(debt => (
-        <li className="border-b border-gray-300 p-2 tabular-nums" key={debt.id}>
+        <li className="p-4 tabular-nums" key={debt.id}>
           <h4 className="flex font-bold">
             <span className="flex-grow">{debt.name}</span>
             <span>
@@ -42,7 +42,7 @@ export const PaymentBreakdown = ({ debts }: Props) => {
         </li>
       ))}
       <li>
-        <h4 className="flex p-2 font-bold">
+        <h4 className="flex p-4 font-bold">
           <span className="flex-grow">{t('total')}</span>
           <span>
             {formatEuro(

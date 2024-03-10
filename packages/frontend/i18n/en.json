@@ -39,6 +39,9 @@
     },
     "paymentDetails": {
       "amountLabel": "Amount",
+      "dateLabel": "Date",
+      "statusLabel": "Status",
+      "paymentMessageLabel": "Message",
       "dueDateLabel": "Due date",
       "invoiceDetailsHeader": "Invoice details",
       "unpaidBadge": "Unpaid",
@@ -50,10 +53,23 @@
       "invoiceReferenceNumberHeader": "Reference number",
       "invoiceBeneficaryNameHeader": "Recipient name",
       "invoiceBeneficaryAccountHeader": "Recipient bank account",
-      "invoiceBICHeader": "BIC"
+      "invoiceBICHeader": "BIC",
+      "timelineHeader": "Payment timeline",
+      "paymentStatusLabel": "Status",
+      "paymentStatus": {
+        "paid": "Paid",
+        "unpaid": "Unpaid",
+        "mispaid": "Mispaid"
+      },
+      "paymentTypeLabel": "Payment method",
+      "paymentType": {
+        "invoice": "Invoice",
+        "stripe": "Online payment",
+        "cash": "Cash payment"
+      }
     },
     "navigation": {
-      "debts": "Debts",
+      "payments": "Payments",
       "settings": "Settings",
       "administration": "Administration",
       "logOut": "Log out"
@@ -95,6 +111,8 @@
     "stripeReturnPageContinue": "Continue",
     "stripePaymentSucceededHeader": "Payment complete",
     "stripePaymentSucceededMessage": "The following payment was processed successfully.",
+    "closedPaymentsHeader": "Closed payments",
+    "unpaidDebtsHeader": "Unpaid debts",
     "landing": {
       "heroTitle": "Baseball Bat",
       "heroParagraph1": "Baseball Bat is TKO-äly ry's online receivables management and payment service.",
@@ -109,6 +127,30 @@
       "authSentMessage": "We sent a verification code to your email. Please open your email app and enter the code you received in the field below.",
       "noSuchEmailError": "No account with such email exists!",
       "invalidCodeError": "Invalid verification code!"
+    },
+    "debtStatusBadge": {
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "mispaid": "Mispaid"
+    },
+    "debtCard": {
+      "amountLabel": "Amount",
+      "dateLabel": "Date",
+      "dueDateLabel": "Due Date",
+      "payButton": "Pay now",
+      "detailsButton": "View details"
+    },
+    "paymentCard": {
+      "typeLabel": "Payment method",
+      "amountLabel": "Amount",
+      "dateLabel": "Created at",
+      "paidLabel": "Paid at",
+      "detailsButton": "View details",
+      "paymentType": {
+        "invoice": "Invoice",
+        "stripe": "Online payment",
+        "cash": "Cash payment"
+      }
     }
   }
 }

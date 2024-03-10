@@ -430,6 +430,12 @@ importers:
       '@floating-ui/react':
         specifier: ^0.26.9
         version: 0.26.9(react-dom@18.2.0)(react@18.2.0)
+      '@fontsource-variable/montserrat':
+        specifier: ^5.0.18
+        version: 5.0.18
+      '@fontsource/dm-serif-display':
+        specifier: ^5.0.19
+        version: 5.0.19
       '@reduxjs/toolkit':
         specifier: ^2.2.1
         version: 2.2.1(react-redux@9.1.0)(react@18.2.0)
@@ -2804,6 +2810,14 @@ packages:
 
   /@floating-ui/utils@0.2.1:
     resolution: {integrity: sha512-9TANp6GPoMtYzQdt54kfAyMmz1+osLlXdg2ENroU7zzrtflTLrrC/lgrIfaSe+Wu0b89GKccT7vxXA0MoAIO+Q==}
+
+  /@fontsource-variable/montserrat@5.0.18:
+    resolution: {integrity: sha512-X7ZGaabqbPTOdouKkwF8KlAuHI9ypbKVYJN93T8GGjiMhs0+XqcXcYMNC282xuPLPCkl4fYSIug1wKKpXn/e9Q==}
+    dev: false
+
+  /@fontsource/dm-serif-display@5.0.19:
+    resolution: {integrity: sha512-18tglu23iVFkGrBvOKvvre6C845XoXNaVZm6afvjjWZF4RY6DSFNjrmncYatYYPBD265CePyNEnNBjwDRc9iIg==}
+    dev: false
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}

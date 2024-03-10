@@ -1,15 +1,15 @@
 import { Formik } from 'formik';
 import { DropdownField } from '@bbat/ui/dropdown-field';
-import { TabularFieldListFormik } from '../components/tabular-field-list';
+import { TabularFieldListFormik } from '../../components/tabular-field-list';
 import { TextField } from '@bbat/ui/text-field';
-import { InputGroup } from '../components/input-group';
+import { InputGroup } from '../../components/input-group';
 import { useTranslation } from 'react-i18next';
 import {
   useGetPayerEmailsQuery,
   useUpdatePayerEmailsMutation,
   useUpdatePayerPreferencesMutation,
-} from '../api/payers';
-import { useAppSelector } from '../store';
+} from '../../api/payers';
+import { useAppSelector } from '../../store';
 import { skipToken } from '@reduxjs/toolkit/query';
 
 export const Settings = () => {
@@ -20,8 +20,8 @@ export const Settings = () => {
   const { data } = useGetPayerEmailsQuery(session.data?.userId ?? skipToken);
 
   return (
-    <div>
-      <h3 className="text-xl font-bold text-gray-500">
+    <div className="rounded-md bg-white/90 p-8 shadow-xl">
+      <h3 className="mb-8 font-bold text-zinc-800">
         {t('userSettingsHeader')}
       </h3>
       <Formik

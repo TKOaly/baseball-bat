@@ -126,9 +126,9 @@ const payersApi = rtkApi.injectEndpoints({
         ...response,
         result: response.result.map(debt => ({
           ...debt,
-          date: parseISO(debt.date),
-          publishedAt: parseISO(debt.publishedAt),
-          dueDate: parseISO(debt.dueDate),
+          date: debt.date ? parseISO(debt.date) : null,
+          publishedAt: debt.publishedAt ? parseISO(debt.publishedAt) : null,
+          dueDate: debt.dueDate ? parseISO(debt.dueDate) : null,
         })),
       }),
     }),

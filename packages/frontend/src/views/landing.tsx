@@ -1,5 +1,6 @@
 import { Route, RouteComponentProps, Switch, useLocation } from 'wouter';
 import {
+  ComponentProps,
   FormEventHandler,
   KeyboardEventHandler,
   useRef,
@@ -15,6 +16,22 @@ import { Loader } from 'react-feather';
 import { useAppDispatch } from '../store';
 import { authenticateSession } from '../session';
 import { BACKEND_URL } from '../config';
+
+const SpinnerButton: React.FC<
+  ComponentProps<'button'> & { loading?: boolean }
+> = ({ children, loading, ...props }) => (
+  <button
+    className={`group relative mt-5 h-10 w-full gap-2 overflow-hidden rounded-md bg-yellow-400 px-3 text-center font-bold text-black shadow-sm ${loading ? 'loading' : ''}`}
+    {...props}
+  >
+    <span className="absolute inset-x-0 top-0 flex h-10 items-center justify-center duration-200 group-[.loading]:-top-12">
+      {children}
+    </span>
+    <span className="absolute inset-0 flex items-center justify-center">
+      <Loader className="relative -bottom-10 animate-[spin_3s_linear_infinite] duration-200 group-[.loading]:bottom-0" />
+    </span>
+  </button>
+);
 
 const InitialStep = () => {
   const { t } = useTranslation([], { keyPrefix: 'landing' });
@@ -47,17 +64,9 @@ const InitialStep = () => {
         className={`h-10 w-full ${error ? 'border-red-600' : 'border-gray-200'} rounded-md border px-3 shadow-sm`}
       />
       {error && <span className="text-sm text-red-600">{error}</span>}
-      <button
-        type="submit"
-        className={` group relative mt-5 h-10 w-full gap-2 overflow-hidden rounded-md bg-yellow-400 px-3 text-center font-bold text-black shadow-sm ${isLoading ? 'loading' : ''}`}
-      >
-        <span className="absolute inset-x-0 top-0 flex h-10 items-center justify-center duration-200 group-[.loading]:-top-12">
-          {t('authContinue')}
-        </span>
-        <span className="absolute inset-0 flex items-center justify-center">
-          <Loader className="relative -bottom-10 animate-[spin_3s_linear_infinite] duration-200 group-[.loading]:bottom-0" />
-        </span>
-      </button>
+      <SpinnerButton loading={isLoading} type="submit">
+        {t('authContinue')}
+      </SpinnerButton>
       <div className="my-3 text-center text-zinc-400">
         &mdash; {t('authOr')} &mdash;
       </div>
@@ -74,7 +83,7 @@ const InitialStep = () => {
 const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
   const { t } = useTranslation([], { keyPrefix: 'landing' });
   const [, navigate] = useLocation();
-  const [validateAuthCode] = useValidateAuthCodeMutation();
+  const [validateAuthCode, { isLoading }] = useValidateAuthCodeMutation();
   const [error, setError] = useState<string>();
   const dispatch = useAppDispatch();
 
@@ -88,6 +97,21 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
       inputRefs.current[i] = el;
     } else {
       delete inputRefs.current[i];
+    }
+  };
+
+  const submit = async () => {
+    const code = inputRefs.current.map(el => el.value).join('');
+
+    const result = await validateAuthCode({
+      id: params.id,
+      code,
+    });
+
+    if ('data' in result && result.data.success) {
+      dispatch(authenticateSession(params.id)).then(() => navigate('~/'));
+    } else {
+      setError(t('invalidCodeError'));
     }
   };
 
@@ -106,16 +130,7 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
     const code = inputRefs.current.map(el => el.value).join('');
 
     if (code.length === 8 && i + ch === 8) {
-      const result = await validateAuthCode({
-        id: params.id,
-        code,
-      });
-
-      if ('data' in result && result.data.success) {
-        dispatch(authenticateSession(params.id)).then(() => navigate('~/'));
-      } else {
-        setError(t('invalidCodeError'));
-      }
+      await submit();
     } else {
       inputRefs.current[ch + i].focus();
       inputRefs.current[ch + i].select();
@@ -178,6 +193,9 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
           {new Array(4).fill(true).map((_, i) => createInput(i + 4))}
         </div>
       </div>
+      <SpinnerButton onClick={submit} loading={isLoading} type="submit">
+        {t('authContinue')}
+      </SpinnerButton>
       <input
         type="button"
         value="Back"
@@ -207,7 +225,7 @@ export const Landing = () => {
     >
       <div className="hidden items-center justify-center lg:flex">
         <div className="max-w-[50ch] text-zinc-100">
-          <h1 className="[font-family]-[Abril_Fatface] text-4xl font-extrabold text-zinc-100 drop-shadow-xl">
+          <h1 className="font-dm-serif text-4xl font-extrabold text-zinc-100 drop-shadow-xl">
             {t('heroTitle')}
           </h1>
           <p className="mt-5">{t('heroParagraph1')}</p>
@@ -221,7 +239,7 @@ export const Landing = () => {
         </div>
       </div>
       <div className="flex grow flex-col items-center justify-center lg:grow-0">
-        <h1 className="mb-10 text-4xl font-extrabold text-zinc-100 drop-shadow-xl lg:hidden">
+        <h1 className="font-dm-serif mb-10 text-4xl font-extrabold text-zinc-100 drop-shadow-xl lg:hidden">
           {t('heroTitle')}
         </h1>
         <div>

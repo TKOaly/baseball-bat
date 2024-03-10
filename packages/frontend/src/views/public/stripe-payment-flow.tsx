@@ -1,4 +1,4 @@
-import { loadStripe } from '@stripe/stripe-js';
+import { StripeElementsOptions, loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
   PaymentElement,
@@ -7,10 +7,11 @@ import {
 } from '@stripe/react-stripe-js';
 import { Button } from '@bbat/ui/button';
 import { useState } from 'react';
-import { useGetDebtsByPaymentQuery } from '../api/debt';
+import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import { useTranslation } from 'react-i18next';
-import { PaymentBreakdown } from '../components/payment-breakdown';
-import { APP_URL, STRIPE_PUBLIC_KEY } from '../config';
+import { PaymentBreakdown } from '../../components/payment-breakdown';
+import { APP_URL, STRIPE_PUBLIC_KEY } from '../../config';
+import { useLocation } from 'wouter';
 
 export interface Props {
   params: {
@@ -27,6 +28,7 @@ type PaymentFormProps = {
 };
 
 const PaymentForm = ({ id, secret }: PaymentFormProps) => {
+  const [, navigate] = useLocation();
   const stripe = useStripe();
   const elements = useElements();
   const { t } = useTranslation();
@@ -62,7 +64,7 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
   };
 
   return (
-    <div>
+    <div className="rounded-md bg-white/90 p-8 shadow-xl">
       <h3 className="text-2xl">{t('stripeFlowHeading')}</h3>
       <p className="mb-5 mt-3 text-sm text-gray-600">
         {t('stripeLongDescription')}
@@ -85,13 +87,17 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
           layout: 'accordion',
         }}
       />
-      <div className="mt-4 flex items-start gap-3">
+      <div className="mt-5 flex items-center gap-4">
         <Button
+          className="h-10 bg-yellow-400 px-5 text-black/80 hover:bg-yellow-500"
           disabled={!stripe || !elements}
           loading={isLoading}
           onClick={handleSubmit}
         >
           {t('payNow')}
+        </Button>
+        <Button onClick={() => navigate(`/`)} secondary className="h-10 px-4">
+          Takaisin
         </Button>
       </div>
     </div>
@@ -99,10 +105,10 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
 };
 
 export const StripePaymentFlow = (props: Props) => {
-  const options = {
+  const options: StripeElementsOptions = {
     clientSecret: props.params.secret,
     appearance: {
-      theme: 'stripe' as const,
+      theme: 'stripe',
       rules: {
         '.AccordionItem': { borderColor: 'rgb(209 213 219)' },
         '.Input': { borderColor: 'rgb(209 213 219)' },

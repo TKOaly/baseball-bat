@@ -98,7 +98,7 @@ body, #root {
   min-height: 100vh;
 }
 
-#landing {
+#landing, .gradient-background {
   background-color: hsla(240,5%,26%,1);
   background-image:
     radial-gradient(at 47% 88%, hsla(240,3%,46%,1) 0px, transparent 50%),

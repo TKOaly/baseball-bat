@@ -38,20 +38,34 @@
     "paymentDetails": {
       "amountLabel": "Summa",
       "dueDateLabel": "Eräpäivä",
-      "invoiceDetailsHeader": "Laskun tiedot",
+      "invoiceDetailsHeader": "Maksun tiedot",
       "unpaidBadge": "Maksamatta",
       "invoiceTitleHeader": "Otsikko",
       "invoiceNumberHeader": "Laskun numero",
-      "invoiceCreatedAtHeader": "Laskun päivämäärä",
+      "invoiceCreatedAtHeader": "Laskun päiväys",
       "invoiceDueDateHeader": "Eräpäivä",
       "invoiceAmountHeader": "Summa",
       "invoiceReferenceNumberHeader": "Viitenumero",
       "invoiceBeneficaryNameHeader": "Maksun saaja",
       "invoiceBeneficaryAccountHeader": "Vastaanottajan tilinumero",
-      "invoiceBICHeader": "BIC"
+      "invoiceBICHeader": "BIC",
+      "paymentStatusLabel": "Tila",
+      "paymentMessageLabel": "Viesti",
+      "timelineHeader": "Maksun aikajana",
+      "paymentStatus": {
+        "paid": "Maksettu",
+        "unpaid": "Maksamatta",
+        "mispaid": "Maksuvirhe"
+      },
+      "paymentTypeLabel": "Maksutapa",
+      "paymentType": {
+        "invoice": "Lasku",
+        "stripe": "Verkkomaksu",
+        "cash": "Käteismaksu"
+      }
     },
     "navigation": {
-      "debts": "Velat",
+      "payments": "Maksut",
       "settings": "Asetukset",
       "administration": "Hallinta",
       "logOut": "Kirjaudu ulos"
@@ -97,6 +111,8 @@
     "select": "Valitse",
     "unselect": "Poista valinta",
     "viewDetails": "Tiedot",
+    "closedPaymentsHeader": "Suoritetut maksut",
+    "unpaidDebtsHeader": "Maksamattomat velat",
     "landing": {
       "heroTitle": "Baseball Bat",
       "heroParagraph1": "Baseball Bat on TKO-äly ry:n sähköinen saatavien hallinta- ja maksujärjestelmä.",
@@ -111,6 +127,30 @@
       "authSentMessage": "Lähetimme varmistuskoodin antamaasi sähköpostiin. Avaa sähköpostiohjelmasi ja syötä saamasi koodi alla olevaan kenttään jatkaaksesi.",
       "noSuchEmailError": "Sähköpostilla ei ole käyttäjää!",
       "invalidCodeError": "Virheellinen koodi!"
+    },
+    "debtStatusBadge": {
+      "paid": "Maksettu",
+      "unpaid": "Maksamatta",
+      "mispaid": "Maksuvirhe"
+    },
+    "debtCard": {
+      "amountLabel": "Summa",
+      "dateLabel": "Päiväys",
+      "dueDateLabel": "Eräpäivä",
+      "payButton": "Maksa",
+      "detailsButton": "Lisätiedot"
+    },
+    "paymentCard": {
+      "typeLabel": "Maksutapa",
+      "amountLabel": "Summa",
+      "dateLabel": "Luotu",
+      "paidLabel": "Maksettu",
+      "detailsButton": "Lisätiedot",
+      "paymentType": {
+        "invoice": "Lasku",
+        "stripe": "Verkkomaksu",
+        "cash": "Käteismaksu"
+      }
     }
   }
 }
