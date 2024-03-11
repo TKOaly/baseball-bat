@@ -52,7 +52,7 @@ export const NewPayment = ({
     });
 
     if ('data' in result) {
-      setLocation(`/payment/${result.data.id}`);
+      setLocation(`/payments/${result.data.id}`);
     }
   };
 
@@ -63,7 +63,7 @@ export const NewPayment = ({
 
     if ('data' in result) {
       setLocation(
-        `/payment/${result.data.id}/stripe/${result.data.data!.clientSecret}`,
+        `/payments/${result.data.id}/stripe/${result.data.data!.clientSecret}`,
       );
     }
   };
