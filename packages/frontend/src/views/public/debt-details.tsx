@@ -43,15 +43,7 @@ export const DebtDetails = ({ params }: Props) => {
         <div className="flex">
           <div className="flex-grow">
             <h3 className="mb-8 font-bold text-zinc-800">{debt.name}</h3>
-            {debt.description && (
-              <div>
-                <div className="mt-2 text-sm text-zinc-500">
-                  {t('messageLabel')}
-                </div>
-                <p className="mb-5 whitespace-pre">{debt.description}</p>
-              </div>
-            )}
-            <div className="flex gap-10">
+            <div className="grid w-full grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
               <div>
                 <div className="mt-2 text-sm text-zinc-500">
                   {t('amountLabel')}
@@ -72,6 +64,16 @@ export const DebtDetails = ({ params }: Props) => {
                     {t('dueDateLabel')}
                   </div>
                   <div>{formatDate(debt.dueDate)}</div>
+                </div>
+              )}
+              {debt.description && (
+                <div className="col-span-full">
+                  <div className="mt-2 text-sm text-zinc-500">
+                    {t('paymentMessageLabel')}
+                  </div>
+                  <p className="mt-2 whitespace-pre rounded-sm bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
+                    {debt.description}
+                  </p>
                 </div>
               )}
             </div>
