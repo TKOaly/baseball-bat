@@ -33,8 +33,9 @@ import { createModule } from '@/module';
 
 function normalizeReferenceNumber(reference: string) {
   return reference
-    .replace(/^0+/, '0')
+    .replace(/^0+/, '')
     .replace(/[^A-Z0-9]/gi, '')
+    .replace(/^(RF[0-9]{2})0+/, '$1')
     .toUpperCase();
 }
 
