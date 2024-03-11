@@ -32,7 +32,7 @@ const menuItemCva = cva('h-10 flex items-center px-4 rounded-md border-2', {
     {
       type: 'primary',
       active: true,
-      class: 'bg-white/20 text-zinc-50',
+      class: 'bg-white/80 text-zinc-800',
     },
   ],
 });
