@@ -3,9 +3,9 @@ import Stripe from 'stripe';
 import * as t from 'io-ts';
 import { router } from 'typera-express';
 import { headers } from 'typera-express/parser';
-import { badRequest, internalServerError, ok } from 'typera-express/response';
+import { badRequest, ok } from 'typera-express/response';
 import * as paymentService from '@/modules/payments/definitions';
-import { cents, euro } from '@bbat/common/currency';
+import { EuroValue, cents } from '@bbat/common/currency';
 
 export type StripeContext = {
   stripe: Stripe;
@@ -35,65 +35,98 @@ const factory: RouterFactory<StripeContext> = route => {
           secret,
         );
       } catch (err) {
-        console.log(err, typeof body, ctx.headers['stripe-signature'], secret);
         return badRequest({
           error: `Webhook Error: ${err}`,
         });
       }
 
-      let intent;
+      let paymentEvent:
+        | ({ payment: string; intent: string } & {
+            amount?: EuroValue;
+            type?: string;
+          })
+        | null = null;
 
-      if (event.type === 'payment_intent.succeeded') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
+      if (event.type.startsWith('charge.')) {
+        const chargeEvent = event as Extract<
+          typeof event,
+          { type: `charge.${string}` }
+        >;
 
-        const paymentId = intent.metadata.paymentId;
+        let intent = chargeEvent.data.object.payment_intent;
 
-        if (intent.currency !== 'eur') {
-          return internalServerError(
-            'Currencies besides EUR are not supported!',
-          );
+        if (typeof intent === 'string') {
+          intent = await stripe.paymentIntents.retrieve(intent);
         }
 
+        if (!intent) {
+          return ok();
+        }
+
+        paymentEvent = {
+          intent: intent.id,
+          payment: intent.metadata.paymentId,
+        };
+
+        if (chargeEvent.type === 'charge.dispute.funds_withdrawn') {
+          paymentEvent.amount = cents(-chargeEvent.data.object.amount);
+        } else if (chargeEvent.type === 'charge.dispute.funds_reinstated') {
+          paymentEvent.amount = cents(chargeEvent.data.object.amount);
+        }
+      }
+
+      if (event.type.startsWith('payment_intent.')) {
+        const intentEvent = event as Extract<
+          typeof event,
+          { type: `payment_intent.${string}` }
+        >;
+        const intent = intentEvent.data.object;
+
+        paymentEvent = {
+          payment: intent.metadata.paymentId,
+          intent: intent.id,
+        };
+
+        switch (event.type) {
+          case 'payment_intent.succeeded':
+            paymentEvent.type = 'payment';
+
+            if (intent.currency.toUpperCase() === 'EUR') {
+              paymentEvent.amount = cents(intent.amount_received);
+            } else {
+              console.log(
+                'Payment with non-euro currency',
+                intent.currency,
+                'received.',
+              );
+            }
+
+            break;
+
+          case 'payment_intent.payment_failed':
+          case 'payment_intent.canceled':
+            paymentEvent.type = 'failed';
+            break;
+        }
+      }
+
+      if (paymentEvent) {
         await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'payment',
-          amount: cents(intent.amount),
-          data: {},
-          time: undefined,
-          transaction: null,
-        });
-      } else if (event.type === 'payment_intent.payment_failed') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
-
-        const { paymentId } = intent.metadata;
-
-        await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'failed',
-          amount: euro(0),
-          data: {},
-          time: undefined,
-          transaction: null,
-        });
-      } else if (event.type === 'payment_intent.processing') {
-        intent = event.data.object as any as Stripe.PaymentIntent;
-
-        const { paymentId } = intent.metadata;
-
-        await bus.exec(paymentService.createPaymentEvent, {
-          paymentId,
-          type: 'other',
-          amount: euro(0),
+          paymentId: paymentEvent.payment,
+          type: paymentEvent.type ?? 'other',
+          amount: paymentEvent.amount ?? cents(0),
           data: {
             stripe: {
-              type: 'processing',
+              event: {
+                id: event.id,
+                type: event.type,
+              },
+              payment_intent: paymentEvent.intent,
             },
           },
           time: undefined,
           transaction: null,
         });
-      } else {
-        console.log('Other Stripe event: ' + event.type, event);
       }
 
       return ok();

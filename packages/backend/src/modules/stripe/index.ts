@@ -1,9 +1,4 @@
-import {
-  createPaymentEvent,
-  getPayment,
-  paymentTypeIface,
-} from '../payments/definitions';
-import { cents } from '@bbat/common/currency';
+import { getPayment, paymentTypeIface } from '../payments/definitions';
 import { createModule } from '@/module';
 import Stripe from 'stripe';
 import routes from './api';
@@ -41,18 +36,9 @@ export default createModule({
           return Promise.reject();
         }
 
-        await bus.exec(createPaymentEvent, {
-          paymentId: payment.id,
-          type: 'stripe.intent-created',
-          amount: cents(0),
-          transaction: null,
-          data: {
-            intent: intent.id,
-          },
-        });
-
         return {
           clientSecret: intent.client_secret,
+          intent: intent.id,
         };
       },
     });
