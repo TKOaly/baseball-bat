@@ -2,7 +2,14 @@ import React, { Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { Redirect, Route, Switch, useRoute, useSearch } from 'wouter';
+import {
+  Redirect,
+  Route,
+  Switch,
+  useLocation,
+  useRoute,
+  useSearch,
+} from 'wouter';
 import { Loading } from '@bbat/ui/loading';
 import { Landing } from './views/landing';
 import './style.css';
@@ -16,15 +23,23 @@ const Routes = () => {
   const { i18n } = useTranslation();
   const session = useSession();
   const search = useSearch();
+  const [location, navigate] = useLocation();
   const authenticate = useAuthenticate();
 
   useEffect(() => {
     const token = new URLSearchParams(search).get('token');
 
     if (token) {
-      authenticate(token);
+      authenticate(token).then(() => {
+        const redirect = localStorage.getItem('auth_redirect');
+        localStorage.removeItem('auth_redirect');
+
+        if (redirect) {
+          navigate(redirect);
+        }
+      });
     }
-  }, [authenticate, search]);
+  }, [navigate, authenticate, search]);
 
   useEffect(() => {
     const language = session.data?.preferences?.uiLanguage;
@@ -34,10 +49,15 @@ const Routes = () => {
     }
   }, [session.data?.preferences?.uiLanguage]);
 
-  const [isAuthPath1] = useRoute('/auth*');
-  const [isAuthPath2] = useRoute('/auth/*');
+  const [isAuthPath] = useRoute('/auth/*?');
 
-  const isAuthPath = isAuthPath1 || isAuthPath2;
+  useEffect(() => {
+    const token = new URLSearchParams(search).get('token');
+
+    if (!token) {
+      localStorage.setItem('auth_redirect', location);
+    }
+  }, []);
 
   if (!session.isLoading) {
     if (!session.data?.accessLevel && !isAuthPath) {
@@ -45,7 +65,10 @@ const Routes = () => {
     }
 
     if (session.data?.accessLevel && isAuthPath) {
-      return <Redirect to="/" />;
+      const redirect = localStorage.getItem('auth_redirect');
+      localStorage.removeItem('auth_redirect');
+
+      return <Redirect to={redirect ?? '/'} />;
     }
   }
 

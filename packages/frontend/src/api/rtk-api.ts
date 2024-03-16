@@ -24,7 +24,11 @@ export default createApi({
       baseUrl: '/api/',
       prepareHeaders: (headers, ctx) => {
         const token = selectToken(ctx.getState() as any as RootState); // eslint-disable-line
-        headers.set('Authorization', `Bearer ${token}`);
+
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+
         return headers;
       },
     }),

@@ -18,7 +18,16 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: false,
     }).concat(api.middleware),
-  devTools: import.meta.env.NODE_ENV === 'development',
+  devTools: true,
+});
+
+store.dispatch(sessionSlice.actions.hydrateSession());
+
+store.subscribe(() => {
+  localStorage.setItem(
+    'bbat-session',
+    JSON.stringify(store.getState().session),
+  );
 });
 
 export type RootState = ReturnType<typeof store.getState>;

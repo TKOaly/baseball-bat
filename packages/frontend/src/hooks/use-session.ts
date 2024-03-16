@@ -32,15 +32,6 @@ export const useSession = (): Session => {
   }
 
   if (session.status === SessionStatus.COMPLETED) {
-    if (session.data === null) {
-      dispatch(refreshSession());
-
-      return {
-        data: null,
-        isLoading: true,
-      };
-    }
-
     return {
       data: session.data,
       isLoading: false,

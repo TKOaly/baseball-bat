@@ -109,7 +109,7 @@ const VerificationStep = ({ params }: RouteComponentProps<{ id: string }>) => {
     });
 
     if ('data' in result && result.data.success) {
-      dispatch(authenticateSession(params.id)).then(() => navigate('~/'));
+      dispatch(authenticateSession(params.id));
     } else {
       setError(t('invalidCodeError'));
     }

@@ -1,8 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { PayerPreferences, PayerProfile } from '@bbat/common/types';
+import {
+  PayerPreferences,
+  PayerProfile,
+  payerPreferences,
+} from '@bbat/common/types';
 import api from './api/rtk-api';
+import * as t from 'io-ts';
 import { RootState } from './store';
 import { BACKEND_URL } from './config';
+import { isRight } from 'fp-ts/lib/Either';
 
 export const createSession = createAsyncThunk(
   'session/createSession',
@@ -11,7 +17,6 @@ export const createSession = createAsyncThunk(
       method: 'POST',
     });
     const body = await res.json();
-    window.localStorage.setItem('session-token', body?.token);
     return body?.token;
   },
 );
@@ -50,6 +55,10 @@ export const authenticateSession = createAsyncThunk<
 >('session/authenticateSession', async (authToken: string, thunkApi) => {
   const state = thunkApi.getState();
   const sessionToken = state.session.token;
+
+  if (!sessionToken) {
+    return Promise.reject();
+  }
 
   const res = await fetch(`${BACKEND_URL}/api/auth/authenticate`, {
     method: 'POST',
@@ -133,28 +142,33 @@ export enum AccessLevel {
   ADMIN = 'admin',
 }
 
-export type SessionData = {
-  userId: string;
-  accessLevel: AccessLevel;
-  preferences: PayerPreferences;
-};
+const accessLevel = t.union([t.literal('normal'), t.literal('admin')]);
 
-type SessionState = {
-  status: SessionStatus;
-  token: string | null;
-  data: SessionData | null;
-};
+const sessionDataT = t.type({
+  userId: t.string,
+  accessLevel: accessLevel,
+  preferences: payerPreferences,
+});
 
-const SESSION_TOKEN_KEY = 'session-token';
+const sessionStateT = t.type({
+  token: t.union([t.null, t.string]),
+  data: t.union([t.null, sessionDataT]),
+  status: t.union([
+    t.literal('invalid'),
+    t.literal('creating'),
+    t.literal('refreshing'),
+    t.literal('completed'),
+    t.literal('failed'),
+  ]),
+});
 
-const getInitialToken = () => {
-  return window.localStorage.getItem(SESSION_TOKEN_KEY);
-};
+export type SessionState = t.TypeOf<typeof sessionStateT>;
+export type SessionData = t.TypeOf<typeof sessionDataT>;
 
 const sessionSlice = createSlice({
   name: 'session',
   initialState: {
-    token: getInitialToken(),
+    token: null,
     status: SessionStatus.INVALID,
     data: null,
   } as SessionState,
@@ -163,6 +177,33 @@ const sessionSlice = createSlice({
       state.token = null;
       state.data = null;
       state.status = SessionStatus.INVALID;
+    },
+
+    hydrateSession: () => {
+      const stored = localStorage.getItem('bbat-session');
+
+      if (!stored) {
+        return;
+      }
+
+      let parsed;
+
+      try {
+        parsed = JSON.parse(stored);
+      } catch {
+        return;
+      }
+
+      const result = sessionStateT.decode(parsed);
+
+      if (isRight(result)) {
+        return {
+          ...result.right,
+          status: SessionStatus.INVALID,
+        };
+      }
+
+      return;
     },
   },
   extraReducers: builder => {
@@ -174,7 +215,6 @@ const sessionSlice = createSlice({
       state.token = null;
       state.data = null;
       state.status = SessionStatus.INVALID;
-      window.localStorage.removeItem(SESSION_TOKEN_KEY);
     });
 
     builder.addCase(createSession.pending, state => {
@@ -204,18 +244,20 @@ const sessionSlice = createSlice({
       const { payerId, accessLevel, preferences } = action.payload;
 
       state.status = SessionStatus.COMPLETED;
-      state.data = {
-        userId: payerId,
-        accessLevel,
-        preferences,
-      };
+
+      if (payerId && accessLevel && preferences) {
+        state.data = {
+          userId: payerId,
+          accessLevel,
+          preferences,
+        };
+      }
     });
 
     builder.addCase(refreshSession.rejected, state => {
       state.token = null;
-      state.status = SessionStatus.FAILED;
+      state.status = SessionStatus.INVALID;
       state.data = null;
-      window.localStorage.removeItem(SESSION_TOKEN_KEY);
     });
   },
 });
