@@ -27,8 +27,15 @@ type PaymentFormProps = {
   secret: string;
 };
 
+declare global {
+  interface Window {
+    TEST_APP_URL: string;
+  }
+}
+
 const PaymentForm = ({ id, secret }: PaymentFormProps) => {
   const [, navigate] = useLocation();
+  const [stripeReady, setStripeReady] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
   const { t } = useTranslation();
@@ -44,10 +51,12 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
 
     setIsLoading(true);
 
+    const return_url = `${window.TEST_APP_URL ?? APP_URL}/payment/${id}/stripe/${secret}/return`;
+
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${APP_URL}/payment/${id}/stripe/${secret}/return`,
+        return_url,
       },
     });
 
@@ -82,17 +91,21 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
           <p>{errorMessage}</p>
         </div>
       )}
-      <PaymentElement
-        options={{
-          layout: 'accordion',
-        }}
-      />
+      <div data-stripe-ready={stripeReady}>
+        <PaymentElement
+          onReady={() => setStripeReady(true)}
+          options={{
+            layout: 'accordion',
+          }}
+        />
+      </div>
       <div className="mt-5 flex items-center gap-4">
         <Button
           className="h-10 bg-yellow-400 px-5 text-black/80 hover:bg-yellow-500"
           disabled={!stripe || !elements}
           loading={isLoading}
           onClick={handleSubmit}
+          data-testid="pay-now"
         >
           {t('payNow')}
         </Button>

@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [banking, debts, payers, payments, reports]
+        suite: [banking, debts, payers, payments, reports, stripe]
 
     steps:
       - name: Checkout repository
@@ -36,10 +36,29 @@ jobs:
       - name: Build tests
         run: pnpm run --filter=@bbat/backend... --recursive build
 
+      - name: Install Stripe CLI
+        if: ${{ matrix.suite == 'stripe' }}
+        run: |
+          curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | tee /usr/share/keyrings/stripe.gpg
+          echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | tee -a /etc/apt/sources.list.d/stripe.list
+          apt update
+          apt install stripe
+
+      - name: Get Stripe webhook secret
+        if: ${{ matrix.suite == 'stripe' }}
+        id: stripe-secret
+        run: |
+          secret="$(stripe listen --api-key ${{ secrets.STRIPE_SECRET_KEY }} --print-secret)"
+          echo "::add-mask::$secret"
+          echo "secret=$secret" >> "$GITHUB_OUTPUT"
+
       - name: Run tests
         run: pnpm run --recursive test:unit tests/unit/${{ matrix.suite }}.test.ts
         env:
           ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
+          STRIPE_WEBHOOK_SECRET: ${{ steps.stripe-secret.outputs.secret }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NODE_ENV: development
 
   test-e2e:
     name: Run E2E tests
@@ -49,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [debts, auth, banking, reports]
+        suite: [debts, auth, banking, reports, stripe]
 
     steps:
       - name: Checkout repository
@@ -72,14 +91,36 @@ jobs:
 
       - name: Build frontend in development mode
         run: pnpm run --filter @bbat/frontend build -m development
+        env:
+          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
+          NODE_ENV: development
 
       - name: Build backend
         run: pnpm run --filter @bbat/backend... build
+
+      - name: Install Stripe CLI
+        if: ${{ matrix.suite == 'stripe' }}
+        run: |
+          curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | tee /usr/share/keyrings/stripe.gpg
+          echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | tee -a /etc/apt/sources.list.d/stripe.list
+          apt update
+          apt install stripe
+
+      - name: Get Stripe webhook secret
+        if: ${{ matrix.suite == 'stripe' }}
+        id: stripe-secret
+        run: |
+          secret="$(stripe listen --api-key ${{ secrets.STRIPE_SECRET_KEY }} --print-secret)"
+          echo "::add-mask::$secret"
+          echo "secret=$secret" >> "$GITHUB_OUTPUT"
 
       - name: Run tests
         run: pnpm run --filter=@bbat/backend test:e2e tests/e2e/${{ matrix.suite }}.spec.ts
         env:
           ASSET_PATH: ${{ github.workspace }}/packages/backend/assets
+          STRIPE_WEBHOOK_SECRET: ${{ steps.stripe-secret.outputs.secret }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NODE_ENV: development
 
       - uses: actions/upload-artifact@v3
         if: always()

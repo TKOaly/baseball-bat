@@ -9,11 +9,11 @@ import {
   startServer,
 } from '../common';
 
-interface CustomTestHandler {
+export interface CustomTestHandler {
   (ctx: UnitTestEnvironment): Promise<void> | void;
 }
 
-interface CustomTestFn {
+export interface CustomTestFn {
   (name: string, test: CustomTestHandler): void;
   only(name: string, test: CustomTestHandler): void;
 }
@@ -29,13 +29,14 @@ interface CustomSuiteFn {
 type TestFn = NonNullable<Parameters<typeof test>[0]>;
 type TestContext = Parameters<TestFn>[0];
 
-class UnitTestEnvironment extends TestEnvironment {
+export class UnitTestEnvironment extends TestEnvironment {
   public bus!: ExecutionContext<BusContext>;
   public busRoot!: LocalBus<BusContext>;
 
   constructor(
     public t: TestContext,
-    env: Environment,
+    public env: Environment,
+    public url: string,
   ) {
     super(env);
   }
@@ -47,8 +48,8 @@ export default (name: string, callback: CustomSuiteFn) =>
       fn => async (t: TestContext) => {
         const env = await createEnvironment();
         try {
-          await startServer(env);
-          const testEnv = new UnitTestEnvironment(t, env);
+          const url = await startServer(env);
+          const testEnv = new UnitTestEnvironment(t, env, url);
           testEnv.busRoot = await testEnv.env.get('bus');
           await testEnv.withContext(async ctx => {
             testEnv.bus = ctx;
