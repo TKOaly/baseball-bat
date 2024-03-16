@@ -6,7 +6,7 @@ import {
 } from '../../api/payments';
 import { Timeline } from '@bbat/ui/timeline';
 import { DebtList } from '../../components/debt-list';
-import { formatEuro } from '@bbat/common/src/currency';
+import { euroAbsoluteValue, formatEuro } from '@bbat/common/src/currency';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import {
   Page,
@@ -54,16 +54,54 @@ export const PaymentDetails = ({ params }: Props) => {
     };
   }
 
-  const timelineEvents = payment.events.map(e => ({
-    time: new Date(e.time),
-    title:
+  const timelineEvents = payment.events.flatMap(e => {
+    let title;
+
+    const isStripeEvent = (type: string) =>
+      e.data &&
+      'stripe' in e.data &&
+      (e.data?.stripe as any)?.event?.type === type;
+
+    switch (true) {
+      case e.type === 'created':
+        title = 'Payment created';
+        break;
+
+      case e.type === 'payment':
+        title = `Payment of ${formatEuro(e.amount)} received`;
+        break;
+
+      case e.type === 'failed':
+        title = 'Payment failed';
+        break;
+
+      case isStripeEvent('charge.dispute.created'):
+        title = 'Payment disputed';
+        break;
+
+      case isStripeEvent('payment_intent.confirmed'):
+        title = 'Payment intent confirmed.';
+        break;
+
+      case isStripeEvent('charge.dispute.funds_withdrawn'):
+        title = `${formatEuro(euroAbsoluteValue(e.amount))} of funds withdrawn due to a dispute`;
+        break;
+
+      case isStripeEvent('charge.dispute.funds_reinstated'):
+        title = `${formatEuro(euroAbsoluteValue(e.amount))} of funds reinstated`;
+        break;
+
+      default:
+        return [];
+    }
+
+    return [
       {
-        created: 'Payment created',
-        payment: `Payment of ${formatEuro(e.amount)} received`,
-        'stripe.intent-created': 'Stripe payment flow initiated',
-        failed: 'Payment failed',
-      }[e.type] ?? 'Unknown event',
-  }));
+        time: new Date(e.time),
+        title,
+      },
+    ];
+  });
 
   let invoiceDetailsSection = null;
 
