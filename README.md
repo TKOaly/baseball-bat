@@ -1,4 +1,7 @@
-# Baseball Bat - TKO-äly's Event Payment Platform
+
+<p align="center">
+<img src="https://github.com/TKOaly/baseball-bat/assets/2016731/c3fc2afe-aa92-4d98-a6ee-3859891083c3" />
+</p>
 
 Baseball bat is a web platform with the aim of reducing our organization's treasurer's workload by automating different parts of the event fee billing process.
 In the future the platform will hopefully enable online payments via Stripe and make collaboration between the treasurer, assisting treasurer and the event organizers easier.
