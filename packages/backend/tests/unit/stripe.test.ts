@@ -25,14 +25,22 @@ const startStripe = async (env: UnitTestEnvironment) => {
       },
     );
 
+    console.log('Spawned Stripe CLI...');
+
     const abortFn = () =>
       new Promise<void>(resolve => {
+        console.log('Shutting down Stripe CLI...');
+
         if (stripeHandle.exitCode !== null) {
+          console.log('Already exited!');
           resolve();
           return;
         }
 
-        stripeHandle.on('exit', () => resolve());
+        stripeHandle.on('exit', () => {
+          console.log('Shutdown successfully!');
+          resolve();
+        });
         abortController.abort();
       });
 
@@ -47,11 +55,13 @@ const startStripe = async (env: UnitTestEnvironment) => {
     stripeHandle.stderr.on('data', (data: string) => {
       if (data.toString().includes('Ready!')) {
         finished = true;
+        console.log('Stripe CLI ready!');
         resolve(abortFn);
       }
     });
 
-    stripeHandle.on('exit', () => {
+    stripeHandle.on('exit', code => {
+      console.log('Stripe CLI exited: ', code);
       if (!finished) {
         reject();
       }
@@ -137,6 +147,7 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
         const newPayment = await bus.exec(getPayment, payment.id);
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'paid');
+        console.log('Event count:', newPayment.events.length);
         assert.equal(newPayment.events.length, 3);
       }),
     );
@@ -168,6 +179,7 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
         const newPayment = await bus.exec(getPayment, payment.id);
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'unpaid');
+        console.log('Event count:', newPayment.events.length);
         assert.equal(newPayment.events.length, 3);
       }),
     );
