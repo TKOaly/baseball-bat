@@ -9,6 +9,7 @@ import {
 } from '../../api/payments';
 import { RouteComponentProps, useLocation } from 'wouter';
 import { PaymentBreakdown } from '../../components/payment-breakdown';
+import { useMemo } from 'react';
 
 const useFetchDebts = createMultiFetchHook(debtApi.endpoints.getDebt);
 
@@ -41,9 +42,12 @@ export const NewPayment = ({
     state => state.paymentPool.selectedPayments,
   );
 
-  const { data: debts } = useFetchDebts(
-    params.id ? [params.id] : selectedDebtIds,
+  const debtIds = useMemo(
+    () => (params.id ? [params.id] : selectedDebtIds),
+    [params, selectedDebtIds],
   );
+
+  const { data: debts } = useFetchDebts(debtIds);
 
   const handleCreateInvoice = async () => {
     const result = await createInvoice({
