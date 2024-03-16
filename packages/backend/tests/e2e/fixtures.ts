@@ -70,7 +70,7 @@ export class E2ETestEnvironment extends TestEnvironment {
       { times: 2 },
     );
 
-    await this.withContext(async ctx => {
+    return await this.withContext(async ctx => {
       const payer = await ctx.exec(createPayerProfileFromTkoalyIdentity, {
         id: tkoalyIdentity(1234),
         token: 'TEST-TOKEN',
@@ -90,6 +90,8 @@ export class E2ETestEnvironment extends TestEnvironment {
         method: 'test-runner',
         userServiceToken: 'TEST-TOKEN',
       });
+
+      return payer;
     });
   }
 

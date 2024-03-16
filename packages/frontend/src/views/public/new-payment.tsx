@@ -90,6 +90,7 @@ export const NewPayment = ({
 
       <div>
         <div
+          role="button"
           className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 bg-white/50 py-4 shadow-sm hover:border-blue-400"
           onClick={() => handleCreateInvoice()}
         >
@@ -105,6 +106,8 @@ export const NewPayment = ({
 
         {import.meta.env.DEV && (
           <div
+            role="button"
+            data-testid="stripe-button"
             className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 bg-white/50 py-4 shadow-sm hover:border-blue-400"
             onClick={() => handleCreateStripePayment()}
           >
