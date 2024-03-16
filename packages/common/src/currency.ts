@@ -36,6 +36,11 @@ export const makeEurosNegative = (value: EuroValue): EuroValue => ({
   value: -Math.abs(value.value),
 });
 
+export const euroAbsoluteValue = (value: EuroValue): EuroValue => ({
+  currency: value.currency,
+  value: Math.abs(value.value),
+});
+
 export const compareEuroValues = (a: EuroValue, b: EuroValue): -1 | 0 | 1 => {
   if (a.value === b.value) {
     return 0;
