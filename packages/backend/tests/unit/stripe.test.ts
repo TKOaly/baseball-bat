@@ -84,16 +84,18 @@ const stripe = async (...args: string[]) => {
 };
 
 const triggerWebhook = async (
+  env: UnitTestEnvironment,
   name: string,
   add: Record<string, string | number> = {},
 ) => {
-  const args = ['trigger', name];
+  const args = ['trigger', '--api-key', env.env.config.stripeSecretKey, name];
 
   Object.entries(add).forEach(([key, value]) => {
     args.push('--override', `${key}=${value}`);
   });
 
-  return stripe(...args);
+  console.log(`Triggering webhook ${name}...`);
+  await stripe(...args);
 };
 
 const retry = async <T>(fn: () => Promise<T>, count = 5): Promise<T> => {
@@ -121,8 +123,8 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
       }
     });
 
-  test('payment_intent.succeeded', async ({ withContext }) => {
-    const payment = await withContext(async bus => {
+  test('payment_intent.succeeded', async env => {
+    const payment = await env.withContext(async bus => {
       return bus.exec(createPayment, {
         payment: {
           title: 'Test Payment',
@@ -136,14 +138,14 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
 
     assert.ok(payment);
 
-    await triggerWebhook('payment_intent.succeeded', {
+    await triggerWebhook(env, 'payment_intent.succeeded', {
       'payment_intent:amount': payment.initialAmount.value,
       'payment_intent:currency': 'eur',
       'payment_intent:metadata.paymentId': payment.id,
     });
 
     await retry(() =>
-      withContext(async bus => {
+      env.withContext(async bus => {
         const newPayment = await bus.exec(getPayment, payment.id);
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'paid');
@@ -153,8 +155,8 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
     );
   });
 
-  test('payment_intent.payment_failed', async ({ withContext }) => {
-    const payment = await withContext(async bus => {
+  test('payment_intent.payment_failed', async env => {
+    const payment = await env.withContext(async bus => {
       return bus.exec(createPayment, {
         payment: {
           title: 'Test Payment',
@@ -168,14 +170,14 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
 
     assert.ok(payment);
 
-    await triggerWebhook('payment_intent.payment_failed', {
+    await triggerWebhook(env, 'payment_intent.payment_failed', {
       'payment_intent:amount': payment.initialAmount.value,
       'payment_intent:currency': 'eur',
       'payment_intent:metadata.paymentId': payment.id,
     });
 
     await retry(() =>
-      withContext(async bus => {
+      env.withContext(async bus => {
         const newPayment = await bus.exec(getPayment, payment.id);
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'unpaid');
