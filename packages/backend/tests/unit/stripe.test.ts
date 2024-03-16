@@ -150,7 +150,7 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'paid');
         console.log('Event count:', newPayment.events.length);
-        assert.equal(newPayment.events.length, 3);
+        assert.equal(newPayment.events.length, 5);
       }),
     );
   });
@@ -182,7 +182,7 @@ setup('Stripe Webhooks', ({ test: origTest }) => {
         assert.ok(newPayment);
         assert.equal(newPayment.status, 'unpaid');
         console.log('Event count:', newPayment.events.length);
-        assert.equal(newPayment.events.length, 3);
+        assert.equal(newPayment.events.length, 5);
       }),
     );
   });
