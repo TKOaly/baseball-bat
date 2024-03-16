@@ -33,7 +33,7 @@
     "@types/xml2js": "^0.4.14",
     "@vendia/serverless-express": "^4.12.6",
     "@xmldom/xmldom": "^0.8.10",
-    "axios": "^1.6.7",
+    "axios": "^1.6.8",
     "base64url": "^3.0.1",
     "bullmq": "^5.4.2",
     "canvas": "^2.11.2",
