@@ -25,6 +25,10 @@ export class E2ETestEnvironment extends TestEnvironment {
     super(env);
   }
 
+  newPage(newPage: Page) {
+    return new E2ETestEnvironment(this.browser, newPage, this.url, this.env);
+  }
+
   getResourceField(label: string) {
     return this.page
       .locator('.resource-field-label', {

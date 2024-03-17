@@ -313,7 +313,7 @@ test.describe('CSV import', () => {
 
     await row.getCell('Identifier').click();
 
-    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+    const newBbat = bbat.newPage(newPage);
 
     await expect(newBbat.getResourceField('Payment Condition')).toHaveText(
       '14 days',
@@ -393,7 +393,7 @@ test.describe('CSV import', () => {
 
     await row.getCell('Identifier').click();
 
-    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+    const newBbat = bbat.newPage(newPage);
 
     await expect(newBbat.getResourceField('Due date')).toHaveText('12.03.2030');
     await expect(newBbat.getResourceField('Total')).toHaveText(
@@ -474,7 +474,7 @@ test.describe('CSV import', () => {
 
     await row.getCell('Identifier').click();
 
-    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+    const newBbat = bbat.newPage(newPage);
 
     await expect(newBbat.getResourceField('Payment condition')).toHaveText(
       '14 days',
@@ -557,7 +557,7 @@ test.describe('CSV import', () => {
     await page.getByRole('button', { name: 'View created' }).click();
 
     const newPage = await pagePromise;
-    const newBbat = new E2ETestEnvironment(newPage, bbat.url, bbat.env);
+    const newBbat = bbat.newPage(newPage);
 
     const message = newPage.getByText(
       /Here are listed all debts associated with the tag "mass-import-batch-[a-z0-9]{11}"\./,
