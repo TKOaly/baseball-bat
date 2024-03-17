@@ -18,6 +18,7 @@ import {
 } from './infinite-table';
 import { ComponentProps } from 'react';
 import { Table } from '@bbat/ui/src/table';
+import { SendRemindersDialog } from './dialogs/send-reminders-dialog';
 
 export type Props<Q extends PaginatedBaseQuery> =
   | Omit<InfiniteTableProps<DebtWithPayer, Q>, 'columns' | 'actions'>
@@ -35,6 +36,7 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
   const [sendAllReminders] = useSendAllRemindersMutation();
   const [, setLocation] = useLocation();
   const showMassEditDebtsDialog = useDialog(MassEditDebtsDialog);
+  const showReminderDialog = useDialog(SendRemindersDialog);
 
   const commonProps: Common<
     ComponentProps<typeof Table<DebtWithPayer & { key: string }, any, any>>,
@@ -188,10 +190,17 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
         text: 'Send Reminder',
         disabled: row => row.draft,
         onSelect: async rows => {
+          const options = await showReminderDialog({
+            debtCount: rows.length,
+          });
+
+          if (!options) {
+            return;
+          }
+
           await sendAllReminders({
             debts: rows.map(row => row.id),
-            send: true,
-            ignoreCooldown: true,
+            ...options,
           });
         },
       },
