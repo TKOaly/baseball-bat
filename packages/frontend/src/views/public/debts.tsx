@@ -220,27 +220,29 @@ export const Debts = () => {
         )}
       </div>
 
-      <div className="rounded-md bg-white/90 p-8 shadow-xl">
-        <h3 className="mb-5 font-bold text-zinc-800">
-          {t('unpaidDebtsHeader')}
-        </h3>
-        <p className="mb-8 text-zinc-900">
-          {t('unpaidDebtsDisclaimer', {
-            latestBankInfo: bankInfo?.latestBankInfo,
-          })}
-        </p>
-        <div className="space-y-6">
-          {(unpaidDebts ?? []).map(debt => (
-            <DebtCard key={debt.id} debt={debt} />
-          ))}
-        </div>
-        {unpaidDebts.length === 0 && (
-          <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-3 py-3 text-gray-600 shadow">
-            <Info />
-            {t('noUnpaidDebts')}
+      {unpaidDebts?.length > 0 && (
+        <div className="rounded-md bg-white/90 p-8 shadow-xl">
+          <h3 className="mb-5 font-bold text-zinc-800">
+            {t('unpaidDebtsHeader')}
+          </h3>
+          <p className="mb-8 text-zinc-900">
+            {t('unpaidDebtsDisclaimer', {
+              latestBankInfo: bankInfo?.latestBankInfo,
+            })}
+          </p>
+          <div className="space-y-6">
+            {(unpaidDebts ?? []).map(debt => (
+              <DebtCard key={debt.id} debt={debt} />
+            ))}
           </div>
-        )}
-      </div>
+          {unpaidDebts.length === 0 && (
+            <div className="mt-3 flex items-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-3 py-3 text-gray-600 shadow">
+              <Info />
+              {t('noUnpaidDebts')}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rounded-md bg-white/90 p-8 shadow-xl">
         <h3 className="mb-8 font-bold text-zinc-800">
