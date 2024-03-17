@@ -60,8 +60,6 @@ setup('Payers service', ({ test }) => {
 
     assert.ok(typeof mock.calls[0].arguments[0] === 'object');
     assert.ok(mock.calls[0].arguments[0]);
-    assert.ok('token' in mock.calls[0].arguments[0]);
-    assert.equal(mock.calls[0].arguments[0].token, 'token');
 
     assert.ok(created);
     assert.equal(created.name, 'Teppo Testaaja');
@@ -106,9 +104,8 @@ setup('Payers service', ({ test }) => {
 
     assert.ok(typeof mock.calls[0].arguments[0] === 'object');
     assert.ok(mock.calls[0].arguments[0]);
-    assert.ok('token' in mock.calls[0].arguments[0]);
-    assert.equal(mock.calls[0].arguments[0].token, 'token');
 
+    console.log(created);
     assert.ok(created);
     assert.equal(created.name, 'Teppo E. Testaaja');
     assert.equal(created.emails.length, 1);

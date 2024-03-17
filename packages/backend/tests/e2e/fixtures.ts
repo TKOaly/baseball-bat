@@ -106,10 +106,9 @@ export class E2ETestEnvironment extends TestEnvironment {
       }
 
       await ctx.exec(authenticateSession, {
-        token,
+        token: session.token,
         payerId: payer.id,
         method: 'test-runner',
-        userServiceToken: 'TEST-TOKEN',
       });
 
       return payer;
