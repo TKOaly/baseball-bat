@@ -18,6 +18,7 @@
     "noUnpaidDebts": "Ei maksamattomia velkoja",
     "paidDebts": "Maksetut velat",
     "noPaidDebts": "Ei maksettuja velkoja",
+    "unpaidDebtsDisclaimer": "Alla näet listattuna maksamattomat velkasi. Huomioi, että viimeisimmät tiedot tilisiirrolla suoritetuista maksuista on päivältä {{ latestBankInfo, dateTime }}. Tätä myöhemmin suoritetut maksut voivat vielä näkyä maksamattomina.",
     "settings": {
       "userSettingsHeader": "Käyttäjäasetukset",
       "uiLanguageLabel": "Käyttöliittymän kieli",

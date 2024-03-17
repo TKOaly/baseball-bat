@@ -1,17 +1,52 @@
 import { Middleware, Parser, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount, paginationQuery } from '@bbat/common/build/src/types';
+import * as A from 'fp-ts/Array';
+import * as T from 'fp-ts/Task';
+import * as D from 'fp-ts/Date';
+import * as O from 'fp-ts/Option';
 import * as bankingService from '@/modules/banking/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '@/validate-middleware';
 import multer from 'multer';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
+import { flow } from 'fp-ts/lib/function';
 
 const factory: RouterFactory = route => {
   const upload = multer({
     storage: multer.memoryStorage(),
   });
+
+  const getInfo = route
+    .get('/info')
+    .use(auth({ accessLevel: 'normal' }))
+    .handler(async ({ bus }) => {
+      return flow(
+        bus.execT(bankingService.getBankAccounts),
+        T.chain(
+          A.traverse(T.ApplicativePar)(
+            flow(
+              ({ iban }) => iban,
+              bus.execT(bankingService.getAccountStatements),
+            ),
+          ),
+        ),
+        T.map(
+          flow(
+            A.flatten,
+            A.map(statement => statement.closingBalance.date),
+            A.sort(D.Ord),
+            A.last,
+            O.toNullable,
+            latest =>
+              ok({
+                latestBankInfo: latest,
+              }),
+          ),
+        ),
+      )()();
+    });
 
   const getBankAccounts = route
     .get('/accounts')
@@ -178,6 +213,7 @@ const factory: RouterFactory = route => {
     getBankStatementTransactions,
     autoregisterTransactions,
     getTransactionRegistrations,
+    getInfo,
   );
 };
 

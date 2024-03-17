@@ -10,6 +10,7 @@ import { useAppDispatch } from '../../store';
 import paymentPoolSlice from '../../state/payment-pool';
 import { Button } from '@bbat/ui/src/button';
 import { useGetOwnPaymentsQuery } from '../../api/payments';
+import { useGetInfoQuery } from '../../api/banking/statements';
 
 const debtStatusBadgeCva = cva('text-sm font-semibold py-1 px-2 rounded', {
   variants: {
@@ -155,6 +156,7 @@ const PaymentCard: React.FC<PaymentCardProps> = ({ payment }) => {
 export const Debts = () => {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
+  const { data: bankInfo } = useGetInfoQuery();
   const { data: debtsResult } = useGetPayerDebtsQuery({ id: 'me' });
   const { data: payments } = useGetOwnPaymentsQuery();
   const { data: profile } = useGetPayerQuery('me');
@@ -219,9 +221,14 @@ export const Debts = () => {
       </div>
 
       <div className="rounded-md bg-white/90 p-8 shadow-xl">
-        <h3 className="mb-8 font-bold text-zinc-800">
+        <h3 className="mb-5 font-bold text-zinc-800">
           {t('unpaidDebtsHeader')}
         </h3>
+        <p className="mb-8 text-zinc-900">
+          {t('unpaidDebtsDisclaimer', {
+            latestBankInfo: bankInfo?.latestBankInfo,
+          })}
+        </p>
         <div className="space-y-6">
           {(unpaidDebts ?? []).map(debt => (
             <DebtCard key={debt.id} debt={debt} />

@@ -33,6 +33,15 @@ const statementsApi = rtkApi.injectEndpoints({
       },
     }),
 
+    getInfo: builder.query<{ latestBankInfo: Date | null }, void>({
+      query: () => '/banking/info',
+      transformResponse: (response: { latestBankInfo: string | null }) => ({
+        latestBankInfo: response.latestBankInfo
+          ? parseISO(response.latestBankInfo)
+          : null,
+      }),
+    }),
+
     getBankAccountStatements: builder.query<BankStatement[], string>({
       query: iban => `/banking/accounts/${iban}/statements`,
       transformResponse: (response: ResponseBankStatement[]) =>
@@ -72,4 +81,5 @@ export const {
   useCreateBankStatementMutation,
   useGetBankAccountStatementsQuery,
   useGetBankStatementQuery,
+  useGetInfoQuery,
 } = statementsApi;
