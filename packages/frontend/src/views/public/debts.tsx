@@ -11,6 +11,7 @@ import paymentPoolSlice from '../../state/payment-pool';
 import { Button } from '@bbat/ui/src/button';
 import { useGetOwnPaymentsQuery } from '../../api/payments';
 import { useGetInfoQuery } from '../../api/banking/statements';
+import { useMemo } from 'react';
 
 const debtStatusBadgeCva = cva('text-sm font-semibold py-1 px-2 rounded', {
   variants: {
@@ -172,12 +173,23 @@ export const Debts = () => {
     navigate('/payment/new');
   };
 
-  const unpaidDebts = (debts ?? []).filter(
-    p => p.status === 'unpaid' && !p.credited,
+  const unpaidDebts = useMemo(
+    () =>
+      (debts ? [...debts] : [])
+        .sort(
+          (a, b) =>
+            (b.publishedAt?.valueOf() ?? 0) - (a.publishedAt?.valueOf() ?? 0),
+        )
+        .filter(p => p.status === 'unpaid' && !p.credited),
+    [debts],
   );
 
-  const paidPayments = (payments ?? []).filter(
-    p => p.status === 'paid' && !p.credited,
+  const paidPayments = useMemo(
+    () =>
+      (payments ? [...payments] : [])
+        .sort((a, b) => (b.paidAt?.valueOf() ?? 0) - (a.paidAt?.valueOf() ?? 0))
+        .filter(p => p.status === 'paid' && !p.credited),
+    [payments],
   );
 
   const totalEuros = unpaidDebts

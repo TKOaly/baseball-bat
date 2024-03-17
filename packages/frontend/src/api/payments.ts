@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
 import {
   EuroValue,
@@ -35,6 +36,13 @@ const paymentsApi = rtkApi.injectEndpoints({
     getOwnPayments: builder.query<Payment[], void>({
       query: () => '/payments/my',
       providesTags: [{ type: 'Payment', id: 'LIST' }],
+      transformResponse: (
+        response: (Omit<Payment, 'paidAt'> & { paidAt: string })[],
+      ) =>
+        response.map(payment => ({
+          ...payment,
+          paidAt: payment.paidAt ? parseISO(payment.paidAt) : null,
+        })),
     }),
 
     getPaymentsByDebt: builder.query<Payment[], string>({
