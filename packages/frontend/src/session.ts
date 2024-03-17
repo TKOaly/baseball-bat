@@ -241,11 +241,13 @@ const sessionSlice = createSlice({
     });
 
     builder.addCase(refreshSession.fulfilled, (state, action) => {
-      const { payerId, accessLevel, preferences } = action.payload;
+      const { payerId, authLevel, accessLevel, preferences } = action.payload;
 
       state.status = SessionStatus.COMPLETED;
 
-      if (payerId && accessLevel && preferences) {
+      if (authLevel === 'unauthenticated') {
+        state.data = null;
+      } else {
         state.data = {
           userId: payerId,
           accessLevel,

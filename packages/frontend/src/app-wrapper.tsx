@@ -54,21 +54,21 @@ const Routes = () => {
   useEffect(() => {
     const token = new URLSearchParams(search).get('token');
 
-    if (!token) {
+    if (!token && !isAuthPath) {
       localStorage.setItem('auth_redirect', location);
     }
   }, []);
 
   if (!session.isLoading) {
-    if (!session.data?.accessLevel && !isAuthPath) {
+    if (!session.data && !isAuthPath) {
       return <Redirect to="/auth" />;
     }
 
-    if (session.data?.accessLevel && isAuthPath) {
+    if (session.data && isAuthPath) {
       const redirect = localStorage.getItem('auth_redirect');
       localStorage.removeItem('auth_redirect');
 
-      return <Redirect to={redirect ?? '/'} />;
+      return <Redirect to={redirect ?? '/debts'} />;
     }
   }
 
