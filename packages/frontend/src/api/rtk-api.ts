@@ -10,7 +10,7 @@ const sessionAwareBaseQuery =
     const result = await baseQuery(args, api, extraOptions);
 
     if (result.meta?.response?.status === 401) {
-      api.dispatch(sessionSlice.actions.resetSession);
+      api.dispatch(sessionSlice.actions.resetSession());
     }
 
     return result;
