@@ -280,7 +280,6 @@ const factory: RouterFactory = route => {
                 payerService.createPayerProfileForExternalIdentity,
                 {
                   id: payerIdentity,
-                  token: ctx.req.cookies.token,
                   name: registration.name,
                 },
               );

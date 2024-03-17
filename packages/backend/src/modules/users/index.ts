@@ -30,17 +30,21 @@ export default createModule({
   async setup({ config, bus }) {
     const client = axios.create({
       baseURL: config.userServiceApiUrl,
+      auth: {
+        username: config.serviceId,
+        password: config.serviceSecret,
+      },
       headers: {
         Service: config.serviceId,
       },
     });
 
-    const fetchT = (path: string, token: string) => async () =>
-      client.get(path, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    const fetchT = (path: string, token?: string) => async () => {
+      return client.get(
+        path,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {},
+      );
+    };
 
     const decodeResponse = <P extends t.Type<any, any, any>>(payload: P) =>
       flow(
@@ -50,10 +54,9 @@ export default createModule({
         O.fromEither,
       );
 
-    bus.register(defs.getTokenUpstreamUser, async ({ token }) => {
+    bus.register(defs.getTokenUpstreamUser, async token => {
       const handler = pipe(
         fetchT('/api/users/me', token),
-        // T.tap(a => async () => console.log(a)),
         T.map(decodeResponse(apiUpstreamUser)),
         T.map(O.toNullable),
       );
@@ -61,9 +64,9 @@ export default createModule({
       return handler();
     });
 
-    bus.register(defs.getUpstreamUsers, async ({ token }) => {
+    bus.register(defs.getUpstreamUsers, async () => {
       const handler = pipe(
-        fetchT('/api/users', token),
+        fetchT('/api/users'),
         T.map(decodeResponse(t.array(apiUpstreamUser))),
         T.map(O.getOrElseW(() => [])),
       );
@@ -71,9 +74,9 @@ export default createModule({
       return handler();
     });
 
-    bus.register(defs.getUpstreamUserById, async ({ token, id }) => {
+    bus.register(defs.getUpstreamUserById, async ({ id }) => {
       const handler = pipe(
-        fetchT(`/api/users/${id.value}`, token),
+        fetchT(`/api/users/${id.value}`),
         T.map(decodeResponse(apiUpstreamUser)),
         T.map(O.toNullable),
       );
@@ -81,12 +84,9 @@ export default createModule({
       return handler();
     });
 
-    bus.register(
-      defs.getUpstreamUserByEmail,
-      async ({ token, email }, _, bus) => {
-        const users = await bus.exec(defs.getUpstreamUsers, { token });
-        return users.find(user => user.email === email) ?? null;
-      },
-    );
+    bus.register(defs.getUpstreamUserByEmail, async ({ email }, _, bus) => {
+      const users = await bus.exec(defs.getUpstreamUsers);
+      return users.find(user => user.email === email) ?? null;
+    });
   },
 });

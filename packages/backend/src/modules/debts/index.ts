@@ -588,7 +588,6 @@ export default createModule({
 
         const user = await bus.exec(usersService.getUpstreamUserByEmail, {
           email,
-          token,
         });
 
         if (user) {
@@ -615,7 +614,6 @@ export default createModule({
               payerService.createPayerProfileFromTkoalyIdentity,
               {
                 id: user.id,
-                token,
               },
             );
           }

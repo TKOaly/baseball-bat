@@ -21,7 +21,6 @@ test('email auth', async ({ page, bbat }) => {
   await bbat.withContext(async ctx => {
     await ctx.exec(createPayerProfileFromTkoalyIdentity, {
       id: tkoalyIdentity(1234),
-      token: 'TEST-TOKEN',
     });
   });
 

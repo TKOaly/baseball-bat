@@ -374,7 +374,7 @@ export default createModule({
 
     bus.register(
       defs.getOrCreatePayerProfileForIdentity,
-      async ({ id, token }, _, bus) => {
+      async ({ id }, _, bus) => {
         const existingPayerProfile = await bus.exec(
           defs.getPayerProfileByIdentity,
           id,
@@ -390,14 +390,13 @@ export default createModule({
 
         return bus.exec(defs.createPayerProfileForExternalIdentity, {
           id,
-          token,
         });
       },
     );
 
     bus.register(
       defs.createPayerProfileForExternalIdentity,
-      async ({ id, token, name }, _, bus) => {
+      async ({ id, name }, _, bus) => {
         const existingPayerProfile = await bus.exec(
           defs.getPayerProfileByIdentity,
           id,
@@ -408,14 +407,9 @@ export default createModule({
         }
 
         if (isTkoalyIdentity(id)) {
-          if (token) {
-            return bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
-              id,
-              token,
-            });
-          }
-
-          throw new Error('Not authorized for user information');
+          return bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
+            id,
+          });
         }
 
         if (isEmailIdentity(id)) {
@@ -435,10 +429,9 @@ export default createModule({
 
     bus.register(
       defs.createPayerProfileFromTkoalyIdentity,
-      async ({ id, token }, { pg }, bus) => {
+      async ({ id }, { pg }, bus) => {
         const upstreamUser = await bus.exec(usersService.getUpstreamUserById, {
           id,
-          token,
         });
 
         if (!upstreamUser) {

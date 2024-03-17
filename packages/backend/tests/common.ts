@@ -206,6 +206,7 @@ export const createEnvironment = async (): Promise<Environment> => {
     userServiceUrl: '',
     userServiceApiUrl: '',
     serviceId: '',
+    serviceSecret: '',
     eventServiceUrl: '',
     eventServiceToken: '',
     jwtSecret: '',

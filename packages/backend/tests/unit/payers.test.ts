@@ -56,13 +56,10 @@ setup('Payers service', ({ test }) => {
 
     const created = await bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
       id,
-      token: 'token',
     });
 
     assert.ok(typeof mock.calls[0].arguments[0] === 'object');
     assert.ok(mock.calls[0].arguments[0]);
-    assert.ok('token' in mock.calls[0].arguments[0]);
-    assert.equal(mock.calls[0].arguments[0].token, 'token');
 
     assert.ok(created);
     assert.equal(created.name, 'Teppo Testaaja');
@@ -103,14 +100,12 @@ setup('Payers service', ({ test }) => {
 
     const created = await bus.exec(defs.createPayerProfileFromTkoalyIdentity, {
       id,
-      token: 'token',
     });
 
     assert.ok(typeof mock.calls[0].arguments[0] === 'object');
     assert.ok(mock.calls[0].arguments[0]);
-    assert.ok('token' in mock.calls[0].arguments[0]);
-    assert.equal(mock.calls[0].arguments[0].token, 'token');
 
+    console.log(created);
     assert.ok(created);
     assert.equal(created.name, 'Teppo E. Testaaja');
     assert.equal(created.emails.length, 1);
@@ -149,7 +144,6 @@ setup('Payers service', ({ test }) => {
       defs.createPayerProfileFromTkoalyIdentity,
       {
         id: tkoalyIdentity(1234),
-        token: 'token',
       },
     );
 

@@ -69,7 +69,6 @@ export const iface = createInterface('auth', builder => ({
         method: t.string,
       }),
       t.partial({
-        userServiceToken: t.string,
         accessLevel: t.string,
       }),
     ]),
@@ -148,7 +147,7 @@ export const authServiceFactory = ({
 
   bus.provide(iface, {
     async authenticateSession(
-      { accessLevel: pAccessLevel, method, token, payerId, userServiceToken },
+      { accessLevel: pAccessLevel, method, token, payerId },
       _,
       bus,
     ) {
@@ -161,10 +160,9 @@ export const authServiceFactory = ({
           throw new Error('Profile does not exist');
         }
 
-        if (profile.tkoalyUserId && userServiceToken) {
+        if (profile.tkoalyUserId) {
           const user = await bus.exec(getUpstreamUserById, {
             id: profile.tkoalyUserId,
-            token: userServiceToken,
           });
 
           if (user && user.role === 'yllapitaja') {
@@ -349,7 +347,6 @@ export const authServiceFactory = ({
       token: string,
       payerId: InternalIdentity,
       method: string,
-      userServiceToken: string,
       pAccessLevel?: AccessLevel,
     ) {
       let accessLevel = pAccessLevel;
@@ -364,7 +361,6 @@ export const authServiceFactory = ({
         if (profile.tkoalyUserId) {
           const user = await bus.exec(getUpstreamUserById, {
             id: profile.tkoalyUserId,
-            token: userServiceToken,
           });
 
           if (user && user.role === 'yllapitaja') {
