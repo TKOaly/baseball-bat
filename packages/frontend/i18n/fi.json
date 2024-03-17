@@ -132,7 +132,8 @@
     "debtStatusBadge": {
       "paid": "Maksettu",
       "unpaid": "Maksamatta",
-      "mispaid": "Maksuvirhe"
+      "mispaid": "Maksuvirhe",
+      "overdue": "Myöhässä"
     },
     "debtCard": {
       "amountLabel": "Summa",

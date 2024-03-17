@@ -12,18 +12,20 @@ import { Button } from '@bbat/ui/src/button';
 import { useGetOwnPaymentsQuery } from '../../api/payments';
 import { useGetInfoQuery } from '../../api/banking/statements';
 import { useMemo } from 'react';
+import { isBefore } from 'date-fns/isBefore';
 
 const debtStatusBadgeCva = cva('text-sm font-semibold py-1 px-2 rounded', {
   variants: {
     status: {
       paid: 'bg-green-200 text-green-700',
-      unpaid: 'bg-red-200 text-red-600',
+      unpaid: 'bg-blue-200 text-blue-600',
       mispaid: 'bg-orange-200 text-orange-600',
+      overdue: 'bg-red-200 text-red-600',
     },
   },
 });
 
-const DebtStatusBadge = ({ status }: { status: DebtStatus }) => {
+const DebtStatusBadge = ({ status }: { status: DebtStatus | 'overdue' }) => {
   const { t } = useTranslation([], { keyPrefix: 'debtStatusBadge' });
 
   return <span className={debtStatusBadgeCva({ status })}>{t(status)}</span>;
@@ -47,6 +49,12 @@ type CardProps = {
 
 const DebtCard: React.FC<CardProps> = ({ debt }) => {
   const { t } = useTranslation([], { keyPrefix: 'debtCard' });
+
+  let status: DebtStatus | 'overdue' = debt.status;
+
+  if (debt.dueDate && isBefore(debt.dueDate, new Date())) {
+    status = 'overdue';
+  }
 
   return (
     <div className={debtCardCva({ selected: false })}>
@@ -79,7 +87,7 @@ const DebtCard: React.FC<CardProps> = ({ debt }) => {
           </div>
         </div>
         <div>
-          <DebtStatusBadge status={debt.status} />
+          <DebtStatusBadge status={status} />
         </div>
       </div>
       <div className="flex gap-4 border-t p-3">
