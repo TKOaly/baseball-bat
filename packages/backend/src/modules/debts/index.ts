@@ -1644,7 +1644,9 @@ export default createModule({
           A.traverse(T.ApplicativePar)((debtId: string) =>
             pipe(
               { debtId, draft: true },
-              bus.execT(defs.sendReminder),
+              bus.execTE(defs.sendReminder),
+              TE.chainEitherKW(v => v),
+              TE.mapLeft(e => e.toString()),
               TE.map(email => ({ debtId, email })),
             ),
           ),
