@@ -19,28 +19,18 @@ export const useSession = (): Session => {
   const dispatch = useAppDispatch();
 
   if (session.status === SessionStatus.INVALID) {
-    if (session.token === null) {
-      dispatch(createSession());
-    } else {
+    if (session.token) {
       dispatch(refreshSession());
+    } else {
+      dispatch(createSession());
     }
-
-    return {
-      data: null,
-      isLoading: true,
-    };
-  }
-
-  if (session.status === SessionStatus.COMPLETED) {
-    return {
-      data: session.data,
-      isLoading: false,
-    };
   }
 
   return {
-    data: null,
-    isLoading: false,
+    data: session.data,
+    isLoading:
+      session.status === SessionStatus.CREATING ||
+      session.status === SessionStatus.REFRESHING,
   };
 };
 
