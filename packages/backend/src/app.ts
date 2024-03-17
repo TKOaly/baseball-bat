@@ -20,6 +20,10 @@ const redisClient = redis.createClient({
   url: config.redisUrl,
 });
 
+redisClient.on('error', error => {
+  console.error('Redis client error:', error);
+});
+
 redisClient.connect();
 
 let emailTransport: IEmailTransport;
