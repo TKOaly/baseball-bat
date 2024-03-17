@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   TkoalyIdentityFromNumber,
   upstreamUserRole,
@@ -30,20 +30,26 @@ export default createModule({
   async setup({ config, bus }) {
     const client = axios.create({
       baseURL: config.userServiceApiUrl,
-      auth: {
-        username: config.serviceId,
-        password: config.serviceSecret,
-      },
       headers: {
         Service: config.serviceId,
       },
     });
 
     const fetchT = (path: string, token?: string) => async () => {
-      return client.get(
-        path,
-        token ? { headers: { Authorization: `Bearer ${token}` } } : {},
-      );
+      const opts: AxiosRequestConfig = {};
+
+      if (token) {
+        opts.headers = {
+          Authorization: `Bearer ${token}`,
+        };
+      } else {
+        opts.auth = {
+          username: config.serviceId,
+          password: config.serviceSecret,
+        };
+      }
+
+      return client.get(path, opts);
     };
 
     const decodeResponse = <P extends t.Type<any, any, any>>(payload: P) =>
