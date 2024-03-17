@@ -1,4 +1,4 @@
-import { Locator, Page, test as base } from '@playwright/test';
+import { Locator, Page, BrowserContext, test as base } from '@playwright/test';
 import {
   Environment,
   TestEnvironment,
@@ -17,6 +17,7 @@ type Fixtures = {
 
 export class E2ETestEnvironment extends TestEnvironment {
   constructor(
+    public browser: BrowserContext,
     public page: Page,
     public url: string,
     public env: Environment,
@@ -78,11 +79,28 @@ export class E2ETestEnvironment extends TestEnvironment {
 
       assert.ok(payer);
 
-      const token = await this.page.evaluate(() =>
-        localStorage.getItem('session-token'),
-      );
+      const state = await this.browser.storageState();
+      const { localStorage: ls } = state.origins.find(
+        ({ origin }) => origin === this.url,
+      )!;
+      const sessionStr = ls.find(({ name }) => name === 'bbat-session')?.value;
+      const session = sessionStr ? JSON.parse(sessionStr) : null;
 
-      assert.ok(token);
+      let token;
+
+      if (
+        session !== undefined &&
+        'token' in session &&
+        typeof session.token === 'string'
+      ) {
+        token = session.token;
+      } else {
+        const response = await this.page.waitForResponse(
+          `${this.url}/api/auth/init`,
+        );
+        const body = await response.json();
+        token = body.token;
+      }
 
       await ctx.exec(authenticateSession, {
         token,
@@ -169,10 +187,10 @@ class Row {
 }
 
 export const test = base.extend<Fixtures>({
-  async bbat({ page }, use) {
+  async bbat({ page, context }, use) {
     const env = await createEnvironment();
     const url = await startServer(env);
-    const testEnv = new E2ETestEnvironment(page, url, env);
+    const testEnv = new E2ETestEnvironment(context, page, url, env);
     await use(testEnv);
     await env.teardown();
   },
