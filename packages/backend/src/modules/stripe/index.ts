@@ -80,6 +80,11 @@ export default createModule({
       });
 
       const debts = await bus.exec(getDebtsByPayment, paymentId);
+
+      if (debts.length === 0) {
+        return;
+      }
+
       const [{ payerId }] = debts;
       const email = await bus.exec(getPayerPrimaryEmail, payerId);
 
