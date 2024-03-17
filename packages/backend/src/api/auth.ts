@@ -41,9 +41,10 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
   const authCompleted = route
     .get('/auth/auth-completed')
     .handler(async ({ req, bus }) => {
-      const upstreamUser = await bus.exec(getTokenUpstreamUser, {
-        token: req.cookies.token,
-      });
+      const upstreamUser = await bus.exec(
+        getTokenUpstreamUser,
+        req.cookies.token,
+      );
 
       if (!upstreamUser) {
         return internalServerError();
@@ -53,7 +54,6 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
         createPayerProfileFromTkoalyIdentity,
         {
           id: upstreamUser.id,
-          token: req.cookies.token,
         },
       );
 
@@ -74,10 +74,8 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
   const getUsers = route
     .get('/users')
     .use(auth.createAuthMiddleware())
-    .handler(async ({ req, bus }) => {
-      const users = await bus.exec(usersService.getUpstreamUsers, {
-        token: req.cookies.token,
-      });
+    .handler(async ({ bus }) => {
+      const users = await bus.exec(usersService.getUpstreamUsers);
 
       return ok(users);
     });
@@ -118,7 +116,6 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
 
       const user = await bus.exec(usersService.getUpstreamUserById, {
         id: userId,
-        token: ctx.req.cookies.token,
       });
 
       if (!user) {
@@ -141,10 +138,11 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
         allowQueryToken: true,
       }),
     )
-    .handler(async ({ req, session, bus }) => {
-      const upstreamUser = await bus.exec(usersService.getTokenUpstreamUser, {
-        token: req.cookies.token,
-      });
+    .handler(async ({ session, bus, req }) => {
+      const upstreamUser = await bus.exec(
+        usersService.getTokenUpstreamUser,
+        req.cookies.token,
+      );
 
       if (!upstreamUser) {
         return internalServerError();
@@ -192,7 +190,7 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
         unauthenticated: true,
       }),
     )
-    .handler(async ({ body, session, bus, req }) => {
+    .handler(async ({ body, session, bus }) => {
       const authenticated = await auth.getAuthTokenStatus(body.id);
 
       if (!authenticated) {
@@ -223,7 +221,6 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
 
       const upstreamUser = await bus.exec(usersService.getUpstreamUserById, {
         id: payerProfile.tkoalyUserId,
-        token: req.cookies.token,
       });
 
       if (upstreamUser?.role !== 'yllapitaja') {
@@ -243,13 +240,7 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
 
       console.log('authenticate');
 
-      await auth.authenticate(
-        bus,
-        sessionToken,
-        payerId,
-        'email',
-        req.cookies.token,
-      );
+      await auth.authenticate(bus, sessionToken, payerId, 'email');
 
       console.log(
         `Authenticated session ${sessionToken} with auth token ${body.id}`,

@@ -164,7 +164,6 @@ export const authServiceFactory = ({
         if (profile.tkoalyUserId && userServiceToken) {
           const user = await bus.exec(getUpstreamUserById, {
             id: profile.tkoalyUserId,
-            token: userServiceToken,
           });
 
           if (user && user.role === 'yllapitaja') {
@@ -349,7 +348,6 @@ export const authServiceFactory = ({
       token: string,
       payerId: InternalIdentity,
       method: string,
-      userServiceToken: string,
       pAccessLevel?: AccessLevel,
     ) {
       let accessLevel = pAccessLevel;
@@ -364,7 +362,6 @@ export const authServiceFactory = ({
         if (profile.tkoalyUserId) {
           const user = await bus.exec(getUpstreamUserById, {
             id: profile.tkoalyUserId,
-            token: userServiceToken,
           });
 
           if (user && user.role === 'yllapitaja') {

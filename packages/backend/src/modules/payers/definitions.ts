@@ -41,7 +41,6 @@ export const createPayerProfileFromTkoalyIdentity = scope.defineProcedure({
   name: 'createPayerProfileFromTkoalyIdentity',
   payload: t.type({
     id: tkoalyIdentityT,
-    token: t.string,
   }),
   response: t.union([t.null, payerProfile]),
 });
@@ -60,7 +59,6 @@ export const createPayerProfileForExternalIdentity = scope.defineProcedure({
   payload: t.intersection([
     t.type({
       id: t.union([emailIdentityT, tkoalyIdentityT]),
-      token: t.string,
     }),
     t.partial({
       name: t.string,
@@ -162,7 +160,6 @@ export const getPayerPreferences = scope.defineProcedure({
 export const getOrCreatePayerProfileForIdentity = scope.defineProcedure({
   name: 'getOrCreatePayerProfileForIdentity',
   payload: t.type({
-    token: t.string,
     id: types.identityT,
   }),
   response: t.union([t.null, types.payerProfile]),

@@ -10,6 +10,7 @@ interface IConfig {
   userServiceUrl: string;
   userServiceApiUrl: string;
   serviceId: string;
+  serviceSecret: string;
   assetPath: string;
   dataPath: string;
   chromiumBinaryPath: string | null;
@@ -40,6 +41,7 @@ export class Config implements IConfig {
   userServiceApiUrl = '';
   chromiumBinaryPath = null;
   serviceId = '';
+  serviceSecret = '';
   eventServiceUrl = '';
   eventServiceToken = '';
   assetPath = '';
@@ -83,6 +85,7 @@ export class Config implements IConfig {
       USER_SERVICE_API_URL,
       SERVICE_IDENTIFIER,
       MAGIC_LINK_SECRET,
+      SERVICE_SECRET,
     } = process.env;
 
     assert(
@@ -94,6 +97,7 @@ export class Config implements IConfig {
     assert(ASSET_PATH, 'ASSET_PATH must be set.');
     assert(DATA_PATH, 'DATA_PATH must be set.');
     assert(SERVICE_IDENTIFIER, 'SERVICE_IDENTIFIER must be set.');
+    assert(SERVICE_SECRET, 'SERVICE_SECRET must be set.');
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
     assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
@@ -107,6 +111,7 @@ export class Config implements IConfig {
       userServiceUrl: USER_SERVICE_URL,
       userServiceApiUrl: USER_SERVICE_API_URL,
       serviceId: SERVICE_IDENTIFIER,
+      serviceSecret: SERVICE_SECRET,
       eventServiceUrl: EVENT_SERVICE_URL ?? '',
       eventServiceToken: EVENT_SERVICE_TOKEN ?? '',
       jwtSecret: JWT_SECRET,
