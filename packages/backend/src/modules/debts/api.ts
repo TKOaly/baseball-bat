@@ -211,7 +211,6 @@ const factory: RouterFactory = route => {
         payerService.getOrCreatePayerProfileForIdentity,
         {
           id: payload.payer,
-          token: ctx.req.cookies.token,
         },
       );
 

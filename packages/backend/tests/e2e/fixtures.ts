@@ -78,7 +78,6 @@ export class E2ETestEnvironment extends TestEnvironment {
     return await this.withContext(async ctx => {
       const payer = await ctx.exec(createPayerProfileFromTkoalyIdentity, {
         id: tkoalyIdentity(1234),
-        token: 'TEST-TOKEN',
       });
 
       assert.ok(payer);
