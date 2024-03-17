@@ -19,7 +19,7 @@ import { InputGroup } from '../input-group';
 type FormValues = {
   startDate: DbDateString;
   endDate: DbDateString;
-  paymentType: null | 'cash' | 'invoice';
+  paymentType: null | 'cash' | 'invoice' | 'stripe';
   center: null | { id: string; type: 'debt_center' };
   groupBy: null | 'payer' | 'center';
   eventTypes: null | Array<'payment' | 'created' | 'credited'>;
@@ -90,6 +90,7 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
                   { value: null, text: 'All' },
                   { value: 'invoice', text: 'Invoice' },
                   { value: 'cash', text: 'Cash' },
+                  { value: 'stripe', text: 'Stripe' },
                 ]}
               />
               <InputGroup

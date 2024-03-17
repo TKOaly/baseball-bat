@@ -323,6 +323,7 @@ export default createModule({
               t.null,
               t.literal('cash'),
               t.literal('invoice'),
+              t.literal('stripe'),
             ]),
             centers: t.union([t.null, t.array(t.string)]),
             groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),

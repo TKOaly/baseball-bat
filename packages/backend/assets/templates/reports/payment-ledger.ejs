@@ -14,7 +14,7 @@
         </tr>
         <tr>
           <th class="text-left pr-2">Payment type</th>
-          <td><%= data.options.paymentType ? { 'invoice': 'Invoice', 'cash': 'Cash' }[data.options.paymentType] ?? 'Unknown' : 'All' %></td>
+          <td><%= data.options.paymentType ? { 'invoice': 'Invoice', 'cash': 'Cash', 'stripe': 'Stripe' }[data.options.paymentType] ?? 'Unknown' : 'All' %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Included event types</th>
