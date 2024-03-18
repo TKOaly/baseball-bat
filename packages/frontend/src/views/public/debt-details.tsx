@@ -73,15 +73,15 @@ export const DebtDetails = ({ params }: Props) => {
           <h4 className="mb-8 font-bold text-zinc-800">
             {t('invoiceDetailsHeader')}
           </h4>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 gap-y-3 sm:grid-cols-2 sm:gap-y-5 md:grid-cols-3">
             <div>
-              <div className="mt-2 text-sm text-zinc-500">
+              <div className="text-sm text-zinc-500">
                 {t('invoiceTitleHeader')}
               </div>
               <div className="">{defaultPayment.title}</div>
             </div>
             <div>
-              <div className="mt-2 text-sm text-zinc-500">
+              <div className="text-sm text-zinc-500">
                 {t('invoiceNumberHeader')}
               </div>
               <div className="">{defaultPayment.paymentNumber}</div>
@@ -89,7 +89,7 @@ export const DebtDetails = ({ params }: Props) => {
             {isPaymentInvoice(defaultPayment) && (
               <>
                 <div>
-                  <div className="mt-2 text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500">
                     {t('invoiceCreatedAtHeader')}
                   </div>
                   <div className="">
@@ -97,7 +97,7 @@ export const DebtDetails = ({ params }: Props) => {
                   </div>
                 </div>
                 <div>
-                  <div className="mt-2 text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500">
                     {t('invoiceDueDateHeader')}
                   </div>
                   <div className="">
@@ -105,7 +105,7 @@ export const DebtDetails = ({ params }: Props) => {
                   </div>
                 </div>
                 <div>
-                  <div className="mt-2 text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500">
                     {t('invoiceReferenceNumberHeader')}
                   </div>
                   <div className="">
@@ -113,13 +113,13 @@ export const DebtDetails = ({ params }: Props) => {
                   </div>
                 </div>
                 <div>
-                  <div className="mt-2 text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500">
                     {t('invoiceBeneficaryNameHeader')}
                   </div>
                   <div className="">TKO-äly ry</div>
                 </div>
                 <div>
-                  <div className="mt-2 text-sm text-zinc-500">
+                  <div className="text-sm text-zinc-500">
                     {t('invoiceBeneficaryAccountHeader')}
                   </div>
                   <div className="">FI89 7997 7995 1312 86</div>
@@ -127,22 +127,20 @@ export const DebtDetails = ({ params }: Props) => {
               </>
             )}
             <div>
-              <div className="mt-2 text-sm text-zinc-500">
+              <div className="text-sm text-zinc-500">
                 {t('invoiceAmountHeader')}
               </div>
               <div className="">{formatEuro(defaultPayment.balance)}</div>
             </div>
             <div>
-              <div className="mt-2 text-sm text-zinc-500">
-                {t('statusLabel')}
-              </div>
+              <div className="text-sm text-zinc-500">{t('statusLabel')}</div>
               <div className="">{defaultPayment.status}</div>
             </div>
             <div className="col-span-full">
-              <div className="mt-2 text-sm text-zinc-500">
+              <div className="text-sm text-zinc-500">
                 {t('paymentMessageLabel')}
               </div>
-              <p className="mt-2 whitespace-pre rounded-sm bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
+              <p className="overflow-auto whitespace-pre rounded-sm bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
                 {defaultPayment.message}
               </p>
             </div>
