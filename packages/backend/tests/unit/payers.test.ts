@@ -179,6 +179,8 @@ setup('Payers service', ({ test }) => {
       },
     ]);
 
+    assert.equal(merged.tkoalyUserId?.value, 1234);
+
     const disabled = await bus.exec(
       defs.getPayerProfileByInternalIdentity,
       fromTkoaly.id,

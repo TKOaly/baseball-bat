@@ -579,23 +579,49 @@ export default createModule({
       },
     );
 
-    bus.register(defs.mergeProfiles, async ({ primary, secondary }, { pg }) => {
+    bus.register(defs.mergeProfiles, async (params, { pg }, bus) => {
+      const primaryProfile = await bus.exec(
+        defs.getPayerProfileByInternalIdentity,
+        params.primary,
+      );
+      const secondaryProfile = await bus.exec(
+        defs.getPayerProfileByInternalIdentity,
+        params.secondary,
+      );
+
+      if (!primaryProfile) {
+        return [];
+      }
+
+      if (!secondaryProfile) {
+        return [];
+      }
+
       await pg.do(sql`
         UPDATE payer_profiles
-        SET disabled = true, merged_to = ${primary.value}
-        WHERE id = ${secondary.value}
+        SET disabled = true, merged_to = ${primaryProfile.id.value}
+        WHERE id = ${secondaryProfile.id.value}
+      `);
+
+      await pg.do(sql`
+        UPDATE payer_profiles
+        SET tkoaly_user_id = COALESCE(
+          ${primaryProfile.tkoalyUserId?.value}::int,
+          ${secondaryProfile.tkoalyUserId?.value}::int
+        )
+        WHERE id = ${primaryProfile.id.value}
       `);
 
       await pg.do(sql`
         INSERT INTO payer_emails (payer_id, email, priority, source)
-        SELECT ${primary.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
+        SELECT ${primaryProfile.id.value} AS payer_id, email, CASE WHEN priority = 'primary' THEN 'default' ELSE priority END AS priority, source
         FROM payer_emails
-        WHERE payer_id = ${secondary.value}
+        WHERE payer_id = ${secondaryProfile.id.value}
         ON CONFLICT DO NOTHING
       `);
 
       const debts = await pg.many<{ id: string }>(
-        sql`UPDATE debt SET payer_id = ${primary.value} WHERE payer_id = ${secondary.value} RETURNING id`,
+        sql`UPDATE debt SET payer_id = ${primaryProfile.id.value} WHERE payer_id = ${secondaryProfile.id.value} RETURNING id`,
       );
 
       return debts.map(debt => debt.id);
