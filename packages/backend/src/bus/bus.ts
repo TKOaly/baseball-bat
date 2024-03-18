@@ -73,6 +73,20 @@ export class ExecutionContext<C> {
     return this.bus.exec(this.context, procedure, id, ...payload);
   }
 
+  execTE<
+    PT extends ProcedureType<PayloadType, ResponseType>,
+    PayloadType extends Type<any, any, any>,
+    ResponseType extends Type<any, any, any>,
+  >(
+    procedure: PT,
+  ): (...payload: ProcedureArgs<PT>) => TE.TaskEither<Error, ResponseOf<PT>> {
+    return (...payload: ProcedureArgs<PT>) =>
+      TE.tryCatch(
+        () => this.exec(procedure, ...payload),
+        e => e as Error,
+      );
+  }
+
   execT<
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,

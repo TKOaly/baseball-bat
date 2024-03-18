@@ -1,0 +1,22 @@
+Payment confirmation
+
+Payment <%- payment.humanId %> has been processed successfully.
+You can read a breakdown of the payment's contents below and view the
+payment processors receipt at <%- intent.latest_charge.receipt_url %>.
+
+Payment Breakdown
+=================
+<%
+
+function formatLine(padding, left, right) {
+  return `${' '.repeat(padding)}${left} ${'.'.repeat(Math.max(3, 50-right.length-left.length-padding-2))} ${right}`;
+}
+
+%>
+<% for (const debt of debts) { -%>
+<%- formatLine(0, debt.name, formatEuro(debt.total)) %> 
+<% for (component of debt.debtComponents) { -%>
+<%- formatLine(2, component.name, formatEuro(component.amount)) %>
+<% } %>
+<% } -%>
+<%- formatLine(0, 'Total', formatEuro(payment.initialAmount)) %>

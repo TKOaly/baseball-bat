@@ -1,0 +1,107 @@
+<mjml>
+  <mj-body background-color="black">
+    <mj-section background-color="#fc3">
+      <mj-column>
+        <mj-text
+          font-size="30px"
+          align="center"
+          padding-top="20px"
+          padding-bottom="10px"
+          >TKO-äly ry</mj-text
+        >
+        <mj-text font-size="18px" align="center" padding-bottom="20px"
+          >Billing service</mj-text
+        >
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="white">
+      <mj-column>
+        <mj-text font-size="20px">Payment confirmation</mj-text>
+        <mj-text>
+          Payment <%- payment.humanId %> received succesfully! You can find the breakdown of the contents of this payment.
+        </mj-text>
+        <mj-text>
+          <%- include('signature.mjml') %>
+        </mj-text>
+        <% if (intent.latest_charge && intent.latest_charge.receipt_url) { %>
+          <mj-button background-color="#fc3" color="black" href="<%- intent.latest_charge.receipt_url %>">View Receipt</mj-button>
+        <% } %>
+        <mj-divider border-color="#fc3" />
+        <mj-text font-size="20px">Payment breakdown</mj-text>
+        <mj-table>
+          <% for (const debt of debts) { %>
+          <tr>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-right: 1em;
+              "
+            >
+              <%- debt.name %>
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(debt.total) %>
+            </td>
+            <td></td>
+          </tr>
+          <% for (const component of debt.debtComponents) { %>
+          <tr>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-left: 1.5em;
+                padding-right: 5em;
+              "
+            >
+              <%- component.name %>
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(component.amount) %>
+            </td>
+            <td></td>
+          </tr>
+          <% } %> <% } %>
+          <tr>
+            <th
+              style="
+                width: 0;
+                white-space: nowrap !important;
+                text-align: left;
+                padding-top: 1em;
+                padding-right: 1em;
+              "
+            >
+              Total
+            </th>
+            <td
+              style="
+                text-align: right;
+                width: 0;
+                white-space: nowrap !important;
+              "
+            >
+              <%- formatEuro(payment.initialAmount) %>
+            </td>
+            <td></td>
+          </tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

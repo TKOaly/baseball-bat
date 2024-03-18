@@ -132,7 +132,8 @@
     "debtStatusBadge": {
       "paid": "Paid",
       "unpaid": "Unpaid",
-      "mispaid": "Mispaid"
+      "mispaid": "Mispaid",
+      "overdue": "Overdue"
     },
     "debtCard": {
       "amountLabel": "Amount",

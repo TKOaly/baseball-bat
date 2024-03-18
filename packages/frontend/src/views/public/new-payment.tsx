@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import debtApi from '../../api/debt';
 import { createMultiFetchHook } from '../../hooks/create-multi-fetch-hook';
 import { useAppSelector } from '../../store';
-import { ChevronRight } from 'react-feather';
+import { ChevronRight, Loader } from 'react-feather';
 import {
   useCreateInvoiceMutation,
   useCreateStripePaymentMutation,
@@ -36,8 +36,10 @@ export const NewPayment = ({
 }: RouteComponentProps<{ id?: string }>) => {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const [createInvoice] = useCreateInvoiceMutation();
-  const [createStripePayment] = useCreateStripePaymentMutation();
+  const [createInvoice, { isLoading: creatingInvoicePayment }] =
+    useCreateInvoiceMutation();
+  const [createStripePayment, { isLoading: creatingStripePayment }] =
+    useCreateStripePaymentMutation();
   const selectedDebtIds = useAppSelector(
     state => state.paymentPool.selectedPayments,
   );
@@ -99,7 +101,12 @@ export const NewPayment = ({
           onClick={() => handleCreateInvoice()}
         >
           <div className="flex w-20 items-center justify-center">
-            <InvoiceIcon className="size-6 text-zinc-800" />
+            {!creatingInvoicePayment && (
+              <InvoiceIcon className="size-6 text-zinc-800" />
+            )}
+            {creatingInvoicePayment && (
+              <Loader className="size-6 animate-[spin_3s_linear_infinite] text-zinc-800" />
+            )}
           </div>
           <div className="flex-grow">
             <h3 className="font-bold">{t('invoice')}</h3>
@@ -107,7 +114,7 @@ export const NewPayment = ({
           </div>
           <ChevronRight className="mx-3 h-8 w-8 rounded-full text-gray-400 hover:bg-gray-200" />
         </div>
-
+        
         <div
           role="button"
           data-testid="stripe-button"
@@ -115,7 +122,12 @@ export const NewPayment = ({
           onClick={() => handleCreateStripePayment()}
         >
           <div className="flex w-20 items-center justify-center">
-            <StripeIcon className="size-6 text-zinc-800" />
+            {!creatingStripePayment && (
+              <StripeIcon className="size-6 text-zinc-800" />
+            )}
+            {creatingStripePayment && (
+              <Loader className="size-6 animate-[spin_3s_linear_infinite] text-zinc-800" />
+            )}
           </div>
           <div className="flex-grow">
             <h3 className="font-bold">{t('stripe')}</h3>
