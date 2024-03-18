@@ -21,6 +21,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter @bbat/backend de
 
 FROM builder AS frontend-builder
 
+ARG APP_URL
+ENV APP_URL ${APP_URL}
+
 RUN pnpm --filter @bbat/frontend... run build
 
 FROM node:18.17-alpine AS alpine-node-base

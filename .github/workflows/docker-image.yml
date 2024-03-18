@@ -188,6 +188,8 @@ jobs:
           tags: ${{ steps.meta-nginx.outputs.tags }}
           labels: ${{ steps.meta-nginx.outputs.labels }}
           target: production-nginx
+          build-args: |
+            APP_URL=${{ vars.APP_URL }}
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
