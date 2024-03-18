@@ -14,6 +14,7 @@ jobs:
     name: Run unit tests
     runs-on: ubuntu-latest
     container: node:18.17.1
+    environment: testing
 
     strategy:
       fail-fast: false
@@ -64,6 +65,7 @@ jobs:
     name: Run E2E tests
     runs-on: ubuntu-latest
     container: node:18.17.1
+    environment: testing
 
     strategy:
       fail-fast: false
@@ -92,7 +94,7 @@ jobs:
       - name: Build frontend in development mode
         run: pnpm run --filter @bbat/frontend build -m development
         env:
-          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
+          VITE_STRIPE_PUBLIC_KEY: ${{ envs.STRIPE_PUBLIC_KEY }}
           NODE_ENV: development
 
       - name: Build backend
@@ -132,6 +134,7 @@ jobs:
   build:
     name: Build Docker images
     runs-on: ubuntu-latest
+    environment: production
     
     permissions:
       contents: read
@@ -200,10 +203,13 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           target: production-backend
+          build-args:
+            - STRIPE_PUBLIC_KEY=${{ vars.STRIPE_PUBLIC_KEY }}
 
   release:
     name: Deploy a new release
     runs-on: ubuntu-latest
+    environment: production
     
     if: ${{ github.event_name == 'release' }}
 
