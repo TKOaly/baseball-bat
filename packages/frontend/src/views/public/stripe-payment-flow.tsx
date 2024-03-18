@@ -6,12 +6,13 @@ import {
   useStripe,
 } from '@stripe/react-stripe-js';
 import { Button } from '@bbat/ui/button';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import { useTranslation } from 'react-i18next';
 import { PaymentBreakdown } from '../../components/payment-breakdown';
-import { APP_URL, STRIPE_PUBLIC_KEY } from '../../config';
+import { APP_URL } from '../../config';
 import { useLocation } from 'wouter';
+import stripeApi from '../../api/stripe';
 
 export interface Props {
   params: {
@@ -19,8 +20,6 @@ export interface Props {
     secret: string;
   };
 }
-
-const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
 type PaymentFormProps = {
   id: string;
@@ -118,6 +117,20 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
 };
 
 export const StripePaymentFlow = (props: Props) => {
+  const [getStripeConfig] = stripeApi.endpoints.getConfig.useLazyQuery();
+
+  const stripePromise = useMemo(async () => {
+    const { data } = await getStripeConfig();
+
+    console.log('Key', data);
+
+    if (!data) {
+      return null;
+    }
+
+    return loadStripe(data.publicKey);
+  }, []);
+
   const options: StripeElementsOptions = {
     clientSecret: props.params.secret,
     appearance: {

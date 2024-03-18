@@ -114,29 +114,27 @@ export const NewPayment = ({
           </div>
           <ChevronRight className="mx-3 h-8 w-8 rounded-full text-gray-400 hover:bg-gray-200" />
         </div>
-
-        {import.meta.env.DEV && (
-          <div
-            role="button"
-            data-testid="stripe-button"
-            className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 bg-white/50 py-4 shadow-sm hover:border-blue-400"
-            onClick={() => handleCreateStripePayment()}
-          >
-            <div className="flex w-20 items-center justify-center">
-              {!creatingStripePayment && (
-                <StripeIcon className="size-6 text-zinc-800" />
-              )}
-              {creatingStripePayment && (
-                <Loader className="size-6 animate-[spin_3s_linear_infinite] text-zinc-800" />
-              )}
-            </div>
-            <div className="flex-grow">
-              <h3 className="font-bold">{t('stripe')}</h3>
-              <p className="text-sm text-gray-700">{t('stripeDescription')}</p>
-            </div>
-            <ChevronRight className="mx-3 h-8 w-8 rounded-full text-gray-400" />
+        
+        <div
+          role="button"
+          data-testid="stripe-button"
+          className="group mt-5 flex cursor-pointer items-center rounded-md border border-gray-300 bg-white/50 py-4 shadow-sm hover:border-blue-400"
+          onClick={() => handleCreateStripePayment()}
+        >
+          <div className="flex w-20 items-center justify-center">
+            {!creatingStripePayment && (
+              <StripeIcon className="size-6 text-zinc-800" />
+            )}
+            {creatingStripePayment && (
+              <Loader className="size-6 animate-[spin_3s_linear_infinite] text-zinc-800" />
+            )}
           </div>
-        )}
+          <div className="flex-grow">
+            <h3 className="font-bold">{t('stripe')}</h3>
+            <p className="text-sm text-gray-700">{t('stripeDescription')}</p>
+          </div>
+          <ChevronRight className="mx-3 h-8 w-8 rounded-full text-gray-400" />
+        </div>
       </div>
     </div>
   );

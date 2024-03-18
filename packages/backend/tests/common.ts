@@ -212,6 +212,7 @@ export const createEnvironment = async (): Promise<Environment> => {
     jwtSecret: '',
     chromiumBinaryPath: '',
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
+    stripePublicKey: process.env.STRIPE_PUBLIC_KEY ?? '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
     appUrl: '',
     smtp: {

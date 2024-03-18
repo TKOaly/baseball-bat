@@ -18,6 +18,7 @@ interface IConfig {
   eventServiceToken: string;
   jwtSecret: string;
   stripeSecretKey: string;
+  stripePublicKey: string;
   stripeWebhookSecret: string;
   appUrl: string;
   redisUrl: string;
@@ -48,6 +49,7 @@ export class Config implements IConfig {
   dataPath = '';
   jwtSecret = '';
   stripeSecretKey = '';
+  stripePublicKey = '';
   stripeWebhookSecret = '';
   appUrl = '';
   redisUrl: string;
@@ -80,6 +82,7 @@ export class Config implements IConfig {
       ASSET_PATH,
       DATA_PATH,
       STRIPE_SECRET_KEY,
+      STRIPE_PUBLIC_KEY,
       STRIPE_WEBHOOK_SECRET,
       USER_SERVICE_URL,
       USER_SERVICE_API_URL,
@@ -100,6 +103,7 @@ export class Config implements IConfig {
     assert(SERVICE_SECRET, 'SERVICE_SECRET must be set.');
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
     assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
+    assert(STRIPE_PUBLIC_KEY, 'STRIPE_PUBLIC_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
     assert(STRIPE_WEBHOOK_SECRET, 'STRIPE_WEBHOOK_SECRET must be set.');
 
@@ -117,6 +121,7 @@ export class Config implements IConfig {
       jwtSecret: JWT_SECRET,
       chromiumBinaryPath: CHROMIUM_BINARY_PATH ?? null,
       stripeSecretKey: STRIPE_SECRET_KEY,
+      stripePublicKey: STRIPE_PUBLIC_KEY,
       stripeWebhookSecret: STRIPE_WEBHOOK_SECRET,
       appUrl: APP_URL,
       emailDispatcher,

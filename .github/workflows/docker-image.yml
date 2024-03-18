@@ -92,7 +92,6 @@ jobs:
       - name: Build frontend in development mode
         run: pnpm run --filter @bbat/frontend build -m development
         env:
-          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
           NODE_ENV: development
 
       - name: Build backend
@@ -193,7 +192,7 @@ jobs:
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image baseball-bat-backend
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name == 'release' }}

@@ -1,7 +1,6 @@
 import { router } from 'typera-express';
 import {
   badRequest,
-  forbidden,
   notFound,
   ok,
   unauthorized,
@@ -159,11 +158,6 @@ const factory: RouterFactory = route => {
       ),
     )
     .handler(async ({ bus, ...ctx }) => {
-      if (process.env.NODE_ENV !== 'development') {
-        console.log(process.env.NODE_ENV);
-        return forbidden();
-      }
-
       const debts = await Promise.all(
         ctx.body.debts.map(async id => {
           const debt = await bus.exec(debtService.getDebt, id);

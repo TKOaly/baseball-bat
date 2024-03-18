@@ -9,10 +9,17 @@ import { EuroValue, cents } from '@bbat/common/currency';
 
 export type StripeContext = {
   stripe: Stripe;
-  secret: string;
+  webhookSecret: string;
+  publicKey: string;
 };
 
 const factory: RouterFactory<StripeContext> = route => {
+  const config = route.get('/config').handler(async ({ module }) =>
+    ok({
+      publicKey: module.publicKey,
+    }),
+  );
+
   const webhook = route
     .post('/webhook')
     .use(
@@ -23,7 +30,7 @@ const factory: RouterFactory<StripeContext> = route => {
       ),
     )
     .handler(async ({ bus, module, ...ctx }) => {
-      const { secret, stripe } = module;
+      const { webhookSecret, stripe } = module;
 
       let event;
       let body = ctx.req.rawBody!; // eslint-disable-line
@@ -32,7 +39,7 @@ const factory: RouterFactory<StripeContext> = route => {
         event = stripe.webhooks.constructEvent(
           body,
           ctx.headers['stripe-signature'],
-          secret,
+          webhookSecret,
         );
       } catch (err) {
         return badRequest({
@@ -132,7 +139,7 @@ const factory: RouterFactory<StripeContext> = route => {
       return ok();
     });
 
-  return router(webhook);
+  return router(config, webhook);
 };
 
 export default factory;

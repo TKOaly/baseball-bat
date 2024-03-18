@@ -114,7 +114,8 @@ export default createModule({
 
     return {
       stripe,
-      secret: config.stripeWebhookSecret,
+      webhookSecret: config.stripeWebhookSecret,
+      publicKey: config.stripePublicKey,
     };
   },
 });
