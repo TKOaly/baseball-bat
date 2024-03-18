@@ -203,8 +203,7 @@ jobs:
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
           target: production-backend
-          build-args:
-            - STRIPE_PUBLIC_KEY=${{ vars.STRIPE_PUBLIC_KEY }}
+          build-args: STRIPE_PUBLIC_KEY=${{ vars.STRIPE_PUBLIC_KEY }}
 
   release:
     name: Deploy a new release
