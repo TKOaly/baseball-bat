@@ -94,7 +94,7 @@ jobs:
       - name: Build frontend in development mode
         run: pnpm run --filter @bbat/frontend build -m development
         env:
-          VITE_STRIPE_PUBLIC_KEY: ${{ envs.STRIPE_PUBLIC_KEY }}
+          VITE_STRIPE_PUBLIC_KEY: ${{ vars.STRIPE_PUBLIC_KEY }}
           NODE_ENV: development
 
       - name: Build backend
