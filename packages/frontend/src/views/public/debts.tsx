@@ -155,7 +155,7 @@ export const Debts = () => {
     dispatch(
       paymentPoolSlice.actions.setSelectedPayments(unpaidDebts.map(p => p.id)),
     );
-    navigate('/payment/new');
+    navigate('/payments/new');
   };
 
   const unpaidDebts = useMemo(
