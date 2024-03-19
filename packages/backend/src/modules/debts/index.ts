@@ -402,7 +402,6 @@ export default createModule({
           const payment = await bus.exec(defs.createPayment, {
             debts: [created.id],
             payment: {
-              due_date: debt.dueDate ? parseISO(debt.dueDate) : undefined,
               type: 'invoice',
               message: debt.description,
               title: debt.name,
@@ -410,6 +409,7 @@ export default createModule({
             options: {
               series: 1,
               date: debt.date ? parseISO(debt.date) : undefined,
+              dueDate: debt.dueDate ? parseISO(debt.dueDate) : undefined,
               ...options.defaultPayment,
             },
           });
@@ -1161,7 +1161,6 @@ export default createModule({
     ): Promise<Payment> {
       const created = await bus.exec(defs.createPayment, {
         debts: [debt.id],
-        dueDate: debt.dueDate ?? undefined,
         payment: {
           type: 'invoice',
           title: debt.name,
@@ -1169,6 +1168,7 @@ export default createModule({
         },
         options: {
           date: debt.date ?? undefined,
+          dueDate: debt.dueDate ?? undefined,
         },
       });
 
