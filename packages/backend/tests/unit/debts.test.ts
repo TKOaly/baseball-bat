@@ -3,9 +3,19 @@ import * as defs from '../../src/modules/debts/definitions';
 import assert from 'node:assert';
 import { createDebtCenter } from '../../src/modules/debt-centers/definitions';
 import { createPayerProfileFromEmailIdentity } from '../../src/modules/payers/definitions';
-import { emailIdentity, euro } from '@bbat/common/src/types';
+import {
+  dateToDbDateString,
+  emailIdentity,
+  euro,
+} from '@bbat/common/src/types';
 import { getEmails } from '../../src/modules/email/definitions';
-import { createPaymentEvent } from '@/modules/payments/definitions';
+import {
+  createPaymentEvent,
+  getDefaultInvoicePaymentForDebt,
+} from '@/modules/payments/definitions';
+import { subDays } from 'date-fns/subDays';
+import { pipe } from 'remeda';
+import { describe } from 'node:test';
 
 setup('Debts service', ({ test }) => {
   test('debt creation', async ({ bus }) => {
@@ -210,5 +220,171 @@ setup('Debts service', ({ test }) => {
     assert.ok(!newDebt.draft);
     assert.ok(!newDebt.credited);
     assert.equal(newDebt.status, 'paid');
+  });
+
+  describe('reminders', () => {
+    const combine =
+      <N extends string, V extends unknown[]>(name: N, values: V) =>
+      <A extends Array<Record<string, unknown>>>(
+        array: A,
+      ): {
+        [VK in number]: { [AK in number]: A[AK] & Record<N, V[VK]> }[number];
+      }[number][] =>
+        array.flatMap(item =>
+          values.map(value => ({ ...item, [name]: value })),
+        ) as any;
+
+    const tests = pipe(
+      [{}],
+      combine('published', [true, false]),
+      combine('paid', [true, false]),
+      combine('credited', [true, false]),
+      combine('overdue', [true, false]),
+    );
+
+    for (const options of tests) {
+      const { published, paid, credited, overdue } = options;
+
+      if ((!published && paid) || (!published && credited)) {
+        return;
+      }
+
+      const features = Object.entries(options)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(', ');
+
+      const shouldBeSent = published && !paid && !credited && overdue;
+
+      const title = `${features} -> reminder ${shouldBeSent ? 'sent' : 'not sent'}`;
+
+      test(title, async ({ bus }) => {
+        const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
+          id: emailIdentity('test@test.test'),
+          name: 'Teppo Testaaja',
+        });
+
+        assert.ok(payer);
+
+        const center = await bus.exec(createDebtCenter, {
+          name: 'Test Center',
+          accountingPeriod: 2024,
+          description: 'Desc',
+          url: 'https://google.com/',
+        });
+
+        const component = await bus.exec(defs.createDebtComponent, {
+          debtCenterId: center.id,
+          name: 'Test Component',
+          amount: euro(10),
+          description: 'Test',
+        });
+
+        const debt = await bus.exec(defs.createDebt, {
+          debt: {
+            name: 'Name',
+            description: 'Desc',
+            centerId: center.id,
+            accountingPeriod: 2024 as any,
+            components: [component.id],
+            payer: payer.id,
+            dueDate: overdue
+              ? dateToDbDateString(subDays(new Date(), 1))
+              : undefined,
+            tags: [],
+          },
+        });
+
+        if (published) {
+          await bus.exec(defs.publishDebt, debt.id);
+
+          if (paid) {
+            const payment = await bus.exec(
+              getDefaultInvoicePaymentForDebt,
+              debt.id,
+            );
+
+            assert.ok(payment);
+
+            await bus.exec(createPaymentEvent, {
+              paymentId: payment.id,
+              type: 'payment',
+              amount: euro(10),
+              data: {},
+              transaction: null,
+            });
+          }
+
+          if (credited) {
+            await bus.exec(defs.creditDebt, debt.id);
+          }
+        }
+
+        const result = await bus.exec(defs.sendAllReminders, {
+          draft: false,
+          ignoreReminderCooldown: true,
+          debts: [debt.id],
+        });
+
+        if (shouldBeSent) {
+          assert.equal(result.right.length, 1);
+        } else {
+          assert.equal(result.right.length, 0);
+        }
+      });
+    }
+
+    test('reminder cooldown', async ({ bus }) => {
+      const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
+        id: emailIdentity('test@test.test'),
+        name: 'Teppo Testaaja',
+      });
+
+      assert.ok(payer);
+
+      const center = await bus.exec(createDebtCenter, {
+        name: 'Test Center',
+        accountingPeriod: 2024,
+        description: 'Desc',
+        url: 'https://google.com/',
+      });
+
+      const component = await bus.exec(defs.createDebtComponent, {
+        debtCenterId: center.id,
+        name: 'Test Component',
+        amount: euro(10),
+        description: 'Test',
+      });
+
+      const debt = await bus.exec(defs.createDebt, {
+        debt: {
+          name: 'Name',
+          description: 'Desc',
+          centerId: center.id,
+          accountingPeriod: 2024 as any,
+          components: [component.id],
+          payer: payer.id,
+          dueDate: dateToDbDateString(subDays(new Date(), 1)),
+          tags: [],
+        },
+      });
+
+      await bus.exec(defs.publishDebt, debt.id);
+
+      const result1 = await bus.exec(defs.sendAllReminders, {
+        draft: false,
+        ignoreReminderCooldown: false,
+        debts: [debt.id],
+      });
+
+      assert.equal(result1.right.length, 1);
+
+      const result2 = await bus.exec(defs.sendAllReminders, {
+        draft: false,
+        ignoreReminderCooldown: false,
+        debts: [debt.id],
+      });
+
+      assert.equal(result2.right.length, 0);
+    });
   });
 });
