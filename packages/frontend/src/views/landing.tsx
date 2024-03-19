@@ -13,7 +13,7 @@ import {
   useValidateAuthCodeMutation,
 } from '../api/auth';
 import { Loader } from 'react-feather';
-import { useAppDispatch } from '../store';
+import { useAppDispatch, useAppSelector } from '../store';
 import { authenticateSession } from '../session';
 import { BACKEND_URL } from '../config';
 
@@ -217,6 +217,7 @@ const languageSelectorCva = cva('py-1 px-2 rounded-md border cursor-pointer', {
 
 export const Landing = () => {
   const { t, i18n } = useTranslation([], { keyPrefix: 'landing' });
+  const authError = useAppSelector(state => state.session.error);
 
   return (
     <div
@@ -249,6 +250,11 @@ export const Landing = () => {
                 {t('authHeader')}
               </h1>
             </div>
+            {authError && (
+              <div className="mb-3 rounded-md border-2 border-red-500 bg-red-100 p-2 text-sm text-red-900 shadow-sm">
+                {authError}
+              </div>
+            )}
             <Switch>
               <Route path="/verify/:id" component={VerificationStep} />
               <Route>
