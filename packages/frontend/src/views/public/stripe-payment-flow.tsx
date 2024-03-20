@@ -50,7 +50,7 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
 
     setIsLoading(true);
 
-    const return_url = `${window.TEST_APP_URL ?? APP_URL}/payment/${id}/stripe/${secret}/return`;
+    const return_url = `${window.TEST_APP_URL ?? APP_URL}/payments/${id}/stripe/${secret}/return`;
 
     const { error } = await stripe.confirmPayment({
       elements,
