@@ -31,8 +31,6 @@ const factory: RouterFactory<StripeContext> = route => {
     )
     .get('/get-payment')
     .handler(async ({ bus, query }) => {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
       const payments = await bus.exec(paymentService.getPaymentsByData, {
         intent: query.intent,
       });
