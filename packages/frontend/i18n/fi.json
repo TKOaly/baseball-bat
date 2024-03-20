@@ -114,6 +114,7 @@
     "viewDetails": "Tiedot",
     "closedPaymentsHeader": "Suoritetut maksut",
     "unpaidDebtsHeader": "Maksamattomat velat",
+    "processingPaymentMessage": "Maksua käsitellään...",
     "landing": {
       "heroTitle": "Baseball Bat",
       "heroParagraph1": "Baseball Bat on TKO-äly ry:n sähköinen saatavien hallinta- ja maksujärjestelmä.",

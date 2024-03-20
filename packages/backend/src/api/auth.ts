@@ -195,14 +195,17 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
 
       if (!authenticated) {
         console.log('Not authenticated!');
-        return unauthorized();
+        return unauthorized({
+          message: 'Not authenticated!',
+        });
       }
 
       const payerId = await auth.getAuthTokenPayerId(body.id);
 
       if (!payerId) {
         console.log('No such user');
-        return unauthorized();
+
+        return internalServerError();
       }
 
       const payerProfile = await bus.exec(
@@ -212,11 +215,14 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
 
       if (!payerProfile) {
         console.log('Could not fetch user');
-        return unauthorized();
+        return internalServerError();
       }
 
       if (!payerProfile.tkoalyUserId) {
-        return unauthorized();
+        return unauthorized({
+          message:
+            'Use of the service is currently limited. Please try again later!',
+        });
       }
 
       const upstreamUser = await bus.exec(usersService.getUpstreamUserById, {
@@ -224,7 +230,10 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
       });
 
       if (upstreamUser?.role !== 'yllapitaja') {
-        return unauthorized();
+        return unauthorized({
+          message:
+            'Use of the service is currently limited. Please try again later!',
+        });
       }
 
       let sessionToken: string | null = session.token;
@@ -234,17 +243,10 @@ const factory: ApiFactory = ({ config, bus, redis }, route) => {
       }
 
       if (!sessionToken) {
-        console.log('No remote session');
         return badRequest();
       }
 
-      console.log('authenticate');
-
       await auth.authenticate(bus, sessionToken, payerId, 'email');
-
-      console.log(
-        `Authenticated session ${sessionToken} with auth token ${body.id}`,
-      );
 
       return ok();
     });

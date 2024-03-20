@@ -21,6 +21,7 @@
     "paidDebts": "Paid debts",
     "noPaidDebts": "No paid debts",
     "unpaidDebtsDisclaimer": "Below you can see all your unpaid debts. Please note that the latest information about payments made using bank transfers are from {{- latestBankInfo, dateTime }}. Payments made later than this may appear as upaid.",
+    "processingPaymentMessage": "Processing payment...",
     "settings": {
       "userSettingsHeader": "Account settings",
       "uiLanguageLabel": "Interface language",

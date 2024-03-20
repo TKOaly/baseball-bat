@@ -1,3 +1,4 @@
+import { Payment } from '@bbat/common/src/types';
 import rtkApi from './rtk-api';
 
 export type StripeConfig = {
@@ -9,8 +10,15 @@ const stripeApi = rtkApi.injectEndpoints({
     getConfig: builder.query<StripeConfig, void>({
       query: () => '/stripe/config',
     }),
+
+    getPaymentByIntent: builder.query<{ payment: Payment }, string>({
+      query: intent => ({
+        url: '/stripe/get-payment',
+        params: { intent },
+      }),
+    }),
   }),
 });
 
-export const { useGetConfigQuery } = stripeApi;
+export const { useGetConfigQuery, useGetPaymentByIntentQuery } = stripeApi;
 export default stripeApi;

@@ -51,13 +51,13 @@ export const authenticateSession = createAsyncThunk<
     preferences: PayerPreferences;
   },
   string,
-  { state: RootState }
+  { state: RootState; rejectValue: { message?: string } }
 >('session/authenticateSession', async (authToken: string, thunkApi) => {
   const state = thunkApi.getState();
   const sessionToken = state.session.token;
 
   if (!sessionToken) {
-    return Promise.reject();
+    return thunkApi.rejectWithValue({});
   }
 
   const res = await fetch(`${BACKEND_URL}/api/auth/authenticate`, {
@@ -83,7 +83,15 @@ export const authenticateSession = createAsyncThunk<
 
     return await session_res.json();
   } else {
-    return Promise.reject();
+    try {
+      const body = await res.json();
+
+      return thunkApi.rejectWithValue({
+        message: body.message,
+      });
+    } catch {
+      return thunkApi.rejectWithValue({});
+    }
   }
 });
 
@@ -153,6 +161,7 @@ const sessionDataT = t.type({
 const sessionStateT = t.type({
   token: t.union([t.null, t.string]),
   data: t.union([t.null, sessionDataT]),
+  error: t.union([t.null, t.string]),
   status: t.union([
     t.literal('invalid'),
     t.literal('creating'),
@@ -171,6 +180,7 @@ const sessionSlice = createSlice({
     token: null,
     status: SessionStatus.INVALID,
     data: null,
+    error: null,
   } as SessionState,
   reducers: {
     resetSession: state => {
@@ -234,6 +244,10 @@ const sessionSlice = createSlice({
       };
 
       api.util.invalidateTags([{ type: 'Session', id: 'CURRENT' }]);
+    });
+
+    builder.addCase(authenticateSession.rejected, (state, action) => {
+      state.error = action.payload?.message ?? null;
     });
 
     builder.addCase(refreshSession.pending, state => {
