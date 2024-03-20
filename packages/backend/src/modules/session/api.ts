@@ -69,10 +69,6 @@ const factory: RouterFactory<Module> = (route, { config }) => {
     );
     const claims = tokenSet.claims();
 
-    if (claims.role !== 'yllapitaja') {
-      return redirect(302, '/');
-    }
-
     const payerProfile = await bus.exec(
       payers.createPayerProfileFromTkoalyIdentity,
       {
