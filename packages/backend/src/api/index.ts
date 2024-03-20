@@ -1,7 +1,5 @@
 import { Middleware, Router } from 'typera-express';
-import auth from './auth';
 import express from 'express';
-import session from './session';
 import { LocalBus } from '@/bus';
 import { Config } from '@/config';
 import { JobService } from '@/modules/jobs';
@@ -27,7 +25,6 @@ export default (
   app: express.Express,
 ) => {
   const routes: Record<string, ApiFactory> = {
-    session,
     testing,
   };
 
@@ -38,6 +35,4 @@ export default (
   Object.entries(routes).forEach(([path, init]) =>
     app.use(`/api/${path}`, init(deps, route).handler()),
   );
-
-  app.use('/api', auth(deps, route).handler());
 };
