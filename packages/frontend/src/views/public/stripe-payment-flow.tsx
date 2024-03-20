@@ -32,7 +32,7 @@ declare global {
   }
 }
 
-const PaymentForm = ({ id, secret }: PaymentFormProps) => {
+const PaymentForm = ({ id }: PaymentFormProps) => {
   const [, navigate] = useLocation();
   const [stripeReady, setStripeReady] = useState(false);
   const stripe = useStripe();
@@ -50,7 +50,7 @@ const PaymentForm = ({ id, secret }: PaymentFormProps) => {
 
     setIsLoading(true);
 
-    const return_url = `${window.TEST_APP_URL ?? APP_URL}/payment/${id}/stripe/${secret}/return`;
+    const return_url = `${window.TEST_APP_URL ?? APP_URL}/payment-completed`;
 
     const { error } = await stripe.confirmPayment({
       elements,
@@ -121,8 +121,6 @@ export const StripePaymentFlow = (props: Props) => {
 
   const stripePromise = useMemo(async () => {
     const { data } = await getStripeConfig();
-
-    console.log('Key', data);
 
     if (!data) {
       return null;

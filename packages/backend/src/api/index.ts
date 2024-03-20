@@ -9,6 +9,7 @@ import redis from 'redis';
 import { BusContext } from '@/app';
 import { Pool } from '@/db/connection';
 import { BaseRoute, createBaseRoute, ModuleDeps } from '@/module';
+import testing from './testing';
 
 export type ApiDeps = {
   bus: LocalBus<BusContext>;
@@ -27,6 +28,7 @@ export default (
 ) => {
   const routes: Record<string, ApiFactory> = {
     session,
+    testing,
   };
 
   const route = createBaseRoute(moduleDeps).use(() =>
