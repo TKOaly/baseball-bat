@@ -13,6 +13,7 @@ import { useGetOwnPaymentsQuery } from '../../api/payments';
 import { useGetInfoQuery } from '../../api/banking/statements';
 import { useMemo } from 'react';
 import { DebtStatusBadge } from '../../components/debt-status-badge';
+import React from 'react';
 
 const debtCardCva = cva(
   'rounded-md border shadow-md shadow-black/5 bg-white/60',
@@ -84,6 +85,8 @@ const DebtCard: React.FC<CardProps> = ({ debt }) => {
     </div>
   );
 };
+
+const TestControls = React.lazy(() => import('./test-controls'));
 
 type PaymentCardProps = {
   payment: Payment;
@@ -216,6 +219,8 @@ export const Debts = () => {
           </Button>
         )}
       </div>
+
+      {import.meta.env.DEV && <TestControls />}
 
       {unpaidDebts?.length > 0 && (
         <div className="rounded-md bg-white/90 p-8 shadow-xl">
