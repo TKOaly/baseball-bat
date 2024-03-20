@@ -29,7 +29,9 @@ export const PaymentBreakdown = ({ debts }: Props) => {
             </span>
           </h4>
           <div className="pl-3">
-            <p>{debt.description}</p>
+            <p className="mb-2 mt-1 text-sm text-zinc-600">
+              {debt.description}
+            </p>
             <ul>
               {debt.debtComponents.map(dc => (
                 <li className="flex" key={dc.id}>
