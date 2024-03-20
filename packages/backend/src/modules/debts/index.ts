@@ -1796,6 +1796,18 @@ export default createModule({
           T.map(flow(A.map(O.fromNullable), A.compact)),
         )();
 
+        let title;
+
+        if (debts.length === 1) {
+          title = debts[0].name;
+        } else if (type === 'invoice') {
+          title = 'Combined invoice';
+        } else if (type === 'stripe') {
+          title = 'Combined online payment';
+        } else {
+          title = 'Combined payment';
+        }
+
         return bus.exec(defs.createPayment, {
           debts: debtIds,
           options: {
@@ -1804,9 +1816,9 @@ export default createModule({
           },
           payment: {
             type,
-            title: 'Combined invoice',
+            title,
             message:
-              'Invoice for the following debts:\n' +
+              'Payment for the following debts:\n' +
               debts
                 .map(
                   d =>
