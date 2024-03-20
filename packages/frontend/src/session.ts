@@ -13,7 +13,7 @@ import { isRight } from 'fp-ts/lib/Either';
 export const createSession = createAsyncThunk(
   'session/createSession',
   async (): Promise<string> => {
-    const res = await fetch(`${BACKEND_URL}/api/auth/init`, {
+    const res = await fetch(`${BACKEND_URL}/api/session`, {
       method: 'POST',
     });
     const body = await res.json();
@@ -29,8 +29,8 @@ export const destroySession = createAsyncThunk<
   const state = thunkApi.getState();
   const sessionToken = state.session.token;
 
-  const res = await fetch(`${BACKEND_URL}/api/auth/destroy-session`, {
-    method: 'POST',
+  const res = await fetch(`${BACKEND_URL}/api/session`, {
+    method: 'DELETE',
     headers: {
       Authorization: `Bearer ${sessionToken}`,
       'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export const authenticateSession = createAsyncThunk<
     return thunkApi.rejectWithValue({});
   }
 
-  const res = await fetch(`${BACKEND_URL}/api/auth/authenticate`, {
+  const res = await fetch(`${BACKEND_URL}/api/session/authenticate`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${sessionToken}`,

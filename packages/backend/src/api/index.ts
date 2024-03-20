@@ -1,5 +1,4 @@
 import { Middleware, Router } from 'typera-express';
-import auth from './auth';
 import express from 'express';
 import { LocalBus } from '@/bus';
 import { Config } from '@/config';
@@ -36,6 +35,4 @@ export default (
   Object.entries(routes).forEach(([path, init]) =>
     app.use(`/api/${path}`, init(deps, route).handler()),
   );
-
-  app.use('/api', auth(deps, route).handler());
 };
