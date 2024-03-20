@@ -1,14 +1,11 @@
-import { router } from 'typera-express';
-import { ok, redirect } from 'typera-express/response';
-import base64url from 'base64url';
+import { RouterFactory } from '@/module';
 import auth from '@/auth-middleware';
-import { ApiFactory } from '.';
-import {
-  getPayerPreferences,
-  getPayerProfileByInternalIdentity,
-} from '@/modules/payers/definitions';
+import { ok, redirect } from 'typera-express/response';
+import * as payers from '@/modules/payers/definitions';
+import { router } from 'typera-express';
+import base64url from 'base64url';
 
-const factory: ApiFactory = ({ config }, route) => {
+const factory: RouterFactory = (route, { config }) => {
   const getSession = route
     .use(auth({ unauthenticated: true }))
     .get('/')
@@ -22,10 +19,10 @@ const factory: ApiFactory = ({ config }, route) => {
       const id = session.payerId;
 
       const payerProfile = await bus.exec(
-        getPayerProfileByInternalIdentity,
+        payers.getPayerProfileByInternalIdentity,
         id,
       );
-      const preferences = await bus.exec(getPayerPreferences, id);
+      const preferences = await bus.exec(payers.getPayerPreferences, id);
 
       return ok({
         authLevel: session.authLevel,

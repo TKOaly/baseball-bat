@@ -16,6 +16,7 @@ import reports from './reports';
 import { ModuleDefinition, createBaseRoute } from '@/module';
 import { Middleware } from 'typera-express';
 import search from './search';
+import session from './session';
 
 export default async (app: express.Express | null, deps: ModuleDeps) => {
   const route = createBaseRoute(deps);
@@ -53,5 +54,6 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
     users,
     stripe,
     jobs,
+    session,
   ]);
 };
