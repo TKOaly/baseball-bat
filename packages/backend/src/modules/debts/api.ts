@@ -787,6 +787,25 @@ const factory: RouterFactory = route => {
       return ok(debts);
     });
 
+  const markAsPaid = route
+    .use(auth({ accessLevel: 'normal' }))
+    .use(
+      Parser.body(
+        t.type({
+          paid: t.boolean,
+        }),
+      ),
+    )
+    .post('/:id/mark')
+    .handler(async ({ bus, body, routeParams }) => {
+      await bus.exec(debtService.markAsPaid, {
+        paymentId: routeParams.id,
+        paid: body.paid,
+      });
+
+      return ok();
+    });
+
   return router(
     sendAllReminders,
     createDebtComponent,
@@ -806,6 +825,7 @@ const factory: RouterFactory = route => {
     updateMultipleDebts,
     getDebtsByEmail,
     getDebtsByTag,
+    markAsPaid,
   );
 };
 

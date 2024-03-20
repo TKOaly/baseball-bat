@@ -23,5 +23,14 @@ export const DebtStatusBadge = ({ debt }: { debt: Debt }) => {
     status = 'overdue';
   }
 
-  return <span className={debtStatusBadgeCva({ status })}>{t(status)}</span>;
+  return (
+    <div className="inline-flex gap-2">
+      {debt.markedAsPaid && debt.status !== 'paid' && (
+        <span className={debtStatusBadgeCva({ status: 'paid' })}>
+          {t('markedAsPaid')}
+        </span>
+      )}
+      <span className={debtStatusBadgeCva({ status })}>{t(status)}</span>
+    </div>
+  );
 };

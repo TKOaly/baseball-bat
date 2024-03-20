@@ -14,6 +14,7 @@ import { useGetInfoQuery } from '../../api/banking/statements';
 import { useMemo } from 'react';
 import { DebtStatusBadge } from '../../components/debt-status-badge';
 import React from 'react';
+import { useMarkAsPaidMutation } from '../../api/debt';
 
 const debtCardCva = cva(
   'rounded-md border shadow-md shadow-black/5 bg-white/60',
@@ -33,6 +34,14 @@ type CardProps = {
 
 const DebtCard: React.FC<CardProps> = ({ debt }) => {
   const { t } = useTranslation([], { keyPrefix: 'debtCard' });
+  const [markAsPaid] = useMarkAsPaidMutation();
+
+  const togglePaidMark = () => {
+    markAsPaid({
+      id: debt.id,
+      paid: !debt.markedAsPaid,
+    });
+  };
 
   return (
     <div className={debtCardCva({ selected: false })}>
@@ -81,6 +90,13 @@ const DebtCard: React.FC<CardProps> = ({ debt }) => {
         >
           {t('detailsButton')}
         </Link>
+        <div className="grow" />
+        <button
+          className="px-2 py-1 text-sm font-bold uppercase text-zinc-400 hover:bg-zinc-50"
+          onClick={togglePaidMark}
+        >
+          {debt.markedAsPaid ? t('markAsUnpaid') : t('markAsPaid')}
+        </button>
       </div>
     </div>
   );

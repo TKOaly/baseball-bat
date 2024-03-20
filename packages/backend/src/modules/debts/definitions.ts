@@ -165,6 +165,13 @@ const iface = createInterface('debts', builder => ({
     ]),
     response: types.payment,
   }),
+  markAsPaid: builder.proc({
+    payload: t.type({
+      paid: t.boolean,
+      paymentId: t.string,
+    }),
+    response: t.void,
+  }),
 }));
 
 export default iface;
@@ -183,6 +190,7 @@ export const {
   updateDebtComponent,
   getDebtsByPayer,
   createPayment,
+  markAsPaid,
 } = iface.procedures;
 
 const scope = createScope('debts');
