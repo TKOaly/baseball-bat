@@ -7,6 +7,7 @@ import { isMatch } from 'date-fns/isMatch';
 import { split } from 'fp-ts/string';
 import { reduce, reverse } from 'fp-ts/ReadonlyNonEmptyArray';
 import { foldW } from 'fp-ts/Either';
+import { format } from 'date-fns/fp/format';
 export { type EuroValue, euro };
 
 const date = new t.Type(
@@ -673,6 +674,11 @@ export type MultipleDebtPatchValues = {
     operation: 'include' | 'exclude';
   }[];
 };
+
+export const dateToDbDateString = flow(
+  format('yyyy-MM-dd'),
+  value => value as t.Branded<string, DbDateBrand>,
+);
 
 export const convertToDbDate: (date: DateString) => DbDateString | null = flow(
   split('.'),

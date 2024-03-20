@@ -115,6 +115,7 @@ export const queryDebts = createPaginatedQuery<DbDebt>(
       payer_profiles.name AS payer_name,
       TO_JSON(payer_profiles.*) AS payer,
       TO_JSON(debt_center.*) AS debt_center,
+      ds.is_paid,
       CASE WHEN ds.is_paid THEN 'paid' ELSE 'unpaid' END AS status
     FROM debt
     LEFT JOIN components USING (id)

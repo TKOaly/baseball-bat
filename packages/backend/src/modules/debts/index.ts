@@ -36,11 +36,19 @@ import * as TE from 'fp-ts/TaskEither';
 import * as A from 'fp-ts/Array';
 import * as AA from 'fp-ts/ReadonlyArray';
 import * as O from 'fp-ts/Option';
+import * as P from 'fp-ts/Predicate';
 import * as S from 'fp-ts/string';
 import * as T from 'fp-ts/Task';
 import * as EQ from 'fp-ts/Eq';
 import { flow, pipe } from 'fp-ts/function';
-import { format, isBefore, isPast, parseISO, subMonths } from 'date-fns';
+import {
+  differenceInDays,
+  format,
+  isBefore,
+  isPast,
+  parseISO,
+  subMonths,
+} from 'date-fns';
 import { Job } from 'bullmq';
 import { validate } from 'uuid';
 import { BusContext } from '@/app';
@@ -401,6 +409,7 @@ export default createModule({
             options: {
               series: 1,
               date: debt.date ? parseISO(debt.date) : undefined,
+              dueDate: debt.dueDate ? parseISO(debt.dueDate) : undefined,
               ...options.defaultPayment,
             },
           });
@@ -1159,6 +1168,7 @@ export default createModule({
         },
         options: {
           date: debt.date ?? undefined,
+          dueDate: debt.dueDate ?? undefined,
         },
       });
 
@@ -1474,7 +1484,12 @@ export default createModule({
 
     async function getOverdueDebts(pg: Connection) {
       const { result } = await queryDebts(pg, {
-        where: sql`due_date < NOW() AND published_at IS NOT NULL AND NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)`,
+        where: sql`
+          due_date < NOW() AND
+          credited_at IS NULL AND
+          published_at IS NOT NULL AND
+          NOT (SELECT is_paid FROM debt_statuses ds WHERE ds.id = debt.id)
+        `,
       });
 
       return result.map(formatDebt);
@@ -1506,6 +1521,18 @@ export default createModule({
     }
 
     async function getDebtsPendingReminder(pg: Connection) {
+      const { result } = await queryDebts(pg, {
+        where: sql`
+          due_date < NOW()
+          AND published_at IS NOT NULL
+          AND (last_reminded IS NULL OR last_reminded < NOW() - INTERVAL '1 month')
+          AND NOT is_paid
+          AND credited_at IS NULL
+        `,
+      });
+
+      return result.map(formatDebt);
+
       const debts = await pg.many<DbDebt>(sql`
         SELECT
           debt.*,
@@ -1608,14 +1635,14 @@ export default createModule({
           return E.left('Could not create email');
         }
 
+        await setDebtLastReminded(pg, debt.id, createdEmail.createdAt);
+
         if (!draft) {
           await bus.exec(sendEmail, createdEmail.id);
           const refreshed = await bus.exec(getEmail, createdEmail.id);
 
           return E.fromNullable('Could not fetch new email details')(refreshed);
         }
-
-        await setDebtLastReminded(pg, debt.id, createdEmail.createdAt);
 
         return E.right(createdEmail);
       },
@@ -1640,14 +1667,52 @@ export default createModule({
           debts = pDebts;
         }
 
+        const isCredited = (debt: Debt) => !!debt.credited;
+        const isPaid = (debt: Debt) => debt.status === 'paid';
+        const isPublished = (debt: Debt) => !!debt.publishedAt;
+        const isDue = (debt: Debt) => !!debt.dueDate && isPast(debt.dueDate);
+        const wasReminded = (debt: Debt) =>
+          !!debt.lastReminded &&
+          differenceInDays(debt.lastReminded, new Date()) < 31;
+
+        const shouldRemind: (debt: Debt) => E.Either<string, Debt> = flow(
+          E.of,
+          E.chain(
+            E.fromPredicate(P.not(isCredited), () => 'Debt is credited!'),
+          ),
+          E.chain(E.fromPredicate(P.not(isPaid), () => 'Debt is paid!')),
+          E.chain(E.fromPredicate(isDue, () => 'Debt is not due!')),
+          E.chain(E.fromPredicate(isPublished, () => 'Debt is not published!')),
+          E.chain(
+            E.fromPredicate(
+              P.or((_: Debt) => ignoreReminderCooldown)(P.not(wasReminded)),
+              () => 'Debt was reminded within 1 month!',
+            ),
+          ),
+        );
+
+        const sendReminder = flow(
+          ({ debt }) => ({ debtId: debt.id, draft: true }),
+          bus.execTE(defs.sendReminder),
+          TE.chainEitherKW(v => v),
+          TE.mapLeft(error => {
+            console.error('Error while sending reminder:', error);
+            return error.toString();
+          }),
+        );
+
         const result = await flow(
-          A.traverse(T.ApplicativePar)((debtId: string) =>
-            pipe(
-              { debtId, draft: true },
-              bus.execTE(defs.sendReminder),
-              TE.chainEitherKW(v => v),
-              TE.mapLeft(e => e.toString()),
-              TE.map(email => ({ debtId, email })),
+          A.traverse(T.ApplicativePar)(
+            flow(
+              bus.execT(defs.getDebt),
+              T.map(E.fromNullable('Debt not found!')),
+              TE.chainEitherK(shouldRemind),
+              TE.bindTo('debt'),
+              TE.bind('email', sendReminder),
+              TE.map(({ debt, email }) => ({
+                debtId: debt.id,
+                email,
+              })),
             ),
           ),
           T.map(A.separate),
