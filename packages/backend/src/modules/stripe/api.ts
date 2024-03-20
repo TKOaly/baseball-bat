@@ -3,9 +3,10 @@ import Stripe from 'stripe';
 import * as t from 'io-ts';
 import { router } from 'typera-express';
 import { headers } from 'typera-express/parser';
-import { badRequest, ok } from 'typera-express/response';
+import { badRequest, notFound, ok } from 'typera-express/response';
 import * as paymentService from '@/modules/payments/definitions';
 import { EuroValue, cents } from '@bbat/common/currency';
+import { Parser } from 'typera-express';
 
 export type StripeContext = {
   stripe: Stripe;
@@ -19,6 +20,38 @@ const factory: RouterFactory<StripeContext> = route => {
       publicKey: module.publicKey,
     }),
   );
+
+  const getPayment = route
+    .use(
+      Parser.query(
+        t.type({
+          intent: t.string,
+        }),
+      ),
+    )
+    .get('/get-payment')
+    .handler(async ({ bus, query }) => {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const payments = await bus.exec(paymentService.getPaymentsByData, {
+        intent: query.intent,
+      });
+
+      if (payments.length > 1) {
+        console.error(
+          `Multiple payments associated with payment intent ${query.intent}`,
+        );
+        return notFound();
+      }
+
+      if (payments.length === 0) {
+        return notFound({});
+      }
+
+      return ok({
+        payment: payments[0],
+      });
+    });
 
   const webhook = route
     .post('/webhook')
@@ -139,7 +172,7 @@ const factory: RouterFactory<StripeContext> = route => {
       return ok();
     });
 
-  return router(config, webhook);
+  return router(config, webhook, getPayment);
 };
 
 export default factory;

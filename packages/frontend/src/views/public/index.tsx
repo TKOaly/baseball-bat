@@ -122,7 +122,7 @@ export const PublicSite = () => {
               component={StripePaymentFlow}
             />
             <Route
-              path="/payments/:id/stripe/:secret/return"
+              path="/payment-completed"
               component={StripePaymentReturnPage}
             />
             <Route>
