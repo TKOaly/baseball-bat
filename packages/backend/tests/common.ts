@@ -203,10 +203,10 @@ export const createEnvironment = async (): Promise<Environment> => {
 
   const config = new Config({
     dbUrl: postgres.uri,
-    userServiceUrl: '',
-    userServiceApiUrl: '',
-    serviceId: '',
-    serviceSecret: '',
+    userServiceUrl: 'https://users.tko-aly.fi',
+    userServiceApiUrl: 'https://users.tko-aly.fi',
+    serviceId: 'FAKE_ID',
+    serviceSecret: 'FAKE_SECRET',
     eventServiceUrl: '',
     eventServiceToken: '',
     jwtSecret: '',
