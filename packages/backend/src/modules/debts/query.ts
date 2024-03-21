@@ -77,6 +77,7 @@ export const formatDebt = (
       : formatPayerProfile(debt.payer)),
   status: debt.status,
   tags: (debt.tags ?? []).map(formatDebtTag),
+  markedAsPaid: debt.marked_as_paid ?? null,
 });
 
 export const formatDebtComponent = (

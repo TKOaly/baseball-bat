@@ -297,41 +297,7 @@ export default createModule({
         });
       },
 
-      async createDebt(
-        { debt, options },
-        { pg },
-        bus,
-      ): Promise<{
-        id: string;
-        humanId: string;
-        accountingPeriod: number;
-        name: string;
-        tags: { name: string; hidden: boolean }[];
-        date: Date | null;
-        lastReminded: Date | null;
-        dueDate: Date | null;
-        draft: boolean;
-        publishedAt: Date | null;
-        payerId: { type: 'internal'; value: string };
-        debtCenterId: string;
-        description: string;
-        createdAt: Date;
-        updatedAt: Date;
-        status: 'paid' | 'unpaid' | 'mispaid';
-        paymentCondition: number | null;
-        defaultPayment: string | null;
-        credited: boolean;
-        total: { currency: 'eur'; value: number };
-        debtComponents: {
-          id: string;
-          name: string;
-          amount: { currency: 'eur'; value: number };
-          description: string;
-          debtCenterId: string;
-          createdAt: Date | null;
-          updatedAt: Date | null;
-        }[];
-      }> {
+      async createDebt({ debt, options }, { pg }, bus) {
         const payerProfile = await bus.exec(
           payerService.getPayerProfileByIdentity,
           debt.payer,
@@ -538,6 +504,18 @@ export default createModule({
         }
 
         return result.right;
+      },
+
+      async markAsPaid({ paid, debtId }, { pg }) {
+        if (paid) {
+          await pg.do(
+            sql`UPDATE debt SET marked_as_paid = NOW() WHERE id = ${debtId}`,
+          );
+        } else {
+          await pg.do(
+            sql`UPDATE debt SET marked_as_paid = NULL WHERE id = ${debtId}`,
+          );
+        }
       },
     });
 
@@ -991,6 +969,7 @@ export default createModule({
               date: null,
               name: details.title,
               description: details.description,
+              markedAsPaid: null,
               draft: true,
               publishedAt: null,
               debtCenterId: debtCenter.id,

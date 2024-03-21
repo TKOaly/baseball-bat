@@ -134,14 +134,17 @@
       "paid": "Maksettu",
       "unpaid": "Maksamatta",
       "mispaid": "Maksuvirhe",
-      "overdue": "Myöhässä"
+      "overdue": "Myöhässä",
+      "markedAsPaid": "Merkitty maksetuksi"
     },
     "debtCard": {
       "amountLabel": "Summa",
       "dateLabel": "Päiväys",
       "dueDateLabel": "Eräpäivä",
       "payButton": "Maksa",
-      "detailsButton": "Lisätiedot"
+      "detailsButton": "Lisätiedot",
+      "markAsPaid": "Merkitse maksetuksi",
+      "markAsUnpaid": "Merkitse maksamattomaksi"
     },
     "paymentCard": {
       "typeLabel": "Maksutapa",

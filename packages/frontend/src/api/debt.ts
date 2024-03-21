@@ -260,6 +260,15 @@ const debtApi = rtkApi.injectEndpoints({
       providesTags: result =>
         (result ?? []).map(({ id }) => ({ type: 'Debt' as const, id })),
     }),
+
+    markAsPaid: builder.mutation<void, { id: string; paid: boolean }>({
+      query: ({ id, paid }) => ({
+        method: 'POST',
+        url: `/debt/${id}/mark`,
+        body: { paid },
+      }),
+      invalidatesTags: (_, __, { id }) => [{ type: 'Debt', id }],
+    }),
   }),
 });
 
@@ -286,6 +295,7 @@ export const {
   useMassCreateDebtsProgressQuery,
   useUpdateDebtComponentMutation,
   useGetDebtsByEmailQuery,
+  useMarkAsPaidMutation,
 } = debtApi;
 
 export default debtApi;

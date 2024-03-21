@@ -35,7 +35,7 @@ export const DebtDetails = ({ params }: Props) => {
     <div>
       <div className="rounded-md bg-white/90 p-8 shadow-xl">
         <h3 className="mb-8 font-bold text-zinc-800">
-          <span className="mr-3 inline-block">{debt.name}</span>
+          <span className="mb-2 mr-3 inline-block">{debt.name}</span>
           <DebtStatusBadge debt={debt} />
         </h3>
         <div className="grid w-full grid-cols-1 gap-5 gap-y-3 sm:grid-cols-2 sm:gap-y-5 md:grid-cols-3">

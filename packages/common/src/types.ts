@@ -545,6 +545,7 @@ export type DbDebt = {
   date: Date | null;
   last_reminded: Date | null;
   due_date: Date | null;
+  marked_as_paid: Date | null;
   draft: boolean;
   published_at: Date | null;
   payer_id: string;
@@ -574,6 +575,7 @@ export const debt = t.type({
   tags: t.array(debtTag),
   date: nullable(tt.date),
   lastReminded: nullable(tt.date),
+  markedAsPaid: nullable(tt.date),
   dueDate: nullable(tt.date),
   draft: t.boolean,
   publishedAt: nullable(tt.date),

@@ -14,6 +14,7 @@ import { useGetInfoQuery } from '../../api/banking/statements';
 import { useMemo } from 'react';
 import { DebtStatusBadge } from '../../components/debt-status-badge';
 import React from 'react';
+import { useMarkAsPaidMutation } from '../../api/debt';
 
 const debtCardCva = cva(
   'rounded-md border shadow-md shadow-black/5 bg-white/60',
@@ -33,42 +34,44 @@ type CardProps = {
 
 const DebtCard: React.FC<CardProps> = ({ debt }) => {
   const { t } = useTranslation([], { keyPrefix: 'debtCard' });
+  const [markAsPaid] = useMarkAsPaidMutation();
+
+  const togglePaidMark = () => {
+    markAsPaid({
+      id: debt.id,
+      paid: !debt.markedAsPaid,
+    });
+  };
 
   return (
     <div className={debtCardCva({ selected: false })}>
-      <div className="flex grow p-4">
-        <div className="grow">
+      <div className="p-4">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row">
           <h3 className="font-bold">{debt.name}</h3>
-          <div className="flex flex-col gap-x-10 sm:flex-row">
-            <div>
-              <div className="mt-2 text-sm text-zinc-500">
-                {t('amountLabel')}
-              </div>
-              <div className="">{formatEuro(debt.total)}</div>
-            </div>
-            {debt.date && (
-              <div>
-                <div className="mt-2 text-sm text-zinc-500">
-                  {t('dateLabel')}
-                </div>
-                <div>{formatDate(debt.date, 'dd.MM.yyyy')}</div>
-              </div>
-            )}
-            {debt.dueDate && (
-              <div>
-                <div className="mt-2 text-sm text-zinc-500">
-                  {t('dueDateLabel')}
-                </div>
-                <div>{formatDate(debt.dueDate, 'dd.MM.yyyy')}</div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div>
           <DebtStatusBadge debt={debt} />
         </div>
+        <div className="flex flex-col gap-x-10 sm:flex-row">
+          <div>
+            <div className="mt-2 text-sm text-zinc-500">{t('amountLabel')}</div>
+            <div className="">{formatEuro(debt.total)}</div>
+          </div>
+          {debt.date && (
+            <div>
+              <div className="mt-2 text-sm text-zinc-500">{t('dateLabel')}</div>
+              <div>{formatDate(debt.date, 'dd.MM.yyyy')}</div>
+            </div>
+          )}
+          {debt.dueDate && (
+            <div>
+              <div className="mt-2 text-sm text-zinc-500">
+                {t('dueDateLabel')}
+              </div>
+              <div>{formatDate(debt.dueDate, 'dd.MM.yyyy')}</div>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex gap-4 border-t p-3">
+      <div className="flex flex-col gap-4 border-t p-3 sm:flex-row">
         <Link
           to={`/debts/${debt.id}/pay`}
           className="rounded-sm px-2 py-1 text-sm font-bold uppercase text-yellow-500 hover:bg-zinc-50"
@@ -81,6 +84,13 @@ const DebtCard: React.FC<CardProps> = ({ debt }) => {
         >
           {t('detailsButton')}
         </Link>
+        <div className="hidden grow sm:block" />
+        <button
+          className="px-2 py-1 text-start text-sm font-bold uppercase text-zinc-400 hover:bg-zinc-50"
+          onClick={togglePaidMark}
+        >
+          {debt.markedAsPaid ? t('markAsUnpaid') : t('markAsPaid')}
+        </button>
       </div>
     </div>
   );

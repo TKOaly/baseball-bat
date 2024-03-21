@@ -787,6 +787,35 @@ const factory: RouterFactory = route => {
       return ok(debts);
     });
 
+  const markAsPaid = route
+    .use(auth({ accessLevel: 'normal' }))
+    .use(
+      Parser.body(
+        t.type({
+          paid: t.boolean,
+        }),
+      ),
+    )
+    .post('/:id/mark')
+    .handler(async ({ bus, body, session, routeParams }) => {
+      const debt = await bus.exec(debtService.getDebt, routeParams.id);
+
+      if (!debt) {
+        return notFound();
+      }
+
+      if (debt.payerId.value !== session.payerId.value) {
+        return unauthorized();
+      }
+
+      await bus.exec(debtService.markAsPaid, {
+        debtId: routeParams.id,
+        paid: body.paid,
+      });
+
+      return ok();
+    });
+
   return router(
     sendAllReminders,
     createDebtComponent,
@@ -806,6 +835,7 @@ const factory: RouterFactory = route => {
     updateMultipleDebts,
     getDebtsByEmail,
     getDebtsByTag,
+    markAsPaid,
   );
 };
 

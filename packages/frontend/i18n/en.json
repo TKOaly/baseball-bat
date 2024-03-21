@@ -134,14 +134,17 @@
       "paid": "Paid",
       "unpaid": "Unpaid",
       "mispaid": "Mispaid",
-      "overdue": "Overdue"
+      "overdue": "Overdue",
+      "markedAsPaid": "Marked as paid"
     },
     "debtCard": {
       "amountLabel": "Amount",
       "dateLabel": "Date",
       "dueDateLabel": "Due Date",
       "payButton": "Pay now",
-      "detailsButton": "View details"
+      "detailsButton": "View details",
+      "markAsPaid": "Mark as paid",
+      "markAsUnpaid": "Mark as unpaid"
     },
     "paymentCard": {
       "typeLabel": "Payment method",

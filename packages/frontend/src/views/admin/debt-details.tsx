@@ -208,6 +208,11 @@ export const DebtDetails = ({ params }: Props) => {
           </Field>
         )}
         <BadgeField label="Status" {...statusBadge} />
+        <Field label="Marked as paid">
+          {debt.markedAsPaid === null
+            ? 'Not marked as paid'
+            : format(new Date(debt.markedAsPaid), 'dd.MM.yyyy HH:mm')}
+        </Field>
         <TextField fullWidth label="Description" value={debt.description} />
       </Section>
       <Section title="Content">

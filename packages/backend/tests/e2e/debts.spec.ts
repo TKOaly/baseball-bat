@@ -600,3 +600,21 @@ test.describe('CSV import', () => {
     await expect(components.rows()).toHaveCount(2);
   });
 });
+
+test.describe('public site', () => {
+  test(`mark debt as paid`, async ({ bbat, page }) => {
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(bbat.url);
+
+    await page.getByRole('button', { name: 'Create test debt' }).click();
+    await expect(page.getByRole('heading', { name: 'Test Debt' })).toHaveCount(
+      1,
+    );
+    await expect(page.getByText(/marked as paid/i)).toHaveCount(0);
+    await page.getByRole('button', { name: /mark as paid/i }).click();
+    await expect(page.getByText(/marked as paid/i)).toHaveCount(1);
+    await page.getByRole('button', { name: /mark as unpaid/i }).click();
+    await expect(page.getByText(/marked as paid/i)).toHaveCount(0);
+  });
+});
