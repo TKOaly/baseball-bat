@@ -25,7 +25,6 @@ setup('Reports service', ({ test }) => {
       template: 'test',
       name: 'Test Report',
       options: {},
-      generatedBy: payer.id,
     });
 
     bus.context.pg.do(sql`COMMIT; BEGIN`);

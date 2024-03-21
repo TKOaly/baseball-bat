@@ -84,7 +84,6 @@ const factory: RouterFactory = route => {
           groupBy: ctx.body.groupBy,
           centers: ctx.body.centers,
         },
-        generatedBy: ctx.session.payerId,
         parent: null,
       });
 
@@ -131,7 +130,6 @@ const factory: RouterFactory = route => {
           groupBy: ctx.body.groupBy,
           eventTypes: ctx.body.eventTypes,
         },
-        generatedBy: ctx.session.payerId,
         parent: null,
       });
 
@@ -165,7 +163,6 @@ const factory: RouterFactory = route => {
           groupBy: ctx.body.groupBy,
           includeOnly: ctx.body.includeOnly,
         },
-        generatedBy: ctx.session.payerId,
         parent: null,
       });
 
@@ -179,7 +176,6 @@ const factory: RouterFactory = route => {
     .handler(async ({ bus, ...ctx }) => {
       const report = await bus.exec(reportService.refreshReport, {
         reportId: ctx.routeParams.id,
-        generatedBy: ctx.session.payerId,
       });
 
       if (!report) {
