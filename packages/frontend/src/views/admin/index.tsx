@@ -207,7 +207,7 @@ const Admin = () => {
         evt.target &&
         sidebarRef.current &&
         !sidebarRef.current.contains(evt.target as Node) &&
-        window.matchMedia('(max-width: 1280px)').matches
+        window.matchMedia('(max-width: 1279px)').matches
       ) {
         setSidebarOpen(false);
       }
