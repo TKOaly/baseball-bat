@@ -797,7 +797,17 @@ const factory: RouterFactory = route => {
       ),
     )
     .post('/:id/mark')
-    .handler(async ({ bus, body, routeParams }) => {
+    .handler(async ({ bus, body, session, routeParams }) => {
+      const debt = await bus.exec(debtService.getDebt, routeParams.id);
+
+      if (!debt) {
+        return notFound();
+      }
+
+      if (debt.payerId.value !== session.payerId.value) {
+        return unauthorized();
+      }
+
       await bus.exec(debtService.markAsPaid, {
         paymentId: routeParams.id,
         paid: body.paid,
