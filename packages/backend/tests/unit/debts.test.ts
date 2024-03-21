@@ -387,4 +387,63 @@ setup('Debts service', ({ test }) => {
       assert.equal(result2.right.length, 0);
     });
   });
+
+  test('marking as paid by the debor', async ({ bus }) => {
+    const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
+      id: emailIdentity('test@test.test'),
+      name: 'Teppo Testaaja',
+    });
+
+    assert.ok(payer);
+
+    const center = await bus.exec(createDebtCenter, {
+      name: 'Test Center',
+      accountingPeriod: 2024,
+      description: 'Desc',
+      url: 'https://google.com/',
+    });
+
+    const component = await bus.exec(defs.createDebtComponent, {
+      debtCenterId: center.id,
+      name: 'Test Component',
+      amount: euro(10),
+      description: 'Test',
+    });
+
+    const debt = await bus.exec(defs.createDebt, {
+      debt: {
+        name: 'Name',
+        description: 'Desc',
+        centerId: center.id,
+        accountingPeriod: 2024 as any,
+        components: [component.id],
+        payer: payer.id,
+        paymentCondition: 14,
+        tags: [],
+      },
+    });
+
+    await bus.exec(defs.publishDebt, debt.id);
+
+    const assertMark = async (marked: boolean) => {
+      const debt1 = await bus.exec(defs.getDebt, debt.id);
+      assert.ok(debt1);
+
+      if (marked) {
+        assert.notEqual(debt1.markedAsPaid, null);
+      } else {
+        assert.equal(debt1.markedAsPaid, null);
+      }
+    };
+
+    await assertMark(false);
+    await bus.exec(defs.markAsPaid, { debtId: debt.id, paid: false });
+    await assertMark(false);
+    await bus.exec(defs.markAsPaid, { debtId: debt.id, paid: true });
+    await assertMark(true);
+    await bus.exec(defs.markAsPaid, { debtId: debt.id, paid: true });
+    await assertMark(true);
+    await bus.exec(defs.markAsPaid, { debtId: debt.id, paid: false });
+    await assertMark(false);
+  });
 });
