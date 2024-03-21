@@ -809,7 +809,7 @@ const factory: RouterFactory = route => {
       }
 
       await bus.exec(debtService.markAsPaid, {
-        paymentId: routeParams.id,
+        debtId: routeParams.id,
         paid: body.paid,
       });
 

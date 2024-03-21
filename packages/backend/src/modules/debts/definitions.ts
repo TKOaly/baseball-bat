@@ -168,7 +168,7 @@ const iface = createInterface('debts', builder => ({
   markAsPaid: builder.proc({
     payload: t.type({
       paid: t.boolean,
-      paymentId: t.string,
+      debtId: t.string,
     }),
     response: t.void,
   }),

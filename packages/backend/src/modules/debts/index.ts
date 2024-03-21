@@ -506,14 +506,14 @@ export default createModule({
         return result.right;
       },
 
-      async markAsPaid({ paid, paymentId }, { pg }) {
+      async markAsPaid({ paid, debtId }, { pg }) {
         if (paid) {
           await pg.do(
-            sql`UPDATE debt SET marked_as_paid = NOW() WHERE id = ${paymentId}`,
+            sql`UPDATE debt SET marked_as_paid = NOW() WHERE id = ${debtId}`,
           );
         } else {
           await pg.do(
-            sql`UPDATE debt SET marked_as_paid = NULL WHERE id = ${paymentId}`,
+            sql`UPDATE debt SET marked_as_paid = NULL WHERE id = ${debtId}`,
           );
         }
       },
