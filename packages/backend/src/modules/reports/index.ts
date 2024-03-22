@@ -199,7 +199,11 @@ export default createModule({
       });
     }
 
-    bus.register(defs.createReport, async (options, { pg }) => {
+    bus.register(defs.createReport, async (options, { pg, session }) => {
+      if (session?.authLevel !== 'authenticated') {
+        throw new Error('Unauthenticated!');
+      }
+
       const generatedAt = new Date();
 
       const report = await reserveReport(pg, {
@@ -208,7 +212,7 @@ export default createModule({
         options: options.options,
         type: options.template,
         parent: options.parent,
-        generatedBy: options.generatedBy,
+        generatedBy: session.payerId,
       });
 
       if (!report) {
@@ -274,135 +278,125 @@ export default createModule({
       return reports.map(formatReportWithHistory);
     });
 
-    bus.register(
-      defs.refreshReport,
-      async ({ reportId, generatedBy }, _, bus) => {
-        const report = await bus.exec(defs.getReport, reportId);
+    bus.register(defs.refreshReport, async ({ reportId }, _, bus) => {
+      const report = await bus.exec(defs.getReport, reportId);
 
-        if (!report) {
-          throw new Error('No such report.');
+      if (!report) {
+        throw new Error('No such report.');
+      }
+
+      if (report.type === 'debt-ledger') {
+        const optionsType = t.type({
+          startDate: t.string,
+          endDate: t.string,
+          includeDrafts: t.union([
+            t.literal('include'),
+            t.literal('exclude'),
+            t.literal('only-drafts'),
+          ]),
+          groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+          centers: t.union([t.null, t.array(t.string)]),
+        });
+
+        const result = optionsType.decode(report.options);
+
+        if (isRight(result)) {
+          const options = result.right;
+
+          return await bus.exec(generateDebtLedger, {
+            options: {
+              startDate: new Date(options.startDate),
+              endDate: new Date(options.endDate),
+              centers: options.centers,
+              groupBy: options.groupBy,
+              includeDrafts: options.includeDrafts,
+            },
+            parent: report.id,
+          });
+        } else {
+          throw new Error('Invalid report options!');
         }
-
-        if (report.type === 'debt-ledger') {
-          const optionsType = t.type({
-            startDate: t.string,
-            endDate: t.string,
-            includeDrafts: t.union([
-              t.literal('include'),
-              t.literal('exclude'),
-              t.literal('only-drafts'),
-            ]),
-            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
-            centers: t.union([t.null, t.array(t.string)]),
-          });
-
-          const result = optionsType.decode(report.options);
-
-          if (isRight(result)) {
-            const options = result.right;
-
-            return await bus.exec(generateDebtLedger, {
-              options: {
-                startDate: new Date(options.startDate),
-                endDate: new Date(options.endDate),
-                centers: options.centers,
-                groupBy: options.groupBy,
-                includeDrafts: options.includeDrafts,
-              },
-              generatedBy,
-              parent: report.id,
-            });
-          } else {
-            throw new Error('Invalid report options!');
-          }
-        } else if (report.type === 'payment-ledger') {
-          const optionsType = t.type({
-            startDate: t.string,
-            endDate: t.string,
-            paymentType: t.union([
-              t.null,
-              t.literal('cash'),
-              t.literal('invoice'),
-              t.literal('stripe'),
-            ]),
-            centers: t.union([t.null, t.array(t.string)]),
-            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
-            eventTypes: t.union([
-              t.null,
-              t.array(
-                t.union([
-                  t.literal('payment'),
-                  t.literal('created'),
-                  t.literal('credited'),
-                ]),
-              ),
-            ]),
-          });
-
-          const result = optionsType.decode(report.options);
-
-          if (isRight(result)) {
-            const options = result.right;
-
-            return await bus.exec(paymentService.generatePaymentLedger, {
-              options: {
-                startDate: new Date(options.startDate),
-                endDate: new Date(options.endDate),
-                centers: options.centers,
-                groupBy: options.groupBy,
-                eventTypes: options.eventTypes,
-                paymentType: options.paymentType,
-              },
-              generatedBy,
-              parent: report.id,
-            });
-          } else {
-            throw new Error('Invalid report options.');
-          }
-        } else if (report.type === 'debt-status-report') {
-          const optionsType = t.intersection([
-            t.type({
-              date: t.string,
-              groupBy: t.union([
-                t.null,
-                t.literal('payer'),
-                t.literal('center'),
-              ]),
-              centers: t.union([t.null, t.array(t.string)]),
-            }),
-            t.partial({
-              includeOnly: t.union([
-                t.null,
-                t.literal('open'),
-                t.literal('paid'),
+      } else if (report.type === 'payment-ledger') {
+        const optionsType = t.type({
+          startDate: t.string,
+          endDate: t.string,
+          paymentType: t.union([
+            t.null,
+            t.literal('cash'),
+            t.literal('invoice'),
+            t.literal('stripe'),
+          ]),
+          centers: t.union([t.null, t.array(t.string)]),
+          groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+          eventTypes: t.union([
+            t.null,
+            t.array(
+              t.union([
+                t.literal('payment'),
+                t.literal('created'),
                 t.literal('credited'),
               ]),
-            }),
-          ]);
+            ),
+          ]),
+        });
 
-          const result = optionsType.decode(report.options);
+        const result = optionsType.decode(report.options);
 
-          if (isRight(result)) {
-            const options = result.right;
+        if (isRight(result)) {
+          const options = result.right;
 
-            return await bus.exec(generateDebtStatusReport, {
-              options: {
-                date: new Date(options.date),
-                centers: options.centers,
-                groupBy: options.groupBy,
-                includeOnly: options.includeOnly ?? null,
-              },
-              generatedBy,
-              parent: report.id,
-            });
-          } else {
-            throw new Error('Failed to refresh debt status report!');
-          }
+          return await bus.exec(paymentService.generatePaymentLedger, {
+            options: {
+              startDate: new Date(options.startDate),
+              endDate: new Date(options.endDate),
+              centers: options.centers,
+              groupBy: options.groupBy,
+              eventTypes: options.eventTypes,
+              paymentType: options.paymentType,
+            },
+            parent: report.id,
+          });
         } else {
-          throw new Error(`Unkown report type '${report.type}'.`);
+          throw new Error('Invalid report options.');
         }
-      },
-    );
+      } else if (report.type === 'debt-status-report') {
+        const optionsType = t.intersection([
+          t.type({
+            date: t.string,
+            groupBy: t.union([t.null, t.literal('payer'), t.literal('center')]),
+            centers: t.union([t.null, t.array(t.string)]),
+          }),
+          t.partial({
+            includeOnly: t.union([
+              t.null,
+              t.literal('open'),
+              t.literal('paid'),
+              t.literal('credited'),
+            ]),
+          }),
+        ]);
+
+        const result = optionsType.decode(report.options);
+
+        if (isRight(result)) {
+          const options = result.right;
+
+          return await bus.exec(generateDebtStatusReport, {
+            options: {
+              date: new Date(options.date),
+              centers: options.centers,
+              groupBy: options.groupBy,
+              includeOnly: options.includeOnly ?? null,
+            },
+            parent: report.id,
+          });
+        } else {
+          throw new Error('Failed to refresh debt status report!');
+        }
+      } else {
+        throw new Error(`Unkown report type '${report.type}'.`);
+      }
+    });
 
     type ReportJob = {
       id: string;

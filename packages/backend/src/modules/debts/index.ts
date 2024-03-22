@@ -213,7 +213,11 @@ export default createModule({
         return components.map(formatDebtComponent);
       },
 
-      async generateDebtStatusReport({ options, generatedBy, parent }, _, bus) {
+      async generateDebtStatusReport({ options, parent }, { session }, bus) {
+        if (session?.authLevel !== 'authenticated') {
+          throw new Error('Not authenticated!');
+        }
+
         const name = `Debt Status Report (${format(
           options.date,
           'dd.MM.yyyy',
@@ -224,24 +228,26 @@ export default createModule({
           template: 'debt-status-report',
           options,
           parent: parent ?? undefined,
-          generatedBy,
         });
 
         return report;
       },
 
-      async generateDebtLedger({ options, generatedBy, parent }, _, bus) {
+      async generateDebtLedger({ options, parent }, { session }, bus) {
         const name = `Debt Ledger ${format(
           options.startDate,
           'dd.MM.yyyy',
         )} - ${format(options.endDate, 'dd.MM.yyyy')}`;
+
+        if (session?.authLevel !== 'authenticated') {
+          throw new Error('Not authenticated!');
+        }
 
         const report = await bus.exec(createReport, {
           name,
           template: 'debt-ledger',
           options,
           parent: parent ?? undefined,
-          generatedBy,
         });
 
         return report;

@@ -10,6 +10,7 @@ import {
 import { JobService } from './modules/jobs';
 import { LocalBus } from './bus';
 import server from './server';
+import { Session } from './middleware/session';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -36,6 +37,7 @@ if (config.emailDispatcher) {
 
 export type BusContext = {
   pg: Connection;
+  session: Session | null;
 };
 
 const bus = new LocalBus<BusContext>();

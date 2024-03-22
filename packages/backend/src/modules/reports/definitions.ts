@@ -11,7 +11,6 @@ export const createReport = scope.defineProcedure({
       template: t.string,
       name: t.string,
       options: t.unknown,
-      generatedBy: types.internalIdentityT,
     }),
     t.partial({
       scale: t.number,
@@ -43,7 +42,6 @@ export const refreshReport = scope.defineProcedure({
   name: 'refreshReport',
   payload: t.type({
     reportId: t.string,
-    generatedBy: types.internalIdentityT,
   }),
   response: types.reportWithoutHistory,
 });

@@ -7,6 +7,7 @@ import * as redis from 'redis';
 import { JobService } from './modules/jobs';
 import { Config } from './config';
 import { IEmailTransport } from './modules/email';
+import { Session, sessionMiddleware } from './middleware/session';
 
 export type ModuleDeps = {
   bus: LocalBus<BusContext>;
@@ -17,12 +18,16 @@ export type ModuleDeps = {
   emailTransport: IEmailTransport;
 };
 
-const createBusContext = (req: { pg: Connection }) => ({ pg: req.pg });
+const createBusContext = (req: {
+  pg: Connection;
+  session: Session | null;
+}) => ({ pg: req.pg, session: req.session });
 
 export const createBaseRoute = ({ bus, pool, redis, jobs }: ModuleDeps) =>
   route
     .use(dbMiddleware(pool))
     .use(() => Middleware.next({ redis, jobs }))
+    .use(sessionMiddleware)
     .use(bus.middleware(createBusContext));
 
 const _extendBaseRoute = <T>(deps: ModuleDeps, module: T) =>

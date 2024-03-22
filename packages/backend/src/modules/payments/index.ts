@@ -771,7 +771,11 @@ export default createModule({
 
     bus.register(
       defs.generatePaymentLedger,
-      async ({ options, generatedBy, parent }, _, bus) => {
+      async ({ options, parent }, { session }, bus) => {
+        if (session?.authLevel !== 'authenticated') {
+          throw new Error('Unauthenticated');
+        }
+
         let name = `Payment Ledger ${format(
           options.startDate,
           'dd.MM.yyyy',
@@ -790,7 +794,6 @@ export default createModule({
           name,
           options,
           parent: parent ?? undefined,
-          generatedBy,
         });
       },
     );

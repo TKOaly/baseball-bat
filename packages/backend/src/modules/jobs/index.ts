@@ -112,7 +112,7 @@ export class JobService {
   ) {
     const callback: BaseProcessor = (job, token) => {
       return this.pool.tryWithConnection(async pg => {
-        const ctx = this.bus.createContext({ pg });
+        const ctx = this.bus.createContext({ pg, session: null });
         return processor(ctx, job, token);
       });
     };
