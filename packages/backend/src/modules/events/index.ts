@@ -24,14 +24,17 @@ const getEuro = (value: string): EuroValue | undefined =>
     Either.fold(() => undefined, euro),
   );
 
+const parseDate = (value: string | null) =>
+  value ? parseISO(value) : undefined;
+
 const parseApiEvent = (apiEvent: ApiEvent): Event => ({
   id: apiEvent.id,
   name: apiEvent.name,
   starts: parseISO(apiEvent.starts),
-  registrationStarts: parseISO(apiEvent.registration_starts),
-  registrationEnds: parseISO(apiEvent.registration_ends),
-  cancellationStarts: parseISO(apiEvent.cancellation_starts),
-  cancellationEnds: parseISO(apiEvent.cancellation_ends),
+  registrationStarts: parseDate(apiEvent.registration_starts),
+  registrationEnds: parseDate(apiEvent.registration_ends),
+  cancellationStarts: parseDate(apiEvent.cancellation_starts),
+  cancellationEnds: parseDate(apiEvent.cancellation_ends),
   maxParticipants: apiEvent.max_participants ?? undefined,
   registrationCount: apiEvent.registration_count,
   location: apiEvent.location,
