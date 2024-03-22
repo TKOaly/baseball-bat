@@ -23,6 +23,7 @@ import server from '@/server';
 import { shutdown } from '@/orchestrator';
 import { mock } from 'node:test';
 import { ModuleDeps } from '@/module';
+import { internalIdentity } from '@bbat/common/types';
 
 export const setupPostgres = async () => {
   const container = await new PostgreSqlContainer().start();
@@ -69,7 +70,7 @@ export class Environment {
           const pool = await env.get('pool');
 
           await pool.withConnection(pg =>
-            bus.createContext({ pg }).emit(shutdown),
+            bus.createContext({ pg, session: null }).emit(shutdown),
           );
         });
 
@@ -178,12 +179,23 @@ export class TestEnvironment {
 
   withContext = async <T>(
     fn: (ctx: ExecutionContext<BusContext>) => Promise<T>,
+    payerId?: string,
   ): Promise<T> => {
     const pool = await this.env.get('pool');
     const bus = await this.env.get('bus');
 
     return pool.tryWithConnection(async pg => {
-      const ctx = bus.createContext({ pg });
+      const ctx = bus.createContext({
+        pg,
+        session: payerId
+          ? {
+              token: 'asd',
+              authLevel: 'authenticated',
+              payerId: internalIdentity(payerId),
+            }
+          : null,
+      });
+
       return await fn(ctx);
     });
   };
