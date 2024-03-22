@@ -61,17 +61,17 @@ export default (bus: LocalBus<BusContext>) => {
       let criteria;
 
       if (options.includeDrafts === 'include') {
-        criteria = sql`debt.date IS NULL OR debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`date IS NULL OR date BETWEEN ${options.startDate} AND ${options.endDate}`;
       } else if (options.includeDrafts === 'exclude') {
-        criteria = sql`debt.published_at IS NOT NULL AND debt.date BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`published_at IS NOT NULL AND date BETWEEN ${options.startDate} AND ${options.endDate}`;
       } else {
-        criteria = sql`debt.published_at IS NULL AND debt.created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`published_at IS NULL AND created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
       }
 
       if (options.centers !== null) {
         criteria = sql`(`
           .append(criteria)
-          .append(sql`) AND (debt.debt_center_id = ANY (${options.centers}))`);
+          .append(sql`) AND (debt_center_id = ANY (${options.centers}))`);
       }
 
       const { result: debts } = await queryDebts(pg, { where: criteria });
