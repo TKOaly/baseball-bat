@@ -234,33 +234,33 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
     return result;
   }, [users, payers]);
 
-  const [initialValues, setInitialValues] = useState<DebtFormValues>({
-    name: '',
-    description: '',
-    center: debtCenterId,
-    payer: null,
-    date: null,
-    dueDate: undefined,
-    components: [],
-    paymentCondition: {
-      type: 'interval',
-      value: 14,
-    },
-    amount: euro(0),
-    accountingPeriod: activeAccountingPeriod,
-  });
+  const [initialValues, setInitialValues] = useState<DebtFormValues | null>(
+    null,
+  );
 
   useEffect(() => {
-    if (
-      initialValues.accountingPeriod === null &&
-      activeAccountingPeriod !== null
-    ) {
-      setInitialValues(prev => ({
-        ...prev,
+    if (activeAccountingPeriod !== null) {
+      setInitialValues({
+        name: '',
+        description: '',
+        center: debtCenterId,
+        payer: null,
+        date: null,
+        dueDate: undefined,
+        components: [],
+        paymentCondition: {
+          type: 'interval',
+          value: 14,
+        },
+        amount: euro(0),
         accountingPeriod: activeAccountingPeriod,
-      }));
+      });
     }
-  }, [activeAccountingPeriod, initialValues.accountingPeriod]);
+  }, [setInitialValues, activeAccountingPeriod]);
+
+  if (!initialValues) {
+    return null;
+  }
 
   return (
     <div>
@@ -277,7 +277,6 @@ export const CreateDebt = (props: { debtCenterId?: string }) => {
       </h1>
       <Formik
         initialValues={initialValues}
-        enableReinitialize
         validate={values => {
           const errors: Partial<Record<keyof DebtFormValues, string>> = {};
 
