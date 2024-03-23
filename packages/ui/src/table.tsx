@@ -367,7 +367,7 @@ const TableRow = <R extends Row>({
                 </button>
               )}
               showArrow={false}
-              className="h-[24px]"
+              className="table-row-actions h-[24px]"
               options={actions
                 .filter(a =>
                   typeof a.disabled === 'function'

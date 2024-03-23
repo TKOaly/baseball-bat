@@ -186,6 +186,13 @@ class Row {
   click() {
     return this.locator.click();
   }
+
+  async action(name: string | RegExp) {
+    const trigger = this.locator.locator('.table-row-actions > button');
+    const menuId = await trigger.getAttribute('aria-controls');
+    await trigger.click();
+    await this.page.locator(`[id='${menuId}']`).getByRole('menuitem', { name }).click();
+  }
 }
 
 export const test = base.extend<Fixtures>({
