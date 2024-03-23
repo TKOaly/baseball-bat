@@ -8,6 +8,9 @@ import {
   createEnvironment,
   startServer,
 } from '../common';
+import { createPayerProfileFromTkoalyIdentity } from '@/modules/payers/definitions';
+import { tkoalyIdentity } from '@bbat/common/types';
+import { getUpstreamUserById } from '@/modules/users/definitions';
 
 export interface CustomTestHandler {
   (ctx: UnitTestEnvironment): Promise<void> | void;
@@ -51,10 +54,37 @@ export default (name: string, callback: CustomSuiteFn) =>
           const url = await startServer(env);
           const testEnv = new UnitTestEnvironment(t, env, url);
           testEnv.busRoot = await testEnv.env.get('bus');
+
+          await testEnv.mockProcedure(
+            getUpstreamUserById,
+            async ({ id }) => {
+              return {
+                id,
+                screenName: 'Teppo Testaaja',
+                email: 'admin@test.test',
+                username: 'test',
+                role: 'kayttaja' as const,
+              };
+            },
+            {
+              times: 1,
+            },
+          );
+
+          const payer = await testEnv.withContext(bus =>
+            bus.exec(createPayerProfileFromTkoalyIdentity, {
+              id: tkoalyIdentity(0),
+            }),
+          );
+
+          if (!payer) {
+            throw new Error('Failed to create user!');
+          }
+
           await testEnv.withContext(async ctx => {
             testEnv.bus = ctx;
             await fn(testEnv);
-          });
+          }, payer.id.value);
         } finally {
           await env.teardown();
         }

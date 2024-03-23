@@ -94,7 +94,6 @@ export const generatePaymentLedger = scope.defineProcedure({
       groupBy: t.union([t.null, t.string]),
       paymentType: t.union([t.null, t.string]),
     }),
-    generatedBy: types.internalIdentityT,
     parent: t.union([t.null, t.string]),
   }),
   response: types.reportWithoutHistory,
