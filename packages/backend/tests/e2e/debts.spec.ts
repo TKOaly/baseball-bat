@@ -1,8 +1,25 @@
 import { Page, expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
-import { addDays, format, getYear } from 'date-fns';
+import { addDays, format, getYear, subDays } from 'date-fns';
 import assert from 'assert';
-import { euro, formatEuro } from '@bbat/common/currency';
+import { cents, euro, formatEuro } from '@bbat/common/currency';
+import {
+  Event,
+  Registration,
+  CustomField,
+  tkoalyIdentity,
+  UpstreamUser,
+} from '@bbat/common/types';
+import {
+  getEventCustomFields,
+  getEventRegistrations,
+  getEvents,
+} from '@/modules/events/definitions';
+import {
+  getUpstreamUserByEmail,
+  getUpstreamUserById,
+  getUpstreamUsers,
+} from '@/modules/users/definitions';
 
 type DebtCreationOptions = {
   name: string;
@@ -598,6 +615,642 @@ test.describe('CSV import', () => {
       newBbat.getResourceSection('Debt Components').getByRole('table'),
     );
     await expect(components.rows()).toHaveCount(2);
+  });
+});
+
+test.describe('calendar import', () => {
+  type MockEvent = Partial<
+    Event & { registrations: Partial<Registration>[]; fields: CustomField[] }
+  >;
+
+  const mockEventDetails = (bbat: E2ETestEnvironment, events: MockEvent[]) => {
+    const users: UpstreamUser[] = [];
+
+    const resolvedEvents: Event[] = events.map(
+      ({ fields: _, registrations, ...event }, id) => ({
+        id,
+        deleted: false,
+        name: 'Test Event',
+        starts: subDays(new Date(), 2),
+        registrationStarts: subDays(new Date(), 10),
+        registrationEnds: subDays(new Date(), 5),
+        cancellationStarts: subDays(new Date(), 10),
+        cancellationEnds: subDays(new Date(), 5),
+        maxParticipants: 10,
+        registrationCount: registrations?.length ?? 0,
+        location: 'Test Runner Internals',
+        price: cents(1337),
+        ...event,
+      }),
+    );
+
+    const registrations: Registration[][] = events.map(
+      ({ registrations }, ei) =>
+        (registrations ?? []).map((r, ri) => {
+          const user = {
+            id: tkoalyIdentity(users.length),
+            screenName: r.name ?? 'Olli Osallistuja',
+            email: r.email ?? 'olli@osallistuja.org',
+            username: r.name ?? 'oltsu1234',
+            role: 'kayttaja' as const,
+          };
+
+          users.push(user);
+
+          return {
+            id: ei * 1000 + ri,
+            userId: user.id,
+            name: user.screenName,
+            email: user.email,
+            phone: '+358 40 1234567',
+            answers: [],
+            ...r,
+          };
+        }),
+    );
+
+    bbat.mockProcedure(getEvents, async () => resolvedEvents);
+    bbat.mockProcedure(
+      getEventRegistrations,
+      async id => registrations[id] ?? [],
+    );
+    bbat.mockProcedure(
+      getEventCustomFields,
+      async id => events[id]?.fields ?? [],
+    );
+
+    bbat.mockProcedure(
+      getUpstreamUserByEmail,
+      async ({ email }) => users.find(u => u.email === email) ?? null,
+    );
+    bbat.mockProcedure(
+      getUpstreamUserById,
+      async ({ id }) => users.find(u => u.id.value === id.value) ?? null,
+    );
+    bbat.mockProcedure(getUpstreamUsers, async () => users);
+  };
+
+  test('case: single event, no queue, no questions', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        registrations: [
+          { name: 'Olli Osallistuja' },
+          { name: 'Ilmari Ilmoittautuja' },
+        ],
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Test Event' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+
+    await expect(participants.rows()).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(1);
+    const row = summary.row(0);
+    await expect(row.getCell('Count')).toHaveText('2');
+    await expect(row.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(row.getCell('Total')).toHaveText(formatEuro(cents(1337 * 2)));
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(2);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(formatEuro(cents(1337)));
+
+    const ilmariRow = debtsTable.getRowByColumnValue(
+      'Payer',
+      'Ilmari Ilmoittautuja',
+    );
+    await expect(ilmariRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337)),
+    );
+  });
+
+  test('case: single event, queue, no questions', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        registrations: [
+          { name: 'Olli Osallistuja' },
+          { name: 'Ilmari Ilmoittautuja' },
+        ],
+        maxParticipants: 1,
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Test Event' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+    const queue = bbat.table(page.getByRole('table').nth(1));
+
+    await expect(participants.rows()).toHaveCount(1);
+    await expect(queue.rows()).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(1);
+    const row = summary.row(0);
+    await expect(row.getCell('Count')).toHaveText('1');
+    await expect(row.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(row.getCell('Total')).toHaveText(formatEuro(cents(1337)));
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(1);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(formatEuro(cents(1337)));
+  });
+
+  test('case: single event, no queue, answer rules', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        fields: [
+          { id: 1, name: 'Sillis?', type: 'radio', options: ['on', 'off'] },
+        ],
+        registrations: [
+          {
+            name: 'Olli Osallistuja',
+            answers: [{ questionId: 1, question: 'Sillis?', answer: 'on' }],
+          },
+          {
+            name: 'Ilmari Ilmoittautuja',
+            answers: [{ questionId: 1, question: 'Sillis?', answer: 'off' }],
+          },
+        ],
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Test Event' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+
+    await page
+      .getByRole('button', { name: 'Create component mapping' })
+      .click();
+    await page
+      .locator('.component-mapping')
+      .getByPlaceholder('Name')
+      .fill('Sillis');
+    await page
+      .locator('.component-mapping')
+      .getByPlaceholder('Price')
+      .fill('20');
+    await expect(
+      page
+        .locator('.component-mapping')
+        .getByRole('button', { name: 'Add rule' }),
+    ).not.toBeDisabled();
+    await page
+      .locator('.component-mapping')
+      .getByRole('button', { name: 'Add rule' })
+      .click();
+    const dialog = bbat.getDialog('Add pricing rule');
+
+    await dialog.getByRole('combobox').nth(0).click();
+    const controlsId = await dialog
+      .getByRole('combobox')
+      .nth(0)
+      .getAttribute('aria-controls');
+    await page
+      .locator(`[id='${controlsId}']`)
+      .getByRole('option', { name: 'Test Event' })
+      .click();
+
+    await dialog.getByRole('combobox').nth(1).click();
+    const controls2Id = await dialog
+      .getByRole('combobox')
+      .nth(1)
+      .getAttribute('aria-controls');
+    await page
+      .locator(`[id='${controls2Id}']`)
+      .getByRole('option', { name: 'Sillis?' })
+      .click();
+
+    await dialog.getByRole('combobox').nth(2).click();
+    const controls3Id = await dialog
+      .getByRole('combobox')
+      .nth(2)
+      .getAttribute('aria-controls');
+    await page
+      .locator(`[id='${controls3Id}']`)
+      .getByRole('option', { name: 'on' })
+      .click();
+
+    await dialog.getByRole('button', { name: 'Create' }).click();
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+
+    await expect(participants.rows()).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(2);
+
+    const baseRow = summary.getRowByColumnValue('Component', 'Base Price');
+    await expect(baseRow.getCell('Count')).toHaveText('2');
+    await expect(baseRow.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(baseRow.getCell('Total')).toHaveText(
+      formatEuro(cents(1337 * 2)),
+    );
+
+    const sillisRow = summary.getRowByColumnValue('Component', 'Sillis');
+    await expect(sillisRow.getCell('Count')).toHaveText('1');
+    await expect(sillisRow.getCell('Price')).toHaveText(
+      formatEuro(cents(2000)),
+    );
+    await expect(sillisRow.getCell('Total')).toHaveText(
+      formatEuro(cents(2000)),
+    );
+
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(2);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337 + 2000)),
+    );
+    await expect(olliRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(olliRow.getCell('Components')).toHaveText(/Sillis/i);
+
+    const ilmariRow = debtsTable.getRowByColumnValue(
+      'Payer',
+      'Ilmari Ilmoittautuja',
+    );
+    await expect(ilmariRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337)),
+    );
+    await expect(ilmariRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(ilmariRow.getCell('Components')).not.toHaveText(/Sillis/i);
+  });
+
+  test('removing from participants', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        registrations: [
+          { name: 'Olli Osallistuja' },
+          { name: 'Ilmari Ilmoittautuja' },
+          { name: 'Benjamin Bilettäjä' },
+        ],
+        maxParticipants: 2,
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Test Event' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+    const queue = bbat.table(page.getByRole('table').nth(1));
+
+    await expect(participants.rows()).toHaveCount(2);
+    await expect(queue.rows()).toHaveCount(1);
+
+    await participants.row(1).action('Move to queue');
+
+    await expect(participants.rows()).toHaveCount(1);
+    await expect(queue.rows()).toHaveCount(2);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(1);
+    const row = summary.row(0);
+    await expect(row.getCell('Count')).toHaveText('1');
+    await expect(row.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(row.getCell('Total')).toHaveText(formatEuro(cents(1337)));
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(1);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(formatEuro(cents(1337)));
+  });
+
+  test('including people from the queue', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        registrations: [
+          { name: 'Olli Osallistuja' },
+          { name: 'Ilmari Ilmoittautuja' },
+          { name: 'Benjamin Bilettäjä' },
+        ],
+        maxParticipants: 1,
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Test Event' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+    const queue = bbat.table(page.getByRole('table').nth(1));
+
+    await expect(participants.rows()).toHaveCount(1);
+    await expect(queue.rows()).toHaveCount(2);
+
+    await queue.row(0).action('Move to participants');
+
+    await expect(participants.rows()).toHaveCount(2);
+    await expect(queue.rows()).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(1);
+    const row = summary.row(0);
+    await expect(row.getCell('Count')).toHaveText('2');
+    await expect(row.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(row.getCell('Total')).toHaveText(formatEuro(cents(1337 * 2)));
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(2);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(formatEuro(cents(1337)));
+
+    const ilmariRow = debtsTable.getRowByColumnValue(
+      'Payer',
+      'Ilmari Ilmoittautuja',
+    );
+    await expect(ilmariRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337)),
+    );
+  });
+
+  test('case: two events, no queue, answer rules', async ({ bbat, page }) => {
+    mockEventDetails(bbat, [
+      {
+        name: 'Sitsit (Vanhat)',
+        fields: [
+          { id: 1, name: 'Jatkot', type: 'radio', options: ['on', 'off'] },
+        ],
+        registrations: [
+          {
+            name: 'Olli Osallistuja',
+            answers: [{ questionId: 1, question: 'Jatkot', answer: 'on' }],
+          },
+          {
+            name: 'Ilmari Ilmoittautuja',
+            answers: [{ questionId: 1, question: 'Jatkot', answer: 'off' }],
+          },
+        ],
+      },
+      {
+        name: 'Sitsit (Fuksit)',
+        fields: [
+          { id: 2, name: 'Jatkot', type: 'radio', options: ['on', 'off'] },
+        ],
+        registrations: [
+          {
+            name: 'Benjamin Bilettäjä',
+            answers: [{ questionId: 2, question: 'Jatkot', answer: 'on' }],
+          },
+          {
+            name: 'Salla Sitsaaja',
+            answers: [{ questionId: 2, question: 'Jatkot', answer: 'off' }],
+          },
+        ],
+      },
+    ]);
+
+    await page.goto(bbat.url);
+    await bbat.login({});
+    await page.goto(`${bbat.url}/admin/debt-centers/create-from-event`);
+
+    await page.getByRole('button', { name: 'Sitsit (Vanhat)' }).click();
+    await page.getByRole('button', { name: 'Sitsit (Fuksit)' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByPlaceholder('Name').fill('Test Event');
+
+    await page
+      .getByRole('button', { name: 'Create component mapping' })
+      .click();
+
+    await page
+      .locator('.component-mapping')
+      .getByPlaceholder('Name')
+      .fill('Jatkot');
+    await page
+      .locator('.component-mapping')
+      .getByPlaceholder('Price')
+      .fill('5');
+    await expect(
+      page
+        .locator('.component-mapping')
+        .getByRole('button', { name: 'Add rule' }),
+    ).not.toBeDisabled();
+
+    for (const event of ['Sitsit (Vanhat)', 'Sitsit (Fuksit)']) {
+      await page
+        .locator('.component-mapping')
+        .getByRole('button', { name: 'Add rule' })
+        .click();
+
+      const dialog = bbat.getDialog('Add pricing rule');
+
+      await dialog.getByRole('combobox').nth(0).click();
+      const controlsId = await dialog
+        .getByRole('combobox')
+        .nth(0)
+        .getAttribute('aria-controls');
+      await page
+        .locator(`[id='${controlsId}']`)
+        .getByRole('option', { name: event })
+        .click();
+
+      await dialog.getByRole('combobox').nth(1).click();
+      const controls2Id = await dialog
+        .getByRole('combobox')
+        .nth(1)
+        .getAttribute('aria-controls');
+      await page
+        .locator(`[id='${controls2Id}']`)
+        .getByRole('option', { name: 'Jatkot' })
+        .click();
+
+      await dialog.getByRole('combobox').nth(2).click();
+      const controls3Id = await dialog
+        .getByRole('combobox')
+        .nth(2)
+        .getAttribute('aria-controls');
+      await page
+        .locator(`[id='${controls3Id}']`)
+        .getByRole('option', { name: 'on' })
+        .click();
+
+      await dialog.getByRole('button', { name: 'Create' }).click();
+    }
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    const participants = bbat.table(page.getByRole('table').nth(0));
+
+    await expect(participants.rows()).toHaveCount(4);
+
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(page.getByText(/with a total value of/)).toBeVisible();
+
+    const summary = bbat.table(page.getByRole('table').nth(0));
+    await expect(summary.rows()).toHaveCount(2);
+
+    const baseRow = summary.getRowByColumnValue('Component', 'Base Price');
+    await expect(baseRow.getCell('Count')).toHaveText('4');
+    await expect(baseRow.getCell('Price')).toHaveText(formatEuro(cents(1337)));
+    await expect(baseRow.getCell('Total')).toHaveText(
+      formatEuro(cents(1337 * 4)),
+    );
+
+    const sillisRow = summary.getRowByColumnValue('Component', 'Jatkot');
+    await expect(sillisRow.getCell('Count')).toHaveText('2');
+    await expect(sillisRow.getCell('Price')).toHaveText(formatEuro(cents(500)));
+    await expect(sillisRow.getCell('Total')).toHaveText(
+      formatEuro(cents(500 * 2)),
+    );
+
+    await page.getByRole('button', { name: 'Create debts' }).click();
+
+    await page.waitForURL(
+      url =>
+        !!url.pathname.match(
+          /\/admin\/debt-centers\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}/,
+        ),
+    );
+
+    const debtsTable = bbat.table(
+      bbat.getResourceSection('Debts').getByRole('table'),
+    );
+    await expect(debtsTable.rows()).toHaveCount(4);
+
+    const olliRow = debtsTable.getRowByColumnValue('Payer', 'Olli Osallistuja');
+    await expect(olliRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337 + 500)),
+    );
+    await expect(olliRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(olliRow.getCell('Components')).toHaveText(/Jatkot/i);
+
+    const ilmariRow = debtsTable.getRowByColumnValue(
+      'Payer',
+      'Ilmari Ilmoittautuja',
+    );
+    await expect(ilmariRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337)),
+    );
+    await expect(ilmariRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(ilmariRow.getCell('Components')).not.toHaveText(/Jatkot/i);
+
+    const benjaminRow = debtsTable.getRowByColumnValue(
+      'Payer',
+      'Benjamin Bilettäjä',
+    );
+    await expect(benjaminRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337 + 500)),
+    );
+    await expect(benjaminRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(benjaminRow.getCell('Components')).toHaveText(/Jatkot/i);
+
+    const sallaRow = debtsTable.getRowByColumnValue('Payer', 'Salla Sitsaaja');
+    await expect(sallaRow.getCell('Amount')).toHaveText(
+      formatEuro(cents(1337)),
+    );
+    await expect(sallaRow.getCell('Components')).toHaveText(/Base Price/i);
+    await expect(sallaRow.getCell('Components')).not.toHaveText(/Jatkot/i);
   });
 });
 
