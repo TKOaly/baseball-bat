@@ -549,7 +549,7 @@ test.describe('CSV import', () => {
     await page.getByRole('button', { name: 'Interpret as headers' }).click();
 
     await page.getByText('No type').nth(0).click();
-    await page.getByRole('button', { name: 'Custom component...' }).click();
+    await page.getByRole('menuitem', { name: 'Custom component...' }).click();
 
     const dialog = bbat.getDialog();
     await dialog.getByPlaceholder('Component name').fill('Discount');
@@ -557,7 +557,7 @@ test.describe('CSV import', () => {
     await dialog.getByRole('button', { name: 'Create' }).click();
 
     await page.getByText('No type').nth(0).click();
-    await page.getByRole('button', { name: 'Custom component...' }).click();
+    await page.getByRole('menuitem', { name: 'Custom component...' }).click();
 
     await dialog.getByPlaceholder('Component name').fill('Surcharge');
     await dialog.getByLabel('Amount').fill('10');
