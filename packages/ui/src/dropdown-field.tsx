@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useId, useMemo, useRef, useState } from 'react';
 import { equals } from 'remeda';
 import { ChevronDown } from 'react-feather';
 import {
@@ -37,6 +37,7 @@ export const DropdownField = memo(
     formatCustomOption,
     allowCustom,
   }: DropdownFieldProps<V>) => {
+    const controlsId = useId();
     const inputRef = useRef<HTMLInputElement>(null);
     const [search, setSearch] = useState<string | null>(null);
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -113,23 +114,27 @@ export const DropdownField = memo(
       <div className="relative">
         <div
           tabIndex={allowCustom ? -2 : 0}
+          role="combobox"
+          aria-controls={controlsId}
+          aria-expanded={open}
+          aria-haspopup="listbox"
           className={`
-          relative
-          w-full
-          cursor-pointer
-          bg-white
-          ${rounding}
-          mt-1
-          flex
-          items-center
-          overflow-hidden
-          border
-          px-3
-          py-2
-          shadow-sm
-          ring-red-600
-          active:ring-2
-        `}
+            relative
+            w-full
+            cursor-pointer
+            bg-white
+            ${rounding}
+            mt-1
+            flex
+            items-center
+            overflow-hidden
+            border
+            px-3
+            py-2
+            shadow-sm
+            ring-red-600
+            active:ring-2
+          `}
           ref={refs.setReference}
           {...getReferenceProps({
             onClick: () => {
@@ -170,15 +175,17 @@ export const DropdownField = memo(
         <FloatingPortal>
           {open && (
             <div
+              id={controlsId}
+              role="listbox"
               className={`
-              z-50
-              mt-1
-              overflow-hidden
-              rounded-md
-              border
-              bg-white
-              shadow-lg
-            `}
+                z-50
+                mt-1
+                overflow-hidden
+                rounded-md
+                border
+                bg-white
+                shadow-lg
+              `}
               style={{
                 position: strategy,
                 top: y ?? 0,
@@ -189,18 +196,19 @@ export const DropdownField = memo(
             >
               <ul
                 className={`
-                flex
-                max-h-[10em]
-                flex-col
-                gap-y-1
-                overflow-y-auto
-                overflow-x-hidden
-                p-1
-              `}
+                  flex
+                  max-h-[10em]
+                  flex-col
+                  gap-y-1
+                  overflow-y-auto
+                  overflow-x-hidden
+                  p-1
+                `}
                 style={{ scrollbarWidth: 'thin' }}
               >
                 {visibleOptions.map((option, optionIndex) => (
                   <li
+                    role="option"
                     key={JSON.stringify(option.value)}
                     className={`
                       flex

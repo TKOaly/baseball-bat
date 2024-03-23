@@ -109,7 +109,7 @@ const baseQuery = createPaginatedQuery<DbPayerProfile>(
     COALESCE(totals.total, 0) AS total,
     COALESCE(totals.total_paid, 0) AS total_paid,
     CASE
-      WHEN totals.total IS NOT NULL THEN
+      WHEN totals.total > 0 THEN
         COALESCE(totals.total_paid::float, 0) / totals.total::float
       ELSE 0
     END AS paid_ratio,

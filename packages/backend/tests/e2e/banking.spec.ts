@@ -243,8 +243,7 @@ test.describe('manual registration', () => {
       await expect(table.rows()).toHaveCount(2);
 
       for (const [transactionIndex, paymentIndex, amount] of registrations) {
-        await table.rows().nth(transactionIndex).getByRole('button').click();
-        await page.getByRole('button', { name: 'Register' }).click();
+        await table.row(transactionIndex).action('Register');
         const dialog = bbat.getDialog('Register transaction');
 
         await expect(dialog.getByRole('table')).toBeVisible();
@@ -371,8 +370,7 @@ test.describe('manual registration', () => {
     await expect(bbat.getResourceField('Status')).toHaveText('Paid');
     const paymentPage = page.url();
     await page.goBack();
-    await table.rows().nth(0).getByRole('button').click();
-    await page.getByRole('button', { name: 'Register' }).click();
+    await table.row(0).action('Register');
     const dialog = bbat.getDialog('Register transaction');
     await dialog.getByRole('button', { name: 'Remove' }).click();
     await dialog.getByRole('button', { name: 'Register' }).click();
@@ -447,8 +445,7 @@ test.describe('manual registration', () => {
     await expect(bbat.getResourceField('Status')).toHaveText('Paid');
     const paymentPage = page.url();
     await page.goBack();
-    await table.rows().nth(0).getByRole('button').click();
-    await page.getByRole('button', { name: 'Register' }).click();
+    await table.row(0).action('Register');
     const dialog = bbat.getDialog('Register transaction');
     await dialog.locator('input').fill('5');
     await dialog.getByRole('button', { name: 'Register' }).click();

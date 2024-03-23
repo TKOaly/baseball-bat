@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { ChevronDown } from 'react-feather';
 import {
   useInteractions,
@@ -60,6 +60,7 @@ export function Dropdown<P extends DropdownProps>({
   );
 
   const dropdownRef = useRef<HTMLElement>(null);
+  const menuId = useId();
 
   useOutsideEventListener(
     dropdownRef,
@@ -72,6 +73,9 @@ export function Dropdown<P extends DropdownProps>({
     getReferenceProps({
       className: 'text-sm text-gray-500 cursor-pointer',
       ref: refs.setReference,
+      'aria-haspopup': 'menu',
+      'aria-expanded': open,
+      'aria-controls': menuId,
       onClick(evt) {
         evt.stopPropagation();
       },
@@ -85,6 +89,9 @@ export function Dropdown<P extends DropdownProps>({
         <button
           ref={refs.setReference}
           type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
           disabled={disabled}
           className="inline-flex items-center rounded-lg text-center text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none disabled:hover:bg-inherit"
           {...getReferenceProps()}
@@ -109,6 +116,7 @@ export function Dropdown<P extends DropdownProps>({
       <FloatingPortal>
         {open && (
           <div
+            id={menuId}
             ref={refs.setFloating}
             style={{
               position: strategy,
@@ -142,22 +150,22 @@ export function Dropdown<P extends DropdownProps>({
                 }
 
                 return (
-                  <li key={option.value}>
-                    <button
-                      tabIndex={-1}
-                      ref={el => (listRef.current[i] = el)}
-                      className="block w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100"
-                      {...getItemProps({
-                        onClick(evt) {
-                          evt.stopPropagation();
-                          onSelect?.(option.value);
-                          option.onSelect?.();
-                          setOpen(false);
-                        },
-                      })}
-                    >
-                      {option.text}
-                    </button>
+                  <li
+                    key={option.value}
+                    role="menuitem"
+                    className="block w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100"
+                    tabIndex={-1}
+                    ref={el => (listRef.current[i] = el)}
+                    {...getItemProps({
+                      onClick(evt) {
+                        evt.stopPropagation();
+                        onSelect?.(option.value);
+                        option.onSelect?.();
+                        setOpen(false);
+                      },
+                    })}
+                  >
+                    {option.text}
                   </li>
                 );
               })}

@@ -1,20 +1,11 @@
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  useMemo,
-  useReducer,
-  PropsWithChildren,
-} from 'react';
+import { useEffect, useState, useMemo, useReducer } from 'react';
 import { produce } from 'immer';
 import { Circle, Search, X } from 'react-feather';
 import { Table } from '@bbat/ui/table';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
 import { Stepper } from '../../components/stepper';
 import {
-  ApiCustomField,
+  CustomField,
   dateString,
   DebtComponent,
   euro,
@@ -28,13 +19,12 @@ import { format } from 'date-fns/format';
 import { isMatch } from 'date-fns/isMatch';
 import { subYears } from 'date-fns/subYears';
 import { FilledDisc } from '@bbat/ui/filled-disc';
-import ReactModal from 'react-modal';
 import { EuroField } from '../../components/euro-field';
 import { InputGroup, StandaloneInputGroup } from '../../components/input-group';
 import { Textarea } from '@bbat/ui/textarea';
 import { Formik } from 'formik';
 import { DropdownField } from '@bbat/ui/dropdown-field';
-import { Button, DisabledButton, SecondaryButton } from '@bbat/ui/button';
+import { Button, DisabledButton } from '@bbat/ui/button';
 import { RootState, useAppDispatch, useAppSelector } from '../../store';
 import { createSelector } from '@reduxjs/toolkit';
 import { useCreateDebtCenterFromEventMutation } from '../../api/debt-centers';
@@ -53,6 +43,13 @@ import {
   QueryArgFrom,
   ResultTypeFrom,
 } from '@reduxjs/toolkit/query/react';
+import {
+  DialogBase,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  useDialog,
+} from '../../components/dialog';
 
 type EventSelectionViewProps = {
   state: State;
@@ -116,6 +113,8 @@ const EventSelectionView = ({ state, dispatch }: EventSelectionViewProps) => {
         )
         .map(event => (
           <div
+            role="button"
+            aria-label={event.name}
             className={`mt-2 flex cursor-pointer items-center rounded-md border bg-white p-3 shadow-sm hover:border-blue-400 ${
               selected.indexOf(event.id) > -1 && 'border-blue-400'
             }`}
@@ -197,206 +196,140 @@ const useFetchEventRegistrations = createMultiFetchHook(
   eventsApi.endpoints.getEventRegistrations,
 );
 
-const Modal = ({
-  open,
-  onClose,
-  children,
-}: PropsWithChildren<{ open: boolean; onClose: () => void }>) => {
-  return (
-    <ReactModal
-      isOpen={open}
-      shouldCloseOnOverlayClick
-      onRequestClose={onClose}
-      style={{
-        overlay: {
-          backgroundColor: 'rgba(0,0,0,0.3)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-        content: {
-          width: '40em',
-          inset: 'initial',
-          borderRadius: '0.375rem',
-          borderColor: 'rgb(229, 231, 235)',
-          boxShadow:
-            'rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -4px',
-          overflow: 'initial',
-        },
-      }}
-    >
-      {children}
-    </ReactModal>
-  );
-};
-
-type PricingRuleModalProps = {
-  events: Event[];
-  fields: Map<number, ApiCustomField[]>;
-};
-
 type PricingRuleModalResult = {
   eventId: number;
   customFieldId: number;
   value: string;
 };
 
-type PricingRuleModalHandle = {
-  prompt: () => Promise<PricingRuleModalResult>;
-  cancel: () => void;
+type PricingRuleModalProps = {
+  events: Event[];
+  fields: Map<number, CustomField[]>;
+  onClose: (result: PricingRuleModalResult | null) => void;
 };
 
-const PricingRuleModal = forwardRef<
-  PricingRuleModalHandle,
-  PricingRuleModalProps
->(({ events, fields }, ref) => {
+const PricingRuleModal = ({
+  events,
+  fields,
+  onClose,
+}: PricingRuleModalProps) => {
   type Values = {
     eventId: number | null;
     customFieldId: number | null;
     value: string | null;
   };
 
-  const [open, setOpen] = useState(false);
-  const promiseRef = useRef<
-    [(value: PricingRuleModalResult) => void, () => void] | null
-  >(null);
-
-  useImperativeHandle(ref, () => ({
-    prompt: () => {
-      if (promiseRef.current) {
-        return Promise.reject();
-      }
-
-      return new Promise<PricingRuleModalResult>((resolve, reject) => {
-        promiseRef.current = [resolve, reject];
-        setOpen(true);
-      });
-    },
-
-    cancel: () => {
-      setOpen(false);
-      if (promiseRef.current) {
-        promiseRef.current[1]();
-        promiseRef.current = null;
-      }
-    },
-  }));
-
-  const handleClose = () => {
-    setOpen(false);
-
-    if (promiseRef.current) {
-      promiseRef.current[1]();
-      promiseRef.current = null;
+  const handleSubmit = (values: Values) => {
+    if (
+      values.value === null ||
+      values.eventId === null ||
+      values.customFieldId === null
+    ) {
+      return;
     }
+
+    onClose({
+      value: values.value,
+      eventId: values.eventId,
+      customFieldId: values.customFieldId,
+    });
   };
 
-  const handleSubmit = (values: Values) => {
-    if (promiseRef.current) {
-      if (
-        values.value === null ||
-        values.eventId === null ||
-        values.customFieldId === null
-      ) {
-        return;
-      }
-
-      promiseRef.current[0]({
-        value: values.value,
-        eventId: values.eventId,
-        customFieldId: values.customFieldId,
-      });
-      promiseRef.current = null;
+  const getFieldOptions = (values: Values) => {
+    if (values.eventId === null || !fields.has(values.eventId)) {
+      return [];
     }
 
-    setOpen(false);
+    return fields.get(values.eventId)!.map(field => ({
+      value: field.id,
+      text: field.name,
+    }));
+  };
+
+  const getAnswerOptions = (values: Values) => {
+    if (values.eventId === null) {
+      return [];
+    }
+
+    const eventFields = fields.get(values.eventId);
+
+    if (eventFields === undefined) {
+      return [];
+    }
+
+    const field = eventFields.find(f => f.id === values.customFieldId);
+
+    if (field === undefined) {
+      return [];
+    }
+
+    return field.options.map(option => ({
+      value: option,
+      text: option,
+    }));
   };
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <Formik
-        initialValues={
-          {
-            eventId: null,
-            customFieldId: null,
-            value: null,
-          } as Values
+    <Formik
+      initialValues={
+        {
+          eventId: null,
+          customFieldId: null,
+          value: null,
+        } as Values
+      }
+      validate={values => {
+        const errors: Record<string, string> = {};
+
+        if (values.eventId === null) {
+          errors.eventId = 'Required';
         }
-        validate={values => {
-          const errors: Record<string, string> = {};
 
-          if (values.eventId === null) {
-            errors.eventId = 'Required';
-          }
+        if (values.customFieldId === null) {
+          errors.customFieldId = 'Required';
+        }
 
-          if (values.customFieldId === null) {
-            errors.customFieldId = 'Required';
-          }
-
-          return errors;
-        }}
-        onSubmit={handleSubmit}
-      >
-        {({ values, submitForm }) => (
-          <>
-            <h1 className="text-2xl text-gray-800">Add pricing rule</h1>
-            <div className="grid grid-cols-2 gap-x-8">
-              <InputGroup
-                label="Event"
-                name="eventId"
-                component={DropdownField}
-                options={events.map(event => ({
-                  value: event.id,
-                  text: event.name,
-                }))}
-              />
-              <InputGroup
-                label="Question"
-                name="customFieldId"
-                component={DropdownField}
-                options={(
-                  (values.eventId && fields.get(values.eventId)) ||
-                  []
-                ).map(field => ({
-                  value: field.id,
-                  text: field.name,
-                }))}
-              />
-              <InputGroup
-                label="Answer"
-                name="value"
-                component={DropdownField}
-                options={(
-                  ((values.eventId && fields.get(values.eventId)) || []).find(
-                    f => f.id === values.customFieldId,
-                  )?.options ?? []
-                ).map(option => ({
-                  value: option,
-                  text: option,
-                }))}
-              />
-            </div>
-            <div className="mt-3 flex justify-end gap-4">
-              <SecondaryButton
-                onClick={() => {
-                  promiseRef.current?.[1]?.();
-                  promiseRef.current = null;
-                  setOpen(false);
-                }}
-              >
-                Cancel
-              </SecondaryButton>
-              <Button onClick={() => submitForm()}>Create</Button>
-            </div>
-          </>
-        )}
-      </Formik>
-    </Modal>
+        return errors;
+      }}
+      onSubmit={handleSubmit}
+    >
+      {({ values, submitForm }) => (
+        <DialogBase onClose={() => onClose(null)}>
+          <DialogHeader>Add pricing rule</DialogHeader>
+          <DialogContent>
+            <InputGroup
+              label="Event"
+              name="eventId"
+              component={DropdownField}
+              options={events.map(event => ({
+                value: event.id,
+                text: event.name,
+              }))}
+            />
+            <InputGroup
+              label="Question"
+              name="customFieldId"
+              component={DropdownField}
+              options={getFieldOptions(values)}
+            />
+            <InputGroup
+              label="Answer"
+              name="value"
+              component={DropdownField}
+              options={getAnswerOptions(values)}
+            />
+          </DialogContent>
+          <DialogFooter>
+            <Button secondary onClick={() => onClose(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => submitForm()}>Create</Button>
+          </DialogFooter>
+        </DialogBase>
+      )}
+    </Formik>
   );
-});
-
-PricingRuleModal.displayName = 'PricingRuleModal';
+};
 
 type Settings = {
   name: string;
@@ -471,16 +404,12 @@ const SettingsView = ({
       return null;
     }
 
-    const map = new Map();
-
-    eventCustomFieldsArray.forEach((fields, i) => {
-      map.set(state.eventIds[i], fields);
-    });
-
-    return map;
+    return new Map(
+      eventCustomFieldsArray.map((fields, i) => [state.eventIds[i], fields]),
+    );
   }, [eventCustomFieldsArray, state.eventIds]);
 
-  const promptRef = useRef<PricingRuleModalHandle>(null);
+  const showPricingRuleModal = useDialog(PricingRuleModal);
 
   if (!events?.length) {
     return null;
@@ -488,13 +417,6 @@ const SettingsView = ({
 
   return (
     <div className="grid grid-cols-4 gap-x-5 gap-y-2">
-      {eventCustomFields && (
-        <PricingRuleModal
-          ref={promptRef}
-          events={events}
-          fields={eventCustomFields}
-        />
-      )}
       <Formik
         initialValues={initialValues}
         enableReinitialize
@@ -573,7 +495,7 @@ const SettingsView = ({
               {state.components.map(
                 ({ id: componentId, name, amount, rules }) => (
                   <div
-                    className="mb-3 mt-2 flex grid grid-cols-2 gap-x-2 rounded-md border bg-white px-3 shadow-sm"
+                    className="component-mapping mb-3 mt-2 grid grid-cols-2 gap-x-2 rounded-md border bg-white px-3 shadow-sm"
                     key={componentId}
                   >
                     <StandaloneInputGroup
@@ -633,7 +555,7 @@ const SettingsView = ({
                                       eventCustomFields
                                         ?.get(eventId)
                                         ?.find(
-                                          (f: ApiCustomField) =>
+                                          (f: CustomField) =>
                                             f.id === customFieldId,
                                         )?.name,
                                     '' + value,
@@ -661,11 +583,18 @@ const SettingsView = ({
                       )}
                       <Button
                         onClick={async () => {
-                          if (!promptRef.current) {
+                          if (!eventCustomFields) {
                             return;
                           }
 
-                          const rule = await promptRef.current.prompt();
+                          const rule = await showPricingRuleModal({
+                            events,
+                            fields: eventCustomFields,
+                          });
+
+                          if (rule === null) {
+                            return;
+                          }
 
                           dispatch({
                             type: 'ADD_COMPONENT_RULE',
@@ -675,6 +604,7 @@ const SettingsView = ({
                             },
                           });
                         }}
+                        disabled={eventCustomFields === null}
                         className="mb-3"
                       >
                         Add rule
@@ -983,7 +913,6 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({
         if (entry) {
           entry.amount = sumEuroValues(entry.amount, amount);
           entry.count += 1;
-          entry.price = entry.amount;
         } else {
           acc.push({
             id,
@@ -1078,7 +1007,7 @@ const INITIAL_STATE: State = {
   eventIds: [],
   basicSettings: {
     name: '',
-    dueDate: '',
+    dueDate: format(addDays(new Date(), 31), 'dd.MM.yyyy'),
     description: '',
     basePrice: euro(0),
     accountingPeriod: null,
