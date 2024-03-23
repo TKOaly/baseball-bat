@@ -89,22 +89,6 @@ export class E2ETestEnvironment extends TestEnvironment {
       const sessionStr = ls.find(({ name }) => name === 'bbat-session')?.value;
       const session = sessionStr ? JSON.parse(sessionStr) : null;
 
-      let token;
-
-      if (
-        session !== undefined &&
-        'token' in session &&
-        typeof session.token === 'string'
-      ) {
-        token = session.token;
-      } else {
-        const response = await this.page.waitForResponse(
-          `${this.url}/api/auth/init`,
-        );
-        const body = await response.json();
-        token = body.token;
-      }
-
       await ctx.exec(authenticateSession, {
         token: session.token,
         payerId: payer.id,
@@ -191,7 +175,10 @@ class Row {
     const trigger = this.locator.locator('.table-row-actions > button');
     const menuId = await trigger.getAttribute('aria-controls');
     await trigger.click();
-    await this.page.locator(`[id='${menuId}']`).getByRole('menuitem', { name }).click();
+    await this.page
+      .locator(`[id='${menuId}']`)
+      .getByRole('menuitem', { name })
+      .click();
   }
 }
 
