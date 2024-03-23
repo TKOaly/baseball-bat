@@ -29,24 +29,20 @@ const factory: RouterFactory = route => {
       return ok(report);
     });
 
-  const getReportContent = route
-    .get('/:id/content')
-    //.use(auth())
+  const getReportLink = route
+    .get('/:id/link')
+    .use(auth())
     .handler(async ({ bus, ...ctx }) => {
-      const report = await bus.exec(
-        reportService.getReportContent,
+      const url = await bus.exec(
+        reportService.getReportUrl,
         ctx.routeParams.id,
       );
 
-      if (!report) {
-        return notFound({
-          message: 'Report not found.',
-        });
+      if (!url) {
+        return notFound();
       }
 
-      return ok(Buffer.from(report, 'base64'), {
-        'Content-Type': 'application/pdf',
-      });
+      return ok({ url });
     });
 
   const getReports = route
@@ -190,7 +186,7 @@ const factory: RouterFactory = route => {
   return router(
     getReport,
     getReports,
-    getReportContent,
+    getReportLink,
     generateDebtLedgerReport,
     generatePaymentLedgerReport,
     generateDebtStatusReport,

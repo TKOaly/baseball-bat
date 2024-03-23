@@ -20,6 +20,10 @@ interface IConfig {
   stripeSecretKey: string;
   stripePublicKey: string;
   stripeWebhookSecret: string;
+  minioUrl: string;
+  minioPublicUrl: string;
+  minioAccessKey: string;
+  minioSecretKey: string;
   appUrl: string;
   redisUrl: string;
   emailDispatcher?: {
@@ -51,6 +55,10 @@ export class Config implements IConfig {
   stripeSecretKey = '';
   stripePublicKey = '';
   stripeWebhookSecret = '';
+  minioUrl = '';
+  minioPublicUrl = '';
+  minioAccessKey = '';
+  minioSecretKey = '';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -89,6 +97,10 @@ export class Config implements IConfig {
       SERVICE_IDENTIFIER,
       MAGIC_LINK_SECRET,
       SERVICE_SECRET,
+      MINIO_URL,
+      MINIO_PUBLIC_URL,
+      MINIO_ACCESS_KEY,
+      MINIO_SECRET_KEY,
     } = process.env;
 
     assert(
@@ -106,6 +118,9 @@ export class Config implements IConfig {
     assert(STRIPE_PUBLIC_KEY, 'STRIPE_PUBLIC_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
     assert(STRIPE_WEBHOOK_SECRET, 'STRIPE_WEBHOOK_SECRET must be set.');
+    assert(MINIO_URL, 'MINIO_URL must be set.');
+    assert(MINIO_SECRET_KEY, 'MINIO_SECRET_KEY must be set.');
+    assert(MINIO_ACCESS_KEY, 'MINIO_ACCESS_KEY must be set.');
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();
@@ -130,6 +145,10 @@ export class Config implements IConfig {
       magicLinkSecret: MAGIC_LINK_SECRET!,
       assetPath: ASSET_PATH,
       dataPath: DATA_PATH,
+      minioUrl: MINIO_URL,
+      minioPublicUrl: MINIO_PUBLIC_URL ?? MINIO_URL,
+      minioAccessKey: MINIO_ACCESS_KEY,
+      minioSecretKey: MINIO_SECRET_KEY,
     });
   }
 

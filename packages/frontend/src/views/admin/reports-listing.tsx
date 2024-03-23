@@ -4,7 +4,10 @@ import { CheckCircle, ExternalLink, Loader, XCircle } from 'react-feather';
 import { Link } from 'wouter';
 import { InternalIdentity } from '@bbat/common/src/types';
 import { useGetPayerQuery } from '../../api/payers';
-import { useGetReportsQuery, useRefreshReportMutation } from '../../api/report';
+import reportApi, {
+  useGetReportsQuery,
+  useRefreshReportMutation,
+} from '../../api/report';
 import { Button } from '@bbat/ui/button';
 import { useDialog } from '../../components/dialog';
 import { NewDebtLedgerDialog } from '../../components/dialogs/new-debt-ledger-dialog';
@@ -33,6 +36,8 @@ export const ReportsListing = () => {
     pollingInterval: 3000,
   });
 
+  const [getReportLink] = reportApi.endpoints.getReportLink.useLazyQuery();
+
   const showNewDebtLedgerDialog = useDialog(NewDebtLedgerDialog);
   const showNewPaymentLedgerDialog = useDialog(NewPaymentLedgerDialog);
   const showNewDebtStatusReportDialog = useDialog(NewDebtStatusReportDialog);
@@ -53,6 +58,14 @@ export const ReportsListing = () => {
 
   const handleRefreshReport = async (id: string) => {
     await refreshReport(id);
+  };
+
+  const handleView = async (id: string) => {
+    const result = await getReportLink(id);
+
+    if (result?.data?.url) {
+      window.open(result.data.url, '_blank');
+    }
   };
 
   return (
@@ -126,9 +139,7 @@ export const ReportsListing = () => {
                 <Button
                   small
                   disabled={report.status !== 'finished'}
-                  onClick={() => {
-                    window.open(`/api/reports/${report.id}/content`, '_blank');
-                  }}
+                  onClick={() => handleView(report.id)}
                 >
                   View
                 </Button>

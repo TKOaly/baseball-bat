@@ -32,8 +32,8 @@ export const getReports = scope.defineProcedure({
   response: t.array(types.report),
 });
 
-export const getReportContent = scope.defineProcedure({
-  name: 'getReportContent',
+export const getReportUrl = scope.defineProcedure({
+  name: 'getReportUrl',
   payload: t.string,
   response: t.union([t.null, t.string]),
 });

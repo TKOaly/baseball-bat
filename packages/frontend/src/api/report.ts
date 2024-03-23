@@ -13,6 +13,10 @@ const reportApi = rtkApi.injectEndpoints({
       providesTags: [{ type: 'Report', id: 'LIST' }],
     }),
 
+    getReportLink: builder.query<{ url: string }, string>({
+      query: id => `/reports/${id}/link`,
+    }),
+
     generateDebtLedger: builder.mutation<Report, DebtLedgerOptions>({
       query: body => ({
         url: '/reports/generate/debt-ledger',
