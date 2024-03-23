@@ -37,10 +37,15 @@ setup('Reports service', ({ test }) => {
 
     assert.equal(event.report, report.id);
 
-    const content = await bus.exec(defs.getReportContent, report.id);
-    assert.ok(content);
+    const url = await bus.exec(defs.getReportUrl, report.id);
+    assert.ok(url);
 
-    const { text: pdf } = await parsePdf(Buffer.from(content, 'base64'));
+    const response = await fetch(url);
+    const content = await response.blob();
+
+    const { text: pdf } = await parsePdf(
+      Buffer.from(await content.arrayBuffer()),
+    );
 
     assert.ok(pdf.includes('Test: TESTVALUE'));
   });

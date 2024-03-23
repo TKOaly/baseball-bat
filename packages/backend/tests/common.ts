@@ -24,6 +24,7 @@ import { shutdown } from '@/orchestrator';
 import { mock } from 'node:test';
 import { ModuleDeps } from '@/module';
 import { internalIdentity } from '@bbat/common/types';
+import { randomString } from 'remeda';
 
 export const setupPostgres = async () => {
   const container = await new PostgreSqlContainer().start();
@@ -52,6 +53,28 @@ const setupRedis = async () => {
   const uri = `redis://${container.getHost()}:${container.getMappedPort(6379)}`;
 
   return { container, uri };
+};
+
+const setupMinio = async () => {
+  const secretKey = randomString(16);
+  const accessKey = randomString(16);
+
+  const container = await new GenericContainer('bitnami/minio')
+    .withExposedPorts(9000)
+    .withEnvironment({
+      MINIO_ROOT_USER: accessKey,
+      MINIO_ROOT_PASSWORD: secretKey,
+    })
+    .start();
+
+  const uri = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
+
+  return {
+    container,
+    secretKey,
+    accessKey,
+    uri,
+  };
 };
 
 type TeardownHook = () => Promise<void>;
@@ -208,8 +231,11 @@ export class TestEnvironment {
 }
 
 export const createEnvironment = async (): Promise<Environment> => {
-  const postgres = await setupPostgres();
-  const redis = await setupRedis();
+  const [postgres, redis, minio] = await Promise.all([
+    setupPostgres(),
+    setupRedis(),
+    setupMinio(),
+  ]);
 
   const dataPath = await fs.mkdtemp(path.resolve(os.tmpdir(), 'bbat-'));
 
@@ -238,18 +264,19 @@ export const createEnvironment = async (): Promise<Environment> => {
     magicLinkSecret: '',
     assetPath: path.resolve(__dirname, '../assets'),
     dataPath,
+    minioUrl: minio.uri,
+    minioAccessKey: minio.accessKey,
+    minioSecretKey: minio.secretKey,
+    minioPublicUrl: minio.uri,
   });
 
   const environment = new Environment(config);
 
   environment.onTeardown(async () => {
     await fs.rm(dataPath, { recursive: true });
-  });
-  environment.onTeardown(async () => {
     await redis.container.stop();
-  });
-  environment.onTeardown(async () => {
     await postgres.container.stop();
+    await minio.container.stop();
   });
 
   return environment;
