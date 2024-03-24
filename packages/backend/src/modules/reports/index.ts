@@ -4,7 +4,6 @@ import { Browser } from 'puppeteer';
 import sql from 'sql-template-strings';
 import routes from './api';
 import * as path from 'path';
-import * as Minio from 'minio';
 import * as paymentService from '@/modules/payments/definitions';
 import * as fs from 'fs';
 import * as uuid from 'uuid';
@@ -30,7 +29,6 @@ import {
 import * as defs from './definitions';
 import { Connection } from '@/db/connection';
 import { createModule } from '@/module';
-import { Config } from '@/config';
 
 export type CreateReportOptions = {
   template: string;
@@ -73,36 +71,12 @@ const formatReportWithHistory = (db: DbReport): Report => ({
   history: db.history.map(formatReport),
 });
 
-const REPORTS_BUCKET = 'baseball-bat-reports';
-
-const setupMinio = (config: Config) => {
-  const minioUrl = new URL(config.minioUrl);
-
-  const endPoint = minioUrl.hostname;
-  const port = parseInt(minioUrl.port, 10);
-  const useSSL = minioUrl.protocol === 'https:';
-
-  return new Minio.Client({
-    endPoint,
-    port,
-    useSSL,
-    accessKey: config.minioAccessKey,
-    secretKey: config.minioSecretKey,
-  });
-};
-
 export default createModule({
   name: 'reports',
 
   routes,
 
-  async setup({ config, bus, jobs }) {
-    const minio = setupMinio(config);
-
-    if (!(await minio.bucketExists(REPORTS_BUCKET))) {
-      await minio.makeBucket(REPORTS_BUCKET);
-    }
-
+  async setup({ config, bus, minio, jobs }) {
     let _browser: Browser | null = null;
 
     async function getBrowser() {
@@ -214,7 +188,12 @@ export default createModule({
         'Content-Type': 'application/pdf',
       };
 
-      await minio.putObject(REPORTS_BUCKET, id, content, metadata);
+      await minio.putObject(
+        config.minioBucket,
+        `reports/${id}`,
+        content,
+        metadata,
+      );
     }
 
     bus.register(defs.createReport, async (options, { pg, session }) => {
@@ -271,7 +250,11 @@ export default createModule({
 
     bus.register(defs.getReportUrl, async id => {
       const url = new URL(
-        await minio.presignedGetObject(REPORTS_BUCKET, id, 5 * 60),
+        await minio.presignedGetObject(
+          config.minioBucket,
+          `reports/${id}`,
+          5 * 60,
+        ),
       );
 
       if (config.minioPublicUrl !== config.minioUrl) {

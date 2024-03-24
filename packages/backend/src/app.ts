@@ -11,6 +11,7 @@ import { JobService } from './modules/jobs';
 import { LocalBus } from './bus';
 import server from './server';
 import { Session } from './middleware/session';
+import { setupMinio } from './minio';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -44,13 +45,18 @@ const bus = new LocalBus<BusContext>();
 
 const jobs = new JobService(config, bus, pool);
 
-const moduleDeps = {
-  pool,
-  config,
-  bus,
-  redis: redisClient,
-  jobs,
-  emailTransport,
+const setupDeps = async () => {
+  const minio = await setupMinio(config);
+
+  return {
+    pool,
+    config,
+    bus,
+    redis: redisClient,
+    jobs,
+    emailTransport,
+    minio,
+  };
 };
 
 declare global {
@@ -63,7 +69,8 @@ declare global {
 }
 
 async function start() {
-  const app = await server(moduleDeps);
+  const deps = await setupDeps();
+  const app = await server(deps);
   app.listen(PORT, () => console.log(`backend listening on port ${PORT} 🚀`));
 }
 

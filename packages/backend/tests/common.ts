@@ -3,6 +3,7 @@ import { BusContext } from '@/app';
 import * as redis from 'redis';
 import { Config } from '@/config';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { setupMinio as setupMinioClient } from '@/minio';
 import fs from 'fs/promises';
 import os from 'os';
 import migrate from 'node-pg-migrate';
@@ -133,6 +134,7 @@ export class Environment {
           },
         };
       },
+      minio: ({ config }) => setupMinioClient(config),
     };
 
   deps: Partial<Deps> = {};
@@ -268,6 +270,7 @@ export const createEnvironment = async (): Promise<Environment> => {
     minioAccessKey: minio.accessKey,
     minioSecretKey: minio.secretKey,
     minioPublicUrl: minio.uri,
+    minioBucket: 'baseball-bat',
   });
 
   const environment = new Environment(config);
@@ -290,6 +293,7 @@ export const startServer = async (env: Environment) => {
     redis: await env.get('redis'),
     jobs: await env.get('jobs'),
     emailTransport: await env.get('emailTransport'),
+    minio: await env.get('minio'),
   });
 
   return new Promise<string>((resolve, reject) => {

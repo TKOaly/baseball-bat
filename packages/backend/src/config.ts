@@ -24,6 +24,7 @@ interface IConfig {
   minioPublicUrl: string;
   minioAccessKey: string;
   minioSecretKey: string;
+  minioBucket: string;
   appUrl: string;
   redisUrl: string;
   emailDispatcher?: {
@@ -59,6 +60,7 @@ export class Config implements IConfig {
   minioPublicUrl = '';
   minioAccessKey = '';
   minioSecretKey = '';
+  minioBucket = '';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -101,6 +103,7 @@ export class Config implements IConfig {
       MINIO_PUBLIC_URL,
       MINIO_ACCESS_KEY,
       MINIO_SECRET_KEY,
+      MINIO_BUCKET,
     } = process.env;
 
     assert(
@@ -149,6 +152,7 @@ export class Config implements IConfig {
       minioPublicUrl: MINIO_PUBLIC_URL ?? MINIO_URL,
       minioAccessKey: MINIO_ACCESS_KEY,
       minioSecretKey: MINIO_SECRET_KEY,
+      minioBucket: MINIO_BUCKET ?? 'baseball-bat',
     });
   }
 
