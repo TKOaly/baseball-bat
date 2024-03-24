@@ -1,4 +1,4 @@
-import { Middleware, Parser, router } from 'typera-express';
+import { Parser, router } from 'typera-express';
 import { badRequest, ok } from 'typera-express/response';
 import { bankAccount, paginationQuery } from '@bbat/common/build/src/types';
 import * as A from 'fp-ts/Array';
@@ -8,16 +8,14 @@ import * as O from 'fp-ts/Option';
 import * as bankingService from '@/modules/banking/definitions';
 import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
 import { validateBody } from '@/validate-middleware';
-import multer from 'multer';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
 import { flow } from 'fp-ts/lib/function';
+import * as consumers from 'stream/consumers';
+import { randomUUID } from 'crypto';
+import { uploadToMinio } from '@/middleware/minio-upload';
 
 const factory: RouterFactory = route => {
-  const upload = multer({
-    storage: multer.memoryStorage(),
-  });
-
   const getInfo = route
     .get('/info')
     .use(auth({ accessLevel: 'normal' }))
@@ -91,16 +89,19 @@ const factory: RouterFactory = route => {
     .post('/statements')
     .use(auth())
     .use(
-      Middleware.wrapNative(upload.single('statement'), ({ req }) => ({
-        file: req.file,
-      })),
+      uploadToMinio({
+        field: 'statement',
+        bucket: 'baseball-bat',
+        key: () => `statements/${randomUUID()}`,
+      }),
     )
-    .handler(async ({ bus, ...ctx }) => {
+    .handler(async ({ bus, minio, ...ctx }) => {
       if (!ctx.file) {
         return badRequest('File `statement` required.');
       }
 
-      const content = ctx.file.buffer.toString('utf8');
+      const stream = await minio.getObject(ctx.file.bucket, ctx.file.key);
+      const content = await consumers.text(stream);
       const statement = await parseCamtStatement(content);
 
       const result = await bus.exec(bankingService.createBankStatement, {
