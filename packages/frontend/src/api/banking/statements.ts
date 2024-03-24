@@ -74,6 +74,10 @@ const statementsApi = rtkApi.injectEndpoints({
         },
       }),
     }),
+
+    getStatementLink: builder.query<{ url: string }, string>({
+      query: id => `/banking/statements/${id}/link`,
+    }),
   }),
 });
 
@@ -82,4 +86,5 @@ export const {
   useGetBankAccountStatementsQuery,
   useGetBankStatementQuery,
   useGetInfoQuery,
+  useGetStatementLinkQuery,
 } = statementsApi;
