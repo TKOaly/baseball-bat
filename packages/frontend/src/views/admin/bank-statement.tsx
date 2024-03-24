@@ -6,9 +6,14 @@ import {
   Section,
   TextField,
   SectionContent,
+  Actions,
+  ActionButton,
 } from '../../components/resource-page/resource-page';
 import { TransactionList } from '../../components/transaction-list';
-import { useGetBankStatementQuery } from '../../api/banking/statements';
+import {
+  useGetBankStatementQuery,
+  useGetStatementLinkQuery,
+} from '../../api/banking/statements';
 import transactionsApi from '../../api/banking/transactions';
 import { useGetBankAccountQuery } from '../../api/banking/accounts';
 import { format } from 'date-fns/format';
@@ -17,6 +22,7 @@ import { skipToken } from '@reduxjs/toolkit/query';
 
 export const BankStatement = ({ id }: { id: string }) => {
   const { data: statement, isLoading } = useGetBankStatementQuery(id);
+  const { data: link } = useGetStatementLinkQuery(id);
   const { data: account } = useGetBankAccountQuery(
     statement?.accountIban ?? skipToken,
   );
@@ -37,6 +43,17 @@ export const BankStatement = ({ id }: { id: string }) => {
             ]}
           />
         </Title>
+        <Actions>
+          {link && (
+            <ActionButton
+              onClick={() => {
+                window.open(link.url, '_blank');
+              }}
+            >
+              Download
+            </ActionButton>
+          )}
+        </Actions>
       </Header>
       <Section title="Details" columns={2}>
         <TextField

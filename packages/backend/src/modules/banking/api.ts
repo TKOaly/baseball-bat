@@ -1,5 +1,5 @@
 import { Parser, router } from 'typera-express';
-import { badRequest, ok } from 'typera-express/response';
+import { badRequest, notFound, ok } from 'typera-express/response';
 import { bankAccount, paginationQuery } from '@bbat/common/build/src/types';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Task';
@@ -15,7 +15,7 @@ import * as consumers from 'stream/consumers';
 import { randomUUID } from 'crypto';
 import { uploadToMinio } from '@/middleware/minio-upload';
 
-const factory: RouterFactory = route => {
+const factory: RouterFactory = (route, { config }) => {
   const getInfo = route
     .get('/info')
     .use(auth({ accessLevel: 'normal' }))
@@ -154,6 +154,37 @@ const factory: RouterFactory = route => {
       return ok(statement);
     });
 
+  const getBankStatementLink = route
+    .get('/statements/:id/link')
+    .use(auth())
+    .handler(async ({ minio, routeParams: { id } }) => {
+      try {
+        await minio.statObject('baseball-bat', `statements/${id}`);
+      } catch {
+        return notFound();
+      }
+
+      const url = new URL(
+        await minio.presignedGetObject(
+          'baseball-bat',
+          `statements/${id}`,
+          5 * 60,
+        ),
+      );
+
+      if (config.minioPublicUrl !== config.minioUrl) {
+        const publicUrl = new URL(config.minioPublicUrl);
+
+        url.host = publicUrl.host;
+        url.protocol = publicUrl.protocol;
+        url.port = publicUrl.port;
+      }
+
+      return ok({
+        url: url.toString(),
+      });
+    });
+
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
     .use(auth())
@@ -215,6 +246,7 @@ const factory: RouterFactory = route => {
     autoregisterTransactions,
     getTransactionRegistrations,
     getInfo,
+    getBankStatementLink,
   );
 };
 
