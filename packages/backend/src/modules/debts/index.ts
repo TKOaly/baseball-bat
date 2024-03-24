@@ -1174,39 +1174,45 @@ export default createModule({
       return created;
     }
 
-    bus.register(defs.publishDebt, async (debtId: string, { pg }, bus) => {
-      const debt = await bus.exec(defs.getDebt, debtId);
+    bus.register(
+      defs.publishDebt,
+      async (debtId: string, { pg, session }, bus) => {
+        const sessionPayerId =
+          session?.authLevel === 'authenticated' ? session.payerId.value : null;
 
-      if (!debt) {
-        throw new Error('No such debt');
-      }
+        const debt = await bus.exec(defs.getDebt, debtId);
 
-      await pg.do(sql`
+        if (!debt) {
+          throw new Error('No such debt');
+        }
+
+        await pg.do(sql`
         UPDATE debt
         SET
           published_at = NOW(),
+          published_by = ${sessionPayerId},
           date = COALESCE(date, NOW()),
           due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
         WHERE id = ${debtId}
       `);
 
-      const defaultPayment = debt.defaultPayment
-        ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
-        : await createDefaultPaymentFor(pg, bus, debt);
+        const defaultPayment = debt.defaultPayment
+          ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
+          : await createDefaultPaymentFor(pg, bus, debt);
 
-      if (!defaultPayment) {
-        throw new Error('No default invoice exists for payment');
-      }
+        if (!defaultPayment) {
+          throw new Error('No default invoice exists for payment');
+        }
 
-      if (!isPaymentInvoice(defaultPayment)) {
-        console.log('Not invoice: ', defaultPayment);
+        if (!isPaymentInvoice(defaultPayment)) {
+          console.log('Not invoice: ', defaultPayment);
 
-        throw new Error(
-          `The default payment of debt ${debt.id} is not an invoice!`,
-        );
-      }
+          throw new Error(
+            `The default payment of debt ${debt.id} is not an invoice!`,
+          );
+        }
 
-      /*
+        /*
       const isBackdated = isBefore(
         parseISO(defaultPayment.data.date),
         subDays(new Date(), 1),
@@ -1224,7 +1230,8 @@ export default createModule({
 
         await bus.exec(sendEmail, message.right.id);
       }*/
-    });
+      },
+    );
 
     async function setDefaultPayment(
       pg: Connection,
@@ -1450,7 +1457,10 @@ export default createModule({
       await pg.do(sql`DELETE FROM debt WHERE id = ${id}`);
     });
 
-    bus.register(defs.creditDebt, async (id, { pg }, bus) => {
+    bus.register(defs.creditDebt, async (id, { pg, session }, bus) => {
+      const sessionPayerId =
+        session?.authLevel === 'authenticated' ? session.payerId.value : null;
+
       const debt = await bus.exec(defs.getDebt, id);
 
       if (!debt) {
@@ -1461,7 +1471,14 @@ export default createModule({
         throw new Error('Cannot credit unpublished debts');
       }
 
-      await pg.do(sql`UPDATE debt SET credited = true WHERE id = ${id} `);
+      await pg.do(sql`
+        UPDATE debt
+        SET
+          credited_at = NOW(),
+          credited_by = ${sessionPayerId}
+        WHERE id = ${id}
+      `);
+
       await pg.do(
         sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
       );

@@ -230,6 +230,9 @@ test('test publishing', async ({ page, bbat }) => {
   await page.getByRole('button', { name: 'Publish' }).click();
 
   await expect(bbat.getResourceField('Status')).toHaveText('Unpaid');
+  await expect(bbat.getResourceField('Published at')).toHaveText(
+    /[0-9]{2}.[0-9]{2}.[0-9]{4} [0-9]{2}:[0-9]{2} by John Smith/,
+  );
   await expect(bbat.getResourceField('Due Date')).toHaveText(
     format(addDays(new Date(), 14), 'dd.MM.yyyy'),
   );
