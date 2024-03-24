@@ -37,6 +37,7 @@ import { useDialog } from '../../components/dialog';
 import { RemindersSentDialog } from '../../components/dialogs/reminders-sent-dialog';
 import emailApi from '../../api/email';
 import { EmailList } from '../../components/email-list';
+import { ResourceLink } from '../../components/resource-link';
 
 type Props = RouteComponentProps<{ id: string }>;
 
@@ -182,10 +183,31 @@ export const DebtDetails = ({ params }: Props) => {
         {debt.date && <DateField label="Date" value={new Date(debt.date)} />}
         <DateField time label="Created at" value={new Date(debt.createdAt)} />
         <Field label="Published at">
-          {debt.publishedAt === null
-            ? 'Not published'
-            : format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
+          <div className="flex">
+            {debt.publishedAt === null
+              ? 'Not published'
+              : format(new Date(debt.publishedAt), 'dd.MM.yyyy HH:mm')}
+            {debt.publishedBy && (
+              <>
+                <div className="mx-1">{' by '}</div>
+                <ResourceLink type="payer" id={debt.publishedBy.value} />
+              </>
+            )}
+          </div>
         </Field>
+        {debt.creditedAt && (
+          <Field label="Credited at">
+            <div className="flex">
+              {format(new Date(debt.creditedAt), 'dd.MM.yyyy HH:mm')}
+              {debt.creditedBy && (
+                <>
+                  <div className="mx-1">{' by '}</div>
+                  <ResourceLink type="payer" id={debt.creditedBy.value} />
+                </>
+              )}
+            </div>
+          </Field>
+        )}
         {debt.dueDate !== null && (
           <Field label="Due Date">
             {format(debt.dueDate, 'dd.MM.yyyy')}

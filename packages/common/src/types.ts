@@ -548,6 +548,9 @@ export type DbDebt = {
   marked_as_paid: Date | null;
   draft: boolean;
   published_at: Date | null;
+  published_by: string | null;
+  credited_at: Date | null;
+  credited_by: string | null;
   payer_id: string;
   debt_center_id: string;
   description: string;
@@ -579,6 +582,9 @@ export const debt = t.type({
   dueDate: nullable(tt.date),
   draft: t.boolean,
   publishedAt: nullable(tt.date),
+  publishedBy: nullable(internalIdentityT),
+  creditedAt: nullable(tt.date),
+  creditedBy: nullable(internalIdentityT),
   payerId: internalIdentityT,
   debtCenterId: t.string,
   description: t.string,
