@@ -992,6 +992,9 @@ export default createModule({
               updatedAt: new Date(),
               debtComponents,
               credited: false,
+              publishedBy: null,
+              creditedAt: null,
+              creditedBy: null,
               tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
             };
 
