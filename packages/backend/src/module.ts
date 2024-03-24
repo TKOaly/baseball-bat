@@ -8,12 +8,14 @@ import { JobService } from './modules/jobs';
 import { Config } from './config';
 import { IEmailTransport } from './modules/email';
 import { Session, sessionMiddleware } from './middleware/session';
+import { Client as MinioClient } from 'minio';
 
 export type ModuleDeps = {
   bus: LocalBus<BusContext>;
   pool: Pool;
   redis: ReturnType<typeof redis.createClient>;
   jobs: JobService;
+  minio: MinioClient;
   config: Config;
   emailTransport: IEmailTransport;
 };
@@ -23,10 +25,16 @@ const createBusContext = (req: {
   session: Session | null;
 }) => ({ pg: req.pg, session: req.session });
 
-export const createBaseRoute = ({ bus, pool, redis, jobs }: ModuleDeps) =>
+export const createBaseRoute = ({
+  bus,
+  pool,
+  redis,
+  minio,
+  jobs,
+}: ModuleDeps) =>
   route
     .use(dbMiddleware(pool))
-    .use(() => Middleware.next({ redis, jobs }))
+    .use(() => Middleware.next({ redis, jobs, minio }))
     .use(sessionMiddleware)
     .use(bus.middleware(createBusContext));
 
