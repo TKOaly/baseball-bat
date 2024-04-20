@@ -15,7 +15,8 @@ import debtApi, {
   CreateDebtPayload,
 } from '../../api/debt';
 import { Button } from '@bbat/ui/button';
-import { cents, compareEuroValues, EuroValue } from '@bbat/common/src/currency';
+import * as euro from '@bbat/common/src/currency';
+import { EuroValue } from '@bbat/common/src/currency';
 import { isMatch } from 'date-fns/isMatch';
 import { parse } from 'date-fns/parse';
 import { format } from 'date-fns/format';
@@ -67,7 +68,10 @@ const parseEuros = (v: string): EuroValue => {
     throw 'Only up to 2 decimal places allowed in the amount column.';
   }
 
-  return cents(parseInt(euros) * 100 + (centsPart ? parseInt(centsPart) : 0));
+  return euro.add(
+    euro.euro(parseInt(euros, 10)),
+    euro.cents(parseInt(centsPart.padEnd(2, '0'), 10)),
+  );
 };
 
 type Props = {
@@ -480,7 +484,7 @@ export const MassCreateDebts = ({ debtCenterId }: Props) => {
         const match = centerComponents.data.find(
           ({ name, amount }) =>
             name === options.name &&
-            compareEuroValues(amount, options.amount) === 0,
+            euro.compareEuroValues(amount, options.amount) === 0,
         );
 
         if (match) {
