@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import migrate from 'node-pg-migrate';
 import path from 'path';
-import { GenericContainer } from 'testcontainers';
+import { GenericContainer, Wait } from 'testcontainers';
 import {
   EventHandler,
   EventType,
@@ -49,6 +49,7 @@ export const setupPostgres = async () => {
 const setupRedis = async () => {
   const container = await new GenericContainer('redis')
     .withExposedPorts(6379)
+    .withWaitStrategy(Wait.forLogMessage(/Ready to accept connections/, 1))
     .start();
 
   const uri = `redis://${container.getHost()}:${container.getMappedPort(6379)}`;
@@ -66,6 +67,7 @@ const setupMinio = async () => {
       MINIO_ROOT_USER: accessKey,
       MINIO_ROOT_PASSWORD: secretKey,
     })
+    .withWaitStrategy(Wait.forHttp('/minio/health/live', 9000))
     .start();
 
   const uri = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
