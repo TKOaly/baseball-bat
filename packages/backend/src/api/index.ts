@@ -8,6 +8,7 @@ import { BusContext } from '@/app';
 import { Pool } from '@/db/connection';
 import { BaseRoute, createBaseRoute, ModuleDeps } from '@/module';
 import testing from './testing';
+import health from './health-check';
 
 export type ApiDeps = {
   bus: LocalBus<BusContext>;
@@ -26,6 +27,7 @@ export default (
 ) => {
   const routes: Record<string, ApiFactory> = {
     testing,
+    health,
   };
 
   const route = createBaseRoute(moduleDeps).use(() =>
