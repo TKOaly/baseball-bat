@@ -298,7 +298,7 @@ export const startServer = async (env: Environment) => {
     minio: await env.get('minio'),
   });
 
-  return new Promise<string>((resolve, reject) => {
+  const url = await new Promise<string>((resolve, reject) => {
     const listener = app.listen(0, () => {
       if (!listener) {
         reject();
@@ -319,4 +319,22 @@ export const startServer = async (env: Environment) => {
       () => new Promise(resolve => listener.close(() => resolve())),
     );
   });
+
+  const start = Date.now();
+
+  while (true) {
+    const res = await fetch(`${url}/api/health`);
+
+    if (res.ok) {
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    if (Date.now() - start > 10000) {
+      throw new Error('Starting backend server exceeded the timeout of 10s!');
+    }
+  }
+
+  return url;
 };
