@@ -59,8 +59,7 @@ export default async (deps: ApiDeps & ModuleDeps) => {
         },
       }),
     )
-    .use(cookieParser())
-    .use(router(healthCheck).handler());
+    .use(cookieParser());
 
   apiRoutes(deps, deps, app);
   await initServices(app, deps);
