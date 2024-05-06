@@ -247,6 +247,9 @@ export const createEnvironment = async (): Promise<Environment> => {
     dbUrl: postgres.uri,
     userServiceUrl: 'https://users.tko-aly.fi',
     userServiceApiUrl: 'https://users.tko-aly.fi',
+    userServiceConfig: {
+      issuer: 'https://users.tko-aly.fi',
+    },
     serviceId: 'FAKE_ID',
     serviceSecret: 'FAKE_SECRET',
     eventServiceUrl: '',

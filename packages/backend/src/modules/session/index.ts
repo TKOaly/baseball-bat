@@ -9,7 +9,13 @@ export default createModule({
   routes,
 
   async setup({ config, bus, redis }) {
-    const issuer = await Issuer.discover(config.userServiceApiUrl);
+    let issuer;
+
+    if (config.userServiceConfig) {
+      issuer = new Issuer(config.userServiceConfig);
+    } else {
+      issuer = await Issuer.discover(config.userServiceApiUrl);
+    }
 
     const client = new issuer.Client({
       client_id: config.serviceId,
