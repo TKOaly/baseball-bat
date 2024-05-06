@@ -2,6 +2,7 @@
 
 import assert from 'assert';
 import * as dotenv from 'dotenv';
+import { IssuerMetadata } from 'openid-client';
 
 dotenv.config();
 
@@ -9,6 +10,7 @@ interface IConfig {
   dbUrl: string;
   userServiceUrl: string;
   userServiceApiUrl: string;
+  userServiceConfig: IssuerMetadata | null;
   serviceId: string;
   serviceSecret: string;
   assetPath: string;
@@ -45,6 +47,7 @@ export class Config implements IConfig {
   dbUrl = '';
   userServiceUrl = '';
   userServiceApiUrl = '';
+  userServiceConfig = null;
   chromiumBinaryPath = null;
   serviceId = '';
   serviceSecret = '';
@@ -132,6 +135,7 @@ export class Config implements IConfig {
       dbUrl: POSTGRES_CONNECTION_STRING,
       userServiceUrl: USER_SERVICE_URL,
       userServiceApiUrl: USER_SERVICE_API_URL,
+      userServiceConfig: null,
       serviceId: SERVICE_IDENTIFIER,
       serviceSecret: SERVICE_SECRET,
       eventServiceUrl: EVENT_SERVICE_URL ?? '',
