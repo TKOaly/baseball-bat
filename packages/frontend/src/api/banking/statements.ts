@@ -88,3 +88,5 @@ export const {
   useGetInfoQuery,
   useGetStatementLinkQuery,
 } = statementsApi;
+
+export default statementsApi;

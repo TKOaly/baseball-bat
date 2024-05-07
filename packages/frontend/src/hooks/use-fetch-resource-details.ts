@@ -9,6 +9,7 @@ import debtCentersApi from '../api/debt-centers';
 import payersApi from '../api/payers';
 import paymentsApi from '../api/payments';
 import { useAppSelector, useAppDispatch } from '../store';
+import statementsApi from '../api/banking/statements';
 
 export const ResourceLink = Symbol('RESOURCE_LINK');
 
@@ -161,6 +162,32 @@ const selectResourceDetails = createSelector(
           { type: 'text', value: payment.data.data.reference_number },
         ]);
       }
+    } else if (type === 'bank-statement') {
+      const statement = statementsApi.endpoints.getBankStatement.select(id)(state);
+
+      if (!statement.data) {
+        return null;
+      }
+
+      name = statement.data.id;
+      value = statement.data
+
+      details.push([
+        'Bank account',
+        { type: 'text', value: statement.data.accountIban },
+      ]);
+      details.push([
+        'Starting',
+        { type: 'text', value: format(statement.data.openingBalance.date, 'dd.MM.yyyy') },
+      ]);
+      details.push([
+        'Starting',
+        { type: 'text', value: format(statement.data.closingBalance.date, 'dd.MM.yyyy') },
+      ]);
+      details.push([
+        'Generated at',
+        { type: 'text', value: format(statement.data.generatedAt, 'dd.MM.yyyy') },
+      ]);
     } else {
       return null;
     }
@@ -191,10 +218,12 @@ export const useFetchResourceDetails = (
       dispatch(debtApi.endpoints.getDebt.initiate(id));
     } else if (type === 'payer') {
       dispatch(payersApi.endpoints.getPayer.initiate(id));
-    } else if (type === 'debt_center') {
+    } else if (type === 'center') {
       dispatch(debtCentersApi.endpoints.getDebtCenter.initiate(id));
     } else if (type === 'payment') {
       dispatch(paymentsApi.endpoints.getPayment.initiate(id));
+    } else if (type === 'bank-statement') {
+      dispatch(statementsApi.endpoints.getBankStatement.initiate(id));
     }
   }, [type, id, skip]);
 
