@@ -1156,3 +1156,48 @@ export type PaginationQueryResponse<T> = t.TypeOf<
 export type CreateDebtCenterFromEventBody = t.TypeOf<
   typeof createDebtCenterFromEventBody
 >;
+
+export const auditEventAction = t.union([
+  t.literal('bank-statement.create'),
+  t.literal('debt-center.create'),
+  t.literal('debt-center.delete'),
+  t.literal('debt.create'),
+  t.literal('debt.delete'),
+  t.literal('debt.publish'),
+  t.literal('debt.credit'),
+  t.literal('debt.update'),
+  t.literal('debt.update.add-component'),
+  t.literal('debt.update.remove-component'),
+  t.literal('payer.create'),
+  t.literal('payer.merge'),
+  t.literal('payer.update'),
+])
+
+export const resourceType = t.union([
+  t.literal('payer'),
+  t.literal('debt'),
+  t.literal('debt-center'),
+  t.literal('bank-statement'),
+])
+
+export type ResourceType = t.TypeOf<typeof resourceType>;
+
+export type AuditEventAction = t.TypeOf<typeof auditEventAction>;
+
+export const auditEvent = t.type({
+  entryId: t.string,
+  time: tt.date,
+  action: auditEventAction,
+  subject: nullable(internalIdentityT),
+  details: t.unknown,
+  links: t.array(t.type({
+    type: t.string,
+    target: t.type({
+      type: resourceType,
+      id: t.string,
+    }),
+    label: t.string,
+  })),
+})
+
+export type AuditEvent = t.TypeOf<typeof auditEvent>;

@@ -5,6 +5,7 @@ import {
   DbBankStatement,
   BankStatement,
 } from '@bbat/common/types';
+import * as audit from '@/modules/audit/definitions';
 import sql from 'sql-template-strings';
 import * as paymentsService from '@/modules/payments/definitions';
 import { cents } from '@bbat/common/currency';
@@ -191,6 +192,23 @@ export default createModule({
             return transaction;
           }),
         );
+
+        await bus.exec(audit.logEvent, {
+          type: 'bank-statement.create',
+          details: {
+            id: statement.id,
+            start: statement.opening_balance_date,
+            end: statement.closing_balance_date,
+          },
+          links: [{
+            type: 'statement',
+            label: statement.id,
+            target: {
+              type: 'bank-statement',
+              id: statement.id,
+            },
+          }],
+        });
 
         return {
           statement: formatBankStatement(statement),
