@@ -5,7 +5,7 @@ import { useGetJobsQuery } from '../../api/jobs';
 import { Table } from '@bbat/ui/table';
 
 export const JobsListing = () => {
-  const { data: jobs } = useGetJobsQuery(undefined, { pollingInterval: 100 });
+  const { data: jobs } = useGetJobsQuery(undefined, { pollingInterval: 1000 });
   const [, setLocation] = useLocation();
 
   return (
