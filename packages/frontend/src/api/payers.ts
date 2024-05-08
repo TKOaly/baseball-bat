@@ -43,7 +43,12 @@ const payersApi = rtkApi.injectEndpoints({
         body,
       }),
       invalidatesTags: payer =>
-        payer ? [{ type: 'Payer', id: payer.id.value }] : [],
+        payer
+          ? [
+              { type: 'Payer', id: payer.id.value },
+              { type: 'PayerEmail', id: payer.id.value },
+            ]
+          : [],
     }),
 
     updatePayerPreferences: builder.mutation<
@@ -80,10 +85,13 @@ const payersApi = rtkApi.injectEndpoints({
 
     getPayerEmails: builder.query<PayerEmail[], string>({
       query: id => `/payers/${id}/emails`,
-      providesTags: payers =>
-        (payers ?? []).flatMap(({ payerId, email }) => [
-          { type: 'PayerEmail', id: `${payerId.value}-${email}` },
-        ]),
+      providesTags: (payers, _, id) => [
+        { type: 'PayerEmail', id },
+        ...(payers ?? []).map(({ email }) => ({
+          type: 'PayerEmail' as const,
+          id: `${id}-${email}`,
+        })),
+      ],
     }),
 
     getSessionPayer: builder.query<PayerProfile, void>({
