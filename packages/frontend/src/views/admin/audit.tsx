@@ -13,7 +13,7 @@ type Expression =
 
 const parseExpression = (input: string): Expression => {
   const trimmed = input.trim();
-  let fnMatch = trimmed.match(/(\w+)\s*\((?:([^,)]+)(?:,\s*([^,)]+))*)?\)/);
+  let fnMatch = trimmed.match(/(\w+)\s*\((?:([^,)]+)(?:,\s*([^,)\s]+))*)?\)/);
 
   if (fnMatch) {
     return {
