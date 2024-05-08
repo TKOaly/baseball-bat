@@ -56,8 +56,9 @@ export const DebtDetails = ({ params }: Props) => {
     return <div>Loading...</div>;
   }
 
-  const handleDelete = () => {
-    deleteDebt(params.id);
+  const handleDelete = async () => {
+    await deleteDebt(params.id);
+    history.back();
   };
 
   const handleCredit = () => {
