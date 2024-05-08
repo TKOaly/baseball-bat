@@ -16,6 +16,8 @@ import {
   DateString,
   convertToDbDate,
   NewInvoice,
+  debtCenter,
+  AuditEvent,
 } from '@bbat/common/build/src/types';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
@@ -36,6 +38,7 @@ import * as TE from 'fp-ts/TaskEither';
 import * as A from 'fp-ts/Array';
 import * as AA from 'fp-ts/ReadonlyArray';
 import * as O from 'fp-ts/Option';
+import * as R from 'fp-ts/Record';
 import * as P from 'fp-ts/Predicate';
 import * as S from 'fp-ts/string';
 import * as T from 'fp-ts/Task';
@@ -46,6 +49,7 @@ import {
   format,
   isBefore,
   isPast,
+  isSameDay,
   parseISO,
   subMonths,
 } from 'date-fns';
@@ -60,10 +64,11 @@ import {
   getEmail,
   sendEmail,
 } from '../email/definitions';
-import { ExecutionContext } from '@/bus';
+import { ExecutionContext, PayloadOf } from '@/bus';
 import { Connection } from '@/db/connection';
 import { formatDebt, formatDebtComponent, queryDebts } from './query';
 import { createModule } from '@/module';
+import { logEvent } from '../audit/definitions';
 
 export type CreateDebtOptions = {
   defaultPayment?: Partial<NewInvoice>;
@@ -122,6 +127,33 @@ export default createModule({
 
   async setup({ bus, jobs }) {
     reports(bus);
+
+    const logDebtEvent = async (
+      bus: ExecutionContext<BusContext>,
+      debt: Debt,
+      type: Extract<PayloadOf<typeof logEvent>['type'], `debt.${string}`>,
+      details: Record<string, unknown> = {},
+      links: PayloadOf<typeof logEvent>['links'] = [],
+    ) => {
+      await bus.exec(logEvent, {
+        type,
+        details: {
+          total: debt.total.value,
+          ...details,
+        },
+        links: [
+          {
+            type: 'object',
+            target: {
+              type: 'debt',
+              id: debt.id,
+            },
+            label: debt.name,
+          },
+          ...links,
+        ],
+      })
+    };
 
     const linkPaymentToDebt = async (
       pg: Connection,
@@ -313,6 +345,15 @@ export default createModule({
           throw new Error('No such payer: ' + debt.payer.value);
         }
 
+        const center = await bus.exec(
+          debtCentersService.getDebtCenter,
+          debt.centerId,
+        );
+
+        if (!center) {
+          throw new Error('No such center: ' + debt.centerId);
+        }
+
         const created = await pg.one<DbDebt>(sql`
             INSERT INTO debt (
               name,
@@ -404,6 +445,25 @@ export default createModule({
             'Could not fetch just created debt from the database!',
           );
         }
+
+        await logDebtEvent(bus, createdDebt, 'debt.create', {}, [
+          {
+            type: 'debtor',
+            target: {
+              type: 'payer',
+              id: createdDebt.payerId.value,
+            },
+            label: payerProfile.name,
+          },
+          {
+            type: 'debt-center',
+            target: {
+              type: 'debt-center',
+              id: createdDebt.debtCenterId,
+            },
+            label: center.name,
+          },
+        ]);
 
         return createdDebt;
       },
@@ -1189,6 +1249,12 @@ export default createModule({
           throw new Error('No such debt');
         }
 
+        const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+
+        if (!payer) {
+          throw new Error('Failed to fetch payer!');
+        }
+
         await pg.do(sql`
         UPDATE debt
         SET
@@ -1214,6 +1280,32 @@ export default createModule({
             `The default payment of debt ${debt.id} is not an invoice!`,
           );
         }
+
+        await bus.exec(logEvent, {
+          type: 'debt.publish',
+          details: {
+            name: debt.name,
+            total: debt.total.value,
+          },
+          links: [
+            {
+              type: 'debt',
+              label: debt.name,
+              target: {
+                type: 'debt',
+                id: debt.id,
+              },
+            },
+            {
+              type: 'payer',
+              label: payer.name,
+              target: {
+                type: 'payer',
+                id: debt.payerId.value,
+              },
+            }
+          ],
+        });
 
         /*
       const isBackdated = isBefore(
@@ -1312,11 +1404,132 @@ export default createModule({
         payment_condition,
       });
 
+      const oldValues = {
+        name: existingDebt.name,
+        description: existingDebt.description,
+        centerId: existingDebt.debtCenterId,
+        payerId: existingDebt.payerId.value,
+        dueDate: existingDebt.dueDate,
+        paymentCondition: existingDebt.paymentCondition,
+        date: existingDebt.date,
+      };
+
+      const newValues = {
+        name: debt.name,
+        description: debt.description,
+        centerId: debt.centerId,
+        payerId: debt.payerId?.value,
+        dueDate: debt.dueDate,
+        paymentCondition: debt.paymentCondition,
+        date: debt.date,
+      };
+
+      await pipe(
+        oldValues,
+        R.toEntries,
+        A.traverse(T.ApplicativePar)(([field, oldValue]) => async () => {
+          const newValue = newValues[field];
+
+          if (newValue === undefined || newValue === oldValue || (newValue instanceof Date && oldValue instanceof Date && isSameDay(newValue, oldValue))) {
+            return;
+          }
+
+          let links: PayloadOf<typeof logEvent>['links'] = [];
+
+          let from = oldValue;
+          let to = newValue;
+
+          if (field === 'payerId' && typeof newValue == 'string' && typeof oldValue == 'string') {
+            const oldPayer = await bus.exec(payerService.getPayerProfileByInternalIdentity, internalIdentity(oldValue));
+            const newPayer = await bus.exec(payerService.getPayerProfileByInternalIdentity, internalIdentity(newValue));
+
+            if (!oldPayer || !newPayer) {
+              throw new Error('Could not find payer!');
+            }
+
+            from = oldPayer.name;
+            to = newPayer.name;
+
+            links.push({
+              type: 'from',
+              label: from,
+              target: {
+                type: 'payer',
+                id: oldValue,
+              },
+            });
+
+            links.push({
+              type: 'to',
+              label: to,
+              target: {
+                type: 'payer',
+                id: newValue,
+              },
+            });
+          }
+
+          if (field === 'centerId' && typeof newValue == 'string' && typeof oldValue == 'string') {
+            const oldCenter = await bus.exec(debtCentersService.getDebtCenter, oldValue);
+            const newCenter = await bus.exec(debtCentersService.getDebtCenter, newValue);
+
+            if (!oldCenter || !newCenter) {
+              throw new Error('Could not find debt center!');
+            }
+
+            from = oldCenter.name;
+            to = newCenter.name;
+            
+            links.push({
+              type: 'from',
+              target: {
+                type: 'debt-center',
+                id: oldValue,
+              },
+              label: oldCenter.name,
+            });
+
+            links.push({
+              type: 'to',
+              target: {
+                type: 'debt-center',
+                id: newValue,
+              },
+              label: newCenter.name,
+            });
+          }
+
+          await bus.exec(logEvent, {
+            type: 'debt.update',
+            details: {
+              name: existingDebt.name,
+              field,
+              from,
+              to,
+            },
+            links: [
+              {
+                type: 'debt',
+                label: existingDebt.name,
+                target: {
+                  type: 'debt',
+                  id: debt.id,
+                },
+              },
+              ...links,
+            ],
+          });
+        }),
+      )();
+
       let handleComponents: TE.TaskEither<Error, null> = async () =>
         E.right(null);
 
       if (debt.components) {
         const components = debt.components;
+
+        const allComponents = await bus.exec(defs.getDebtComponentsByCenter, existingDebt.debtCenterId);
+
 
         const newComponents = pipe(
           debt.components,
@@ -1338,6 +1551,26 @@ export default createModule({
               INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
             `);
 
+            const component = allComponents.find((c) => c.id === id);
+
+            await bus.exec(logEvent, {
+              type: 'debt.update.add-component',
+              details: {
+                componentName: component?.name ?? 'Unknown',
+                componentAmount: component?.amount?.value ?? 0,
+              },
+              links: [
+                {
+                  type: 'debt',
+                  label: existingDebt.name,
+                  target: {
+                    type: 'debt',
+                    id: debt.id,
+                  },
+                },
+              ],
+            });
+
             return E.right(null);
           },
         );
@@ -1347,6 +1580,26 @@ export default createModule({
             await pg.one(
               sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`,
             );
+
+            const component = allComponents.find((c) => c.id === id);
+
+            await bus.exec(logEvent, {
+              type: 'debt.update.remove-component',
+              details: {
+                componentName: component?.name ?? 'Unknown',
+                componentAmount: component?.amount?.value ?? 0,
+              },
+              links: [
+                {
+                  type: 'debt',
+                  label: existingDebt.name,
+                  target: {
+                    type: 'debt',
+                    id: debt.id,
+                  },
+                },
+              ],
+            });
 
             return E.right(null);
           },
@@ -1454,10 +1707,43 @@ export default createModule({
         throw new Error('Cannot delete published debts');
       }
 
+      const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+
+      if (!payer) {
+        throw new Error('Could not find payer for debt!');
+      }
+
       await pg.do(
         sql`DELETE FROM debt_component_mapping WHERE debt_id = ${id}`,
       );
       await pg.do(sql`DELETE FROM debt WHERE id = ${id}`);
+
+      await bus.exec(logEvent, {
+        type: 'debt.delete',
+        details: {
+          name: debt.name,
+          total: debt.total.value,
+          payer: payer.name,
+        },
+        links: [
+          {
+            type: 'payer',
+            label: payer.name,
+            target: {
+              type: 'payer',
+              id: payer.id.value,
+            },
+          },
+          {
+            type: 'debt',
+            label: debt.name,
+            target: {
+              type: 'debt',
+              id: debt.id,
+            },
+          },
+        ],
+      })
     });
 
     bus.register(defs.creditDebt, async (id, { pg, session }, bus) => {
@@ -1474,6 +1760,12 @@ export default createModule({
         throw new Error('Cannot credit unpublished debts');
       }
 
+      const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+
+      if (!payer) {
+        throw new Error('Could not fetch payer!');
+      }
+
       await pg.do(sql`
         UPDATE debt
         SET
@@ -1485,6 +1777,33 @@ export default createModule({
       await pg.do(
         sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
       );
+
+      await bus.exec(logEvent, {
+        type: 'debt.credit',
+        details: {
+          name: debt.name,
+          total: debt.total.value,
+          payer: payer.name,
+        },
+        links: [
+          {
+            type: 'payer',
+            label: payer.name, 
+            target: {
+              type: 'payer',
+              id: payer.id.value,
+            },
+          },
+          {
+            type: 'debt',
+            label: debt.name,
+            target: {
+              type: 'debt',
+              id: debt.id,
+            },
+          },
+        ],
+      });
     });
 
     async function getOverdueDebts(pg: Connection) {

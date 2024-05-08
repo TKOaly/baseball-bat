@@ -76,6 +76,7 @@ const createDebt = async (
     i++;
   }
   await page.getByTestId('create-debt').click();
+  await page.waitForURL(new RegExp(`${bbat.url}/admin/debts/[0-9a-f-]{36}`));
 };
 
 const navigate = async (page: Page, item: string) => {

@@ -7,6 +7,7 @@ import routes from './api';
 import * as defs from './definitions';
 import { pipe } from 'fp-ts/function';
 import { createModule } from '@/module';
+import { logEvent } from '../audit/definitions';
 
 export const formatDebtCenter = (debtCenter: DbDebtCenter): DebtCenter => ({
   id: debtCenter.id,
@@ -119,15 +120,47 @@ export default createModule({
         throw new Error('Failed to create debt center!');
       }
 
+      await bus.exec(logEvent, {
+        type: 'debt-center.create',
+        links: [
+          {
+            type: 'center',
+            label: result.name,
+            target: {
+              type: 'debt-center',
+              id: result.id,
+            },
+          },
+        ],
+      });
+
       return result;
     });
 
-    bus.register(defs.deleteDebtCenter, async (id, { pg }) => {
-      const center = await pg.one<DbDebtCenter>(sql`
-          UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
-        `);
+    bus.register(defs.deleteDebtCenter, async (id, { pg }, bus) => {
+      const center = await bus.exec(defs.getDebtCenter, id);
 
-      return center && formatDebtCenter(center);
+      if (!center) {
+        return null;
+      }
+
+      await pg.one<DbDebtCenter>(sql`
+        UPDATE debt_center SET deleted = TRUE WHERE id = ${id} RETURNING id
+      `);
+
+      await bus.exec(logEvent, {
+        type: 'debt-center.delete',
+        links: [{
+          type: 'center',
+          label: center.name,
+          target: {
+            type: 'debt-center',
+            id: center.id,
+          },
+        }],
+      });
+
+      return center;
     });
 
     bus.register(defs.updateDebtCenter, async (center, { pg }, bus) => {

@@ -42,6 +42,7 @@ import { ImportXMLStatement } from './import-xml-statement';
 import { MassCreateDebts } from './mass-create-debts';
 import { cva } from 'class-variance-authority';
 import { Menu, X } from 'react-feather';
+import { AuditEvents } from './audit';
 
 const sidebarCva = cva(
   `
@@ -271,6 +272,7 @@ const Admin = () => {
           <MenuItem path="/admin/emails">Emails</MenuItem>
           <MenuItem path="/admin/banking">Banking</MenuItem>
           <MenuItem path="/admin/reports">Reports</MenuItem>
+          <MenuItem path="/admin/audit">Audit</MenuItem>
           <MenuItem path="/admin/jobs">Jobs</MenuItem>
           <MenuItem path="/" active={false} className="mt-4">
             Back to public site
@@ -341,7 +343,8 @@ const Admin = () => {
                 <MassCreateDebts debtCenterId={params.id} />
               )}
             </Route>
-            <Route path="/admin/:rest*">
+            <Route path="/admin/audit" component={AuditEvents} />
+            <Route>
               <Redirect to="/admin/debt-centers" />
             </Route>
           </Switch>

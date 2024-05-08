@@ -15,11 +15,12 @@ import {
   PayerEmailPriority,
 } from '@bbat/common/build/src/types';
 import * as usersService from '@/modules/users/definitions';
+import * as audit from '@/modules/audit/definitions';
 import * as defs from './definitions';
 import sql from 'sql-template-strings';
 import { cents } from '@bbat/common/build/src/currency';
 import { BusContext } from '@/app';
-import { ExecutionContext } from '@/bus';
+import { ExecutionContext, PayloadOf } from '@/bus';
 import { Connection } from '@/db/connection';
 import routes from './api';
 import { createModule } from '@/module';
@@ -264,45 +265,81 @@ export default createModule({
       },
     );
 
+    const logPayerEvent = async (bus: ExecutionContext<BusContext>, payer: PayerProfile, type: Extract<PayloadOf<typeof audit.logEvent>['type'], `payer.${string}`>, details?: Record<string, unknown>, links: PayloadOf<typeof audit.logEvent>['links'] = []) => {
+      await bus.exec(audit.logEvent, {
+        type,
+        details,
+        links: [
+          {
+            type: 'object',
+            target: { type: 'payer', id: payer.id.value },
+            label: payer.name,
+          },
+          ...links,
+        ],
+      });
+    };
+
+    const logUpdate = async (bus: ExecutionContext<BusContext>, payer: PayerProfile, field: string, oldValue: unknown, newValue: unknown) => {
+      await logPayerEvent(bus, payer, 'payer.update', {
+        field,
+        oldValue,
+        newValue,
+      });
+    };
+
     bus.register(
       defs.updatePayerName,
       async ({ payerId, name }, { pg }, bus) => {
-        const updated = await pg.one<DbPayerProfileWithEmails>(sql`
-        UPDATE payer_profiles
-        SET name = ${name}
-        WHERE id = ${payerId.value}
-        RETURNING *
-      `);
+        const existingProfile = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
 
-        if (!updated) {
-          throw 'Could not update payer name';
+        if (!existingProfile) {
+          throw new Error('No such payer profile!');
         }
 
-        return {
-          ...formatPayerProfile(updated),
-          emails: await bus.exec(defs.getPayerEmails, payerId),
-        };
+        await pg.one<DbPayerProfileWithEmails>(sql`
+          UPDATE payer_profiles
+          SET name = ${name}
+          WHERE id = ${payerId.value}
+        `);
+
+        await logUpdate(bus, existingProfile, 'name', existingProfile.name, name);
+
+        const updated = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+
+        if (!updated) {
+          throw new Error('Failed to fetch updated payer profile!');
+        }
+
+        return updated;
       },
     );
 
     bus.register(
       defs.updatePayerDisabledStatus,
       async ({ payerId, disabled }, { pg }, bus) => {
-        const updated = await pg.one<DbPayerProfileWithEmails>(sql`
-        UPDATE payer_profiles
-        SET disabled = ${disabled}
-        WHERE id = ${payerId.value}
-        RETURNING *
-      `);
+        const existingProfile = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
 
-        if (!updated) {
-          throw 'Could not update payer profile disabled status';
+        if (!existingProfile) {
+          throw new Error('No such payer profile!');
         }
 
-        return {
-          ...formatPayerProfile(updated),
-          emails: await bus.exec(defs.getPayerEmails, payerId),
-        };
+        await pg.one<DbPayerProfileWithEmails>(sql`
+          UPDATE payer_profiles
+          SET disabled = ${disabled}
+          WHERE id = ${payerId.value}
+          RETURNING *
+        `);
+
+        await logUpdate(bus, existingProfile, 'disabled', existingProfile.disabled, disabled);
+
+        const updated = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+
+        if (!updated) {
+          throw new Error('Failed to fetch updated payer profile!');
+        }
+
+        return updated;
       },
     );
 
@@ -465,10 +502,18 @@ export default createModule({
           );
         }
 
-        return bus.exec(
+        const result = await bus.exec(
           defs.getPayerProfileByInternalIdentity,
           internalIdentity(payerProfile.id),
         );
+
+        if (!result) {
+          throw new Error('Failed to create payer profile!');
+        }
+
+        await logPayerEvent(bus, result, 'payer.create', { source: 'email' });
+
+        return result;
       },
     );
 
@@ -565,6 +610,8 @@ export default createModule({
         throw new Error('Failed to fetch created payer profile!');
       }
 
+      await logPayerEvent(bus, result, 'payer.create', { source: 'tkoaly' });
+
       return result;
     }
 
@@ -623,6 +670,12 @@ export default createModule({
       const debts = await pg.many<{ id: string }>(
         sql`UPDATE debt SET payer_id = ${primaryProfile.id.value} WHERE payer_id = ${secondaryProfile.id.value} RETURNING id`,
       );
+
+      await logPayerEvent(bus, primaryProfile, 'payer.merge', {}, [{
+        type: 'from',
+        target: { type: 'payer', id: secondaryProfile.name },
+        label: secondaryProfile.name,
+      }]);
 
       return debts.map(debt => debt.id);
     });
