@@ -54,7 +54,7 @@ const factory: RouterFactory = route => {
     .get('/list')
     .use(auth())
     .handler(async ({ jobs }) => {
-      const allJobs = await jobs.getJobs();
+      const allJobs = await jobs.getJobs(100);
 
       return ok(await Promise.all(allJobs.map(formatJob)));
     });

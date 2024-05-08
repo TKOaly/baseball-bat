@@ -142,10 +142,10 @@ export class JobService {
     return flow;
   }
 
-  async getJobs() {
+  async getJobs(limit?: number) {
     const producer = this.getFlowProducer();
     const queue = this.getQueue('main');
-    const jobs = await queue.getJobs(undefined);
+    const jobs = await queue.getJobs(undefined, 0, limit);
     const flows = await Promise.all(
       jobs
         .flatMap(job => (job.id ? [job.id] : []))
