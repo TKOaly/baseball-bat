@@ -5,7 +5,7 @@ import { Notification } from '@bbat/ui/notification';
 import { DialogTarget, useDialog } from '../../components/dialog';
 import { TextField } from '@bbat/ui/text-field';
 import { twMerge } from 'tailwind-merge';
-import { Dropdown } from '@bbat/ui/dropdown';
+import { Dropdown, DropdownItem } from '@bbat/ui/dropdown';
 
 import { useGetAccountingPeriodsQuery } from '../../api/accounting';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -167,23 +167,26 @@ const AccountingPeriodSelector = () => {
   );
   const dispatch = useAppDispatch();
 
+  const handleSelect = (period: number) => {
+    dispatch(
+      accountingPeriodSlice.actions.setActiveAccountingPeriod({ period }),
+    );
+  };
+
+  const label = activeAccountingPeriod
+    ? `${activeAccountingPeriod}`
+    : 'Loading...';
+
+  const openPeriods = (accountingPeriods ?? []).filter(p => !p.closed);
+
   return (
     <div className="mt-3 flex items-center gap-2 px-4">
       <span className="text-sm">Accounting Period: </span>
-      <Dropdown
-        flat
-        label={
-          activeAccountingPeriod ? `${activeAccountingPeriod}` : 'Loading...'
-        }
-        options={(accountingPeriods ?? [])
-          .filter(period => !period.closed)
-          .map(period => ({ value: period.year, text: `${period.year}` }))}
-        onSelect={period =>
-          dispatch(
-            accountingPeriodSlice.actions.setActiveAccountingPeriod({ period }),
-          )
-        }
-      />
+      <Dropdown flat label={label} onSelect={handleSelect}>
+        {openPeriods.map(({ year }) => (
+          <DropdownItem label={year.toString()} value={year} />
+        ))}
+      </Dropdown>
     </div>
   );
 };

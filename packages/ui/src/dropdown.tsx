@@ -31,6 +31,7 @@ import {
   safePolygon,
   shift,
   useRole,
+  useFloatingTree,
 } from '@floating-ui/react';
 import { cva } from 'class-variance-authority';
 
@@ -91,6 +92,7 @@ const DropdownComponent = forwardRef<
       options,
       searchable,
       scroll,
+      keepOpen,
       value,
       showArrow = true,
       ...props
@@ -99,6 +101,7 @@ const DropdownComponent = forwardRef<
   ) => {
     const parent = useContext(DropdownContext);
     const nodeId = useFloatingNodeId();
+    const tree = useFloatingTree();
     const parentId = useFloatingParentNodeId();
     const elementsRef = useRef([]);
     const labelsRef = useRef([] as string[]);
@@ -108,6 +111,22 @@ const DropdownComponent = forwardRef<
     const item = useListItem();
     const isNested = parentId !== null;
     const itemsRef = useRef<Map<number, ItemInfo>>(new Map());
+
+    useEffect(() => {
+      if (!tree) return;
+
+      const handleClose = () => {
+        if (!keepOpen) {
+          setOpen(false);
+        }
+      };
+
+      tree.events.on('close', handleClose);
+
+      return () => {
+        tree.events.off('close', handleClose);
+      };
+    }, [tree]);
 
     const { context, refs, floatingStyles } = useFloating({
       nodeId,
@@ -332,6 +351,7 @@ interface DropdownItemProps {
   label: string | React.ReactNode;
   aside?: string | React.ReactNode;
   disabled?: boolean;
+  keepOpen?: boolean;
 }
 
 const escapeRegExp = (value: string) =>
@@ -386,6 +406,8 @@ export const DropdownItem = forwardRef<
     dropdown.search !== '' &&
     !textValue.toLowerCase().includes(dropdown.search.toLowerCase());
 
+  const tree = useFloatingTree();
+
   const info = useMemo(
     () => ({
       visible: !isHidden,
@@ -421,6 +443,10 @@ export const DropdownItem = forwardRef<
           props.onClick?.(evt);
           props.onSelect?.(evt);
           dropdown.onSelect?.(value);
+
+          if (tree) {
+            tree.events.emit('close');
+          }
         },
         onFocus(evt: React.FocusEvent<HTMLButtonElement>) {
           props.onFocus?.(evt);
@@ -456,6 +482,7 @@ interface DropdownProps {
   showArrow?: boolean;
   value?: any;
   onSelect?: (value: any) => void;
+  keepOpen?: boolean;
 }
 
 export const Dropdown = forwardRef<
