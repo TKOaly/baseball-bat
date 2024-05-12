@@ -138,6 +138,7 @@ const FilterDropdownItem = ({
   return (
     <Dropdown
       searchable={rowValues.every(([_, v]) => typeof v === 'string')}
+      keepOpen
       flat
       scroll
       label={
@@ -684,6 +685,7 @@ export const Table = <
           <div className="sticky top-12 ml-5 mt-12 flex flex-col gap-2">
             <Dropdown
               flat
+              keepOpen
               label="Sort"
               options={columns.map(col => ({
                 text: (
@@ -713,7 +715,7 @@ export const Table = <
                 }
               }}
             />
-            <Dropdown flat label="Filter">
+            <Dropdown flat keepOpen label="Filter">
               {columns.map(col => (
                 <FilterDropdownItem
                   column={col}
