@@ -1,10 +1,10 @@
-import { Dropdown } from '@bbat/ui/src/dropdown';
+import { Dropdown, DropdownItem } from '@bbat/ui/src/dropdown';
 import { useTable } from './context';
-import { createRowHandle } from './row-handle';
 import { MoreVertical, Lock } from 'react-feather';
 import { RowAction } from './table';
 import { StatusIndicator } from './status-indicator';
 import { CellContent } from './cell';
+import { createRowHandle } from './row-handle';
 
 export const DataRow = ({ rowKey }: { rowKey: string }) => {
   const { dispatch, props, state, useRowState, useColumnOrder, useRowOrder } =
@@ -46,34 +46,40 @@ export const DataRow = ({ rowKey }: { rowKey: string }) => {
         className="row-menu"
       >
         <Dropdown
-          options={[
-            { text: 'Delete row', onSelect: () => handleDeleteRow(row.key) },
-            {
-              text: 'Add row below',
-              onSelect: () => handleAddRowBelow(row.key),
-            },
-            {
-              text: 'Lock row',
-              onSelect: () =>
-                dispatch({
-                  type: 'SET_ROW_LOCK',
-                  payload: { row: row.key, locked: true },
-                }),
-            },
-            ...props.rowActions.map((action: RowAction) => ({
-              text: action.label,
-              onSelect: () => {
-                action.execute(createRowHandle(state, dispatch, row.key));
-              },
-            })),
-          ]}
+          flat
           showArrow={false}
           label={
             <MoreVertical
               style={{ width: '1.2em', color: 'rgba(0,0,0,0.5)' }}
             />
           }
-        />
+        >
+          <DropdownItem
+            label="Delete row"
+            onSelect={() => handleDeleteRow(row.key)}
+          />
+          <DropdownItem
+            label="Add row below"
+            onSelect={() => handleAddRowBelow(row.key)}
+          />
+          <DropdownItem
+            label="Lock row"
+            onSelect={() =>
+              dispatch({
+                type: 'SET_ROW_LOCK',
+                payload: { row: row.key, locked: true },
+              })
+            }
+          />
+          {props.rowActions.map((action: RowAction) => (
+            <DropdownItem
+              label={action.label}
+              onSelect={() => {
+                -action.execute(createRowHandle(state, dispatch, row.key));
+              }}
+            />
+          ))}
+        </Dropdown>
       </th>
       <th style={{ padding: 0, borderRightColor: '#fafafa' }}>
         <div style={{ display: 'flex', gap: '0.5em' }}>

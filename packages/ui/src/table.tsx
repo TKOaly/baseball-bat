@@ -11,7 +11,6 @@ import {
   MinusSquare,
   MoreVertical,
   PlusSquare,
-  Square,
   TrendingDown,
   TrendingUp,
 } from 'react-feather';
@@ -138,24 +137,24 @@ const FilterDropdownItem = ({
 
   return (
     <Dropdown
-      label=""
+      searchable={rowValues.every(([_, v]) => typeof v === 'string')}
+      flat
       scroll
-      renderTrigger={props => (
+      label={
         <div
-          {...props}
           className={`flex ${
             options.allowlist.length + options.blocklist.length > 0 &&
             'text-blue-500'
-          } items-center ${props.style}`}
+          } grow items-center justify-between`}
         >
           <span className="flex-grow">{column.name}</span>
-          <span className="relative text-gray-400">
+          <span className="relative ml-2 text-gray-400">
             {options.allowlist.length + options.blocklist.length > 0
               ? 'Active'
               : 'Any'}
           </span>
         </div>
-      )}
+      }
       options={pipe(
         rowValues,
         reduce(
@@ -182,9 +181,9 @@ const FilterDropdownItem = ({
           const compareValue = compareBy(value);
 
           if (options.allowlist.includes(compareValue)) {
-            icon = <PlusSquare className="h-4 text-green-500" />;
+            icon = <PlusSquare className="size-4 text-green-500" />;
           } else if (options.blocklist.includes(compareValue)) {
-            icon = <MinusSquare className="h-4 text-red-500" />;
+            icon = <MinusSquare className="size-4 text-red-500" />;
           }
 
           let displayValue = String(value);
@@ -201,12 +200,8 @@ const FilterDropdownItem = ({
 
           return {
             value,
-            text: (
-              <div className="flex items-center">
-                <span className="flex-grow">{displayValue}</span>
-                {icon}
-              </div>
-            ),
+            label: icon,
+            text: displayValue,
           };
         }),
       )}
@@ -356,25 +351,25 @@ const TableRow = <R extends Row>({
         {actions && (
           <div
             className={`
-              relative flex items-center justify-center border-l border-r border-b-gray-100 border-l-gray-100 px-2 py-2
+              relative flex items-center justify-center border-l border-r border-b-gray-100 border-l-gray-100
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
           >
             <Dropdown
-              renderTrigger={props => (
-                <button {...props}>
-                  <MoreVertical />
-                </button>
-              )}
+              flat
+              label={<MoreVertical />}
               showArrow={false}
-              className="table-row-actions h-[24px]"
+              className="table-row-actions inline-block h-full w-full text-sm text-gray-500"
               options={actions
                 .filter(a =>
                   typeof a.disabled === 'function'
                     ? !a.disabled(data)
                     : !a.disabled,
                 )
-                .map(a => ({ ...a, onSelect: () => a.onSelect?.([data]) }))}
+                .map(a => ({
+                  text: a.text,
+                  onSelect: () => a.onSelect?.([data]),
+                }))}
             />
           </div>
         )}
@@ -679,7 +674,7 @@ export const Table = <
   return (
     <div
       role="table"
-      className={`table-component aa relative ${!hideTools && 'pr-[6em]'} ${
+      className={`table-component aa relative ${!hideTools && 'pr-[7em]'} ${
         refreshing ? 'refreshing' : ''
       }`}
       data-cy="table-view"
@@ -687,24 +682,25 @@ export const Table = <
       data-total-rows={rows.length}
     >
       {!hideTools && (
-        <div className="absolute bottom-0 right-0 top-0 w-[6em]">
+        <div className="absolute bottom-0 right-0 top-0 w-[7em]">
           <div className="sticky top-12 ml-5 mt-12 flex flex-col gap-2">
             <Dropdown
+              flat
               label="Sort"
               options={columns.map(col => ({
                 text: (
                   <div
                     className={`flex ${
                       sorting?.[0] === col.name && 'text-blue-500'
-                    } items-center`}
+                    } flex-grow items-center justify-between gap-2`}
                   >
                     <span className="flex-grow">{col.name}</span>
-                    {sorting?.[0] === col.name &&
+                    {(sorting?.[0] === col.name &&
                       (sorting[1] === 'asc' ? (
                         <TrendingUp className="h-4" />
                       ) : (
                         <TrendingDown className="h-4" />
-                      ))}
+                      ))) || <div className="mr-2 size-4" />}
                   </div>
                 ),
                 value: col.name,
@@ -719,35 +715,22 @@ export const Table = <
                 }
               }}
             />
+            <Dropdown flat label="Filter">
+              {columns.map(col => (
+                <FilterDropdownItem
+                  column={col}
+                  rows={rows}
+                  options={
+                    filters[col.name] ?? { allowlist: [], blocklist: [] }
+                  }
+                  onChange={options =>
+                    setFilters(prev => ({ ...prev, [col.name]: options }))
+                  }
+                />
+              ))}
+            </Dropdown>
             <Dropdown
-              label="Filter"
-              options={[
-                ...columns.map(col => ({
-                  text: (
-                    <FilterDropdownItem
-                      column={col}
-                      rows={rows}
-                      options={
-                        filters[col.name] ?? { allowlist: [], blocklist: [] }
-                      }
-                      onChange={options =>
-                        setFilters(prev => ({ ...prev, [col.name]: options }))
-                      }
-                    />
-                  ),
-                  value: col.name,
-                })),
-                { divider: true },
-                {
-                  text: (
-                    <div className="-ml-2 flex items-center gap-1">
-                      <Square className="h-4 text-gray-500" /> TKO-äly member
-                    </div>
-                  ),
-                },
-              ]}
-            />
-            <Dropdown
+              flat
               label="Actions"
               options={[
                 {
@@ -765,18 +748,20 @@ export const Table = <
                     ),
                 },
                 ...(availableActions.length > 0
-                  ? [
+                  ? ([
                       { divider: true },
                       ...availableActions.map(a => ({
-                        ...a,
-                        onSelect: () =>
+                        value: a.key,
+                        text: a.text,
+                        onSelect: () => {
                           a.onSelect?.(
                             selectedRows
                               .map(key => sortedRows.find(r => r.key === key))
                               .filter(identity) as R[],
-                          ),
+                          );
+                        },
                       })),
-                    ]
+                    ] as const)
                   : []),
               ]}
             />

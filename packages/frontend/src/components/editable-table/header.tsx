@@ -97,6 +97,7 @@ export const ColumnHeader = ({ columnKey: key }: { columnKey: string }) => {
       <th ref={ref} onDoubleClick={handleSize}>
         <div className="flex items-center">
           <Dropdown
+            flat
             label={
               props.columnTypes.find((c: ColumnType) => c.key === column.type)
                 ?.label ?? 'No type'
@@ -116,12 +117,9 @@ export const ColumnHeader = ({ columnKey: key }: { columnKey: string }) => {
           />
           <div className="grow" />
           <Dropdown
+            flat
             className="flex"
-            renderTrigger={props => (
-              <button {...props}>
-                <MoreVertical style={{ width: '1.2em' }} />
-              </button>
-            )}
+            label={<MoreVertical style={{ width: '1.2em' }} />}
             showArrow={false}
             options={[
               { text: 'Fit to content', onSelect: handleSize },
