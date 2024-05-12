@@ -172,9 +172,9 @@ class Row {
   }
 
   async action(name: string | RegExp) {
-    const trigger = this.locator.locator('.table-row-actions > button');
-    const menuId = await trigger.getAttribute('aria-controls');
+    const trigger = this.locator.locator('.table-row-actions');
     await trigger.click();
+    const menuId = await trigger.getAttribute('aria-controls');
     await this.page
       .locator(`[id='${menuId}']`)
       .getByRole('menuitem', { name })
