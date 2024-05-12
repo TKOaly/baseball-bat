@@ -283,31 +283,28 @@ const TableRow = <R extends Row>({
         )}
       >
         {selectable && (
-          <div
+          <button
             className={`
               relative flex items-center justify-center border-l border-b-gray-100 px-3 py-2
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
+            onClick={evt => {
+              evt.stopPropagation();
+              toggleSelection(data.key);
+            }}
           >
-            <button
-              onClick={evt => {
-                toggleSelection(data.key);
-                evt.stopPropagation();
-              }}
-            >
-              {selected ? (
-                <FilledDisc
-                  className="text-blue-500"
-                  style={{ width: '1em', strokeWidth: '2.5px' }}
-                />
-              ) : (
-                <Circle
-                  className="text-gray-400"
-                  style={{ width: '1em', strokeWidth: '2.5px' }}
-                />
-              )}
-            </button>
-          </div>
+            {selected ? (
+              <FilledDisc
+                className="text-blue-500"
+                style={{ width: '1em', strokeWidth: '2.5px' }}
+              />
+            ) : (
+              <Circle
+                className="text-gray-400"
+                style={{ width: '1em', strokeWidth: '2.5px' }}
+              />
+            )}
+          </button>
         )}
         {columns.map((column, columnIndex) => {
           const value = getRowColumnValue(column, data);
@@ -354,6 +351,7 @@ const TableRow = <R extends Row>({
               relative flex items-center justify-center border-l border-r border-b-gray-100 border-l-gray-100
               ${rowIndex < rowCount - 1 && 'border-b'}
             `}
+            onClick={evt => evt.stopPropagation()}
           >
             <Dropdown
               flat
