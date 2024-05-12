@@ -136,8 +136,6 @@ export const GlobalSearchDialog = ({
               ]}
               name="type"
               value={type}
-              createCustomOption={() => ({})}
-              formatCustomOption={() => 'Asd'}
               label="Type"
               onSelect={value => setType(value)}
             />
