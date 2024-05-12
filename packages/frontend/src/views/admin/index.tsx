@@ -171,6 +171,7 @@ const AccountingPeriodSelector = () => {
     <div className="mt-3 flex items-center gap-2 px-4">
       <span className="text-sm">Accounting Period: </span>
       <Dropdown
+        flat
         label={
           activeAccountingPeriod ? `${activeAccountingPeriod}` : 'Loading...'
         }
