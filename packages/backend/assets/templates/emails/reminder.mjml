@@ -18,8 +18,7 @@
       <mj-column>
         <mj-text font-size="20px">Hi, <%- receiverName %>!</mj-text>
         <mj-text>
-          Your invoice <%- number %> from TKO-äly ry was due at <%-
-          formatDate(dueDate) %>. Please pay the amount below as soon as
+          Your invoice <%- number %> from TKO-äly ry <% if (dueDate) { %> was due at <%- formatDate(dueDate) %><% } else { %> is due<% } %>. Please pay the amount below as soon as
           possible. The payment details as well as a breakdown of the invoice's
           contents can be found at the end of this message.
         </mj-text>
@@ -143,6 +142,7 @@
             </th>
             <td><%- receiverName %></td>
           </tr>
+          <% if (date) { %>
           <tr>
             <th
               style="
@@ -156,6 +156,8 @@
             </th>
             <td><%- formatDate(date) %></td>
           </tr>
+          <% } %>
+          <% if (dueDate) { %>
           <tr>
             <th
               style="
@@ -169,6 +171,7 @@
             </th>
             <td><%- formatDate(dueDate) %></td>
           </tr>
+          <% } %>
           <tr>
             <th
               style="
@@ -238,8 +241,7 @@
 
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Virtual bar code</mj-text>
-        <% const barcode = formatBarcode("FI89 7997 7995 1312 86", amount,
-        referenceNumber, dueDate) %>
+        <% const barcode = formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate ?? date ?? new Date()) %>
         <mj-text><pre><%- barcode %></pre></mj-text>
         <mj-image src="<%- generateBarcodeImage(barcode) %>" />
       </mj-column>

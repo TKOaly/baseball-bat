@@ -16,8 +16,6 @@ import {
   DateString,
   convertToDbDate,
   NewInvoice,
-  debtCenter,
-  AuditEvent,
 } from '@bbat/common/build/src/types';
 import sql, { SQLStatement } from 'sql-template-strings';
 import * as t from 'io-ts';
@@ -152,7 +150,7 @@ export default createModule({
           },
           ...links,
         ],
-      })
+      });
     };
 
     const linkPaymentToDebt = async (
@@ -1243,27 +1241,36 @@ export default createModule({
         const sessionPayerId =
           session?.authLevel === 'authenticated' ? session.payerId.value : null;
 
-        const debt = await bus.exec(defs.getDebt, debtId);
+        let debt = await bus.exec(defs.getDebt, debtId);
 
         if (!debt) {
           throw new Error('No such debt');
         }
 
-        const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+        const payer = await bus.exec(
+          payerService.getPayerProfileByInternalIdentity,
+          debt.payerId,
+        );
 
         if (!payer) {
           throw new Error('Failed to fetch payer!');
         }
 
         await pg.do(sql`
-        UPDATE debt
-        SET
-          published_at = NOW(),
-          published_by = ${sessionPayerId},
-          date = COALESCE(date, NOW()),
-          due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
-        WHERE id = ${debtId}
-      `);
+          UPDATE debt
+          SET
+            published_at = NOW(),
+            published_by = ${sessionPayerId},
+            date = COALESCE(date, NOW()),
+            due_date = COALESCE(due_date, NOW() + MAKE_INTERVAL(days => payment_condition))
+          WHERE id = ${debtId}
+        `);
+
+        debt = await bus.exec(defs.getDebt, debtId);
+
+        if (!debt) {
+          throw new Error('Failed to fetch debt after publishing!');
+        }
 
         const defaultPayment = debt.defaultPayment
           ? await bus.exec(paymentService.getPayment, debt.defaultPayment)
@@ -1303,7 +1310,7 @@ export default createModule({
                 type: 'payer',
                 id: debt.payerId.value,
               },
-            }
+            },
           ],
         });
 
@@ -1430,18 +1437,34 @@ export default createModule({
         A.traverse(T.ApplicativePar)(([field, oldValue]) => async () => {
           const newValue = newValues[field];
 
-          if (newValue === undefined || newValue === oldValue || (newValue instanceof Date && oldValue instanceof Date && isSameDay(newValue, oldValue))) {
+          if (
+            newValue === undefined ||
+            newValue === oldValue ||
+            (newValue instanceof Date &&
+              oldValue instanceof Date &&
+              isSameDay(newValue, oldValue))
+          ) {
             return;
           }
 
-          let links: PayloadOf<typeof logEvent>['links'] = [];
+          const links: PayloadOf<typeof logEvent>['links'] = [];
 
           let from = oldValue;
           let to = newValue;
 
-          if (field === 'payerId' && typeof newValue == 'string' && typeof oldValue == 'string') {
-            const oldPayer = await bus.exec(payerService.getPayerProfileByInternalIdentity, internalIdentity(oldValue));
-            const newPayer = await bus.exec(payerService.getPayerProfileByInternalIdentity, internalIdentity(newValue));
+          if (
+            field === 'payerId' &&
+            typeof newValue == 'string' &&
+            typeof oldValue == 'string'
+          ) {
+            const oldPayer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
+              internalIdentity(oldValue),
+            );
+            const newPayer = await bus.exec(
+              payerService.getPayerProfileByInternalIdentity,
+              internalIdentity(newValue),
+            );
 
             if (!oldPayer || !newPayer) {
               throw new Error('Could not find payer!');
@@ -1469,9 +1492,19 @@ export default createModule({
             });
           }
 
-          if (field === 'centerId' && typeof newValue == 'string' && typeof oldValue == 'string') {
-            const oldCenter = await bus.exec(debtCentersService.getDebtCenter, oldValue);
-            const newCenter = await bus.exec(debtCentersService.getDebtCenter, newValue);
+          if (
+            field === 'centerId' &&
+            typeof newValue == 'string' &&
+            typeof oldValue == 'string'
+          ) {
+            const oldCenter = await bus.exec(
+              debtCentersService.getDebtCenter,
+              oldValue,
+            );
+            const newCenter = await bus.exec(
+              debtCentersService.getDebtCenter,
+              newValue,
+            );
 
             if (!oldCenter || !newCenter) {
               throw new Error('Could not find debt center!');
@@ -1479,7 +1512,7 @@ export default createModule({
 
             from = oldCenter.name;
             to = newCenter.name;
-            
+
             links.push({
               type: 'from',
               target: {
@@ -1528,8 +1561,10 @@ export default createModule({
       if (debt.components) {
         const components = debt.components;
 
-        const allComponents = await bus.exec(defs.getDebtComponentsByCenter, existingDebt.debtCenterId);
-
+        const allComponents = await bus.exec(
+          defs.getDebtComponentsByCenter,
+          existingDebt.debtCenterId,
+        );
 
         const newComponents = pipe(
           debt.components,
@@ -1551,7 +1586,7 @@ export default createModule({
               INSERT INTO debt_component_mapping (debt_id, debt_component_id) VALUES (${debt.id}, ${id})
             `);
 
-            const component = allComponents.find((c) => c.id === id);
+            const component = allComponents.find(c => c.id === id);
 
             await bus.exec(logEvent, {
               type: 'debt.update.add-component',
@@ -1581,7 +1616,7 @@ export default createModule({
               sql`DELETE FROM debt_component_mapping WHERE debt_id = ${debt.id} AND debt_component_id = ${id}`,
             );
 
-            const component = allComponents.find((c) => c.id === id);
+            const component = allComponents.find(c => c.id === id);
 
             await bus.exec(logEvent, {
               type: 'debt.update.remove-component',
@@ -1707,7 +1742,10 @@ export default createModule({
         throw new Error('Cannot delete published debts');
       }
 
-      const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+      const payer = await bus.exec(
+        payerService.getPayerProfileByInternalIdentity,
+        debt.payerId,
+      );
 
       if (!payer) {
         throw new Error('Could not find payer for debt!');
@@ -1743,7 +1781,7 @@ export default createModule({
             },
           },
         ],
-      })
+      });
     });
 
     bus.register(defs.creditDebt, async (id, { pg, session }, bus) => {
@@ -1760,7 +1798,10 @@ export default createModule({
         throw new Error('Cannot credit unpublished debts');
       }
 
-      const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+      const payer = await bus.exec(
+        payerService.getPayerProfileByInternalIdentity,
+        debt.payerId,
+      );
 
       if (!payer) {
         throw new Error('Could not fetch payer!');
@@ -1788,7 +1829,7 @@ export default createModule({
         links: [
           {
             type: 'payer',
-            label: payer.name, 
+            label: payer.name,
             target: {
               type: 'payer',
               id: payer.id.value,
@@ -1944,8 +1985,10 @@ export default createModule({
           payload: {
             title: payment.title,
             number: payment.paymentNumber,
-            date: parseISO(payment.data.date),
-            dueDate: parseISO(payment.data.due_date),
+            date: payment.data.date ? parseISO(payment.data.date) : null,
+            dueDate: payment.data.due_date
+              ? parseISO(payment.data.due_date)
+              : null,
             amount: debt.total,
             debts: [debt],
             referenceNumber: payment.data.reference_number,
