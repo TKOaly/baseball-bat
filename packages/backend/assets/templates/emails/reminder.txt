@@ -1,4 +1,4 @@
-Your invoice <%- number %> from TKO-äly ry was due at <%- formatDate(dueDate) %>.
+Your invoice <%- number %> from TKO-äly ry <%_ if (dueDate) { %> was due at <%- formatDate(dueDate) %>. <%_ } else { %> is due. <%_ } %>
 Please pay the amount below as soon as possible. The payment details as well as
 a breakdown of the invoice's contents can be found at the end of this message.
 
@@ -26,13 +26,13 @@ Payment details
 
 Title:             <%- title %>
 Invoice number:    <%- number %>
-Invoice date:      <%- formatDate(date) %>
+<% if (date) { _%> Invoice date:      <%- formatDate(date) %> <%_ } %>
 Invoice recipient: <%- receiverName %>
-Due date:          <%- formatDate(dueDate) %>
+<% if (dueDate) { _%> Due date:          <%- formatDate(dueDate) %> <%_ } %>
 Total amount:      <%- formatEuro(amount) %>
 Reference number:  <%- formatReferenceNumber(referenceNumber) %>
 Beneficiary:       TKO-äly ry
 Bnf. bank account: FI89 7997 7995 1312 86
 Bnf. BIC:          HOLVFIHH
 
-<%- formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate) %>
+<%- formatBarcode("FI89 7997 7995 1312 86", amount, referenceNumber, dueDate ?? date ?? new Date()) %>

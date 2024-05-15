@@ -26,6 +26,8 @@ type DebtCreationOptions = {
   center: string | { create: true; name: string };
   payer: string | { create: true; name: string; email: string };
   components: { name: string; amount: number }[];
+  paymentCondition?: number;
+  dueDate?: Date;
 };
 
 const createDebt = async (
@@ -45,6 +47,19 @@ const createDebt = async (
 
   await page.goto(`${bbat.url}/admin/debts/create`);
   await page.getByPlaceholder('Name').fill(debt.name);
+
+  if (debt.paymentCondition) {
+    await page
+      .getByPlaceholder('Payment Condition')
+      .fill(debt.paymentCondition.toString());
+  }
+
+  if (debt.dueDate) {
+    await page
+      .getByPlaceholder('Due Date')
+      .fill(format(debt.dueDate, 'dd.MM.yyyy'));
+  }
+
   await page
     .getByText('Center')
     .locator('..')
@@ -198,72 +213,93 @@ test('debt deletion', async ({ page, bbat }) => {
   await expect(table2.rows()).toHaveCount(0);
 });
 
-test('test publishing', async ({ page, bbat }) => {
-  await page.goto(bbat.url);
+const publishingTest = (
+  name: string,
+  options: Partial<DebtCreationOptions>,
+) => {
+  test(name, async ({ page, bbat }) => {
+    await page.goto(bbat.url);
 
-  await page
-    .context()
-    .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
+    await page
+      .context()
+      .addCookies([{ name: 'token', value: 'TEST-TOKEN', url: bbat.url }]);
 
-  await bbat.login({
-    screenName: 'John Smith',
-  });
+    await bbat.login({
+      screenName: 'John Smith',
+    });
 
-  await createDebt(bbat, {
-    name: 'Test Debt',
-    payer: {
-      create: true,
-      name: 'Matti',
-      email: 'matti@example.com',
-    },
-    center: {
-      create: true,
-      name: 'Test Center',
-    },
-    components: [
-      {
-        name: 'Test Component',
-        amount: 10.0,
+    await createDebt(bbat, {
+      name: 'Test Debt',
+      payer: {
+        create: true,
+        name: 'Matti',
+        email: 'matti@example.com',
       },
-    ],
+      center: {
+        create: true,
+        name: 'Test Center',
+      },
+      components: [
+        {
+          name: 'Test Component',
+          amount: 10.0,
+        },
+      ],
+      ...options,
+    });
+
+    await page.getByRole('button', { name: 'Publish' }).click();
+
+    await expect(bbat.getResourceField('Status')).toHaveText('Unpaid');
+    await expect(bbat.getResourceField('Published at')).toHaveText(
+      /[0-9]{2}.[0-9]{2}.[0-9]{4} [0-9]{2}:[0-9]{2} by John Smith/,
+    );
+    await expect(bbat.getResourceField('Due Date')).toHaveText(
+      format(addDays(new Date(), 14), 'dd.MM.yyyy'),
+    );
+
+    await expect(
+      page.getByRole('button', { name: 'Publish' }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Delete' }),
+    ).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Credit' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Credit' }),
+    ).not.toBeDisabled();
+
+    const table = bbat.table(
+      bbat.getResourceSection('Payments').getByRole('table'),
+    );
+    await expect(table.rows()).toHaveCount(1);
+    const row = table.row(0);
+
+    await expect(row.getCell('Name')).toHaveText('Test Debt');
+    await expect(row.getCell('Status')).toHaveText('Unpaid');
+    await expect(row.getCell('Number')).toHaveText(
+      `${getYear(new Date())}-0000`,
+    );
+    await expect(row.getCell('Balance')).toHaveText(formatEuro(euro(-10)));
+
+    const table2 = bbat.table(
+      bbat.getResourceSection('Emails').getByRole('table'),
+    );
+    await expect(table2.rows()).toHaveCount(1);
+    const row2 = table2.row(0);
+
+    await expect(row2.getCell('Recipient')).toHaveText('matti@example.com');
+    await expect(row2.getCell('Subject')).toHaveText(
+      '[Lasku / Invoice] Test Debt',
+    );
   });
+};
 
-  await page.getByRole('button', { name: 'Publish' }).click();
-
-  await expect(bbat.getResourceField('Status')).toHaveText('Unpaid');
-  await expect(bbat.getResourceField('Published at')).toHaveText(
-    /[0-9]{2}.[0-9]{2}.[0-9]{4} [0-9]{2}:[0-9]{2} by John Smith/,
-  );
-  await expect(bbat.getResourceField('Due Date')).toHaveText(
-    format(addDays(new Date(), 14), 'dd.MM.yyyy'),
-  );
-
-  await expect(page.getByRole('button', { name: 'Publish' })).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete' })).not.toBeVisible();
-  await expect(page.getByRole('button', { name: 'Credit' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Credit' })).not.toBeDisabled();
-
-  const table = bbat.table(
-    bbat.getResourceSection('Payments').getByRole('table'),
-  );
-  await expect(table.rows()).toHaveCount(1);
-  const row = table.row(0);
-
-  await expect(row.getCell('Name')).toHaveText('Test Debt');
-  await expect(row.getCell('Status')).toHaveText('Unpaid');
-  await expect(row.getCell('Number')).toHaveText(`${getYear(new Date())}-0000`);
-  await expect(row.getCell('Balance')).toHaveText(formatEuro(euro(-10)));
-
-  const table2 = bbat.table(
-    bbat.getResourceSection('Emails').getByRole('table'),
-  );
-  await expect(table2.rows()).toHaveCount(1);
-  const row2 = table2.row(0);
-
-  await expect(row2.getCell('Recipient')).toHaveText('matti@example.com');
-  await expect(row2.getCell('Subject')).toHaveText(
-    '[Lasku / Invoice] Test Debt',
-  );
+publishingTest('publishing a debt with an explicit due date', {
+  dueDate: addDays(new Date(), 31),
+});
+publishingTest('publishing a debt with a payment condition', {
+  paymentCondition: 31,
 });
 
 test.describe('CSV import', () => {
