@@ -5,6 +5,7 @@ import { useGetDebtsByPaymentQuery } from '../../api/debt';
 import { formatEuro } from '@bbat/common/src/currency';
 import { isPaymentInvoice, PaymentEvent } from '@bbat/common/src/types';
 import { RouteComponentProps } from 'wouter';
+import { Loader } from 'react-feather';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
@@ -39,7 +40,12 @@ export const PaymentDetails = ({ params }: Props) => {
   const { data: debts } = useGetDebtsByPaymentQuery(id, { skip: !payment });
 
   if (isLoading || !payment || !debts) {
-    return <span>Loading...</span>;
+    return (
+      <div className="flex justify-center">
+        <Loader className="size-20 animate-[spin_3s_linear] text-yellow-500 drop-shadow-lg" />
+        ;
+      </div>
+    );
   }
 
   return (
@@ -49,7 +55,7 @@ export const PaymentDetails = ({ params }: Props) => {
           {t('invoiceDetailsHeader')}
         </h4>
         <div className="grid grid-cols-1 gap-5 gap-y-3 sm:grid-cols-2 sm:gap-y-5 md:grid-cols-3">
-          <div>
+          <div className="col-span-full">
             <div className="text-sm text-zinc-500">
               {t('invoiceTitleHeader')}
             </div>
@@ -89,7 +95,9 @@ export const PaymentDetails = ({ params }: Props) => {
                 <div className="text-sm text-zinc-500">
                   {t('invoiceReferenceNumberHeader')}
                 </div>
-                <div className="">{payment.data.reference_number}</div>
+                <div className="">
+                  {payment.data.reference_number?.replace(/.{4}/g, '$& ')}
+                </div>
               </div>
               <div>
                 <div className="text-sm text-zinc-500">
@@ -106,19 +114,19 @@ export const PaymentDetails = ({ params }: Props) => {
             </>
           )}
           <div>
-            <div className="text-sm text-zinc-500">
-              {t('paymentStatusLabel')}
-            </div>
+            <div className="text-sm text-zinc-500">{t('statusLabel')}</div>
             <div className="">{t(`paymentStatus.${payment.status}`)}</div>
           </div>
-          <div className="col-span-full">
-            <div className="text-sm text-zinc-500">
-              {t('paymentMessageLabel')}
+          {payment.message && (
+            <div className="col-span-full">
+              <div className="mb-2 text-sm text-zinc-500">
+                {t('paymentMessageLabel')}
+              </div>
+              <p className="overflow-auto whitespace-pre rounded bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
+                {payment.message}
+              </p>
             </div>
-            <p className="overflow-auto whitespace-pre rounded-sm bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
-              {payment.message}
-            </p>
-          </div>
+          )}
         </div>
       </div>
 
