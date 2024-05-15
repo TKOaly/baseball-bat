@@ -6,6 +6,7 @@ import { useGetPaymentsByDebtQuery } from '../../api/payments';
 import { RouteComponentProps } from 'wouter';
 import { isPaymentInvoice } from '@bbat/common/src/types';
 import { DebtStatusBadge } from '../../components/debt-status-badge';
+import { Loader } from 'react-feather';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
@@ -24,7 +25,12 @@ export const DebtDetails = ({ params }: Props) => {
     useGetPaymentsByDebtQuery(params.id);
 
   if (!debt || !payments || isLoading || paymentsAreLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center">
+        <Loader className="size-20 animate-[spin_3s_linear] text-yellow-500 drop-shadow-lg" />
+        ;
+      </div>
+    );
   }
 
   const defaultPayment = (payments || []).find(
@@ -109,7 +115,10 @@ export const DebtDetails = ({ params }: Props) => {
                     {t('invoiceReferenceNumberHeader')}
                   </div>
                   <div className="">
-                    {defaultPayment.data?.reference_number}
+                    {defaultPayment.data?.reference_number?.replace(
+                      /.{4}/g,
+                      '$& ',
+                    )}
                   </div>
                 </div>
                 <div>
@@ -134,16 +143,20 @@ export const DebtDetails = ({ params }: Props) => {
             </div>
             <div>
               <div className="text-sm text-zinc-500">{t('statusLabel')}</div>
-              <div className="">{defaultPayment.status}</div>
-            </div>
-            <div className="col-span-full">
-              <div className="text-sm text-zinc-500">
-                {t('paymentMessageLabel')}
+              <div className="">
+                {t(`paymentStatus.${defaultPayment.status}`)}
               </div>
-              <p className="overflow-auto whitespace-pre rounded-sm bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
-                {defaultPayment.message}
-              </p>
             </div>
+            {defaultPayment.message && (
+              <div className="col-span-full">
+                <div className="text-sm text-zinc-500">
+                  {t('paymentMessageLabel')}
+                </div>
+                <p className="overflow-auto whitespace-pre rounded bg-zinc-50 px-4 py-3 font-mono text-sm shadow-md">
+                  {defaultPayment.message}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

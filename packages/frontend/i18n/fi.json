@@ -39,6 +39,8 @@
     "paymentDetails": {
       "amountLabel": "Summa",
       "dueDateLabel": "Eräpäivä",
+      "dateLabel": "Päiväys",
+      "statusLabel": "Tila",
       "invoiceDetailsHeader": "Maksun tiedot",
       "unpaidBadge": "Maksamatta",
       "invoiceTitleHeader": "Otsikko",
@@ -50,7 +52,7 @@
       "invoiceBeneficaryNameHeader": "Maksun saaja",
       "invoiceBeneficaryAccountHeader": "Vastaanottajan tilinumero",
       "invoiceBICHeader": "BIC",
-      "paymentStatusLabel": "Tila",
+      "statusLabel": "Tila",
       "paymentMessageLabel": "Viesti",
       "timelineHeader": "Maksun aikajana",
       "paymentStatus": {
