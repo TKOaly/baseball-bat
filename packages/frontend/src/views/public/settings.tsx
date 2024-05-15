@@ -56,7 +56,7 @@ export const Settings = () => {
                 { value: 'fi', text: 'Suomi' },
               ]}
             />
-            <InputGroup
+            {/*<InputGroup
               component={DropdownField}
               name="emailLanguage"
               label={t('emailLanguageLabel')}
@@ -64,7 +64,7 @@ export const Settings = () => {
                 { value: 'en', text: t('english') },
                 { value: 'fi', text: t('finnish') },
               ]}
-            />
+            />*/}
             <InputGroup
               label={t('emailsLabel')}
               fullWidth
