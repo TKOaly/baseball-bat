@@ -43,6 +43,8 @@ import { MassCreateDebts } from './mass-create-debts';
 import { cva } from 'class-variance-authority';
 import { Menu, X } from 'react-feather';
 import { AuditEvents } from './audit';
+import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorPage } from './error-page';
 
 const sidebarCva = cva(
   `
@@ -287,71 +289,76 @@ const Admin = () => {
       </div>
       <div className={contentCva({ sidebarOpen })}>
         <div className="w-full flex-grow px-12">
-          <Switch>
-            <Route path="/admin/debt-centers" component={DebtCentersListing} />
-            <Route
-              path="/admin/debt-centers/create"
-              component={CreateDebtCenter}
-            />
-            <Route
-              path="/admin/debt-centers/create-from-event"
-              component={CreateDebtCenterFromEvent}
-            />
-            <Route
-              path="/admin/debt-centers/:id/edit"
-              component={EditDebtCenter}
-            />
-            <Route path="/admin/debt-centers/:id">
-              {({ id }: { id: string }) => <DebtCenterDetails id={id} />}
-            </Route>
-            <Route path="/admin/debts" component={DebtListing} />
-            <Route path="/admin/debt-centers/:id/create-debt">
-              {({ id }: { id: string }) => <CreateDebt debtCenterId={id} />}
-            </Route>
-            <Route path="/admin/debts/create">
-              <CreateDebt />
-            </Route>
-            <Route path="/admin/debts/create-debts-csv">
-              <MassCreateDebts />
-            </Route>
-            <Route path="/admin/debts/:id" component={DebtDetails} />
-            <Route path="/admin/debts/:id/edit" component={EditDebt} />
-            <Route path="/admin/payments" component={PaymentsListing} />
-            <Route path="/admin/payments/:id" component={PaymentDetails} />
-            <Route path="/admin/payers" component={PayerListing} />
-            <Route path="/admin/payers/:id" component={PayerDetails} />
-            <Route path="/admin/payers/:id/edit" component={EditPayer} />
-            <Route path="/admin/emails" component={EmailsListing} />
-            <Route path="/admin/emails/:id" component={EmailDetails} />
-            <Route path="/admin/banking" component={Banking} />
-            <Route path="/admin/banking/accounts" component={Banking} />
-            <Route
-              path="/admin/banking/accounts/create"
-              component={CreateBankAccount}
-            />
-            <Route path="/admin/banking/accounts/:id">
-              {({ id }) => <BankAccount iban={id} />}
-            </Route>
-            <Route path="/admin/banking/statements/:id">
-              {({ id }: { id: string }) => <BankStatement id={id} />}
-            </Route>
-            <Route path="/admin/reports" component={ReportsListing} />
-            <Route path="/admin/jobs" component={JobsListing} />
-            <Route path="/admin/jobs/:queue/:id" component={JobDetails} />
-            <Route
-              path="/admin/banking/import-statement"
-              component={ImportXMLStatement}
-            />
-            <Route path="/admin/debt-centers/:id/create-debts-csv">
-              {(params: { id: string }) => (
-                <MassCreateDebts debtCenterId={params.id} />
-              )}
-            </Route>
-            <Route path="/admin/audit" component={AuditEvents} />
-            <Route>
-              <Redirect to="/admin/debt-centers" />
-            </Route>
-          </Switch>
+          <ErrorBoundary FallbackComponent={ErrorPage}>
+            <Switch>
+              <Route
+                path="/admin/debt-centers"
+                component={DebtCentersListing}
+              />
+              <Route
+                path="/admin/debt-centers/create"
+                component={CreateDebtCenter}
+              />
+              <Route
+                path="/admin/debt-centers/create-from-event"
+                component={CreateDebtCenterFromEvent}
+              />
+              <Route
+                path="/admin/debt-centers/:id/edit"
+                component={EditDebtCenter}
+              />
+              <Route path="/admin/debt-centers/:id">
+                {({ id }: { id: string }) => <DebtCenterDetails id={id} />}
+              </Route>
+              <Route path="/admin/debts" component={DebtListing} />
+              <Route path="/admin/debt-centers/:id/create-debt">
+                {({ id }: { id: string }) => <CreateDebt debtCenterId={id} />}
+              </Route>
+              <Route path="/admin/debts/create">
+                <CreateDebt />
+              </Route>
+              <Route path="/admin/debts/create-debts-csv">
+                <MassCreateDebts />
+              </Route>
+              <Route path="/admin/debts/:id" component={DebtDetails} />
+              <Route path="/admin/debts/:id/edit" component={EditDebt} />
+              <Route path="/admin/payments" component={PaymentsListing} />
+              <Route path="/admin/payments/:id" component={PaymentDetails} />
+              <Route path="/admin/payers" component={PayerListing} />
+              <Route path="/admin/payers/:id" component={PayerDetails} />
+              <Route path="/admin/payers/:id/edit" component={EditPayer} />
+              <Route path="/admin/emails" component={EmailsListing} />
+              <Route path="/admin/emails/:id" component={EmailDetails} />
+              <Route path="/admin/banking" component={Banking} />
+              <Route path="/admin/banking/accounts" component={Banking} />
+              <Route
+                path="/admin/banking/accounts/create"
+                component={CreateBankAccount}
+              />
+              <Route path="/admin/banking/accounts/:id">
+                {({ id }) => <BankAccount iban={id} />}
+              </Route>
+              <Route path="/admin/banking/statements/:id">
+                {({ id }: { id: string }) => <BankStatement id={id} />}
+              </Route>
+              <Route path="/admin/reports" component={ReportsListing} />
+              <Route path="/admin/jobs" component={JobsListing} />
+              <Route path="/admin/jobs/:queue/:id" component={JobDetails} />
+              <Route
+                path="/admin/banking/import-statement"
+                component={ImportXMLStatement}
+              />
+              <Route path="/admin/debt-centers/:id/create-debts-csv">
+                {(params: { id: string }) => (
+                  <MassCreateDebts debtCenterId={params.id} />
+                )}
+              </Route>
+              <Route path="/admin/audit" component={AuditEvents} />
+              <Route>
+                <Redirect to="/admin/debt-centers" />
+              </Route>
+            </Switch>
+          </ErrorBoundary>
         </div>
       </div>
       <div onClick={evt => evt.stopPropagation()} data-cy="dialogs">
