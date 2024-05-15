@@ -496,6 +496,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
+      react-error-boundary:
+        specifier: ^4.0.13
+        version: 4.0.13(react@18.2.0)
       react-feather:
         specifier: ^2.0.10
         version: 2.0.10(react@18.2.0)
@@ -7067,6 +7070,11 @@ packages:
     peerDependencies:
       react: ^0.14.8 || ^15.0.1 || ^16.0.0 || ^17.0.1 || ^18.0.0
       react-dom: ^0.14.8 || ^15.0.1 || ^16.0.0 || ^17.0.1 || ^18.0.0
+
+  react-error-boundary@4.0.13:
+    resolution: {integrity: sha512-b6PwbdSv8XeOSYvjt8LpgpKrZ0yGdtZokYwkwV2wlcZbxgopHX/hgPl5VgpnoVOWd868n1hktM8Qm4b+02MiLQ==}
+    peerDependencies:
+      react: '>=16.13.1'
 
   react-fast-compare@2.0.4:
     resolution: {integrity: sha512-suNP+J1VU1MWFKcyt7RtjiSWUjvidmQSlqu+eHslq+342xCbGTYmC0mEhPCOHxlW0CywylOC1u2DFAT+bv4dBw==}
@@ -14616,7 +14624,7 @@ snapshots:
 
   mjml-accordion@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14624,7 +14632,7 @@ snapshots:
 
   mjml-body@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14634,7 +14642,7 @@ snapshots:
 
   mjml-button@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14642,7 +14650,7 @@ snapshots:
 
   mjml-carousel@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14650,7 +14658,7 @@ snapshots:
 
   mjml-cli@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       chokidar: 3.6.0
       glob: 10.3.10
       html-minifier: 4.0.0
@@ -14667,7 +14675,7 @@ snapshots:
 
   mjml-column@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14675,7 +14683,7 @@ snapshots:
 
   mjml-core@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       cheerio: 1.0.0-rc.12
       detect-node: 2.1.0
       html-minifier: 4.0.0
@@ -14690,7 +14698,7 @@ snapshots:
 
   mjml-divider@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14698,7 +14706,7 @@ snapshots:
 
   mjml-group@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14706,7 +14714,7 @@ snapshots:
 
   mjml-head-attributes@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14714,7 +14722,7 @@ snapshots:
 
   mjml-head-breakpoint@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14722,7 +14730,7 @@ snapshots:
 
   mjml-head-font@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14730,7 +14738,7 @@ snapshots:
 
   mjml-head-html-attributes@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14738,7 +14746,7 @@ snapshots:
 
   mjml-head-preview@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14746,7 +14754,7 @@ snapshots:
 
   mjml-head-style@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14754,7 +14762,7 @@ snapshots:
 
   mjml-head-title@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14762,7 +14770,7 @@ snapshots:
 
   mjml-head@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14770,7 +14778,7 @@ snapshots:
 
   mjml-hero@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14778,7 +14786,7 @@ snapshots:
 
   mjml-image@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14786,7 +14794,7 @@ snapshots:
 
   mjml-migrate@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       js-beautify: 1.15.1
       lodash: 4.17.21
       mjml-core: 4.15.3
@@ -14797,7 +14805,7 @@ snapshots:
 
   mjml-navbar@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14805,14 +14813,14 @@ snapshots:
 
   mjml-parser-xml@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       detect-node: 2.1.0
       htmlparser2: 9.1.0
       lodash: 4.17.21
 
   mjml-preset-core@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       mjml-accordion: 4.15.3
       mjml-body: 4.15.3
       mjml-button: 4.15.3
@@ -14843,7 +14851,7 @@ snapshots:
 
   mjml-raw@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14851,7 +14859,7 @@ snapshots:
 
   mjml-section@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14859,7 +14867,7 @@ snapshots:
 
   mjml-social@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14867,7 +14875,7 @@ snapshots:
 
   mjml-spacer@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14875,7 +14883,7 @@ snapshots:
 
   mjml-table@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14883,7 +14891,7 @@ snapshots:
 
   mjml-text@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
     transitivePeerDependencies:
@@ -14891,11 +14899,11 @@ snapshots:
 
   mjml-validator@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
 
   mjml-wrapper@4.15.3:
     dependencies:
-      '@babel/runtime': 7.24.0
+      '@babel/runtime': 7.24.4
       lodash: 4.17.21
       mjml-core: 4.15.3
       mjml-section: 4.15.3
@@ -15939,6 +15947,11 @@ snapshots:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-is: 18.1.0
+
+  react-error-boundary@4.0.13(react@18.2.0):
+    dependencies:
+      '@babel/runtime': 7.24.4
+      react: 18.2.0
 
   react-fast-compare@2.0.4: {}
 
