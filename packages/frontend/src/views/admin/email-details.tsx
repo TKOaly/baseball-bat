@@ -76,6 +76,7 @@ export const EmailDetails = ({ params }: Props) => {
           <div className="mt-1 overflow-hidden rounded-md border shadow">
             <iframe
               src={`/api/emails/${params.id}/render`}
+              data-testid="email-frame"
               className="h-[30em] w-full"
             ></iframe>
           </div>

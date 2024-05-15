@@ -2,7 +2,12 @@ import { Page, expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { addDays, format, getYear, subDays } from 'date-fns';
 import assert from 'assert';
-import { cents, euro, formatEuro } from '@bbat/common/currency';
+import {
+  cents,
+  euro,
+  formatEuro,
+  makeEurosNegative,
+} from '@bbat/common/currency';
 import {
   Event,
   Registration,
@@ -218,6 +223,15 @@ const publishingTest = (
   options: Partial<DebtCreationOptions>,
 ) => {
   test(name, async ({ page, bbat }) => {
+    const debtDetails = {
+      title: 'Test Debt',
+      amount: euro(10),
+      payerName: 'Matti',
+      payerEmail: 'matti@example.com',
+      componentName: 'Test Component',
+      centerName: 'Test Center',
+      ...options,
+    };
     await page.goto(bbat.url);
 
     await page
@@ -229,20 +243,20 @@ const publishingTest = (
     });
 
     await createDebt(bbat, {
-      name: 'Test Debt',
+      name: debtDetails.title,
       payer: {
         create: true,
-        name: 'Matti',
-        email: 'matti@example.com',
+        name: debtDetails.payerName,
+        email: debtDetails.payerEmail,
       },
       center: {
         create: true,
-        name: 'Test Center',
+        name: debtDetails.centerName,
       },
       components: [
         {
-          name: 'Test Component',
-          amount: 10.0,
+          name: debtDetails.componentName,
+          amount: debtDetails.amount.value / 100,
         },
       ],
       ...options,
@@ -254,8 +268,17 @@ const publishingTest = (
     await expect(bbat.getResourceField('Published at')).toHaveText(
       /[0-9]{2}.[0-9]{2}.[0-9]{4} [0-9]{2}:[0-9]{2} by John Smith/,
     );
+
+    let expectedDueDate = new Date();
+
+    if (options.dueDate) {
+      expectedDueDate = options.dueDate;
+    } else if (options.paymentCondition) {
+      expectedDueDate = addDays(new Date(), options.paymentCondition);
+    }
+
     await expect(bbat.getResourceField('Due Date')).toHaveText(
-      format(addDays(new Date(), 14), 'dd.MM.yyyy'),
+      format(expectedDueDate, 'dd.MM.yyyy'),
     );
 
     await expect(
@@ -275,12 +298,14 @@ const publishingTest = (
     await expect(table.rows()).toHaveCount(1);
     const row = table.row(0);
 
-    await expect(row.getCell('Name')).toHaveText('Test Debt');
+    await expect(row.getCell('Name')).toHaveText(debtDetails.title);
     await expect(row.getCell('Status')).toHaveText('Unpaid');
     await expect(row.getCell('Number')).toHaveText(
       `${getYear(new Date())}-0000`,
     );
-    await expect(row.getCell('Balance')).toHaveText(formatEuro(euro(-10)));
+    await expect(row.getCell('Balance')).toHaveText(
+      formatEuro(makeEurosNegative(debtDetails.amount)),
+    );
 
     const table2 = bbat.table(
       bbat.getResourceSection('Emails').getByRole('table'),
@@ -288,16 +313,31 @@ const publishingTest = (
     await expect(table2.rows()).toHaveCount(1);
     const row2 = table2.row(0);
 
-    await expect(row2.getCell('Recipient')).toHaveText('matti@example.com');
+    await expect(row2.getCell('Recipient')).toHaveText(debtDetails.payerEmail);
     await expect(row2.getCell('Subject')).toHaveText(
-      '[Lasku / Invoice] Test Debt',
+      `[Lasku / Invoice] ${debtDetails.title}`,
     );
+
+    await row2.getCell('Subject').click();
+
+    const email = page.frameLocator('[data-testid="email-frame"]');
+
+    const expectEmailField = (label: string, value: string) =>
+      expect(email.getByText(`${label} ${value}`)).toHaveCount(1);
+
+    await expectEmailField('Title', debtDetails.title);
+    await expectEmailField('Invoice number', `${getYear(new Date())}-0000`);
+    await expectEmailField('Invoice recipient', debtDetails.payerName);
+    await expectEmailField('Invoice date', format(new Date(), 'dd.MM.yyyy'));
+    await expectEmailField('Due date', format(expectedDueDate, 'dd.MM.yyyy'));
+    await expectEmailField('Total amount', formatEuro(debtDetails.amount));
   });
 };
 
 publishingTest('publishing a debt with an explicit due date', {
   dueDate: addDays(new Date(), 31),
 });
+
 publishingTest('publishing a debt with a payment condition', {
   paymentCondition: 31,
 });
