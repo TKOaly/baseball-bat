@@ -24,7 +24,7 @@ export const DebtStatusBadge = ({ debt }: { debt: Debt }) => {
   }
 
   return (
-    <div className="inline-flex gap-2">
+    <div className="inline-flex flex-col items-start gap-2 sm:flex-row sm:items-center">
       {debt.markedAsPaid && debt.status !== 'paid' && (
         <span className={debtStatusBadgeCva({ status: 'paid' })}>
           {t('markedAsPaid')}

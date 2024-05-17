@@ -195,7 +195,7 @@ export const Debts = () => {
     .reduce(sumEuroValues, euro(0));
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-5 md:space-y-10">
       <div className="rounded-md bg-white/90 p-8 shadow-xl">
         <h3 className="text-xl font-bold text-zinc-800">
           {t('welcomeHeader', { name: profile?.name })}
