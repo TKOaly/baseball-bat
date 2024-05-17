@@ -27,6 +27,11 @@
           <%- include('signature.mjml') %>
         </mj-text>
         <mj-divider border-color="#fc3" />
+        <mj-text>
+          You can now view your open invoices and your payment history, as well as pay online, by clicking the button below and logging into the billing service.   	
+        </mj-text>
+        <mj-button background-color="#fc3" color="black" href="<%- link %>">View and pay online</mj-button>
+        <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Invoice breakdown</mj-text>
         <mj-table>
           <% for (const debt of debts) { %>

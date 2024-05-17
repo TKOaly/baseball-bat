@@ -83,7 +83,7 @@ export const PublicSite = () => {
         </h1>
         <ul className="mb-5 flex flex-wrap justify-center gap-5 md:mt-8">
           <MenuItem to="/debts">{t('navigation.payments')}</MenuItem>
-          <MenuItem to="/settings">{t('navigation.settings')}</MenuItem>
+          {/* <MenuItem to="/settings">{t('navigation.settings')}</MenuItem> */}
           {session.data?.accessLevel === 'admin' && (
             <MenuItem to="/admin/debt-centers">
               {t('navigation.administration')} <Lock className="ml-2 size-4" />

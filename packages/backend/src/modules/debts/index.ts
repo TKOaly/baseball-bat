@@ -123,7 +123,7 @@ export default createModule({
 
   routes,
 
-  async setup({ bus, jobs }) {
+  async setup({ bus, config, jobs }) {
     reports(bus);
 
     const logDebtEvent = async (
@@ -1984,6 +1984,7 @@ export default createModule({
           template: 'reminder',
           payload: {
             title: payment.title,
+            link: config.appUrl,
             number: payment.paymentNumber,
             date: payment.data.date ? parseISO(payment.data.date) : null,
             dueDate: payment.data.due_date

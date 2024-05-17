@@ -88,54 +88,59 @@ const invoiceOptions = t.partial({
   dueDate: tt.date,
 });
 
-async function sendNewPaymentNotification(
-  bus: ExecutionContext<BusContext>,
-  payment: Payment,
-) {
-  const debts = await bus.exec(getDebtsByPayment, payment.id);
-
-  if (debts.length === 0) {
-    return E.left('Invoice has no debts associated with it!');
-  }
-
-  const payerId = debts[0].payerId;
-  const total = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
-  const payer = await bus.exec(getPayerProfileByInternalIdentity, payerId);
-  const email = await bus.exec(getPayerPrimaryEmail, payerId);
-
-  if (!email || !payer) {
-    return E.left('Could not determine email for payer');
-  }
-
-  if (!isPaymentInvoice(payment)) {
-    return E.left('Payment is not an invoice');
-  }
-
-  const created = await bus.exec(createEmail, {
-    template: 'new-invoice',
-    recipient: email.email,
-    payload: {
-      title: payment.title,
-      number: payment.paymentNumber,
-      date: parseISO(payment.data.date),
-      dueDate: payment.data.due_date ? parseISO(payment.data.due_date) : null,
-      amount: total,
-      debts,
-      referenceNumber: payment.data.reference_number,
-      message: payment.message,
-      receiverName: payer.name,
-    },
-    debts: debts.map(debt => debt.id),
-    subject: '[Lasku / Invoice] ' + payment.title,
-  });
-
-  return E.fromNullable('Could not create email')(created);
-}
-
 export default createModule({
   name: 'invoices',
 
-  async setup({ bus }) {
+  async setup({ bus, config }) {
+    async function sendNewPaymentNotification(
+      bus: ExecutionContext<BusContext>,
+      payment: Payment,
+    ) {
+      const debts = await bus.exec(getDebtsByPayment, payment.id);
+
+      if (debts.length === 0) {
+        return E.left('Invoice has no debts associated with it!');
+      }
+
+      const payerId = debts[0].payerId;
+      const total = debts
+        .map(debt => debt.total)
+        .reduce(sumEuroValues, euro(0));
+      const payer = await bus.exec(getPayerProfileByInternalIdentity, payerId);
+      const email = await bus.exec(getPayerPrimaryEmail, payerId);
+
+      if (!email || !payer) {
+        return E.left('Could not determine email for payer');
+      }
+
+      if (!isPaymentInvoice(payment)) {
+        return E.left('Payment is not an invoice');
+      }
+
+      const created = await bus.exec(createEmail, {
+        template: 'new-invoice',
+        recipient: email.email,
+        payload: {
+          link: config.appUrl,
+          title: payment.title,
+          number: payment.paymentNumber,
+          date: parseISO(payment.data.date),
+          dueDate: payment.data.due_date
+            ? parseISO(payment.data.due_date)
+            : null,
+          amount: total,
+          debts,
+          referenceNumber: payment.data.reference_number,
+          message: payment.message,
+          receiverName: payer.name,
+        },
+        debts: debts.map(debt => debt.id),
+        subject: '[Lasku / Invoice] ' + payment.title,
+      });
+
+      return E.fromNullable('Could not create email')(created);
+    }
+
     bus.provideNamed(paymentTypeIface, 'invoice', {
       async createPayment(params, _, bus) {
         const { paymentId } = params;

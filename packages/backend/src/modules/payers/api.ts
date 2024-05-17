@@ -1,5 +1,5 @@
 import { Parser, router } from 'typera-express';
-import { notFound, ok, unauthorized } from 'typera-express/response';
+import { forbidden, notFound, ok, unauthorized } from 'typera-express/response';
 import * as payerService from '@/modules/payers/definitions';
 import auth from '@/auth-middleware';
 import * as debtService from '@/modules/debts/definitions';
@@ -227,6 +227,11 @@ const factory: RouterFactory = route => {
     )
     .handler(async ({ bus, ...ctx }) => {
       let id;
+
+      if (ctx.session.accessLevel !== 'admin') {
+        // Temporary restriction
+        return forbidden();
+      }
 
       if (ctx.routeParams.id === 'me') {
         id = ctx.session.payerId;
