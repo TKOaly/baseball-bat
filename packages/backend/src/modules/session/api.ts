@@ -75,7 +75,7 @@ const factory: RouterFactory<Module> = (route, { config }) => {
       },
     );
 
-    if (!payerProfile) {
+    if (!payerProfile || payerProfile.disabled) {
       return redirect(302, '/');
     }
 
