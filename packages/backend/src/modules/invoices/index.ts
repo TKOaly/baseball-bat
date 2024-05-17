@@ -24,7 +24,7 @@ import {
   getPayerPrimaryEmail,
   getPayerProfileByInternalIdentity,
 } from '../payers/definitions';
-import { createEmail } from '../email/definitions';
+import { createEmail, sendEmail } from '../email/definitions';
 import {
   getTransactionsByReference,
   onTransaction,
@@ -137,6 +137,8 @@ export default createModule({
         debts: debts.map(debt => debt.id),
         subject: '[Lasku / Invoice] ' + payment.title,
       });
+
+      await bus.exec(sendEmail, created.id);
 
       return E.fromNullable('Could not create email')(created);
     }
