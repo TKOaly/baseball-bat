@@ -265,7 +265,16 @@ export default createModule({
       },
     );
 
-    const logPayerEvent = async (bus: ExecutionContext<BusContext>, payer: PayerProfile, type: Extract<PayloadOf<typeof audit.logEvent>['type'], `payer.${string}`>, details?: Record<string, unknown>, links: PayloadOf<typeof audit.logEvent>['links'] = []) => {
+    const logPayerEvent = async (
+      bus: ExecutionContext<BusContext>,
+      payer: PayerProfile,
+      type: Extract<
+        PayloadOf<typeof audit.logEvent>['type'],
+        `payer.${string}`
+      >,
+      details?: Record<string, unknown>,
+      links: PayloadOf<typeof audit.logEvent>['links'] = [],
+    ) => {
       await bus.exec(audit.logEvent, {
         type,
         details,
@@ -280,7 +289,13 @@ export default createModule({
       });
     };
 
-    const logUpdate = async (bus: ExecutionContext<BusContext>, payer: PayerProfile, field: string, oldValue: unknown, newValue: unknown) => {
+    const logUpdate = async (
+      bus: ExecutionContext<BusContext>,
+      payer: PayerProfile,
+      field: string,
+      oldValue: unknown,
+      newValue: unknown,
+    ) => {
       await logPayerEvent(bus, payer, 'payer.update', {
         field,
         oldValue,
@@ -291,7 +306,10 @@ export default createModule({
     bus.register(
       defs.updatePayerName,
       async ({ payerId, name }, { pg }, bus) => {
-        const existingProfile = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+        const existingProfile = await bus.exec(
+          defs.getPayerProfileByInternalIdentity,
+          payerId,
+        );
 
         if (!existingProfile) {
           throw new Error('No such payer profile!');
@@ -303,9 +321,18 @@ export default createModule({
           WHERE id = ${payerId.value}
         `);
 
-        await logUpdate(bus, existingProfile, 'name', existingProfile.name, name);
+        await logUpdate(
+          bus,
+          existingProfile,
+          'name',
+          existingProfile.name,
+          name,
+        );
 
-        const updated = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+        const updated = await bus.exec(
+          defs.getPayerProfileByInternalIdentity,
+          payerId,
+        );
 
         if (!updated) {
           throw new Error('Failed to fetch updated payer profile!');
@@ -318,7 +345,10 @@ export default createModule({
     bus.register(
       defs.updatePayerDisabledStatus,
       async ({ payerId, disabled }, { pg }, bus) => {
-        const existingProfile = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+        const existingProfile = await bus.exec(
+          defs.getPayerProfileByInternalIdentity,
+          payerId,
+        );
 
         if (!existingProfile) {
           throw new Error('No such payer profile!');
@@ -331,9 +361,18 @@ export default createModule({
           RETURNING *
         `);
 
-        await logUpdate(bus, existingProfile, 'disabled', existingProfile.disabled, disabled);
+        await logUpdate(
+          bus,
+          existingProfile,
+          'disabled',
+          existingProfile.disabled,
+          disabled,
+        );
 
-        const updated = await bus.exec(defs.getPayerProfileByInternalIdentity, payerId);
+        const updated = await bus.exec(
+          defs.getPayerProfileByInternalIdentity,
+          payerId,
+        );
 
         if (!updated) {
           throw new Error('Failed to fetch updated payer profile!');
@@ -383,6 +422,7 @@ export default createModule({
       const { result } = await baseQuery(pg, {
         where: sql`tkoaly_user_id = ${id.value}`,
         map: formatPayerProfile,
+        order: [['disabled', 'asc']],
         limit: 1,
       });
 
@@ -671,11 +711,13 @@ export default createModule({
         sql`UPDATE debt SET payer_id = ${primaryProfile.id.value} WHERE payer_id = ${secondaryProfile.id.value} RETURNING id`,
       );
 
-      await logPayerEvent(bus, primaryProfile, 'payer.merge', {}, [{
-        type: 'from',
-        target: { type: 'payer', id: secondaryProfile.name },
-        label: secondaryProfile.name,
-      }]);
+      await logPayerEvent(bus, primaryProfile, 'payer.merge', {}, [
+        {
+          type: 'from',
+          target: { type: 'payer', id: secondaryProfile.name },
+          label: secondaryProfile.name,
+        },
+      ]);
 
       return debts.map(debt => debt.id);
     });
