@@ -42,8 +42,8 @@ const factory: RouterFactory = route => {
       );
 
       if (
-        ctx.session.accessLevel !== 'admin' // &&
-        // ctx.session.payerId.value !== payment?.payerId?.value
+        ctx.session.accessLevel !== 'admin' &&
+        debts.some(debt => debt.payerId.value !== ctx.session.payerId.value)
       ) {
         return unauthorized();
       }

@@ -156,14 +156,15 @@ const factory: RouterFactory = route => {
         return notFound();
       }
 
+      const debts = await bus.exec(debtService.getDebtsByPayment, payment.id);
+
       if (
-        ctx.session.accessLevel != 'admin'
-        // payment.payerId.value !== ctx.session.payerId.value
+        ctx.session.accessLevel == 'normal' &&
+        debts.some(debt => debt.payerId.value !== ctx.session.payerId.value)
       ) {
         return unauthorized();
       }
 
-      const debts = await bus.exec(debtService.getDebtsByPayment, payment.id);
       return ok(debts);
     });
 
