@@ -155,10 +155,7 @@ export default createModule({
         try {
           await _sendEmail(ctx, ctx.context.pg, job.data.emailId);
         } catch (err) {
-          return {
-            result: 'error',
-            message: `Sending email failed: ${err}`,
-          };
+          throw new Error(`Sending email failed: ${err}`);
         }
 
         return { result: 'success' };
