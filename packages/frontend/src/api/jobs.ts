@@ -19,7 +19,7 @@ type ResponseJob = {
 const transformJob = (job: ResponseJob): Job => ({
   ...job,
   time: parseISO(job.time),
-  processedAt: parseISO(job.processedAt),
+  processedAt: job.processedAt ? parseISO(job.processedAt) : null,
   finishedAt: job.finishedAt ? parseISO(job.finishedAt) : null,
   children: job.children.map(transformJob),
 });
