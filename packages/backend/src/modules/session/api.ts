@@ -10,7 +10,6 @@ import {
   unauthorized,
 } from 'typera-express/response';
 import * as payers from '@/modules/payers/definitions';
-import * as users from '@/modules/users/definitions';
 import { router } from 'typera-express';
 import { emailIdentity, tkoalyIdentity } from '@bbat/common/types';
 import * as t from 'io-ts';
@@ -188,17 +187,6 @@ const factory: RouterFactory<Module> = (route, { config }) => {
       }
 
       if (!payerProfile.tkoalyUserId) {
-        return unauthorized({
-          message:
-            'Use of the service is currently limited. Please try again later!',
-        });
-      }
-
-      const upstreamUser = await bus.exec(users.getUpstreamUserById, {
-        id: payerProfile.tkoalyUserId,
-      });
-
-      if (upstreamUser?.role !== 'yllapitaja') {
         return unauthorized({
           message:
             'Use of the service is currently limited. Please try again later!',
