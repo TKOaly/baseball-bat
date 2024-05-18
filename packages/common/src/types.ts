@@ -284,6 +284,7 @@ export type DbPayerProfile = {
   total?: number;
   total_paid?: number;
   paid_ratio?: number;
+  unpaid_value?: number;
 };
 
 export const payerProfile = t.type({
@@ -302,6 +303,7 @@ export const payerProfile = t.type({
   emails: t.array(payerEmail),
   primaryEmail: nullable(t.string),
   paidRatio: t.number,
+  unpaidValue: nullable(euroValue),
 });
 
 export type PayerProfile = t.TypeOf<typeof payerProfile>;
