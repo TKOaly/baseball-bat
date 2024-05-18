@@ -200,6 +200,14 @@ export const PayerListing = () => {
             render: value => formatEuro(cents(value)),
           },
           {
+            name: 'Unpaid value',
+            key: 'unpaid_value',
+            getValue: row => row.unpaidValue ?? cents(0),
+            align: 'right',
+            compareBy: value => value.value,
+            render: value => formatEuro(value),
+          },
+          {
             name: 'Total value',
             key: 'total',
             getValue: row => row.total?.value ?? 0,
