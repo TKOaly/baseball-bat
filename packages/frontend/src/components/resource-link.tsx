@@ -13,7 +13,11 @@ const RESOURCE_URL_FORMATS: Record<string, string> = {
   'bank-statement': '/admin/banking/statements/%',
 };
 
-export const ResourceLink = (props: { type: string; id: string, name?: string }) => {
+export const ResourceLink = (props: {
+  type: string;
+  id: string;
+  name?: string;
+}) => {
   const {
     visible,
     getTooltipProps,
@@ -27,7 +31,11 @@ export const ResourceLink = (props: { type: string; id: string, name?: string })
     delayShow: 300,
     offset: [0, 0],
   });
-  const resourceDetails = useFetchResourceDetails(props.type, props.id);
+  const resourceDetails = useFetchResourceDetails(
+    props.type,
+    props.id,
+    !visible,
+  );
   const [, setLocation] = useLocation();
 
   const handleClick = () => {
@@ -50,7 +58,10 @@ export const ResourceLink = (props: { type: string; id: string, name?: string })
       </div>
       <FloatingPortal>
         {visible && resourceDetails && (
-          <div ref={setTooltipRef} {...getTooltipProps({ className: 'py-1 z-10' })}>
+          <div
+            ref={setTooltipRef}
+            {...getTooltipProps({ className: 'py-1 z-10' })}
+          >
             <div className="z-10 rounded-md border border-gray-200 bg-white p-2 shadow-md">
               <table className="text-sm">
                 <tr>
@@ -70,7 +81,10 @@ export const ResourceLink = (props: { type: string; id: string, name?: string })
                     value = details.value;
                   } else if (details.type === 'resource') {
                     value = (
-                      <ResourceLink type={details.resourceType} id={details.id} />
+                      <ResourceLink
+                        type={details.resourceType}
+                        id={details.id}
+                      />
                     );
                   }
 
