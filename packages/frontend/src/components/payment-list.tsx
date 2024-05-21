@@ -105,6 +105,11 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           },
         },
         {
+          getValue: row => row.debts?.length ?? 0,
+          name: 'Debts',
+          key: 'debt_count',
+        },
+        {
           getValue: row => {
             if (row.credited) {
               return 'Credited';
