@@ -34,7 +34,7 @@ export const ResourceLink = (props: {
   const resourceDetails = useFetchResourceDetails(
     props.type,
     props.id,
-    !visible,
+    !visible && !!props.name,
   );
   const [, setLocation] = useLocation();
 
