@@ -181,13 +181,13 @@ export const PayerListing = () => {
             ),
           },
           {
-            name: 'Paid',
+            name: 'Paid debts',
             key: 'paid_count',
             getValue: 'paidCount',
             align: 'right',
           },
           {
-            name: 'Debts Count',
+            name: 'Total debts',
             key: 'debt_count',
             getValue: 'debtCount',
             align: 'right',
