@@ -395,6 +395,7 @@ export type DbPayment = {
   type: 'invoice';
   initial_amount: number;
   payers: Array<{ id: string; name: string }>;
+  debts: Array<{ id: string; name: string }>;
   title: string;
   payer_id: string;
   paid_at: Date | null;
@@ -781,6 +782,12 @@ export const payment = t.type({
       name: t.string,
     }),
   ),
+  debts: t.array(
+    t.type({
+      id: t.string,
+      name: t.string,
+    }),
+  ),
 });
 
 export type Payment = {
@@ -801,6 +808,7 @@ export type Payment = {
   status: PaymentStatus;
   updatedAt: Date;
   events: Array<PaymentEvent>;
+  debts: Array<{ id: string; name: string }>;
   payers: Array<{ id: string; name: string }>;
 };
 

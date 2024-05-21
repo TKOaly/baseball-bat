@@ -96,6 +96,7 @@ export const formatPayment = (db: DbPayment): Payment => ({
   createdAt: mapDate(db.created_at),
   credited: db.credited,
   events: db.events.map(formatPaymentEvent),
+  debts: db.debts,
   payers: db.payers,
 });
 
@@ -108,6 +109,7 @@ const queryPayments = createPaginatedQuery<DbPayment>(
       s.payer,
       s.payer->>'name' AS payer_name,
       aggs.debts,
+      aggs.debt_count,
       aggs.payers,
       (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
       (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
@@ -118,6 +120,8 @@ const queryPayments = createPaginatedQuery<DbPayment>(
     JOIN payment_statuses s ON s.id = p.id
     LEFT JOIN LATERAL (
       SELECT
+        ARRAY_AGG(DISTINCT jsonb_build_object('id', d.id, 'name', d.name)) AS debts,
+        COUNT(d.id) AS debt_count,
         ARRAY_AGG(DISTINCT jsonb_build_object('id', pp.id, 'name', pp.name)) AS payers
       FROM payment_debt_mappings pdm
       LEFT JOIN debt d ON pdm.debt_id = d.id
