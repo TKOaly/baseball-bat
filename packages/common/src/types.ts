@@ -394,6 +394,7 @@ export type DbPayment = {
   accounting_period: number;
   type: 'invoice';
   initial_amount: number;
+  payers: Array<{ id: string; name: string }>;
   title: string;
   payer_id: string;
   paid_at: Date | null;
@@ -774,6 +775,12 @@ export const payment = t.type({
   events: t.array(paymentEvent),
   paidAt: nullable(tt.date),
   initialAmount: euroValue,
+  payers: t.array(
+    t.type({
+      id: t.string,
+      name: t.string,
+    }),
+  ),
 });
 
 export type Payment = {
@@ -794,6 +801,7 @@ export type Payment = {
   status: PaymentStatus;
   updatedAt: Date;
   events: Array<PaymentEvent>;
+  payers: Array<{ id: string; name: string }>;
 };
 
 export const newInvoice = t.type({
@@ -1171,14 +1179,14 @@ export const auditEventAction = t.union([
   t.literal('payer.create'),
   t.literal('payer.merge'),
   t.literal('payer.update'),
-])
+]);
 
 export const resourceType = t.union([
   t.literal('payer'),
   t.literal('debt'),
   t.literal('debt-center'),
   t.literal('bank-statement'),
-])
+]);
 
 export type ResourceType = t.TypeOf<typeof resourceType>;
 
@@ -1190,14 +1198,16 @@ export const auditEvent = t.type({
   action: auditEventAction,
   subject: nullable(internalIdentityT),
   details: t.unknown,
-  links: t.array(t.type({
-    type: t.string,
-    target: t.type({
-      type: resourceType,
-      id: t.string,
+  links: t.array(
+    t.type({
+      type: t.string,
+      target: t.type({
+        type: resourceType,
+        id: t.string,
+      }),
+      label: t.string,
     }),
-    label: t.string,
-  })),
-})
+  ),
+});
 
 export type AuditEvent = t.TypeOf<typeof auditEvent>;

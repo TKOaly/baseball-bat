@@ -9,6 +9,7 @@ import {
   PaginatedBaseQuery,
 } from './infinite-table';
 import { format } from 'date-fns/format';
+import { ResourceLink } from './resource-link';
 
 const badgeClasses =
   'py-0.5 px-1 rounded-[2pt] text-xs font-bold bg-gray-200 text-gray-700';
@@ -87,6 +88,21 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.title,
           name: 'Title',
           key: 'title',
+        },
+        {
+          getValue: row => row.payers,
+          name: 'Payer',
+          key: 'payer_name',
+          render: (value: { id: string; name: string }[]) => {
+            if (!value || value.length === 0) return 'No payer';
+            else if (value.length > 1) return 'Multiple';
+
+            return value
+              .filter(v => !!v)
+              .map(({ id, name }) => (
+                <ResourceLink type="payer" id={id} name={name} />
+              ));
+          },
         },
         {
           getValue: row => {
