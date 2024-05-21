@@ -516,7 +516,8 @@ const factory: RouterFactory = route => {
   const getPaymentsContainingDebt = route
     .get('/:id/payments')
     .use(auth({ accessLevel: 'normal' }))
-    .handler(async ({ bus, ...ctx }) => {
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query, ...ctx }) => {
       const debt = await bus.exec(debtService.getDebt, ctx.routeParams.id);
 
       if (!debt) {
@@ -532,7 +533,10 @@ const factory: RouterFactory = route => {
 
       const payments = await bus.exec(
         paymentService.getPaymentsContainingDebt,
-        ctx.routeParams.id,
+        {
+          ...query,
+          debtId: ctx.routeParams.id,
+        },
       );
 
       return ok(payments);

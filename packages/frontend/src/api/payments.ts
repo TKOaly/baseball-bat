@@ -1,11 +1,7 @@
 import { parseISO } from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
-import {
-  EuroValue,
-  PayerProfile,
-  Payment,
-  PaymentEvent,
-} from '@bbat/common/types';
+import { EuroValue, Payment, PaymentEvent } from '@bbat/common/types';
+import { createPaginatedQuery } from './pagination';
 
 export type BankTransactionDetails = {
   accountingId: string;
@@ -21,9 +17,9 @@ export type UpdatePaymentEventOptions = {
 
 const paymentsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getPayments: builder.query<(Payment & { payer: PayerProfile })[], void>({
+    getPayments: createPaginatedQuery<Payment>()(builder, {
       query: () => '/payments',
-      providesTags: [{ type: 'Payment', id: 'LIST' }],
+      paginationTag: 'Payment',
     }),
 
     getPayment: builder.query<Payment, string>({
@@ -45,10 +41,13 @@ const paymentsApi = rtkApi.injectEndpoints({
         })),
     }),
 
-    getPaymentsByDebt: builder.query<Payment[], string>({
-      query: id => `/debt/${id}/payments`,
-      providesTags: [{ type: 'Payment', id: 'LIST' }],
-    }),
+    getPaymentsByDebt: createPaginatedQuery<Payment, { debtId: string }>()(
+      builder,
+      {
+        query: ({ debtId }) => `/debt/${debtId}/payments`,
+        paginationTag: 'Payment',
+      },
+    ),
 
     createInvoice: builder.mutation<
       Payment,

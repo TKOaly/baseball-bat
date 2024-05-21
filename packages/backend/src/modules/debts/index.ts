@@ -216,9 +216,9 @@ export default createModule({
           .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
       },
       async onDebtPaid({ debt, payment }, _, bus) {
-        const payments = await bus.exec(
+        const { result: payments } = await bus.exec(
           paymentService.getPaymentsContainingDebt,
-          debt.id,
+          { debtId: debt.id },
         );
 
         const promises = payments

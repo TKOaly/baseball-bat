@@ -7,7 +7,7 @@ import {
   usePublishDebtsMutation,
   useSendReminderMutation,
 } from '../../api/debt';
-import { useGetPaymentsByDebtQuery } from '../../api/payments';
+import paymentsApi from '../../api/payments';
 import { PaymentList } from '../../components/payment-list';
 import { TabularFieldList } from '../../components/tabular-field-list';
 import { format } from 'date-fns/format';
@@ -43,7 +43,6 @@ type Props = RouteComponentProps<{ id: string }>;
 
 export const DebtDetails = ({ params }: Props) => {
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
-  const { data: payments } = useGetPaymentsByDebtQuery(params.id);
   const [deleteDebt] = useDeleteDebtMutation();
   const showRemindersSentDialog = useDialog(RemindersSentDialog);
   const [creditDebt] = useCreditDebtMutation();
@@ -275,7 +274,10 @@ export const DebtDetails = ({ params }: Props) => {
           Below are listed the payments which contain this debt.
         </SectionDescription>
         <SectionContent>
-          <PaymentList payments={payments ?? []} />
+          <PaymentList
+            endpoint={paymentsApi.endpoints.getPaymentsByDebt}
+            query={{ debtId: params.id }}
+          />
         </SectionContent>
       </Section>
       <Section title="Emails">

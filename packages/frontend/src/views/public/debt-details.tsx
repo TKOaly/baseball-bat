@@ -7,6 +7,7 @@ import { RouteComponentProps } from 'wouter';
 import { isPaymentInvoice } from '@bbat/common/src/types';
 import { DebtStatusBadge } from '../../components/debt-status-badge';
 import { Loader } from 'react-feather';
+import { useMemo } from 'react';
 
 const formatDate = (date: Date | string) => {
   const parsed = typeof date === 'string' ? new Date(date) : date;
@@ -21,8 +22,10 @@ type Props = RouteComponentProps<{
 export const DebtDetails = ({ params }: Props) => {
   const { t } = useTranslation([], { keyPrefix: 'paymentDetails' });
   const { data: debt, isLoading } = useGetDebtQuery(params.id);
-  const { data: payments, isLoading: paymentsAreLoading } =
-    useGetPaymentsByDebtQuery(params.id);
+  const { data: paymentsData, isLoading: paymentsAreLoading } =
+    useGetPaymentsByDebtQuery({ debtId: params.id });
+
+  const payments = useMemo(() => paymentsData?.result ?? [], [paymentsData]);
 
   if (!debt || !payments || isLoading || paymentsAreLoading) {
     return (
