@@ -82,7 +82,7 @@ const baseQuery = createPaginatedQuery<DbPayerProfile>(
   WITH counts AS (
     SELECT
       d.payer_id,
-      COUNT(DISTINCT d.id) AS debt_count,
+      COUNT(DISTINCT d.id) FILTER (WHERE d.published_at IS NOT NULL AND NOT d.credited) AS debt_count,
       COUNT(DISTINCT d.id) FILTER (WHERE ds.is_paid) AS paid_count,
       COUNT(DISTINCT d.id) FILTER (WHERE NOT ds.is_paid AND d.published_at IS NOT NULL AND NOT d.credited) AS unpaid_count
     FROM debt d
@@ -91,7 +91,7 @@ const baseQuery = createPaginatedQuery<DbPayerProfile>(
   ), totals AS (
     SELECT
       d.payer_id,
-      COALESCE(SUM(dco.amount), 0) AS total,
+      COALESCE(SUM(dco.amount) FILTER (WHERE d.published_at IS NOT NULL AND NOT d.credited), 0) AS total,
       COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS total_paid,
       COALESCE(SUM(dco.amount) FILTER (WHERE NOT ds.is_paid AND d.published_at IS NOT NULL AND NOT d.credited), 0) AS unpaid_value
     FROM debt d
