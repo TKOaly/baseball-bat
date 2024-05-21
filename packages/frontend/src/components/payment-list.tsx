@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { formatEuro } from '@bbat/common/src/currency';
+import { formatEuro, add as addEuros } from '@bbat/common/src/currency';
 import { Payment } from '@bbat/common/src/types';
 import { cva } from 'class-variance-authority';
 import { twMerge } from 'tailwind-merge';
@@ -8,6 +8,7 @@ import {
   Props as InfiniteTableProps,
   PaginatedBaseQuery,
 } from './infinite-table';
+import { format } from 'date-fns/format';
 
 const badgeClasses =
   'py-0.5 px-1 rounded-[2pt] text-xs font-bold bg-gray-200 text-gray-700';
@@ -48,7 +49,7 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
       selectable
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       initialSort={{
-        column: 'Number',
+        column: 'Created',
         direction: 'asc',
       }}
       persist="payments"
@@ -57,6 +58,20 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.paymentNumber,
           name: 'Number',
           key: 'payment_number',
+        },
+        {
+          getValue: row => row.createdAt,
+          name: 'Created',
+          key: 'created_at',
+          render: value => format(value, 'dd.MM.yyyy HH:ii'),
+          compareBy: value => value.valueOf(),
+        },
+        {
+          getValue: row => row.paidAt,
+          name: 'Paid at',
+          key: 'paid_at',
+          render: value => value && format(value, 'dd.MM.yyyy HH:ii'),
+          compareBy: value => (value ? value.valueOf() : 0),
         },
         {
           getValue: row => row.type,
@@ -93,7 +108,15 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           name: 'Balance',
           key: 'balance',
           align: 'right',
-          getValue: row => row.balance,
+          getValue: row => addEuros(row.initialAmount, row.balance),
+          render: formatEuro,
+          compareBy: amount => amount.value,
+        },
+        {
+          name: 'Total',
+          key: 'initial_amount',
+          align: 'right',
+          getValue: row => row.initialAmount,
           render: formatEuro,
           compareBy: amount => amount.value,
         },
