@@ -96,8 +96,8 @@ export const formatPayment = (db: DbPayment): Payment => ({
   createdAt: mapDate(db.created_at),
   credited: db.credited,
   events: db.events.map(formatPaymentEvent),
-  debts: db.debts,
-  payers: db.payers,
+  debts: db.debts ?? [],
+  payers: db.payers ?? [],
 });
 
 const queryPayments = createPaginatedQuery<DbPayment>(
