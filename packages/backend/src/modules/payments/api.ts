@@ -14,13 +14,16 @@ import { validateBody } from '@/validate-middleware';
 import { euroValue } from '@bbat/common/build/src/currency';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
+import { Parser } from 'typera-express';
+import { paginationQuery } from '@bbat/common/types';
 
 const factory: RouterFactory = route => {
   const getPayments = route
     .get('/')
     .use(auth())
-    .handler(async ({ bus }) => {
-      const payments = await bus.exec(paymentService.getPayments);
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query }) => {
+      const payments = await bus.exec(paymentService.getPayments, query);
       return ok(payments);
     });
 

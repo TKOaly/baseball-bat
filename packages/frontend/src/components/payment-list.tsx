@@ -1,9 +1,13 @@
 import { useLocation } from 'wouter';
 import { formatEuro } from '@bbat/common/src/currency';
 import { Payment } from '@bbat/common/src/types';
-import { Table } from '@bbat/ui/table';
 import { cva } from 'class-variance-authority';
 import { twMerge } from 'tailwind-merge';
+import {
+  InfiniteTable,
+  Props as InfiniteTableProps,
+  PaginatedBaseQuery,
+} from './infinite-table';
 
 const badgeClasses =
   'py-0.5 px-1 rounded-[2pt] text-xs font-bold bg-gray-200 text-gray-700';
@@ -31,16 +35,17 @@ const typeBadgeCva = cva([badgeClasses, 'text-white'], {
 
 const capitalize = (s: string) => s.at(0)?.toUpperCase() + s.substring(1);
 
-export type Props = {
-  payments: Payment[];
-};
+export type Props<Q extends PaginatedBaseQuery> = Omit<
+  InfiniteTableProps<Payment, Q>,
+  'columns' | 'actions'
+>;
 
-export const PaymentList = ({ payments }: Props) => {
+export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
   const [, setLocation] = useLocation();
   return (
-    <Table
+    <InfiniteTable
+      {...props}
       selectable
-      rows={payments.map(p => ({ ...p, key: p.id }))}
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       initialSort={{
         column: 'Number',
@@ -51,10 +56,12 @@ export const PaymentList = ({ payments }: Props) => {
         {
           getValue: row => row.paymentNumber,
           name: 'Number',
+          key: 'payment_number',
         },
         {
           getValue: row => row.type,
           name: 'Type',
+          key: 'type',
           render: type => (
             <span className={twMerge(typeBadgeCva({ type }))}>
               {capitalize(type)}
@@ -63,7 +70,8 @@ export const PaymentList = ({ payments }: Props) => {
         },
         {
           getValue: row => row.title,
-          name: 'Name',
+          name: 'Title',
+          key: 'title',
         },
         {
           getValue: row => {
@@ -74,6 +82,7 @@ export const PaymentList = ({ payments }: Props) => {
             return row.status;
           },
           name: 'Status',
+          key: 'status',
           render: type => (
             <span className={twMerge(statusBadgeCva({ type }))}>
               {capitalize(type)}
@@ -82,6 +91,7 @@ export const PaymentList = ({ payments }: Props) => {
         },
         {
           name: 'Balance',
+          key: 'balance',
           align: 'right',
           getValue: row => row.balance,
           render: formatEuro,

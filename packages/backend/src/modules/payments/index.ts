@@ -4,12 +4,10 @@ import {
   DbPayerProfile,
   DbPayment,
   DbPaymentEvent,
-  EuroValue,
   Payment,
   PaymentEvent,
   PaymentStatus,
 } from '@bbat/common/build/src/types';
-import { Connection } from '@/db/connection';
 import { cents, euro, sumEuroValues } from '@bbat/common/build/src/currency';
 import routes from './api';
 import * as payerService from '@/modules/payers/definitions';
@@ -31,19 +29,11 @@ import { formatPayerProfile } from '../payers';
 import { toArray } from 'fp-ts/Record';
 import { getDebtCenter } from '../debt-centers/definitions';
 import { createModule } from '@/module';
+import { createPaginatedQuery } from '@/db/pagination';
 
 export class RegistrationError extends Error {}
 
 export type PaymentCreditReason = 'manual' | 'paid';
-
-type PaymentWithEvents = Payment & {
-  events: Array<{
-    time: Date;
-    data: Record<string, unknown>;
-    type: 'created' | 'payment';
-    amount: EuroValue;
-  }>;
-};
 
 const paymentLedgerOptions = t.type({
   startDate: tt.DateFromISOString,
@@ -108,114 +98,66 @@ export const formatPayment = (db: DbPayment): Payment => ({
   events: db.events.map(formatPaymentEvent),
 });
 
+const queryPayments = createPaginatedQuery<DbPayment>(
+  sql`
+    SELECT
+      p.*,
+      s.balance,
+      s.status,
+      s.payer,
+      (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+      (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
+      (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+      (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+      COALESCE(s.updated_at, p.created_at) AS updated_at
+    FROM payments p
+    JOIN payment_statuses s ON s.id = p.id
+  `,
+  'id',
+);
+
 export default createModule({
   name: 'payments',
 
   routes,
 
   async setup({ bus }) {
-    bus.register(defs.getPayments, async (_, { pg }) => {
-      const payments = await pg.many<DbPayment>(sql`
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-            (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            COALESCE(s.updated_at, p.created_at) AS updated_at
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-        `);
-
-      return payments.map(formatPayment);
-    });
+    bus.register(defs.getPayments, async ({ cursor, sort, limit }, { pg }) =>
+      queryPayments(pg, {
+        limit,
+        cursor,
+        order: sort ? [[sort.column, sort.dir]] : undefined,
+        map: formatPayment,
+      }),
+    );
 
     bus.register(defs.getPayment, async (id, { pg }) => {
-      const result = await pg.one<DbPayment>(sql`
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-            COALESCE(s.updated_at, p.created_at) AS updated_at
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-          WHERE p.id = ${id}
-        `);
+      const { result } = await queryPayments(pg, {
+        limit: 1,
+        where: sql`id = ${id}`,
+        map: formatPayment,
+      });
 
-      return result && formatPayment(result);
+      return result[0] ?? null;
     });
-
-    async function getPaymentsByReferenceNumbers(
-      pg: Connection,
-      rfs: string[],
-    ) {
-      const payments = await pg.many<PaymentWithEvents>(sql`
-        SELECT
-          p.*,
-          s.balance,
-          s.status,
-          s.payer,
-          (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-          (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-          (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-          COALESCE(s.updated_at, p.created_at) AS updated_at
-        FROM payments p
-        JOIN payment_statuses s ON s.id = p.id
-        WHERE p.data->>'reference_number' = ANY (${rfs.map(rf =>
-          rf.replace(/^0+/, ''),
-        )})
-      `);
-
-      return payments;
-    }
-
-    /*async function onPaymentPaid(
-      bus: ExecutionContext<BusContext>,
-      id: string,
-      _event: PaymentEvent,
-    ) {
-      const payment = await bus.exec(defs.getPayment, id);
-      const debts = await bus.exec(debtService.getDebtsByPayment, id);
-
-      if (!payment) {
-        return;
-      }
-
-      await Promise.all(
-        debts.map(debt =>
-          bus.exec(debtService.onDebtPaid, { debt, payment }),
-        ),
-      );
-    }*/
 
     bus.register(
       defs.createPaymentEvent,
       async ({ paymentId: id, ...event }, { pg }, bus) => {
-        // const [created, oldStatus, newStatus] = await pg.tx(async tx => {
-
         // eslint-disable-next-line
         const { status: oldStatus } = (await pg.one<{
           status: PaymentStatus;
         }>(sql`
-        SELECT status FROM payment_statuses WHERE id = ${id}
-      `))!;
+          SELECT status FROM payment_statuses WHERE id = ${id}
+        `))!;
 
         const created = await pg.one<DbPaymentEvent>(sql`
-        INSERT INTO payment_events (payment_id, type, amount, data, time)
-        VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${
-          event.time ?? new Date()
-        })
-        RETURNING *
-      `);
+          INSERT INTO payment_events (payment_id, type, amount, data, time)
+          VALUES (${id}, ${event.type}, ${event.amount.value}, ${event.data}, ${
+            event.time ?? new Date()
+          })
+          RETURNING *
+        `);
 
         if (!created) {
           throw new Error('Could not create payment event');
@@ -223,16 +165,16 @@ export default createModule({
 
         if (event.transaction) {
           await pg.do(sql`
-          INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
-          VALUES (${created.id}, ${event.transaction})
-        `);
+            INSERT INTO payment_event_transaction_mapping (payment_event_id, bank_transaction_id)
+            VALUES (${created.id}, ${event.transaction})
+          `);
         }
 
         const statusRow = await pg.one<{
           status: PaymentStatus;
         }>(sql`
-        SELECT status FROM payment_statuses WHERE id = ${id}
-      `);
+          SELECT status FROM payment_statuses WHERE id = ${id}
+        `);
 
         if (!statusRow) {
           throw new Error('Failed to fetch payment status!');
@@ -266,34 +208,27 @@ export default createModule({
     );
 
     bus.register(defs.getPaymentsByData, async (data, { pg }) => {
-      const payments = await pg.many<DbPayment>(sql`
-        SELECT
-          p.*,
-          s.balance,
-          s.status,
-          s.payer,
-          s.payer->>'id' AS payer_id,
-            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-          (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-          COALESCE(s.updated_at, p.created_at) AS updated_at
-        FROM payments p
-        JOIN payment_statuses s ON s.id = p.id
-        WHERE p.data @> (${data})
-      `);
+      const { result } = await queryPayments(pg, {
+        where: sql`data @> ${data}`,
+        map: formatPayment,
+      });
 
-      return payments.map(formatPayment);
+      return result;
     });
 
     bus.register(
       defs.createPaymentEventFromTransaction,
-      async ({ transaction: tx, amount, paymentId }, { pg }, bus) => {
+      async ({ transaction: tx, amount, paymentId }, _, bus) => {
         let payment;
 
         if (paymentId) {
           payment = await bus.exec(defs.getPayment, paymentId);
         } else if (tx.reference) {
-          [payment] = await getPaymentsByReferenceNumbers(pg, [tx.reference]);
+          const normalized = tx.reference.replace(/^0+/, '');
+
+          [payment] = await bus.exec(defs.getPaymentsByData, {
+            reference_number: normalized,
+          });
         } else {
           return null;
         }
@@ -314,246 +249,49 @@ export default createModule({
     );
 
     bus.register(defs.getPayerPayments, async (id, { pg }) => {
-      const payments = await pg.many<DbPayment>(sql`
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            s.payer->>'id' AS payer_id,
-            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            COALESCE(s.updated_at, p.created_at) AS updated_at
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-          WHERE s.payer->>'id' = ${id.value} AND (
+      const { result } = await queryPayments(pg, {
+        where: sql`
+          s.payer->>'id' = ${id.value} AND (
             SELECT every(d.published_at IS NOT NULL)
             FROM payment_debt_mappings pdm
             JOIN debt d ON d.id = pdm.debt_id
-            WHERE pdm.payment_id = p.id
+            WHERE pdm.payment_id = s.id
           )
-        `);
+        `,
+        map: formatPayment,
+      });
 
-      return payments.map(formatPayment);
+      return result;
     });
 
-    bus.register(defs.getPaymentsContainingDebt, async (debtId, { pg }) => {
-      const payments = await pg.many<DbPayment>(sql`
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            s.payer->>'id' AS payer_id,
-            (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-            (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            COALESCE(s.updated_at, p.created_at) AS updated_at
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-          JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-          WHERE pdm.debt_id = ${debtId}
-        `);
-
-      return payments.map(formatPayment);
-    });
+    bus.register(
+      defs.getPaymentsContainingDebt,
+      async ({ debtId, cursor, sort, limit }, { pg }) => {
+        return queryPayments(pg, {
+          where: sql`id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${debtId})`,
+          limit,
+          cursor,
+          order: sort ? [[sort.column, sort.dir]] : undefined,
+          map: formatPayment,
+        });
+      },
+    );
 
     bus.register(
       defs.getDefaultInvoicePaymentForDebt,
       async (debtId, { pg }) => {
-        const payment = await pg.one<DbPayment>(sql`
-          SELECT
-            p.*,
-            s.balance,
-            s.status,
-            s.payer,
-            s.payer->>'id' AS payer_id,
-            (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-            COALESCE(s.updated_at, p.created_at) AS updated_at
-          FROM payments p
-          JOIN payment_statuses s ON s.id = p.id
-          JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-          JOIN debt d ON d.id = pdm.debt_id
-          WHERE d.id = ${debtId} AND d.default_payment = p.id
-        `);
-
-        return payment && formatPayment(payment);
-      },
-    );
-
-    /*async function logPaymentEvent(
-      pg: Connection,
-      paymentId: string,
-      amount: EuroValue,
-      data: object,
-    ) {
-      const result = await pg.one<DbPayment>(sql`
-          INSERT INTO payment_events (payment_id, type, amount, data)
-          VALUES (${paymentId}, 'payment', ${amount.value}, ${data})
-          RETURNING *
-       `);
-
-      return result;
-    }*/
-
-    /*async function updatePaymentData(
-      pg: Connection,
-      id: string,
-      data: Record<string, unknown>,
-    ) {
-      pg.do(sql`
-        UPDATE payments SET data = ${data} WHERE id = ${id}
-      `);
-    }*/
-
-    /*bus.register(
-      defs.createInvoice,
-      async ({ invoice, options }, { pg }, bus) => {
-        console.log('Getting debts!');
-
-        const results = await Promise.all(
-          invoice.debts.map(id => bus.exec(debtService.getDebt, id)),
-        );
-
-        if (results.some(d => d === null)) {
-          throw new Error('Debt does not exist');
-        }
-
-        const debts = results as Array<Debt>;
-
-        if (
-          debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
-        ) {
-          throw Error('Not all debts have due dates or are published!');
-        }
-
-        const due_dates = debts
-          .flatMap(debt => (debt.dueDate ? [new Date(debt.dueDate)] : []))
-          .sort();
-
-        console.log('Due date', debts[0].dueDate);
-
-        const due_date = due_dates[0];
-
-        const amount = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
-
-        const payment = await bus.exec(defs.createPayment, {
-          payment: {
-            type: 'invoice',
-            message: invoice.message,
-            amount,
-            paymentNumber: invoice.paymentNumber ?? undefined,
-            title: invoice.title,
-            data: {},
-          },
-          options,
+        const { result } = await queryPayments(pg, {
+          where: sql`id = (SELECT default_payment FROM debt WHERE id = ${debtId})`,
+          map: formatPayment,
         });
 
-        if (payment.humanIdNonce === undefined) {
-          throw new Error(
-            'Generated payment does not have automatically assigned id',
-          );
-        }
-
-        const data = {
-          reference_number: invoice.referenceNumber
-            ? normalizeReferenceNumber(invoice.referenceNumber)
-            : createReferenceNumber(
-                invoice.series ?? 0,
-                payment.accountingPeriod,
-                payment.humanIdNonce ?? 0,
-              ),
-          due_date: formatISO(due_date),
-          date: formatISO(invoice.date ?? new Date()),
-        };
-
-        await updatePaymentData(pg, payment.id, data);
-
-        return {
-          ...payment,
-          data,
-        };
+        return result[0];
       },
-    );*/
-
-    /*bus.register(defs.createStripePayment, async (options, _, bus) => {
-      const results = await Promise.all(
-        options.debts.map(id => bus.exec(debtService.getDebt, id)),
-      );
-
-      if (results.some(d => d === null)) {
-        throw new Error('Debt does not exist');
-      }
-
-      const debts = results as Array<Debt>;
-
-      if (
-        debts.some(debt => debt.dueDate === null && debt.publishedAt === null)
-      ) {
-        throw Error('Not all debts have due dates or are published!');
-      }
-
-      const { id } = await bus.exec(defs.createPayment, {
-        payment: {
-          type: 'stripe',
-          message: '',
-          title: '',
-          debts: options.debts,
-          data: {},
-        },
-      });
-
-      let payment = await bus.exec(defs.getPayment, id);
-
-      if (payment === null) {
-        throw new Error('Failed to create payment.');
-      }
-
-      console.log(payment);
-
-      const intent = await stripe.paymentIntents.create({
-        amount: -payment.balance.value,
-        currency: payment.balance.currency,
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        metadata: {
-          paymentId: payment.id,
-        },
-      });
-
-      if (intent.client_secret === null) {
-        return Promise.reject();
-      }
-
-      await bus.exec(defs.createPaymentEvent, {
-        paymentId: payment.id,
-        type: 'stripe.intent-created',
-        amount: cents(0),
-        transaction: null,
-        data: {
-          intent: intent.id,
-        },
-      });
-
-      payment = await bus.exec(defs.getPayment, id);
-
-      if (payment === null) {
-        throw new Error('Failed to create payment.');
-      }
-
-      return {
-        payment,
-        clientSecret: intent.client_secret,
-      };
-    });*/
+    );
 
     bus.register(
       defs.createPayment,
       async ({ payment, defer, options = {} }, { pg }, bus) => {
-        // const created = await pg.tx(async tx => {
-        //
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const { id: createdPaymentId } = (await pg.one<DbPayment>(sql`
           INSERT INTO payments (type, data, message, title, created_at)
@@ -583,26 +321,6 @@ export default createModule({
           sql`UPDATE payments SET data = ${data} WHERE id = ${createdPaymentId}`,
         );
 
-        /*await Promise.all(
-          payment.debts.map(debt =>
-            pg.do(sql`
-              INSERT INTO payment_debt_mappings (payment_id, debt_id)
-              VALUES (${createdPaymentId}, ${debt})
-            `),
-          ),
-        );
-
-        const { total } = await pg.one<{ total: number }>(sql`
-          SELECT SUM(c.amount) AS total
-          FROM debt_component_mapping m
-          JOIN debt_component c ON c.id = m.debt_component_id
-          WHERE m.debt_id = ANY (${payment.debts})
-        `);*/
-
-        //const formated = formatPayment(createdPayment as any) as any;
-
-        //console.log(formated)
-
         if (!defer) {
           await bus.exec(defs.finalizePayment, createdPaymentId);
         }
@@ -612,9 +330,6 @@ export default createModule({
         if (!created) {
           throw new Error('Failed to retrieve the created payment!');
         }
-
-        // return created;
-        // });
 
         return created;
       },
@@ -686,88 +401,6 @@ export default createModule({
 
       return row && formatPaymentEvent(row);
     });
-
-    /*async function createBankTransactionPaymentEvent(
-      pg: Connection,
-      bus: ExecutionContext<BusContext>,
-      details: BankTransactionDetails,
-    ) {
-      const payments = await getPaymentsByReferenceNumbers(pg, [
-        details.referenceNumber,
-      ]);
-
-      if (payments.length === 0) {
-        return null;
-      }
-
-      const [payment] = payments;
-      const already_exists = payment.events.some(
-        event => event.data?.accounting_id === details.accountingId,
-      );
-
-      if (already_exists) {
-        return null;
-      }
-
-      return await bus.exec(defs.createPaymentEvent, {
-        paymentId: payment.id,
-        type: 'payment',
-        amount: details.amount,
-        time: details.time,
-        data: {
-          accounting_id: details.accountingId,
-        },
-        transaction: details.accountingId,
-      });
-    }*/
-
-    /*bus.register(defs.sendNewPaymentNotification, async (id, _, bus) => {
-      const payment = await bus.exec(defs.getPayment, id);
-
-      if (!payment) {
-        return E.left('No such payment');
-      }
-
-      const debts = await bus.exec(debtService.getDebtsByPayment, id);
-      const payerId = debts[0].payerId;
-      const total = debts.map(debt => debt.total).reduce(sumEuroValues, euro(0));
-      const payer = await bus.exec(
-        payerService.getPayerProfileByInternalIdentity,
-        payerId,
-      );
-      const email = await bus.exec(
-        payerService.getPayerPrimaryEmail,
-        payerId,
-      );
-
-      if (!email || !payer) {
-        return E.left('Could not determine email for payer');
-      }
-
-      if (!isPaymentInvoice(payment)) {
-        return E.left('Payment is not an invoice');
-      }
-
-      const created = await bus.exec(createEmail, {
-        template: 'new-invoice',
-        recipient: email.email,
-        payload: {
-          title: payment.title,
-          number: payment.paymentNumber,
-          date: parseISO(payment.data.date),
-          dueDate: parseISO(payment.data.due_date),
-          amount: total,
-          debts,
-          referenceNumber: payment.data.reference_number,
-          message: payment.message,
-          receiverName: payer.name,
-        },
-        debts: debts.map(debt => debt.id),
-        subject: '[Lasku / Invoice] ' + payment.title,
-      });
-
-      return E.fromNullable('Could not create email')(created);
-    });*/
 
     bus.register(
       defs.generatePaymentLedger,

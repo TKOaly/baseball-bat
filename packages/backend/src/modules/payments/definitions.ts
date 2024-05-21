@@ -58,8 +58,8 @@ export const createPaymentEventFromTransaction = scope.defineProcedure({
 
 export const getPayments = scope.defineProcedure({
   name: 'getPayments',
-  payload: t.void,
-  response: t.array(types.payment),
+  payload: types.paginationQueryPayload,
+  response: types.paginationQueryResponse(types.payment),
 });
 
 export const getPayment = scope.defineProcedure({
@@ -118,8 +118,11 @@ export const createInvoice = scope.defineProcedure({
 
 export const getPaymentsContainingDebt = scope.defineProcedure({
   name: 'getPaymentsContainingDebt',
-  payload: t.string,
-  response: t.array(types.payment),
+  payload: t.intersection([
+    types.paginationQueryPayload,
+    t.type({ debtId: t.string }),
+  ]),
+  response: types.paginationQueryResponse(types.payment),
 });
 
 export const creditPayment = scope.defineProcedure({

@@ -44,7 +44,7 @@ setup('Payments service', ({ test }) => {
   });
 
   test('listing payments without any', async ({ bus }) => {
-    const result = await bus.exec(defs.getPayments);
+    const { result } = await bus.exec(defs.getPayments, {});
     assert.equal(result.length, 0);
   });
 
