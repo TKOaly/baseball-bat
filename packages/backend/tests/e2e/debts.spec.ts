@@ -2,12 +2,7 @@ import { Page, expect } from '@playwright/test';
 import { E2ETestEnvironment, test } from './fixtures';
 import { addDays, format, getYear, subDays } from 'date-fns';
 import assert from 'assert';
-import {
-  cents,
-  euro,
-  formatEuro,
-  makeEurosNegative,
-} from '@bbat/common/currency';
+import { cents, euro, formatEuro } from '@bbat/common/currency';
 import {
   Event,
   Registration,
@@ -298,14 +293,15 @@ const publishingTest = (
     await expect(table.rows()).toHaveCount(1);
     const row = table.row(0);
 
-    await expect(row.getCell('Name')).toHaveText(debtDetails.title);
+    await expect(row.getCell('Title')).toHaveText(debtDetails.title);
     await expect(row.getCell('Status')).toHaveText('Unpaid');
     await expect(row.getCell('Number')).toHaveText(
       `${getYear(new Date())}-0000`,
     );
-    await expect(row.getCell('Balance')).toHaveText(
-      formatEuro(makeEurosNegative(debtDetails.amount)),
+    await expect(row.getCell('Total')).toHaveText(
+      formatEuro(debtDetails.amount),
     );
+    await expect(row.getCell('Balance')).toHaveText(formatEuro(cents(0)));
 
     const table2 = bbat.table(
       bbat.getResourceSection('Emails').getByRole('table'),
@@ -589,7 +585,7 @@ test.describe('CSV import', () => {
       newBbat.getResourceSection('Payments').getByRole('table'),
     );
     await expect(paymentsTable.rows()).toHaveCount(1);
-    await paymentsTable.row(0).getCell('Name').click();
+    await paymentsTable.row(0).getCell('Title').click();
     await expect(newBbat.getResourceField('Reference number')).toHaveText(
       'RF4974154318938921639933',
     );
