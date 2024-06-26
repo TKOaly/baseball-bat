@@ -186,13 +186,6 @@ const factory: RouterFactory<Module> = (route, { config }) => {
         return internalServerError();
       }
 
-      if (!payerProfile.tkoalyUserId) {
-        return unauthorized({
-          message:
-            'Use of the service is currently limited. Please try again later!',
-        });
-      }
-
       let sessionToken: string | null = session.token;
 
       if (body.remote) {
