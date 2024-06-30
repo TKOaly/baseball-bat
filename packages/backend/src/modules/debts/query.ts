@@ -81,6 +81,7 @@ export const formatDebt = (
   status: debt.status,
   tags: (debt.tags ?? []).map(formatDebtTag),
   markedAsPaid: debt.marked_as_paid ?? null,
+  paymentOptions: debt.payment_options ?? null,
 });
 
 export const formatDebtComponent = (

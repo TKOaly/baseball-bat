@@ -564,6 +564,7 @@ export type DbDebt = {
   payment_condition: number | null;
   default_payment: string | null;
   credited: boolean;
+  payment_options: Record<string, unknown> | null;
 };
 
 export const debtStatus = t.union([
@@ -600,6 +601,7 @@ export const debt = t.type({
   credited: t.boolean,
   total: euroValue,
   debtComponents: t.array(debtComponent),
+  paymentOptions: nullable(t.UnknownRecord),
 });
 
 export type Debt = t.TypeOf<typeof debt>;
