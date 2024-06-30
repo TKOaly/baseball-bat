@@ -363,7 +363,8 @@ export default createModule({
               payment_condition,
               published_at,
               date,
-              accounting_period
+              accounting_period,
+              payment_options
             )
             VALUES (
               ${debt.name},
@@ -375,7 +376,8 @@ export default createModule({
               ${debt.paymentCondition},
               ${debt.publishedAt},
               ${debt.date},
-              ${debt.accountingPeriod}
+              ${debt.accountingPeriod},
+              ${options?.defaultPayment}
             )
             RETURNING *
           `);
@@ -408,33 +410,6 @@ export default createModule({
               `);
           }),
         );
-
-        if (options?.defaultPayment) {
-          const payment = await bus.exec(defs.createPayment, {
-            debts: [created.id],
-            payment: {
-              type: 'invoice',
-              message: debt.description,
-              title: debt.name,
-            },
-            options: {
-              series: 1,
-              date: debt.date ? parseISO(debt.date) : undefined,
-              dueDate: debt.dueDate ? parseISO(debt.dueDate) : undefined,
-              ...options.defaultPayment,
-            },
-          });
-
-          /*const payment = await bus.exec(paymentService.createInvoice, {
-            invoice: {
-            },
-            options: {
-              sendNotification: false,
-            },
-          });*/
-
-          await setDefaultPayment(pg, created.id, payment.id);
-        }
 
         const createdDebt = await bus.exec(defs.getDebt, created.id);
 
@@ -1056,6 +1031,7 @@ export default createModule({
               creditedAt: null,
               creditedBy: null,
               tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
+              paymentOptions: null,
             };
 
             if (details.components && details.components.length > 0) {
@@ -1217,22 +1193,16 @@ export default createModule({
         options: {
           date: debt.date ?? undefined,
           dueDate: debt.dueDate ?? undefined,
+          series: 1,
+          ...debt.paymentOptions,
         },
       });
-
-      /*const created = await bus.exec(paymentService.createInvoice, {
-        invoice: {
-        },
-        options: {
-          sendNotification: false,
-        },
-      });*/
-
-      await setDefaultPayment(pg, debt.id, created.id);
 
       if (!created) {
         return Promise.reject('Could not create invoice for debt');
       }
+
+      await setDefaultPayment(pg, debt.id, created.id);
 
       return created;
     }
