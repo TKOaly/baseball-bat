@@ -417,6 +417,9 @@ test.describe('CSV import', () => {
     await expect(newBbat.getResourceField('Published at')).toHaveText(
       'Not published',
     );
+    await expect(
+      newBbat.table(newBbat.getResourceSection('Emails')).rows(),
+    ).toHaveCount(0);
   });
 
   test('simple with due date', async ({ page, bbat, context }) => {
@@ -495,6 +498,9 @@ test.describe('CSV import', () => {
     await expect(newBbat.getResourceField('Published at')).toHaveText(
       'Not published',
     );
+    await expect(
+      newBbat.table(newBbat.getResourceSection('Emails')).rows(),
+    ).toHaveCount(0);
   });
 
   test('with reference number', async ({ page, bbat, context }) => {
@@ -589,6 +595,9 @@ test.describe('CSV import', () => {
     await expect(newBbat.getResourceField('Reference number')).toHaveText(
       'RF4974154318938921639933',
     );
+    await expect(
+      newBbat.table(newBbat.getResourceSection('Emails')).rows(),
+    ).toHaveCount(0);
   });
 
   test('with multiple default components', async ({ page, bbat, context }) => {
@@ -691,6 +700,9 @@ test.describe('CSV import', () => {
       newBbat.getResourceSection('Debt Components').getByRole('table'),
     );
     await expect(components.rows()).toHaveCount(2);
+    await expect(
+      newBbat.table(newBbat.getResourceSection('Emails')).rows(),
+    ).toHaveCount(0);
   });
 
   test('simple with decimals', async ({ page, bbat, context }) => {
@@ -771,6 +783,9 @@ test.describe('CSV import', () => {
     await expect(newBbat.getResourceField('Published at')).toHaveText(
       'Not published',
     );
+    await expect(
+      newBbat.table(newBbat.getResourceSection('Emails')).rows(),
+    ).toHaveCount(0);
   });
 });
 
