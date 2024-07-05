@@ -2,7 +2,14 @@
 
 import { identity } from 'fp-ts/function';
 import { produce } from 'immer';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -74,7 +81,7 @@ export type TableViewProps<
     { [Name in ColumnNames]: Column<R, Name, ColumnTypeMap[Name]> }[ColumnNames]
   >;
   onRowClick?: (row: R) => void;
-  onEnd?: () => void;
+  fetchMore?: (number: number | null) => void;
   onSortChange?: (column?: string, direction?: 'asc' | 'desc') => void;
   loading?: boolean;
   refreshing?: boolean;
@@ -85,6 +92,7 @@ export type TableViewProps<
   hideTools?: boolean;
   footer?: React.ReactNode;
   persist?: string;
+  more?: boolean;
   initialSort?: {
     column: ColumnNames;
     direction: 'asc' | 'desc';
@@ -509,7 +517,8 @@ export const Table = <
   showBottomLoading,
   emptyMessage,
   hideTools,
-  onEnd,
+  more,
+  fetchMore,
   footer,
   onSortChange,
   refreshing,
@@ -521,9 +530,53 @@ export const Table = <
     [persist],
   );
 
-  const [selectedRows, setSelectedRows] = useState<Array<string | number>>(
-    initialState?.rows ?? [],
+  const sortedRowsRef = useRef<R[]>([]);
+
+  const [{ selectedRows }, dispatch] = useReducer(
+    produce(
+      (
+        state: { selectedRows: Row['key'][] },
+        action: { type: string; payload?: any },
+      ) => {
+        if (action.type === 'SELECT_ALL') {
+          sortedRowsRef.current.forEach(({ key }) => {
+            const index = state.selectedRows.indexOf(key);
+
+            if (index >= 0) {
+              state.selectedRows.splice(index, 1);
+            } else {
+              state.selectedRows.push(key);
+            }
+          });
+        } else if (action.type === 'SET_SELECTION') {
+          state.selectedRows = action.payload;
+        } else if (action.type === 'TOGGLE_SELECTION') {
+          const index = state.selectedRows.indexOf(action.payload.row);
+
+          if (index >= 0) {
+            state.selectedRows.splice(index, 1);
+          } else {
+            state.selectedRows.push(action.payload.row);
+          }
+        }
+      },
+    ),
+    {
+      selectedRows: initialState?.rows ?? [],
+    },
   );
+
+  const setSelectedRows = (payload: string[]) => {
+    if (payload instanceof Set) {
+      throw new Error('Got a Set!');
+    }
+
+    dispatch({
+      type: 'SET_SELECTION',
+      payload,
+    });
+  };
+
   const [sorting, _setSorting] = useState<[ColumnNames, 'asc' | 'desc'] | null>(
     (initialState?.sort as any) ??
       (initialSort ? [initialSort.column, initialSort.direction] : null),
@@ -567,8 +620,10 @@ export const Table = <
   }, [persist, selectedRows, sorting, filters]);
 
   const sortedRows = useMemo(() => {
+    let result: R[];
+
     if (!onSortChange) {
-      return sortRows(
+      result = sortRows(
         rows,
         columns.find(c => c.name === sorting?.[0]),
         sorting?.[1] ?? 'asc',
@@ -576,16 +631,43 @@ export const Table = <
         filters,
       );
     } else {
-      return sortRows(rows, undefined, 'asc', columns, filters);
+      result = sortRows(rows, undefined, 'asc', columns, filters);
     }
+
+    return (sortedRowsRef.current = result);
   }, [rows, sorting, columns, filters]);
+
+  const completeRowsCallbacks = useRef<any[]>([]);
+
+  const withAllRows = useCallback(
+    (action: any) => {
+      if (!more) {
+        return dispatch(action);
+      }
+
+      fetchMore?.(null);
+      completeRowsCallbacks.current.push(action);
+    },
+    [more, completeRowsCallbacks],
+  );
+
+  useEffect(() => {
+    if (!more) {
+      const callbacks = completeRowsCallbacks.current;
+      completeRowsCallbacks.current = [];
+
+      for (const action of callbacks) {
+        dispatch(action);
+      }
+    }
+  }, [more, completeRowsCallbacks, dispatch]);
 
   const scrollDetectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const callback: IntersectionObserverCallback = ([rect]) => {
-      if (rect.intersectionRatio === 1) {
-        onEnd?.();
+      if (rect.intersectionRatio === 1 && more) {
+        fetchMore?.(30);
       }
     };
 
@@ -602,19 +684,13 @@ export const Table = <
     observer.observe(el);
 
     return () => observer.unobserve(el);
-  }, [scrollDetectorRef, onEnd]);
+  }, [scrollDetectorRef, fetchMore, more]);
 
   const toggleSelection = (row: Row['key']) => {
-    const newSet = [...selectedRows];
-    const index = selectedRows.indexOf(row);
-
-    if (index > -1) {
-      newSet.splice(index, 1);
-    } else {
-      newSet.push(row);
-    }
-
-    setSelectedRows(newSet);
+    dispatch({
+      type: 'TOGGLE_SELECTION',
+      payload: { row },
+    });
   };
 
   const toggleRowExpanded = (row: Row['key']) => {
@@ -735,17 +811,19 @@ export const Table = <
               options={[
                 {
                   text: 'Select all',
-                  onSelect: () => setSelectedRows(sortedRows.map(r => r.key)),
+                  onSelect: () => {
+                    withAllRows({
+                      type: 'SELECT_ALL',
+                    });
+                  },
                 },
                 { text: 'Deselect all', onSelect: () => setSelectedRows([]) },
                 {
                   text: 'Invert selection',
                   onSelect: () =>
-                    setSelectedRows(
-                      sortedRows
-                        .filter(r => !selectedRows.includes(r.key))
-                        .map(r => r.key),
-                    ),
+                    dispatch({
+                      type: 'INVERT_SELECTION',
+                    }),
                 },
                 ...(availableActions.length > 0
                   ? ([
