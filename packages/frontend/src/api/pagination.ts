@@ -118,6 +118,7 @@ export const createPaginatedQuery =
       serializeQueryArgs: args => {
         const newArgs = { ...args.queryArgs };
         delete newArgs.cursor;
+        delete newArgs.limit;
         return newArgs;
       },
       merge: (
