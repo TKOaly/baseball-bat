@@ -60,6 +60,7 @@ const setupRedis = async () => {
 
 const setupNats = async () => {
   const container = await new GenericContainer('nats')
+    .withCommand(['-js'])
     .withExposedPorts(4222)
     .withWaitStrategy(Wait.forLogMessage(/Server is ready/, 1))
     .start();
