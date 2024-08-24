@@ -329,3 +329,23 @@ export const createCombinedPayment = scope.defineProcedure({
   }),
   response: types.payment,
 });
+
+export const onDebtCreated = scope.defineEvent(
+  'onDebtCreated',
+  t.type({
+    debtId: t.string,
+  }),
+);
+
+export const onStatusChanged = scope.defineEvent(
+  'onStatusChanged',
+  t.type({
+    debtId: t.string,
+    status: t.union([
+      t.literal('paid'),
+      t.literal('unpaid'),
+      t.literal('mispaid'),
+      t.literal('credited'),
+    ]),
+  })
+);

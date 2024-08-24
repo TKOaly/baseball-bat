@@ -15,6 +15,7 @@ export const onStatusChanged = scope.defineEvent(
       t.literal('unpaid'),
       t.literal('mispaid'),
       t.literal('canceled'),
+      t.literal('credited')
     ]),
   }),
 );

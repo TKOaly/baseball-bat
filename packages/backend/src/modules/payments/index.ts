@@ -407,6 +407,11 @@ export default createModule({
         throw new Error('Failed to credit payment!');
       }
 
+      await bus.emit(defs.onStatusChanged, {
+        paymentId: id,
+        status: 'credited',
+      });
+
       return bus.exec(defs.getPayment, id);
     });
 

@@ -14,6 +14,9 @@ import * as TE from 'fp-ts/TaskEither';
 import * as E from 'fp-ts/Either';
 import { Middleware } from 'typera-express';
 import { flow, pipe } from 'fp-ts/function';
+import { setupNats } from '@/nats';
+import { Config } from '@/config';
+import { NatsConnection, RetentionPolicy } from 'nats';
 
 type ProcedureImplementations<I extends Interface, C> = {
   [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
@@ -136,6 +139,21 @@ export class LocalBus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
 
+  constructor(private nats: NatsConnection) {}
+
+  static async create<C2>(config: Config): Promise<LocalBus<C2>> {
+    const nats = await setupNats(config);
+
+    const jsm = await nats.jetstreamManager();
+
+    await jsm.streams.add({
+      name: 'bbat',
+      subjects: ['bbat.>']
+    });
+
+    return new LocalBus(nats);
+  }
+
   protected getName<P extends ProcedureType>(
     procedure: P,
     impl?: string,
@@ -176,19 +194,24 @@ export class LocalBus<C> {
     }
   }
 
-  async emit<ET extends EventType<any>>(
+  async emit<ET extends EventType<PT>, PT extends Type<any, any, any>>(
     ctx: C,
     eventType: ET,
     ...payload: EventArgs<ET>
   ) {
     const handlers = this.eventHandlers.get(eventType.name) ?? [];
-    // console.log(`Emitting ${eventType.name}: ${handlers.length} handlers`);
+
     await Promise.all(
       handlers.map(handler =>
         handler(payload[0], ctx, this.createContext(ctx)),
       ),
     );
-    // this.emitter.emit(eventType.name, payload, ctx);
+
+    const js = this.nats.jetstream();
+
+    const output = eventType.payloadType.encode(payload[0]);
+    const encoded = output ? new TextEncoder().encode(JSON.stringify(output)) : undefined;
+    await js.publish(`bbat.${eventType.name.replace(':', '.')}`, encoded);
   }
 
   async exec<PT extends ProcedureType>(
@@ -198,8 +221,6 @@ export class LocalBus<C> {
     ...payload: ProcedureArgs<PT>
   ): Promise<ResponseOf<PT>> {
     const name = this.getName(procedure, id ?? undefined);
-
-    // console.log(`Calling ${name}`);
 
     const handler = this.procedures.get(name);
 

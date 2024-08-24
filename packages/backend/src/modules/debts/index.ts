@@ -438,6 +438,10 @@ export default createModule({
           },
         ]);
 
+        await bus.emit(defs.onDebtCreated, {
+          debtId: createdDebt.id,
+        });
+
         return createdDebt;
       },
 
@@ -1786,6 +1790,16 @@ export default createModule({
           credited_by = ${sessionPayerId}
         WHERE id = ${id}
       `);
+
+      const { result: payments } = await bus.exec(
+        paymentService.getPaymentsContainingDebt,
+        { debtId: debt.id },
+      );
+
+      await pipe(
+        payments,
+        A.traverse(TE.ApplicativePar)((debt) => bus.execTE(paymentService.creditPayment)({ id: debt.id, reason: 'manual' }))
+      )();
 
       await pg.do(
         sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,

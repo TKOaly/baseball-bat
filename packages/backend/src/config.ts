@@ -27,6 +27,10 @@ interface IConfig {
   minioAccessKey: string;
   minioSecretKey: string;
   minioBucket: string;
+  natsHost: string;
+  natsPort: number;
+  natsUser: string;
+  natsPassword: string;
   appUrl: string;
   redisUrl: string;
   emailDispatcher?: {
@@ -64,6 +68,10 @@ export class Config implements IConfig {
   minioAccessKey = '';
   minioSecretKey = '';
   minioBucket = '';
+  natsHost = '';
+  natsPort = 4222;
+  natsUser = '';
+  natsPassword = '';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -107,6 +115,10 @@ export class Config implements IConfig {
       MINIO_ACCESS_KEY,
       MINIO_SECRET_KEY,
       MINIO_BUCKET,
+      NATS_HOST,
+      NATS_PORT,
+      NATS_USER,
+      NATS_PASSWORD,
     } = process.env;
 
     assert(
@@ -127,6 +139,9 @@ export class Config implements IConfig {
     assert(MINIO_URL, 'MINIO_URL must be set.');
     assert(MINIO_SECRET_KEY, 'MINIO_SECRET_KEY must be set.');
     assert(MINIO_ACCESS_KEY, 'MINIO_ACCESS_KEY must be set.');
+    assert(NATS_HOST, 'NATS_HOST must be set.');
+    assert(NATS_USER, 'NATS_USER must be set.');
+    assert(NATS_PASSWORD, 'NATS_PASSWORD must be set.');
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();
@@ -157,6 +172,10 @@ export class Config implements IConfig {
       minioAccessKey: MINIO_ACCESS_KEY,
       minioSecretKey: MINIO_SECRET_KEY,
       minioBucket: MINIO_BUCKET ?? 'baseball-bat',
+      natsHost: NATS_HOST,
+      natsPort: NATS_PORT ? parseInt(NATS_PORT, 10) : 4222,
+      natsUser: NATS_USER,
+      natsPassword: NATS_PASSWORD,
     });
   }
 

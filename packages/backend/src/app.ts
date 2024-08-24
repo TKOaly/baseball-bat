@@ -41,12 +41,12 @@ export type BusContext = {
   session: Session | null;
 };
 
-const bus = new LocalBus<BusContext>();
 
-const jobs = new JobService(config, bus, pool);
 
 const setupDeps = async () => {
   const minio = await setupMinio(config);
+  const bus = await LocalBus.create<BusContext>(config);
+  const jobs = new JobService(config, bus, pool);
 
   return {
     pool,
