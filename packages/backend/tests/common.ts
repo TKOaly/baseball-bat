@@ -8,6 +8,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import migrate from 'node-pg-migrate';
 import path from 'path';
+import { setupNats as connectNats } from '@/nats';
 import { GenericContainer, Wait } from 'testcontainers';
 import {
   EventHandler,
@@ -108,9 +109,10 @@ export class Environment {
 
         env.onTeardown(async () => {
           const pool = await env.get('pool');
+          const nats = await env.get('nats');
 
           await pool.withConnection(pg =>
-            bus.createContext({ pg, session: null }).emit(shutdown),
+            bus.createContext({ pg, nats, session: null }).emit(shutdown),
           );
         });
 
@@ -140,8 +142,9 @@ export class Environment {
       jobs: async env => {
         const pool = await env.get('pool');
         const bus = await env.get('bus');
+        const nats = await env.get('nats');
 
-        return new JobService(env.config, bus, pool);
+        return new JobService(env.config, bus, pool, nats);
       },
       emailTransport: async () => {
         return {
@@ -151,6 +154,7 @@ export class Environment {
         };
       },
       minio: ({ config }) => setupMinioClient(config),
+      nats: ({ config }) => connectNats(config),
     };
 
   deps: Partial<Deps> = {};
@@ -224,10 +228,12 @@ export class TestEnvironment {
   ): Promise<T> => {
     const pool = await this.env.get('pool');
     const bus = await this.env.get('bus');
+    const nats = await this.env.get('nats');
 
     return pool.tryWithConnection(async pg => {
       const ctx = bus.createContext({
         pg,
+        nats,
         session: payerId
           ? {
               token: 'asd',
@@ -292,7 +298,8 @@ export const createEnvironment = async (): Promise<Environment> => {
     minioPublicUrl: minio.uri,
     minioBucket: 'baseball-bat',
     nats: {
-      host: `${nats.config.host}:${nats.config.port}`,
+      host: nats.config.host,
+      port: nats.config.port,
       user: 'ruser',
       password: 'T0pS3cr3t',
     },
@@ -320,6 +327,7 @@ export const startServer = async (env: Environment) => {
     jobs: await env.get('jobs'),
     emailTransport: await env.get('emailTransport'),
     minio: await env.get('minio'),
+    nats: await env.get('nats'),
   });
 
   const url = await new Promise<string>((resolve, reject) => {
@@ -346,6 +354,7 @@ export const startServer = async (env: Environment) => {
 
   const start = Date.now();
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await fetch(`${url}/api/health`);
 
@@ -353,7 +362,7 @@ export const startServer = async (env: Environment) => {
       break;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     if (Date.now() - start > 10000) {
       throw new Error('Starting backend server exceeded the timeout of 10s!');
