@@ -215,25 +215,6 @@ export default createModule({
           )
           .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
       },
-      async onDebtPaid({ debt, payment }, _, bus) {
-        const { result: payments } = await bus.exec(
-          paymentService.getPaymentsContainingDebt,
-          { debtId: debt.id },
-        );
-
-        const promises = payments
-          .filter(p => p.id !== payment.id)
-          .map(async payment => {
-            if (payment.type === 'invoice') {
-              await bus.exec(paymentService.creditPayment, {
-                id: payment.id,
-                reason: 'paid',
-              });
-            }
-          });
-
-        await Promise.all(promises);
-      },
 
       async getDebtComponentsByCenter(id, { pg }) {
         const components = await pg.many<DbDebtComponent>(sql`
@@ -483,6 +464,22 @@ export default createModule({
         });
       },
 
+      async getDebtsByPayerMemberId({ memberId, cursor, sort, limit }, { pg }) {
+        return queryDebts(pg, {
+          where: sql`
+            payer_id IN (SELECT id FROM payer_profiles WHERE tkoaly_user_id = ${memberId})
+              AND published_at IS NOT NULL
+              AND NOT credited
+          `,
+          cursor,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
+          limit,
+          map: formatDebt,
+        });
+      },
+
       async createPayment({ debts: ids, payment, options }, { pg }, bus) {
         const result = await pipe(
           ids,
@@ -580,7 +577,30 @@ export default createModule({
         }
 
         await Promise.all(
-          debts.map(debt => bus.exec(defs.onDebtPaid, { debt, payment })),
+          debts.map(async (debt) => {
+            const { result: payments } = await bus.exec(
+              paymentService.getPaymentsContainingDebt,
+              { debtId: debt.id },
+            );
+
+            const promises = payments
+              .filter(p => p.id !== payment.id)
+              .map(async payment => {
+                if (payment.type === 'invoice') {
+                  await bus.exec(paymentService.creditPayment, {
+                    id: payment.id,
+                    reason: 'paid',
+                  });
+                }
+              });
+
+            await Promise.all(promises);
+
+            await bus.emit(defs.onStatusChanged, {
+              debtId: debt.id,
+              status: 'paid',
+            });
+          })
         );
       },
     );
@@ -1830,6 +1850,11 @@ export default createModule({
             },
           },
         ],
+      });
+
+      await bus.emit(defs.onStatusChanged, {
+        debtId: debt.id,
+        status: 'credited',
       });
     });
 

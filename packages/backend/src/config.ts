@@ -27,10 +27,6 @@ interface IConfig {
   minioAccessKey: string;
   minioSecretKey: string;
   minioBucket: string;
-  natsHost: string;
-  natsPort: number;
-  natsUser: string;
-  natsPassword: string;
   appUrl: string;
   redisUrl: string;
   emailDispatcher?: {
@@ -45,6 +41,13 @@ interface IConfig {
     password?: string;
   };
   magicLinkSecret: string;
+  integrationSecret: string;
+  nats: {
+    host: string;
+    user: string;
+    port: number;
+    password: string;
+  };
 }
 
 export class Config implements IConfig {
@@ -68,10 +71,6 @@ export class Config implements IConfig {
   minioAccessKey = '';
   minioSecretKey = '';
   minioBucket = '';
-  natsHost = '';
-  natsPort = 4222;
-  natsUser = '';
-  natsPassword = '';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -86,6 +85,13 @@ export class Config implements IConfig {
     password?: string;
   };
   magicLinkSecret = '';
+  integrationSecret = '';
+  nats = {
+    host: 'localhost',
+    user: '',
+    port: 4222,
+    password: ''
+  };
 
   constructor(config: IConfig) {
     Object.assign(this, config);
@@ -115,6 +121,7 @@ export class Config implements IConfig {
       MINIO_ACCESS_KEY,
       MINIO_SECRET_KEY,
       MINIO_BUCKET,
+      INTEGRATION_SECRET,
       NATS_HOST,
       NATS_PORT,
       NATS_USER,
@@ -139,6 +146,7 @@ export class Config implements IConfig {
     assert(MINIO_URL, 'MINIO_URL must be set.');
     assert(MINIO_SECRET_KEY, 'MINIO_SECRET_KEY must be set.');
     assert(MINIO_ACCESS_KEY, 'MINIO_ACCESS_KEY must be set.');
+    assert(INTEGRATION_SECRET, 'INTEGRATION_SECRET must be set.');
     assert(NATS_HOST, 'NATS_HOST must be set.');
     assert(NATS_USER, 'NATS_USER must be set.');
     assert(NATS_PASSWORD, 'NATS_PASSWORD must be set.');
@@ -172,10 +180,13 @@ export class Config implements IConfig {
       minioAccessKey: MINIO_ACCESS_KEY,
       minioSecretKey: MINIO_SECRET_KEY,
       minioBucket: MINIO_BUCKET ?? 'baseball-bat',
-      natsHost: NATS_HOST,
-      natsPort: NATS_PORT ? parseInt(NATS_PORT, 10) : 4222,
-      natsUser: NATS_USER,
-      natsPassword: NATS_PASSWORD,
+      integrationSecret: INTEGRATION_SECRET,
+      nats: {
+        host: NATS_HOST,
+        user: NATS_USER,
+        port: NATS_PORT ? parseInt(NATS_PORT, 10) : 4222,
+        password: NATS_PASSWORD,
+      },
     });
   }
 

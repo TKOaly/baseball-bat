@@ -1,23 +1,25 @@
+import { Middleware } from 'typera-express';
+import { ModuleDefinition, createBaseRoute } from '@/module';
 import { ModuleDeps } from '@/module';
-import express from 'express';
-import debts from './debts';
+
 import accounting from './accounting';
+import audit from './audit';
 import banking from './banking';
-import jobs from './jobs';
 import debtCenters from './debt-centers';
+import debts from './debts';
 import email from './email';
 import events from './events';
-import payments from './payments';
-import payers from './payers';
-import users from './users';
+import express from 'express';
+import integration from './integration';
 import invoices from './invoices';
-import stripe from './stripe';
+import jobs from './jobs';
+import payers from './payers';
+import payments from './payments';
 import reports from './reports';
-import { ModuleDefinition, createBaseRoute } from '@/module';
-import { Middleware } from 'typera-express';
 import search from './search';
 import session from './session';
-import audit from './audit';
+import stripe from './stripe';
+import users from './users';
 
 export default async (app: express.Express | null, deps: ModuleDeps) => {
   const route = createBaseRoute(deps);
@@ -57,5 +59,6 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
     jobs,
     session,
     audit,
+    integration,
   ]);
 };

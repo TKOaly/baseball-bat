@@ -16,7 +16,8 @@ import { Middleware } from 'typera-express';
 import { flow, pipe } from 'fp-ts/function';
 import { setupNats } from '@/nats';
 import { Config } from '@/config';
-import { NatsConnection, RetentionPolicy } from 'nats';
+import { NatsConnection } from 'nats';
+import { Connection } from '@/db/connection';
 
 type ProcedureImplementations<I extends Interface, C> = {
   [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
@@ -133,26 +134,9 @@ interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
   original: ProcedureHandler<PT, C>;
 }
 
-export class LocalBus<C> {
-  // private emitter = new EventEmitter();
-
+export class LocalBus<C extends { nats: NatsConnection, pg: Connection }> extends Bus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
-
-  constructor(private nats: NatsConnection) {}
-
-  static async create<C2>(config: Config): Promise<LocalBus<C2>> {
-    const nats = await setupNats(config);
-
-    const jsm = await nats.jetstreamManager();
-
-    await jsm.streams.add({
-      name: 'bbat',
-      subjects: ['bbat.>']
-    });
-
-    return new LocalBus(nats);
-  }
 
   protected getName<P extends ProcedureType>(
     procedure: P,
@@ -207,11 +191,13 @@ export class LocalBus<C> {
       ),
     );
 
-    const js = this.nats.jetstream();
-
     const output = eventType.payloadType.encode(payload[0]);
     const encoded = output ? new TextEncoder().encode(JSON.stringify(output)) : undefined;
-    await js.publish(`bbat.${eventType.name.replace(':', '.')}`, encoded);
+
+    ctx.pg.once('commit', async () => {
+      const js = ctx.nats.jetstream();
+      await js.publish(`bbat.${eventType.name.replace(':', '.')}`, encoded);
+    });
   }
 
   async exec<PT extends ProcedureType>(

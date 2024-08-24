@@ -12,6 +12,8 @@ import { LocalBus } from './bus';
 import server from './server';
 import { Session } from './middleware/session';
 import { setupMinio } from './minio';
+import { setupNats } from './nats';
+import { NatsConnection } from 'nats';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -37,16 +39,16 @@ if (config.emailDispatcher) {
 }
 
 export type BusContext = {
+  nats: NatsConnection;
   pg: Connection;
   session: Session | null;
 };
 
-
-
 const setupDeps = async () => {
-  const minio = await setupMinio(config);
-  const bus = await LocalBus.create<BusContext>(config);
+  const nats = await setupNats(config);
+  const bus = new LocalBus<BusContext>();
   const jobs = new JobService(config, bus, pool);
+  const minio = await setupMinio(config);
 
   return {
     pool,
@@ -56,6 +58,7 @@ const setupDeps = async () => {
     jobs,
     emailTransport,
     minio,
+    nats,
   };
 };
 

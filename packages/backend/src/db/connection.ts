@@ -1,5 +1,6 @@
 import { SQLStatement } from 'sql-template-strings';
 import pg from 'pg';
+import EventEmitter from 'node:events';
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
@@ -37,13 +38,15 @@ export class Pool {
   }
 }
 
-export class Connection {
+export class Connection extends EventEmitter {
   transactionCounter = 0;
 
   constructor(
     private id: number,
     private conn: pg.PoolClient,
-  ) {}
+  ) {
+    super();
+  }
 
   static async from(pool: pg.Pool) {
     const conn = await pool.connect();
@@ -62,10 +65,12 @@ export class Connection {
 
   async commit() {
     await this.conn.query('COMMIT');
+    this.emit('commit');
   }
 
   async rollback() {
     await this.conn.query('ROLLBACK');
+    this.emit('rollback');
   }
 
   async close() {

@@ -242,6 +242,10 @@ export default createModule({
       return emails;
     });
 
+    bus.register(defs.updatePayerMemberId, async ({ payerId, memberId }, { pg }) => {
+      await pg.do(sql`UPDATE payer_profiles SET tkoaly_user_id = ${memberId.value} WHERE id = ${payerId.value}`);
+    });
+
     bus.register(
       defs.updatePayerEmailPriority,
       async ({ payerId, priority, email }, { pg }) => {

@@ -57,6 +57,20 @@ const setupRedis = async () => {
   return { container, uri };
 };
 
+const setupNats = async () => {
+  const container = await new GenericContainer('nats')
+    .withExposedPorts(4222)
+    .withWaitStrategy(Wait.forLogMessage(/Server is ready/, 1))
+    .start();
+
+  const config = {
+    host: container.getHost(),
+    port: container.getMappedPort(4222),
+  };
+
+  return { container, config };
+};
+
 const setupMinio = async () => {
   const secretKey = randomString(16);
   const accessKey = randomString(16);
@@ -235,10 +249,11 @@ export class TestEnvironment {
 }
 
 export const createEnvironment = async (): Promise<Environment> => {
-  const [postgres, redis, minio] = await Promise.all([
+  const [postgres, redis, minio, nats] = await Promise.all([
     setupPostgres(),
     setupRedis(),
     setupMinio(),
+    setupNats(),
   ]);
 
   const dataPath = await fs.mkdtemp(path.resolve(os.tmpdir(), 'bbat-'));
@@ -276,6 +291,12 @@ export const createEnvironment = async (): Promise<Environment> => {
     minioSecretKey: minio.secretKey,
     minioPublicUrl: minio.uri,
     minioBucket: 'baseball-bat',
+    nats: {
+      host: `${nats.config.host}:${nats.config.port}`,
+      user: 'ruser',
+      password: 'T0pS3cr3t',
+    },
+    integrationSecret: 'unsecure',
   });
 
   const environment = new Environment(config);

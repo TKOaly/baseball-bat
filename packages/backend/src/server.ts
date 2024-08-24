@@ -41,7 +41,7 @@ export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
     .use((req, res, next) => {
       res.on('finish', () =>
-        console.log(`${req.method} ${res.statusCode} ${req.url}`),
+        console.log(`${req.method} ${res.statusCode} ${req.originalUrl}`),
       );
       next();
     })

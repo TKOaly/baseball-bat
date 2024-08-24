@@ -17,6 +17,7 @@ import { getUpstreamUserById } from './modules/users/definitions';
 import { ExecutionContext } from './bus';
 import { createInterface } from './bus';
 import { ModuleDeps } from './module';
+import { RedisClient } from 'bullmq';
 
 type AuthMiddlewareSession<O extends AuthMiddlewareOptions> =
   (O['unauthenticated'] extends true

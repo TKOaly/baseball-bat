@@ -9,6 +9,7 @@ import * as E from 'fp-ts/Either';
 import * as t from 'io-ts';
 import { flow } from 'fp-ts/function';
 import { badRequest, unauthorized } from 'typera-common/response';
+import { Config } from '@/config';
 
 type Redis = ReturnType<typeof createClient>;
 
@@ -16,7 +17,7 @@ export type Session = { token: string } & t.TypeOf<typeof sessionData>;
 
 export type SessionMiddleware = Middleware.ChainedMiddleware<
   { redis: Redis },
-  { session: Session | null },
+  { session: Session | null, isServiceRequest: boolean },
   | Response.BadRequest<string, undefined>
   | Response.Unauthorized<undefined, undefined>
 >;
@@ -38,17 +39,24 @@ const sessionData = t.union([
   }),
 ]);
 
-export const sessionMiddleware: SessionMiddleware = async ({ redis, req }) => {
+export const sessionMiddleware = (config: Config): SessionMiddleware => async ({ redis, req }) => {
   const header = req.header('Authorization');
 
   if (!header) {
-    return Middleware.next({ session: null });
+    return Middleware.next({ session: null, isServiceRequest: false });
   }
 
   const [kind, token] = header.split(/\s+/g, 2);
 
   if (kind.toLowerCase() !== 'bearer') {
     return Middleware.stop(badRequest('Invalid authorization header!'));
+  }
+
+  if (token === config.serviceSecret) {
+    return Middleware.next({
+      session: null,
+      isServiceRequest: true,
+    });
   }
 
   const dataSerialized = await redis.get(`session:${token}`);
@@ -79,5 +87,6 @@ export const sessionMiddleware: SessionMiddleware = async ({ redis, req }) => {
       ...data,
       token,
     },
+    isServiceRequest: false,
   });
 };

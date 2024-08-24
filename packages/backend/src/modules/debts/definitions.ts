@@ -141,6 +141,15 @@ const iface = createInterface('debts', builder => ({
     ]),
     response: types.paginationQueryResponse(types.debt),
   }),
+  getDebtsByPayerMemberId: builder.proc({
+    payload: t.intersection([
+      t.type({
+        memberId: t.number,
+      }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.debt),
+  }),
   createPayment: builder.proc({
     payload: t.intersection([
       t.type({
@@ -187,6 +196,7 @@ export const {
   createDebt,
   updateDebtComponent,
   getDebtsByPayer,
+  getDebtsByPayerMemberId,
   createPayment,
   markAsPaid,
 } = iface.procedures;
