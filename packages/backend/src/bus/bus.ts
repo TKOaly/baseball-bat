@@ -248,7 +248,11 @@ export class LocalBus<
       ? new TextEncoder().encode(JSON.stringify(output))
       : undefined;
 
-    ctx.pg.once('commit', async () => {
+    ctx.pg.onCommit(async () => {
+      if (ctx.nats.isClosed()) {
+        return;
+      }
+
       const js = ctx.nats.jetstream();
       await js.publish(`bbat.${eventType.name.replace(':', '.')}`, encoded);
     });

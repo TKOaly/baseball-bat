@@ -155,7 +155,15 @@ export class Environment {
         };
       },
       minio: ({ config }) => setupMinioClient(config),
-      nats: ({ config }) => connectNats(config),
+      nats: async env => {
+        const nats = await connectNats(env.config);
+
+        env.onTeardown(async () => {
+          await nats.close();
+        });
+
+        return nats;
+      },
     };
 
   deps: Partial<Deps> = {};
@@ -314,6 +322,7 @@ export const createEnvironment = async (): Promise<Environment> => {
     await redis.container.stop();
     await postgres.container.stop();
     await minio.container.stop();
+    await nats.container.stop();
   });
 
   return environment;
