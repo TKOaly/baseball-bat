@@ -1,12 +1,11 @@
-import { RouterFactory } from "@/module";
+import { RouterFactory } from '@/module';
 import auth from '@/auth-middleware';
-import { router, Parser } from "typera-express";
-import { paginationQuery } from "@bbat/common/types";
+import { router, Parser } from 'typera-express';
+import { paginationQuery } from '@bbat/common/types';
 import * as defs from './definitions';
-import { ok } from "typera-express/response";
+import { ok } from 'typera-express/response';
 
-const factory: RouterFactory = (route) => {
-
+const factory: RouterFactory = route => {
   const getAuditLogEvents = route
     .use(auth())
     .use(Parser.query(paginationQuery))

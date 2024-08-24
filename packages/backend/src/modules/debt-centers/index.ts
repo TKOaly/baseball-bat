@@ -153,14 +153,16 @@ export default createModule({
 
       await bus.exec(logEvent, {
         type: 'debt-center.delete',
-        links: [{
-          type: 'center',
-          label: center.name,
-          target: {
-            type: 'debt-center',
-            id: center.id,
+        links: [
+          {
+            type: 'center',
+            label: center.name,
+            target: {
+              type: 'debt-center',
+              id: center.id,
+            },
           },
-        }],
+        ],
       });
 
       return center;

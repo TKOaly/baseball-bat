@@ -1,5 +1,5 @@
-import { connect as connectNats } from "nats";
-import { Config } from "./config";
+import { connect as connectNats } from 'nats';
+import { Config } from './config';
 
 export const setupNats = async (config: Config) => {
   const nats = await connectNats({
@@ -12,8 +12,8 @@ export const setupNats = async (config: Config) => {
 
   await jsm.streams.add({
     name: 'bbat',
-    subjects: ['bbat.>']
+    subjects: ['bbat.>'],
   });
 
   return nats;
-}
+};

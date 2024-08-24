@@ -200,14 +200,16 @@ export default createModule({
             start: statement.opening_balance_date,
             end: statement.closing_balance_date,
           },
-          links: [{
-            type: 'statement',
-            label: statement.id,
-            target: {
-              type: 'bank-statement',
-              id: statement.id,
+          links: [
+            {
+              type: 'statement',
+              label: statement.id,
+              target: {
+                type: 'bank-statement',
+                id: statement.id,
+              },
             },
-          }],
+          ],
         });
 
         return {

@@ -17,7 +17,7 @@ export type Session = { token: string } & t.TypeOf<typeof sessionData>;
 
 export type SessionMiddleware = Middleware.ChainedMiddleware<
   { redis: Redis },
-  { session: Session | null, isServiceRequest: boolean },
+  { session: Session | null; isServiceRequest: boolean },
   | Response.BadRequest<string, undefined>
   | Response.Unauthorized<undefined, undefined>
 >;
@@ -39,54 +39,56 @@ const sessionData = t.union([
   }),
 ]);
 
-export const sessionMiddleware = (config: Config): SessionMiddleware => async ({ redis, req }) => {
-  const header = req.header('Authorization');
+export const sessionMiddleware =
+  (config: Config): SessionMiddleware =>
+  async ({ redis, req }) => {
+    const header = req.header('Authorization');
 
-  if (!header) {
-    return Middleware.next({ session: null, isServiceRequest: false });
-  }
+    if (!header) {
+      return Middleware.next({ session: null, isServiceRequest: false });
+    }
 
-  const [kind, token] = header.split(/\s+/g, 2);
+    const [kind, token] = header.split(/\s+/g, 2);
 
-  if (kind.toLowerCase() !== 'bearer') {
-    return Middleware.stop(badRequest('Invalid authorization header!'));
-  }
+    if (kind.toLowerCase() !== 'bearer') {
+      return Middleware.stop(badRequest('Invalid authorization header!'));
+    }
 
-  if (token === config.serviceSecret) {
-    return Middleware.next({
-      session: null,
-      isServiceRequest: true,
-    });
-  }
+    if (token === config.serviceSecret) {
+      return Middleware.next({
+        session: null,
+        isServiceRequest: true,
+      });
+    }
 
-  const dataSerialized = await redis.get(`session:${token}`);
+    const dataSerialized = await redis.get(`session:${token}`);
 
-  if (!dataSerialized) {
-    return Middleware.stop(unauthorized());
-  }
+    if (!dataSerialized) {
+      return Middleware.stop(unauthorized());
+    }
 
-  let data;
+    let data;
 
-  try {
-    const parsed = JSON.parse(dataSerialized);
-    const result = sessionData.decode(parsed);
+    try {
+      const parsed = JSON.parse(dataSerialized);
+      const result = sessionData.decode(parsed);
 
-    if (E.isRight(result)) {
-      data = result.right;
-    } else {
+      if (E.isRight(result)) {
+        data = result.right;
+      } else {
+        console.error('Failed to deserialize session!', dataSerialized);
+        return Middleware.stop(unauthorized());
+      }
+    } catch {
       console.error('Failed to deserialize session!', dataSerialized);
       return Middleware.stop(unauthorized());
     }
-  } catch {
-    console.error('Failed to deserialize session!', dataSerialized);
-    return Middleware.stop(unauthorized());
-  }
 
-  return Middleware.next({
-    session: {
-      ...data,
-      token,
-    },
-    isServiceRequest: false,
-  });
-};
+    return Middleware.next({
+      session: {
+        ...data,
+        token,
+      },
+      isServiceRequest: false,
+    });
+  };

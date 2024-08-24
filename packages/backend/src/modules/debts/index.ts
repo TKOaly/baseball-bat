@@ -577,7 +577,7 @@ export default createModule({
         }
 
         await Promise.all(
-          debts.map(async (debt) => {
+          debts.map(async debt => {
             const { result: payments } = await bus.exec(
               paymentService.getPaymentsContainingDebt,
               { debtId: debt.id },
@@ -600,7 +600,7 @@ export default createModule({
               debtId: debt.id,
               status: 'paid',
             });
-          })
+          }),
         );
       },
     );
@@ -1818,7 +1818,12 @@ export default createModule({
 
       await pipe(
         payments,
-        A.traverse(TE.ApplicativePar)((debt) => bus.execTE(paymentService.creditPayment)({ id: debt.id, reason: 'manual' }))
+        A.traverse(TE.ApplicativePar)(debt =>
+          bus.execTE(paymentService.creditPayment)({
+            id: debt.id,
+            reason: 'manual',
+          }),
+        ),
       )();
 
       await pg.do(

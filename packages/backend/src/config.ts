@@ -90,7 +90,7 @@ export class Config implements IConfig {
     host: 'localhost',
     user: '',
     port: 4222,
-    password: ''
+    password: '',
   };
 
   constructor(config: IConfig) {

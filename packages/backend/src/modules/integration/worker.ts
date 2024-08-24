@@ -8,11 +8,7 @@ import * as t from 'io-ts';
 import { emailIdentity, tkoalyIdentity } from '@bbat/common/types';
 
 const messageType = t.type({
-  type: t.union([
-    t.literal('set'),
-    t.literal('create'),
-    t.literal('import'),
-  ]),
+  type: t.union([t.literal('set'), t.literal('create'), t.literal('import')]),
   user: t.number,
   fields: t.record(t.string, t.unknown),
 });
@@ -27,10 +23,20 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
   }
 
   const handleEmailChange = async (memberId: number, email: string) => {
-    const payerWithMemberId = await bus.exec(payerService.getPayerProfileByTkoalyIdentity, tkoalyIdentity(memberId));
-    const payerWithEmail = await bus.exec(payerService.getPayerProfileByEmailIdentity, emailIdentity(email));
+    const payerWithMemberId = await bus.exec(
+      payerService.getPayerProfileByTkoalyIdentity,
+      tkoalyIdentity(memberId),
+    );
+    const payerWithEmail = await bus.exec(
+      payerService.getPayerProfileByEmailIdentity,
+      emailIdentity(email),
+    );
 
-    if (payerWithMemberId && payerWithEmail && payerWithMemberId.id.value !== payerWithEmail.id.value) {
+    if (
+      payerWithMemberId &&
+      payerWithEmail &&
+      payerWithMemberId.id.value !== payerWithEmail.id.value
+    ) {
       await bus.exec(payerService.mergeProfiles, {
         primary: payerWithMemberId.id,
         secondary: payerWithEmail.id,
@@ -55,7 +61,7 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
       });
 
       await bus.exec(payerService.updatePayerEmailPriority, {
-        payerId:payerWithMemberId.id,
+        payerId: payerWithMemberId.id,
         email,
         priority: 'primary',
       });
@@ -64,30 +70,44 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
     return payerWithEmail;
   };
 
-  if ((payload.type === 'import' || payload.type === 'create') && 'email' in payload.fields && typeof payload.fields.email === 'string') {
+  if (
+    (payload.type === 'import' || payload.type === 'create') &&
+    'email' in payload.fields &&
+    typeof payload.fields.email === 'string'
+  ) {
     await handleEmailChange(payload.user, payload.fields.email);
   }
 
-  if (payload.type === 'set' && 'email' in payload.fields && typeof payload.fields.email === 'string') {
-    const payerWithEmail = await handleEmailChange(payload.user, payload.fields.email);
+  if (
+    payload.type === 'set' &&
+    'email' in payload.fields &&
+    typeof payload.fields.email === 'string'
+  ) {
+    const payerWithEmail = await handleEmailChange(
+      payload.user,
+      payload.fields.email,
+    );
 
-    const payer = await bus.exec(payerService.getPayerProfileByTkoalyIdentity, tkoalyIdentity(payload.user));
+    const payer = await bus.exec(
+      payerService.getPayerProfileByTkoalyIdentity,
+      tkoalyIdentity(payload.user),
+    );
 
     console.log('Email:', !!payerWithEmail);
 
     if (!payer || payerWithEmail) {
       return;
     }
-
-    try {
-    } catch (err) {
-      console.log(`Failed to update email ${payload.fields.email} for payer ${payer.name} (${payer.id.value})!`);
-      console.error(err);
-    }
   }
 
-  if ('screen_name' in payload.fields && typeof payload.fields.screen_name === 'string') {
-    const payer = await bus.exec(payerService.getPayerProfileByTkoalyIdentity, tkoalyIdentity(payload.user));
+  if (
+    'screen_name' in payload.fields &&
+    typeof payload.fields.screen_name === 'string'
+  ) {
+    const payer = await bus.exec(
+      payerService.getPayerProfileByTkoalyIdentity,
+      tkoalyIdentity(payload.user),
+    );
 
     if (!payer) {
       return;
@@ -100,7 +120,12 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
   }
 };
 
-export default async (pool: Pool, bus: Bus<BusContext>, config: Config, nats: NatsConnection) => {
+export default async (
+  pool: Pool,
+  bus: Bus<BusContext>,
+  config: Config,
+  nats: NatsConnection,
+) => {
   const jsm = await nats.jetstreamManager();
 
   await jsm.consumers.add('members', {
@@ -110,9 +135,9 @@ export default async (pool: Pool, bus: Bus<BusContext>, config: Config, nats: Na
     // deliver_policy: DeliverPolicy.New,
   });
 
-  const consumer = await nats.jetstream()
-    .consumers
-    .get('members', 'baseball-bat');
+  const consumer = await nats
+    .jetstream()
+    .consumers.get('members', 'baseball-bat');
 
   for await (const msg of await consumer.consume()) {
     await pool.tryWithConnection(async pg => {

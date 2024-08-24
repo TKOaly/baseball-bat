@@ -14,8 +14,6 @@ import * as TE from 'fp-ts/TaskEither';
 import * as E from 'fp-ts/Either';
 import { Middleware } from 'typera-express';
 import { flow, pipe } from 'fp-ts/function';
-import { setupNats } from '@/nats';
-import { Config } from '@/config';
 import { NatsConnection } from 'nats';
 import { Connection } from '@/db/connection';
 
@@ -87,7 +85,6 @@ export abstract class Bus<C> {
       this.register(iface.procedures[name], impl, id ?? undefined),
     );
   }
-
 }
 
 export class ExecutionContext<C> {
@@ -187,7 +184,9 @@ interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
   original: ProcedureHandler<PT, C>;
 }
 
-export class LocalBus<C extends { nats: NatsConnection, pg: Connection }> extends Bus<C> {
+export class LocalBus<
+  C extends { nats: NatsConnection; pg: Connection },
+> extends Bus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
 
@@ -207,7 +206,7 @@ export class LocalBus<C extends { nats: NatsConnection, pg: Connection }> extend
     return this.procedures.get(name)!.original; // eslint-disable-line
   }
 
-  on<ET extends EventType<any>>(
+  async on<ET extends EventType<any>>(
     eventType: ET,
     handler: EventHandler<EventOf<ET>, C>,
   ) {
@@ -245,7 +244,9 @@ export class LocalBus<C extends { nats: NatsConnection, pg: Connection }> extend
     );
 
     const output = eventType.payloadType.encode(payload[0]);
-    const encoded = output ? new TextEncoder().encode(JSON.stringify(output)) : undefined;
+    const encoded = output
+      ? new TextEncoder().encode(JSON.stringify(output))
+      : undefined;
 
     ctx.pg.once('commit', async () => {
       const js = ctx.nats.jetstream();
@@ -377,10 +378,13 @@ export const createScope = (scope: string) => ({
   },
 });
 
-export const busMiddleware = <C,R>(bus: Bus<C>, ctx: (req: R) => C): Middleware.ChainedMiddleware<R, { bus: ExecutionContext<C> }, never> => {
-    return async req => {
-      return Middleware.next({
-        bus: bus.createContext(ctx(req)),
-      });
-    };
-  }
+export const busMiddleware = <C, R>(
+  bus: Bus<C>,
+  ctx: (req: R) => C,
+): Middleware.ChainedMiddleware<R, { bus: ExecutionContext<C> }, never> => {
+  return async req => {
+    return Middleware.next({
+      bus: bus.createContext(ctx(req)),
+    });
+  };
+};

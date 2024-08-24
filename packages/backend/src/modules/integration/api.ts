@@ -1,13 +1,22 @@
-import { RouterFactory } from "@/module";
-import { Parser, Response, Middleware, router } from "typera-express";
-import * as debtService from "@/modules/debts/definitions";
-import * as payerService from "@/modules/payers/definitions";
-import { internalServerError, notFound, ok, unauthorized } from "typera-express/response";
-import { paginationQuery } from "@bbat/common/types";
+import { RouterFactory } from '@/module';
+import { Parser, Response, Middleware, router } from 'typera-express';
+import * as debtService from '@/modules/debts/definitions';
+import * as payerService from '@/modules/payers/definitions';
+import {
+  internalServerError,
+  notFound,
+  ok,
+  unauthorized,
+} from 'typera-express/response';
+import { paginationQuery } from '@bbat/common/types';
 
-type AuthServiceMiddleware = Middleware.ChainedMiddleware<{ isServiceRequest: boolean }, {}, Response.Unauthorized | Response.BadRequest>;
+type AuthServiceMiddleware = Middleware.ChainedMiddleware<
+  { isServiceRequest: boolean },
+  Record<string, never>,
+  Response.Unauthorized | Response.BadRequest
+>;
 
-const routes: RouterFactory = (route) => {
+const routes: RouterFactory = route => {
   const authService: AuthServiceMiddleware = async ({ isServiceRequest }) => {
     if (!isServiceRequest) {
       return Middleware.stop(unauthorized());
@@ -41,7 +50,10 @@ const routes: RouterFactory = (route) => {
         return notFound({});
       }
 
-      const payer = await bus.exec(payerService.getPayerProfileByInternalIdentity, debt.payerId);
+      const payer = await bus.exec(
+        payerService.getPayerProfileByInternalIdentity,
+        debt.payerId,
+      );
 
       if (!payer) {
         return internalServerError({});
