@@ -8,7 +8,7 @@
     "start": "node -r tsconfig-paths/register ./src/app.js",
     "test:unit": "NODE_ENV=testing TZ=Europe/London ASSET_PATH=./assets node --dns-result-order=ipv4first -r esbuild-register -r ../../dotenv.ts --test",
     "test:unit:all": "pnpm test:unit tests/unit/*.test.ts",
-    "test:e2e": "NODE_OPTIONS='--dns-result-order=ipv4first -r esbuild-register -r ../../dotenv.ts' playwright test",
+    "test:e2e": "NODE_ENV=testing NODE_OPTIONS='--dns-result-order=ipv4first -r esbuild-register -r ../../dotenv.ts' playwright test",
     "migrate": "node-pg-migrate -d POSTGRES_CONNECTION_STRING up",
     "build": "tsc",
     "lint": "eslint src && prettier --check src",

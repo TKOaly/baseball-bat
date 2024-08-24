@@ -42,7 +42,7 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
     await Promise.all(modules.map(initModule));
   };
 
-  await registerModules([
+  const modules = [
     accounting,
     banking,
     debtCenters,
@@ -59,6 +59,11 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
     jobs,
     session,
     audit,
-    integration,
-  ]);
+  ];
+
+  if (process.env.NODE_ENV !== 'testing') {
+    modules.push(integration);
+  }
+
+  await registerModules(modules);
 };
