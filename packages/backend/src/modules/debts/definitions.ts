@@ -13,13 +13,6 @@ const iface = createInterface('debts', builder => ({
     payload: t.string,
     response: t.array(types.debt),
   }),
-  onDebtPaid: builder.proc({
-    payload: t.type({
-      debt: types.debt,
-      payment: types.payment,
-    }),
-    response: t.void,
-  }),
   getDebtComponentsByCenter: builder.proc({
     payload: t.string,
     response: t.array(types.debtComponent),
@@ -186,7 +179,6 @@ export default iface;
 export const {
   getDebt,
   getDebtsByPayment,
-  onDebtPaid,
   getDebtComponentsByCenter,
   generateDebtStatusReport,
   generateDebtLedger,
@@ -357,5 +349,5 @@ export const onStatusChanged = scope.defineEvent(
       t.literal('mispaid'),
       t.literal('credited'),
     ]),
-  })
+  }),
 );

@@ -11,7 +11,7 @@ import {
 } from 'bullmq';
 import routes from './api';
 import { Config } from '@/config';
-import { ExecutionContext, LocalBus } from '@/bus';
+import { ExecutionContext, Bus } from '@/bus';
 import { BusContext } from '@/app';
 import { shutdown } from '@/orchestrator';
 import { Pool } from '@/db/connection';
@@ -39,7 +39,7 @@ export class JobService {
 
   constructor(
     public config: Config,
-    private bus: LocalBus<BusContext>,
+    private bus: Bus<BusContext>,
     private pool: Pool,
   ) {
     const events = new QueueEvents('reports', {
