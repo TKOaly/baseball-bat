@@ -18,7 +18,8 @@ export type Props<T, Q extends PaginationQueryArgs> = Omit<
   | 'loading'
   | 'refreshing'
   | 'showBottomLoading'
-  | 'onEnd'
+  | 'fetchMore'
+  | 'more'
   | 'onSortChange'
 > & {
   endpoint: Hooks<T, Q>;
@@ -50,7 +51,7 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
     } as Q;
   };
 
-  const [fetchMore] = endpoint.useLazyQuery();
+  const [fetchMoreQuery] = endpoint.useLazyQuery();
   const { data, isLoading, isFetching, originalArgs } = endpoint.useQuery(
     createQuery({
       limit,
@@ -58,17 +59,20 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
     }),
   );
 
-  const onEnd = useCallback(() => {
-    if (data?.nextCursor) {
-      fetchMore(
-        createQuery({
-          sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
-          limit,
-          cursor: data.nextCursor,
-        }),
-      );
-    }
-  }, [data, fetchMore, sort, props]);
+  const fetchMore = useCallback(
+    (amount: number | null) => {
+      if (data?.nextCursor) {
+        fetchMoreQuery(
+          createQuery({
+            sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
+            limit: amount ?? undefined,
+            cursor: data.nextCursor,
+          }),
+        );
+      }
+    },
+    [data, fetchMoreQuery, sort, props],
+  );
 
   const rows = (data?.result ?? []).map(item => ({
     key: (item as any).id,
@@ -83,8 +87,9 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
       onSortChange={(col, dir) =>
         col && dir ? setSort([col, dir]) : setSort(undefined)
       }
+      more={!!data?.nextCursor}
       rows={rows}
-      onEnd={onEnd}
+      fetchMore={fetchMore}
       {...props}
     />
   );
