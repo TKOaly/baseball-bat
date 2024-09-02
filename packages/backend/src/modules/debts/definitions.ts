@@ -339,6 +339,13 @@ export const onDebtCreated = scope.defineEvent(
   }),
 );
 
+export const onDebtPublished = scope.defineEvent(
+  'onDebtPublished',
+  t.type({
+    debtId: t.string,
+  }),
+);
+
 export const onStatusChanged = scope.defineEvent(
   'onStatusChanged',
   t.type({

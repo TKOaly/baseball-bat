@@ -1284,6 +1284,10 @@ export default createModule({
           );
         }
 
+        await bus.emit(defs.onDebtPublished, {
+          debtId: debt.id,
+        });
+
         await bus.exec(logEvent, {
           type: 'debt.publish',
           details: {
