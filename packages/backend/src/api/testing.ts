@@ -22,7 +22,9 @@ import * as A from 'fp-ts/Array';
 import { flow, pipe } from 'fp-ts/function';
 
 const factory: ApiFactory = (_, route) => {
-  if (process.env.NODE_ENV !== 'development') {
+  if (
+    !['testing', 'development'].includes(process.env.NODE_ENV ?? 'production')
+  ) {
     return router();
   }
 
