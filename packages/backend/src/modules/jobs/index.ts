@@ -11,11 +11,12 @@ import {
 } from 'bullmq';
 import routes from './api';
 import { Config } from '@/config';
-import { ExecutionContext, LocalBus } from '@/bus';
+import { ExecutionContext, Bus } from '@/bus';
 import { BusContext } from '@/app';
 import { shutdown } from '@/orchestrator';
 import { Pool } from '@/db/connection';
 import { createModule } from '@/module';
+import { NatsConnection } from 'nats';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -39,8 +40,9 @@ export class JobService {
 
   constructor(
     public config: Config,
-    private bus: LocalBus<BusContext>,
+    private bus: Bus<BusContext>,
     private pool: Pool,
+    private nats: NatsConnection,
   ) {
     const events = new QueueEvents('reports', {
       connection: this.getConnectionConfig(),
@@ -112,7 +114,11 @@ export class JobService {
   ) {
     const callback: BaseProcessor = (job, token) => {
       return this.pool.tryWithConnection(async pg => {
-        const ctx = this.bus.createContext({ pg, session: null });
+        const ctx = this.bus.createContext({
+          pg,
+          nats: this.nats,
+          session: null,
+        });
         return processor(ctx, job, token);
       });
     };

@@ -123,6 +123,15 @@ export const addPayerEmail = scope.defineProcedure({
   response: types.payerEmail,
 });
 
+export const updatePayerMemberId = scope.defineProcedure({
+  name: 'updatePayerMemberId',
+  payload: t.type({
+    payerId: internalIdentityT,
+    memberId: tkoalyIdentityT,
+  }),
+  response: t.void,
+});
+
 export const updatePayerEmailPriority = scope.defineProcedure({
   name: 'updatePayerEmailPriority',
   payload: t.type({

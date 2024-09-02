@@ -182,8 +182,6 @@ export const authServiceFactory = ({
         accessLevel,
       };
 
-      console.log('? session:' + token);
-
       const exists = await redis.exists(`session:${token}`);
 
       if (!exists) {
@@ -330,7 +328,6 @@ export const authServiceFactory = ({
 
     async createSession() {
       const token = uuid();
-      console.log('session:' + token);
       await this.redis.set(
         `session:${token}`,
         JSON.stringify({ authLevel: 'unauthenticated' }),
@@ -379,8 +376,6 @@ export const authServiceFactory = ({
         authMethod: method,
         accessLevel,
       };
-
-      console.log('? session:' + token);
 
       const exists = await this.redis.exists(`session:${token}`);
 

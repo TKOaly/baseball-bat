@@ -33,23 +33,15 @@ type QueryOptions<Row, Result> = {
   map?: (row: Row) => Result;
 };
 
-type RowOf<T extends QueryOptions<any, any>> = T extends QueryOptions<
-  infer R,
-  any
->
-  ? R
-  : never;
+type RowOf<T extends QueryOptions<any, any>> =
+  T extends QueryOptions<infer R, any> ? R : never;
 type Coalesce<T, D> = T extends undefined | null
   ? D
   : unknown extends T
     ? D
     : T;
-type ResultOf<T extends QueryOptions<any, any>> = T extends QueryOptions<
-  any,
-  infer R
->
-  ? R
-  : never;
+type ResultOf<T extends QueryOptions<any, any>> =
+  T extends QueryOptions<any, infer R> ? R : never;
 type MappedResult<T extends QueryOptions<any, any>> = Coalesce<
   ResultOf<T>,
   RowOf<T>

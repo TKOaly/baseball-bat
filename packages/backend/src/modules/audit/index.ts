@@ -1,35 +1,38 @@
-import { createModule } from "@/module";
+import { createModule } from '@/module';
 import sql from 'sql-template-strings';
 import iface from './definitions';
 import routes from './api';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Task';
-import { pipe } from "fp-ts/function";
-import { createPaginatedQuery } from "@/db/pagination";
-import { AuditEvent, auditEvent, internalIdentity } from "@bbat/common/types";
-import { isLeft } from "fp-ts/lib/Either";
+import { pipe } from 'fp-ts/function';
+import { createPaginatedQuery } from '@/db/pagination';
+import { AuditEvent, auditEvent, internalIdentity } from '@bbat/common/types';
+import { isLeft } from 'fp-ts/lib/Either';
 
-const query = createPaginatedQuery<AuditLogDb>(sql`
+const query = createPaginatedQuery<AuditLogDb>(
+  sql`
   SELECT
     e.*,
     (SELECT ARRAY_AGG(TO_JSON(l.*)) FROM audit_log_link l WHERE l.entry_id = e.entry_id) AS links
   FROM audit_log e
-`, 'entry_id');
+`,
+  'entry_id',
+);
 
 type AuditLogDb = {
-  entry_id: string,
-  time: Date,
-  type: string,
-  subject: string | null,
-  details: unknown,
+  entry_id: string;
+  time: Date;
+  type: string;
+  subject: string | null;
+  details: unknown;
   object_type: string;
   object_id: string;
   links: {
-    type: string,
-    label: string,
-    target_type: string,
-    target_id: string,
-  }[],
+    type: string;
+    label: string;
+    target_type: string;
+    target_id: string;
+  }[];
 };
 
 const formatAuditLogEntry = (db: AuditLogDb): AuditEvent => {
@@ -43,7 +46,7 @@ const formatAuditLogEntry = (db: AuditLogDb): AuditEvent => {
       id: db.object_id,
     },*/
     details: db.details,
-    links: db.links.map((link) => ({
+    links: db.links.map(link => ({
       type: link.type,
       label: link.label,
       target: {
@@ -71,7 +74,8 @@ export default createModule({
   async setup({ bus }) {
     bus.provide(iface, {
       async logEvent({ type, details, links }, { pg, session }) {
-        const subject = session?.authLevel === 'authenticated' ? session.payerId.value : null;
+        const subject =
+          session?.authLevel === 'authenticated' ? session.payerId.value : null;
 
         const result = await pg.one<{ entry_id: string }>(sql`
           INSERT INTO audit_log (type, subject, details) VALUES (${type}, ${subject}, ${details})
@@ -86,7 +90,8 @@ export default createModule({
           await pipe(
             links,
             A.traverse(T.ApplicativePar)(
-              (link) => () => pg.do(sql`
+              link => () =>
+                pg.do(sql`
                 INSERT INTO audit_log_link (entry_id, type, target_type, target_id, label)
                 VALUES (${result.entry_id}, ${link.type}, ${link.target.type}, ${link.target.id}, ${link.label})
               `),
@@ -104,4 +109,4 @@ export default createModule({
       },
     });
   },
-})
+});

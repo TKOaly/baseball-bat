@@ -215,25 +215,6 @@ export default createModule({
           )
           .then(dbDebts => dbDebts && dbDebts.map(formatDebt));
       },
-      async onDebtPaid({ debt, payment }, _, bus) {
-        const { result: payments } = await bus.exec(
-          paymentService.getPaymentsContainingDebt,
-          { debtId: debt.id },
-        );
-
-        const promises = payments
-          .filter(p => p.id !== payment.id)
-          .map(async payment => {
-            if (payment.type === 'invoice') {
-              await bus.exec(paymentService.creditPayment, {
-                id: payment.id,
-                reason: 'paid',
-              });
-            }
-          });
-
-        await Promise.all(promises);
-      },
 
       async getDebtComponentsByCenter(id, { pg }) {
         const components = await pg.many<DbDebtComponent>(sql`
@@ -438,6 +419,10 @@ export default createModule({
           },
         ]);
 
+        await bus.emit(defs.onDebtCreated, {
+          debtId: createdDebt.id,
+        });
+
         return createdDebt;
       },
 
@@ -469,6 +454,22 @@ export default createModule({
             payer_id = ${id.value}
               AND (${includeDrafts} OR published_at IS NOT NULL)
               AND (${includeCredited} OR NOT credited)
+          `,
+          cursor,
+          order: sort
+            ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+            : undefined,
+          limit,
+          map: formatDebt,
+        });
+      },
+
+      async getDebtsByPayerMemberId({ memberId, cursor, sort, limit }, { pg }) {
+        return queryDebts(pg, {
+          where: sql`
+            payer_id IN (SELECT id FROM payer_profiles WHERE tkoaly_user_id = ${memberId})
+              AND published_at IS NOT NULL
+              AND NOT credited
           `,
           cursor,
           order: sort
@@ -576,7 +577,30 @@ export default createModule({
         }
 
         await Promise.all(
-          debts.map(debt => bus.exec(defs.onDebtPaid, { debt, payment })),
+          debts.map(async debt => {
+            const { result: payments } = await bus.exec(
+              paymentService.getPaymentsContainingDebt,
+              { debtId: debt.id },
+            );
+
+            const promises = payments
+              .filter(p => p.id !== payment.id)
+              .map(async payment => {
+                if (payment.type === 'invoice') {
+                  await bus.exec(paymentService.creditPayment, {
+                    id: payment.id,
+                    reason: 'paid',
+                  });
+                }
+              });
+
+            await Promise.all(promises);
+
+            await bus.emit(defs.onStatusChanged, {
+              debtId: debt.id,
+              status: 'paid',
+            });
+          }),
         );
       },
     );
@@ -1787,6 +1811,21 @@ export default createModule({
         WHERE id = ${id}
       `);
 
+      const { result: payments } = await bus.exec(
+        paymentService.getPaymentsContainingDebt,
+        { debtId: debt.id },
+      );
+
+      await pipe(
+        payments,
+        A.traverse(TE.ApplicativePar)(debt =>
+          bus.execTE(paymentService.creditPayment)({
+            id: debt.id,
+            reason: 'manual',
+          }),
+        ),
+      )();
+
       await pg.do(
         sql`UPDATE payments SET credited = true WHERE id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${id})`,
       );
@@ -1816,6 +1855,11 @@ export default createModule({
             },
           },
         ],
+      });
+
+      await bus.emit(defs.onStatusChanged, {
+        debtId: debt.id,
+        status: 'credited',
       });
     });
 

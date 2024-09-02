@@ -1,5 +1,5 @@
 import { BusContext } from '@/app';
-import { LocalBus } from '@/bus';
+import { Bus } from '@/bus';
 import sql from 'sql-template-strings';
 import { reportTypeIface } from '../reports/definitions';
 import * as E from 'fp-ts/Either';
@@ -40,7 +40,7 @@ const debtStatusReportOptions = t.type({
   ]),
 });
 
-export default (bus: LocalBus<BusContext>) => {
+export default (bus: Bus<BusContext>) => {
   bus.provideNamed(reportTypeIface, 'debt-ledger', {
     async getDetails() {
       return {

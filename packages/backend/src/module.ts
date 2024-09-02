@@ -1,6 +1,6 @@
 import { Middleware, Router, route } from 'typera-express';
 import { Connection, Pool } from '@/db/connection';
-import { LocalBus } from '@/bus';
+import { Bus, busMiddleware } from '@/bus';
 import dbMiddleware from '@/db/middleware';
 import { BusContext } from './app';
 import * as redis from 'redis';
@@ -9,12 +9,14 @@ import { Config } from './config';
 import { IEmailTransport } from './modules/email';
 import { Session, sessionMiddleware } from './middleware/session';
 import { Client as MinioClient } from 'minio';
+import { NatsConnection } from 'nats';
 
 export type ModuleDeps = {
-  bus: LocalBus<BusContext>;
+  bus: Bus<BusContext>;
   pool: Pool;
   redis: ReturnType<typeof redis.createClient>;
   jobs: JobService;
+  nats: NatsConnection;
   minio: MinioClient;
   config: Config;
   emailTransport: IEmailTransport;
@@ -22,8 +24,9 @@ export type ModuleDeps = {
 
 const createBusContext = (req: {
   pg: Connection;
+  nats: NatsConnection;
   session: Session | null;
-}) => ({ pg: req.pg, session: req.session });
+}) => ({ pg: req.pg, session: req.session, nats: req.nats });
 
 export const createBaseRoute = ({
   bus,
@@ -31,12 +34,14 @@ export const createBaseRoute = ({
   redis,
   minio,
   jobs,
+  nats,
+  config,
 }: ModuleDeps) =>
   route
     .use(dbMiddleware(pool))
-    .use(() => Middleware.next({ redis, jobs, minio }))
-    .use(sessionMiddleware)
-    .use(bus.middleware(createBusContext));
+    .use(() => Middleware.next({ redis, jobs, minio, nats }))
+    .use(sessionMiddleware(config))
+    .use(busMiddleware(bus, createBusContext));
 
 const _extendBaseRoute = <T>(deps: ModuleDeps, module: T) =>
   createBaseRoute(deps).use(() => Middleware.next({ module }));

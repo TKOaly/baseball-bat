@@ -4,8 +4,6 @@ import helmet, { HelmetOptions } from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import initServices from '@/modules';
-import { router } from 'typera-express';
-import healthCheck from './api/health-check';
 import apiRoutes, { ApiDeps } from './api';
 import { ModuleDeps } from './module';
 
@@ -40,9 +38,12 @@ const helmetConfig: HelmetOptions = {
 export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
     .use((req, res, next) => {
-      res.on('finish', () =>
-        console.log(`${req.method} ${res.statusCode} ${req.url}`),
-      );
+      if (process.env.NODE_ENV !== 'testing') {
+        res.on('finish', () =>
+          console.log(`${req.method} ${res.statusCode} ${req.originalUrl}`),
+        );
+      }
+
       next();
     })
     .use(helmet(helmetConfig))

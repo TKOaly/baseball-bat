@@ -13,13 +13,6 @@ const iface = createInterface('debts', builder => ({
     payload: t.string,
     response: t.array(types.debt),
   }),
-  onDebtPaid: builder.proc({
-    payload: t.type({
-      debt: types.debt,
-      payment: types.payment,
-    }),
-    response: t.void,
-  }),
   getDebtComponentsByCenter: builder.proc({
     payload: t.string,
     response: t.array(types.debtComponent),
@@ -141,6 +134,15 @@ const iface = createInterface('debts', builder => ({
     ]),
     response: types.paginationQueryResponse(types.debt),
   }),
+  getDebtsByPayerMemberId: builder.proc({
+    payload: t.intersection([
+      t.type({
+        memberId: t.number,
+      }),
+      types.paginationQueryPayload,
+    ]),
+    response: types.paginationQueryResponse(types.debt),
+  }),
   createPayment: builder.proc({
     payload: t.intersection([
       t.type({
@@ -177,7 +179,6 @@ export default iface;
 export const {
   getDebt,
   getDebtsByPayment,
-  onDebtPaid,
   getDebtComponentsByCenter,
   generateDebtStatusReport,
   generateDebtLedger,
@@ -187,6 +188,7 @@ export const {
   createDebt,
   updateDebtComponent,
   getDebtsByPayer,
+  getDebtsByPayerMemberId,
   createPayment,
   markAsPaid,
 } = iface.procedures;
@@ -329,3 +331,23 @@ export const createCombinedPayment = scope.defineProcedure({
   }),
   response: types.payment,
 });
+
+export const onDebtCreated = scope.defineEvent(
+  'onDebtCreated',
+  t.type({
+    debtId: t.string,
+  }),
+);
+
+export const onStatusChanged = scope.defineEvent(
+  'onStatusChanged',
+  t.type({
+    debtId: t.string,
+    status: t.union([
+      t.literal('paid'),
+      t.literal('unpaid'),
+      t.literal('mispaid'),
+      t.literal('credited'),
+    ]),
+  }),
+);

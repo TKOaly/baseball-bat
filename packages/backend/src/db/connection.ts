@@ -40,6 +40,8 @@ export class Pool {
 export class Connection {
   transactionCounter = 0;
 
+  onCommitHooks: Array<() => Promise<void>> = [];
+
   constructor(
     private id: number,
     private conn: pg.PoolClient,
@@ -60,8 +62,13 @@ export class Connection {
     return this.conn.escapeIdentifier(id);
   }
 
+  async onCommit(hook: () => Promise<void>) {
+    this.onCommitHooks.push(hook);
+  }
+
   async commit() {
     await this.conn.query('COMMIT');
+    await Promise.all(this.onCommitHooks.map(hook => hook()));
   }
 
   async rollback() {

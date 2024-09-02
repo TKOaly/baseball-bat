@@ -1,8 +1,8 @@
 import * as t from 'io-ts';
 import * as types from '@bbat/common/types';
-import { createInterface } from "@/bus";
+import { createInterface } from '@/bus';
 
-const iface = createInterface('audit', (builder) => ({
+const iface = createInterface('audit', builder => ({
   logEvent: builder.proc({
     payload: t.intersection([
       t.type({
@@ -10,14 +10,16 @@ const iface = createInterface('audit', (builder) => ({
       }),
       t.partial({
         details: t.UnknownRecord,
-        links: t.array(t.type({
-          type: t.string,
-          target: t.type({
-            type: types.resourceType,
-            id: t.string,
+        links: t.array(
+          t.type({
+            type: t.string,
+            target: t.type({
+              type: types.resourceType,
+              id: t.string,
+            }),
+            label: t.string,
           }),
-          label: t.string,
-        })),
+        ),
       }),
     ]),
     response: t.void,
@@ -26,12 +28,9 @@ const iface = createInterface('audit', (builder) => ({
   getLogEvents: builder.proc({
     payload: types.paginationQueryPayload,
     response: types.paginationQueryResponse(types.auditEvent),
-  })
+  }),
 }));
 
 export default iface;
 
-export const {
-  logEvent,
-  getLogEvents,
-} = iface.procedures;
+export const { logEvent, getLogEvents } = iface.procedures;

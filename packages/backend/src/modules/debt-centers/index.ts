@@ -49,7 +49,7 @@ export default createModule({
         SELECT
           d.debt_center_id AS id,
           SUM(dco.amount) AS total,
-          COALESCE(SUM(dco.amount) FILTER (WHERE ds.is_paid), 0) AS paid_total
+          SUM(dco.amount) FILTER (WHERE ds.is_paid) AS paid_total
         FROM debt d
         LEFT JOIN debt_statuses ds USING (id)
         LEFT JOIN debt_component_mapping dcm ON dcm.debt_id = d.id
@@ -58,8 +58,11 @@ export default createModule({
       )
       SELECT DISTINCT ON (dc.id)
         dc.*,
-        counts.*,
-        amounts.*
+        COALESCE(counts.debt_count, 0) AS debt_count,
+        COALESCE(counts.paid_count, 0) AS paid_count,
+        COALESCE(counts.unpaid_count, 0) AS unpaid_count,
+        COALESCE(amounts.total, 0) AS total,
+        COALESCE(amounts.paid_total, 0) AS paid_total
       FROM debt_center dc
       LEFT JOIN counts USING (id)
       LEFT JOIN amounts USING (id)
@@ -150,14 +153,16 @@ export default createModule({
 
       await bus.exec(logEvent, {
         type: 'debt-center.delete',
-        links: [{
-          type: 'center',
-          label: center.name,
-          target: {
-            type: 'debt-center',
-            id: center.id,
+        links: [
+          {
+            type: 'center',
+            label: center.name,
+            target: {
+              type: 'debt-center',
+              id: center.id,
+            },
           },
-        }],
+        ],
       });
 
       return center;

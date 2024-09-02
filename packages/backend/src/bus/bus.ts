@@ -14,6 +14,8 @@ import * as TE from 'fp-ts/TaskEither';
 import * as E from 'fp-ts/Either';
 import { Middleware } from 'typera-express';
 import { flow, pipe } from 'fp-ts/function';
+import { NatsConnection } from 'nats';
+import { Connection } from '@/db/connection';
 
 type ProcedureImplementations<I extends Interface, C> = {
   [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
@@ -33,9 +35,61 @@ export type EventHandler<T, C> = (
   bus: ExecutionContext<C>,
 ) => Promise<void> | void;
 
+export abstract class Bus<C> {
+  abstract on<ET extends EventType<any>>(
+    eventType: ET,
+    handler: EventHandler<EventOf<ET>, C>,
+  ): Promise<void>;
+
+  abstract emit<ET extends EventType<any>>(
+    ctx: C,
+    eventType: ET,
+    ...payload: EventArgs<ET>
+  ): Promise<void>;
+
+  abstract exec<PT extends ProcedureType>(
+    ctx: C,
+    procedure: PT,
+    id: string | null,
+    ...payload: ProcedureArgs<PT>
+  ): Promise<ResponseOf<PT>>;
+
+  abstract register<
+    PT extends ProcedureType<PayloadType, ResponseType>,
+    PayloadType extends Type<any, any, any>,
+    ResponseType extends Type<any, any, any>,
+  >(
+    procedure: PT,
+    handler: ProcedureHandler<PT, C>,
+    ifaceId?: string,
+    override?: boolean,
+  ): Promise<void>;
+
+  abstract createContext(ctx: C): ExecutionContext<C>;
+
+  provide<I extends Interface>(
+    iface: I,
+    implementations: ProcedureImplementations<I, C>,
+  ) {
+    Object.entries(implementations).forEach(([name, impl]) =>
+      this.register(iface.procedures[name], impl),
+    );
+  }
+
+  provideNamed<I extends Interface>(
+    iface: I,
+    id: string | null,
+    implementations: ProcedureImplementations<I, C>,
+  ) {
+    Object.entries(implementations).forEach(([name, impl]) =>
+      this.register(iface.procedures[name], impl, id ?? undefined),
+    );
+  }
+}
+
 export class ExecutionContext<C> {
   constructor(
-    private bus: LocalBus<C>,
+    private bus: Bus<C>,
     public context: C,
   ) {}
 
@@ -130,9 +184,9 @@ interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
   original: ProcedureHandler<PT, C>;
 }
 
-export class LocalBus<C> {
-  // private emitter = new EventEmitter();
-
+export class LocalBus<
+  C extends { nats: NatsConnection; pg: Connection },
+> extends Bus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
 
@@ -152,7 +206,7 @@ export class LocalBus<C> {
     return this.procedures.get(name)!.original; // eslint-disable-line
   }
 
-  on<ET extends EventType<any>>(
+  async on<ET extends EventType<any>>(
     eventType: ET,
     handler: EventHandler<EventOf<ET>, C>,
   ) {
@@ -176,19 +230,32 @@ export class LocalBus<C> {
     }
   }
 
-  async emit<ET extends EventType<any>>(
+  async emit<ET extends EventType<PT>, PT extends Type<any, any, any>>(
     ctx: C,
     eventType: ET,
     ...payload: EventArgs<ET>
   ) {
     const handlers = this.eventHandlers.get(eventType.name) ?? [];
-    // console.log(`Emitting ${eventType.name}: ${handlers.length} handlers`);
+
     await Promise.all(
       handlers.map(handler =>
         handler(payload[0], ctx, this.createContext(ctx)),
       ),
     );
-    // this.emitter.emit(eventType.name, payload, ctx);
+
+    const output = eventType.payloadType.encode(payload[0]);
+    const encoded = output
+      ? new TextEncoder().encode(JSON.stringify(output))
+      : undefined;
+
+    ctx.pg.onCommit(async () => {
+      if (ctx.nats.isClosed()) {
+        return;
+      }
+
+      const js = ctx.nats.jetstream();
+      await js.publish(`bbat.${eventType.name.replace(':', '.')}`, encoded);
+    });
   }
 
   async exec<PT extends ProcedureType>(
@@ -198,8 +265,6 @@ export class LocalBus<C> {
     ...payload: ProcedureArgs<PT>
   ): Promise<ResponseOf<PT>> {
     const name = this.getName(procedure, id ?? undefined);
-
-    // console.log(`Calling ${name}`);
 
     const handler = this.procedures.get(name);
 
@@ -262,26 +327,7 @@ export class LocalBus<C> {
     return result.right;
   }
 
-  provide<I extends Interface>(
-    iface: I,
-    implementations: ProcedureImplementations<I, C>,
-  ) {
-    Object.entries(implementations).forEach(([name, impl]) =>
-      this.register(iface.procedures[name], impl),
-    );
-  }
-
-  provideNamed<I extends Interface>(
-    iface: I,
-    id: string | null,
-    implementations: ProcedureImplementations<I, C>,
-  ) {
-    Object.entries(implementations).forEach(([name, impl]) =>
-      this.register(iface.procedures[name], impl, id ?? undefined),
-    );
-  }
-
-  register<
+  async register<
     PT extends ProcedureType<PayloadType, ResponseType>,
     PayloadType extends Type<any, any, any>,
     ResponseType extends Type<any, any, any>,
@@ -311,16 +357,6 @@ export class LocalBus<C> {
     this.procedures.set(name, fn);
   }
 
-  middleware<R>(
-    ctx: (req: R) => C,
-  ): Middleware.ChainedMiddleware<R, { bus: ExecutionContext<C> }, never> {
-    return async req => {
-      return Middleware.next({
-        bus: this.createContext(ctx(req)),
-      });
-    };
-  }
-
   createContext(context: C): ExecutionContext<C> {
     return new ExecutionContext(this, context);
   }
@@ -345,3 +381,14 @@ export const createScope = (scope: string) => ({
     });
   },
 });
+
+export const busMiddleware = <C, R>(
+  bus: Bus<C>,
+  ctx: (req: R) => C,
+): Middleware.ChainedMiddleware<R, { bus: ExecutionContext<C> }, never> => {
+  return async req => {
+    return Middleware.next({
+      bus: bus.createContext(ctx(req)),
+    });
+  };
+};

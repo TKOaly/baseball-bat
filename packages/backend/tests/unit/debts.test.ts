@@ -153,8 +153,7 @@ setup('Debts service', ({ test }) => {
 
     const { result: emails } = await bus.exec(getEmails, {});
 
-    assert.equal(emails.length, 1);
-    // FIXME: Should send credited email!
+    assert.equal(emails.length, 2);
   });
 
   test('paying debt', async ({ bus }) => {
