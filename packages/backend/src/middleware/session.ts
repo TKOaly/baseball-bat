@@ -54,7 +54,7 @@ export const sessionMiddleware =
       return Middleware.stop(badRequest('Invalid authorization header!'));
     }
 
-    if (token === config.serviceSecret) {
+    if (token === config.integrationSecret) {
       return Middleware.next({
         session: null,
         isServiceRequest: true,
