@@ -16,7 +16,7 @@ export type ModuleDeps = {
   pool: Pool;
   redis: ReturnType<typeof redis.createClient>;
   jobs: JobService;
-  nats: NatsConnection;
+  nats: NatsConnection | null;
   minio: MinioClient;
   config: Config;
   emailTransport: IEmailTransport;
@@ -24,7 +24,7 @@ export type ModuleDeps = {
 
 const createBusContext = (req: {
   pg: Connection;
-  nats: NatsConnection;
+  nats: NatsConnection | null;
   session: Session | null;
 }) => ({ pg: req.pg, session: req.session, nats: req.nats });
 
@@ -57,10 +57,14 @@ export type RouterFactory<T = void> = (
   context: RouterFactoryContext,
 ) => Router;
 
+export const SkipModule: unique symbol = Symbol();
+
+export type SkipModule = typeof SkipModule;
+
 export type ModuleDefinition<T> = {
   name: string;
 
-  setup: (deps: ModuleDeps) => Promise<T>;
+  setup: (deps: ModuleDeps) => Promise<T | SkipModule>;
 
   routes?: RouterFactory<T>;
 };

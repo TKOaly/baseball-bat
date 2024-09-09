@@ -5,6 +5,7 @@ import {
   badRequest,
   internalServerError,
   notFound,
+  notImplemented,
   ok,
   redirect,
   unauthorized,
@@ -26,7 +27,7 @@ const validateAuthCodeBody = t.type({
 });
 
 type Module = {
-  client: Client;
+  client?: Client;
   auth: AuthService;
 };
 
@@ -61,6 +62,10 @@ const factory: RouterFactory<Module> = (route, { config }) => {
     const { bus } = ctx;
     const { client, auth } = ctx.module;
 
+    if (!client) {
+      return notImplemented(`OAuth is not configured!`);
+    }
+
     const params = client.callbackParams(ctx.req);
     const tokenSet = await client.callback(
       `${config.appUrl}/api/session/callback`,
@@ -91,6 +96,10 @@ const factory: RouterFactory<Module> = (route, { config }) => {
 
   const login = route.get('/login').handler(ctx => {
     const { client } = ctx.module;
+
+    if (!client) {
+      return notImplemented(`OAuth is not configured!`);
+    }
 
     /*const payload = base64url.encode(
       JSON.stringify({

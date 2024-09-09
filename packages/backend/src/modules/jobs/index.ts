@@ -42,7 +42,7 @@ export class JobService {
     public config: Config,
     private bus: Bus<BusContext>,
     private pool: Pool,
-    private nats: NatsConnection,
+    private nats: NatsConnection | null,
   ) {
     const events = new QueueEvents('reports', {
       connection: this.getConnectionConfig(),

@@ -185,7 +185,7 @@ interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
 }
 
 export class LocalBus<
-  C extends { nats: NatsConnection; pg: Connection },
+  C extends { nats: NatsConnection | null; pg: Connection },
 > extends Bus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
@@ -249,7 +249,7 @@ export class LocalBus<
       : undefined;
 
     ctx.pg.onCommit(async () => {
-      if (ctx.nats.isClosed()) {
+      if (!ctx.nats || ctx.nats.isClosed()) {
         return;
       }
 

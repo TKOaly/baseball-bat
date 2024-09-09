@@ -8,20 +8,20 @@ dotenv.config();
 
 interface IConfig {
   dbUrl: string;
-  userServiceUrl: string;
-  userServiceApiUrl: string;
+  userServiceUrl: string | null;
+  userServiceApiUrl: string | null;
   userServiceConfig: IssuerMetadata | null;
   serviceId: string;
   serviceSecret: string;
   assetPath: string;
   dataPath: string;
   chromiumBinaryPath: string | null;
-  eventServiceUrl: string;
-  eventServiceToken: string;
+  eventServiceUrl: string | null;
+  eventServiceToken: string | null;
   jwtSecret: string;
-  stripeSecretKey: string;
-  stripePublicKey: string;
-  stripeWebhookSecret: string;
+  stripeSecretKey: string | null;
+  stripePublicKey: string | null;
+  stripeWebhookSecret: string | null;
   minioUrl: string;
   minioPublicUrl: string;
   minioAccessKey: string;
@@ -41,31 +41,31 @@ interface IConfig {
     password?: string;
   };
   magicLinkSecret: string;
-  integrationSecret: string;
+  integrationSecret: string | null;
   nats: {
     host: string;
     user: string;
     port: number;
     password: string;
-  };
+  } | null;
 }
 
 export class Config implements IConfig {
   dbUrl = '';
-  userServiceUrl = '';
-  userServiceApiUrl = '';
+  userServiceUrl = null;
+  userServiceApiUrl = null;
   userServiceConfig = null;
   chromiumBinaryPath = null;
   serviceId = '';
   serviceSecret = '';
-  eventServiceUrl = '';
-  eventServiceToken = '';
+  eventServiceUrl = null;
+  eventServiceToken = null;
   assetPath = '';
   dataPath = '';
   jwtSecret = '';
-  stripeSecretKey = '';
-  stripePublicKey = '';
-  stripeWebhookSecret = '';
+  stripeSecretKey = null;
+  stripePublicKey = null;
+  stripeWebhookSecret = null;
   minioUrl = '';
   minioPublicUrl = '';
   minioAccessKey = '';
@@ -85,13 +85,8 @@ export class Config implements IConfig {
     password?: string;
   };
   magicLinkSecret = '';
-  integrationSecret = '';
-  nats = {
-    host: 'localhost',
-    user: '',
-    port: 4222,
-    password: '',
-  };
+  integrationSecret = null;
+  nats: IConfig['nats'] = null;
 
   constructor(config: IConfig) {
     Object.assign(this, config);
@@ -132,32 +127,46 @@ export class Config implements IConfig {
       POSTGRES_CONNECTION_STRING,
       'POSTGRES_CONNECTION_STRING must be set.',
     );
-    assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.');
-    assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.');
     assert(ASSET_PATH, 'ASSET_PATH must be set.');
     assert(DATA_PATH, 'DATA_PATH must be set.');
     assert(SERVICE_IDENTIFIER, 'SERVICE_IDENTIFIER must be set.');
     assert(SERVICE_SECRET, 'SERVICE_SECRET must be set.');
     assert(JWT_SECRET, 'JWT_SECRET must be set.');
-    assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
-    assert(STRIPE_PUBLIC_KEY, 'STRIPE_PUBLIC_KEY must be set.');
     assert(APP_URL, 'APP_URL must be set.');
-    assert(STRIPE_WEBHOOK_SECRET, 'STRIPE_WEBHOOK_SECRET must be set.');
     assert(MINIO_URL, 'MINIO_URL must be set.');
     assert(MINIO_SECRET_KEY, 'MINIO_SECRET_KEY must be set.');
     assert(MINIO_ACCESS_KEY, 'MINIO_ACCESS_KEY must be set.');
-    assert(INTEGRATION_SECRET, 'INTEGRATION_SECRET must be set.');
-    assert(NATS_HOST, 'NATS_HOST must be set.');
-    assert(NATS_USER, 'NATS_USER must be set.');
-    assert(NATS_PASSWORD, 'NATS_PASSWORD must be set.');
+
+    if (process.env.NODE_ENV !== 'development') {
+      assert(USER_SERVICE_URL, 'USER_SERVICE_URL must be set.');
+      assert(USER_SERVICE_API_URL, 'USER_SERVICE_API_URL must be set.');
+      assert(STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY must be set.');
+      assert(STRIPE_PUBLIC_KEY, 'STRIPE_PUBLIC_KEY must be set.');
+      assert(STRIPE_WEBHOOK_SECRET, 'STRIPE_WEBHOOK_SECRET must be set.');
+      assert(NATS_HOST, 'NATS_HOST must be set.');
+      assert(NATS_USER, 'NATS_USER must be set.');
+      assert(NATS_PASSWORD, 'NATS_PASSWORD must be set.');
+      assert(INTEGRATION_SECRET, 'INTEGRATION_SECRET must be set.');
+    }
+
+    let nats: IConfig['nats'] = null;
+
+    if (NATS_HOST && NATS_USER && NATS_PASSWORD) {
+      nats = {
+        host: NATS_HOST,
+        port: NATS_PORT ? parseInt(NATS_PORT, 10) : 4222,
+        user: NATS_USER,
+        password: NATS_PASSWORD,
+      };
+    }
 
     const emailDispatcher = Config.getEmailDispatcherConfig();
     const smtp = Config.getSMTPConfig();
 
     return new Config({
       dbUrl: POSTGRES_CONNECTION_STRING,
-      userServiceUrl: USER_SERVICE_URL,
-      userServiceApiUrl: USER_SERVICE_API_URL,
+      userServiceUrl: USER_SERVICE_URL ?? null,
+      userServiceApiUrl: USER_SERVICE_API_URL ?? null,
       userServiceConfig: null,
       serviceId: SERVICE_IDENTIFIER,
       serviceSecret: SERVICE_SECRET,
@@ -165,9 +174,9 @@ export class Config implements IConfig {
       eventServiceToken: EVENT_SERVICE_TOKEN ?? '',
       jwtSecret: JWT_SECRET,
       chromiumBinaryPath: CHROMIUM_BINARY_PATH ?? null,
-      stripeSecretKey: STRIPE_SECRET_KEY,
-      stripePublicKey: STRIPE_PUBLIC_KEY,
-      stripeWebhookSecret: STRIPE_WEBHOOK_SECRET,
+      stripeSecretKey: STRIPE_SECRET_KEY ?? null,
+      stripePublicKey: STRIPE_PUBLIC_KEY ?? null,
+      stripeWebhookSecret: STRIPE_WEBHOOK_SECRET ?? null,
       appUrl: APP_URL,
       emailDispatcher,
       smtp,
@@ -180,13 +189,8 @@ export class Config implements IConfig {
       minioAccessKey: MINIO_ACCESS_KEY,
       minioSecretKey: MINIO_SECRET_KEY,
       minioBucket: MINIO_BUCKET ?? 'baseball-bat',
-      integrationSecret: INTEGRATION_SECRET,
-      nats: {
-        host: NATS_HOST,
-        user: NATS_USER,
-        port: NATS_PORT ? parseInt(NATS_PORT, 10) : 4222,
-        password: NATS_PASSWORD,
-      },
+      integrationSecret: INTEGRATION_SECRET ?? null,
+      nats,
     });
   }
 

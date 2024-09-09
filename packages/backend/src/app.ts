@@ -39,7 +39,7 @@ if (config.emailDispatcher) {
 }
 
 export type BusContext = {
-  nats: NatsConnection;
+  nats: NatsConnection | null;
   pg: Connection;
   session: Session | null;
 };

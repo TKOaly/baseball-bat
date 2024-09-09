@@ -2,6 +2,10 @@ import { connect as connectNats } from 'nats';
 import { Config } from './config';
 
 export const setupNats = async (config: Config) => {
+  if (!config.nats) {
+    return null;
+  }
+
   const nats = await connectNats({
     servers: [`${config.nats.host}:${config.nats.port}`],
     user: config.nats.user,
