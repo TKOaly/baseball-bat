@@ -5,20 +5,43 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=klusterivilkku
-    ports:
-      - '5432:5432'
+      - POSTGRES_DB=baseball-bat
+
   adminer:
     image: adminer
     ports:
-      - '8100:8080'
+      - '5004:8080'
+
   redis:
     image: redis
+
+  minio:
+    image: bitnami/minio
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: unsecure
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9000
     ports:
-      - '6380:6379'
+      - '5002:9000'
+      - '5003:9001'
+
   smtp4dev:
     image: rnwood/smtp4dev
     ports:
-      - '2525:25'
-      - '8101:80'
+      - '5001:80'
 
+  baseball-bat:
+    build:
+      context: .
+      target: development
+    env_file: .env
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./packages/backend/src:/usr/src/app/packages/backend/src:ro
+      - ./packages/backend/assets:/usr/src/app/packages/backend/assets:ro
+      - ./packages/common/src:/usr/src/app/packages/common/src:ro
+      - ./packages/frontend/src:/usr/src/app/packages/frontend/src:ro
+      - ./packages/ui/src:/usr/src/app/packages/ui/src:ro
+      - ./packages/frontend/public:/usr/src/app/packages/frontend/public:ro
+      - ./migrations:/usr/src/app/migrations:ro
