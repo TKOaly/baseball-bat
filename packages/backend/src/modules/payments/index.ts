@@ -124,8 +124,8 @@ const queryPayments = createPaginatedQuery<DbPayment>(
         COUNT(d.id) AS debt_count,
         ARRAY_AGG(DISTINCT jsonb_build_object('id', pp.id, 'name', pp.name)) AS payers
       FROM payment_debt_mappings pdm
-      LEFT JOIN debt d ON pdm.debt_id = d.id
-      LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
+      INNER JOIN debt d ON pdm.debt_id = d.id
+      INNER JOIN payer_profiles pp ON pp.id = d.payer_id
       WHERE pdm.payment_id = p.id
     ) aggs ON true
   `,
