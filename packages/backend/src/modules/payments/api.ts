@@ -8,6 +8,13 @@ import {
 import * as t from 'io-ts';
 import * as paymentService from '@/modules/payments/definitions';
 import * as payerService from '@/modules/payers/definitions';
+import * as A from 'fp-ts/Array';
+import * as R from 'fp-ts/Record';
+import * as O from 'fp-ts/Option';
+import * as T from 'fp-ts/Task';
+import * as NA from 'fp-ts/NonEmptyArray';
+import { Ord as DateOrd } from 'fp-ts/Date';
+import * as Ord from 'fp-ts/Ord';
 import * as debtService from '@/modules/debts/definitions';
 import * as bankingService from '@/modules/banking/definitions';
 import { validateBody } from '@/validate-middleware';
@@ -15,7 +22,8 @@ import { euroValue } from '@bbat/common/build/src/currency';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
 import { Parser } from 'typera-express';
-import { paginationQuery } from '@bbat/common/types';
+import { Payment, paginationQuery } from '@bbat/common/types';
+import { pipe, flow } from 'fp-ts/function';
 
 const factory: RouterFactory = route => {
   const getPayments = route
@@ -137,6 +145,73 @@ const factory: RouterFactory = route => {
         throw new Error(
           `Payer ${debts[0].payerId} does not have a primary email`,
         );
+      }
+
+      const intersection = <T>(arr: T[][]): Set<T> =>
+        A.matchLeft(
+          () => new Set<T>(),
+          (head: T[], tail: T[][]) =>
+            A.reduce(
+              new Set(head),
+              (acc: Set<T>, payments: T[]) =>
+                new Set(payments.filter(p => acc.has(p))),
+            )(tail),
+        )(arr);
+
+      const { grouped, common } = await pipe(
+        debts,
+        A.traverse(T.ApplicativePar)(
+          flow(
+            debt => ({ debtId: debt.id }),
+            bus.execT(paymentService.getPaymentsContainingDebt),
+            T.map(
+              flow(
+                ({ result }) => result,
+                A.filter(payment => payment.type === 'invoice'),
+              ),
+            ),
+          ),
+        ),
+        T.bindTo('payments'),
+        T.let(
+          'grouped',
+          flow(
+            ({ payments }) => payments,
+            A.match(
+              () => ({}),
+              flow(
+                NA.concatAll(A.getSemigroup()),
+                NA.groupBy(p => p.id),
+                R.map(NA.head),
+              ),
+            ),
+          ),
+        ),
+        T.let(
+          'common',
+          flow(
+            ({ payments }) => payments.map(l => l.map(p => p.id)),
+            intersection,
+          ),
+        ),
+      )();
+
+      const ordByCreatedAt: Ord.Ord<Payment> = Ord.contramap(
+        (p: Payment) => p.createdAt,
+      )(DateOrd);
+
+      if (common.size > 0) {
+        const commonPayment = pipe(
+          [...common.values()],
+          A.map(id => grouped[id] as Payment),
+          A.filter(p => p.debts.length === debts.length),
+          A.sortBy([ordByCreatedAt]),
+          A.head,
+        );
+
+        if (O.isSome(commonPayment)) {
+          return ok(commonPayment.value);
+        }
       }
 
       const payment = await bus.exec(debtService.createCombinedPayment, {
