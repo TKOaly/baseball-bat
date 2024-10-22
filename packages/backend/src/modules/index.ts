@@ -27,6 +27,8 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
   const initModule = async <T>(module: ModuleDefinition<T>) => {
     const data = await module.setup(deps);
 
+    deps.logger.info(`Initialized module ${module.name}`);
+
     if (app && module.routes) {
       const router = module.routes(
         route.use(() => Middleware.next({ module: data })),

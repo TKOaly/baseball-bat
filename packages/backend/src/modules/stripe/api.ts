@@ -30,13 +30,13 @@ const factory: RouterFactory<StripeContext> = route => {
       ),
     )
     .get('/get-payment')
-    .handler(async ({ bus, query }) => {
+    .handler(async ({ bus, query, logger }) => {
       const payments = await bus.exec(paymentService.getPaymentsByData, {
         intent: query.intent,
       });
 
       if (payments.length > 1) {
-        console.error(
+        logger.error(
           `Multiple payments associated with payment intent ${query.intent}`,
         );
         return notFound();
@@ -73,10 +73,20 @@ const factory: RouterFactory<StripeContext> = route => {
           webhookSecret,
         );
       } catch (err) {
+        ctx.logger.warning(`Failed to verify Stripe webhook signature!`, {
+          signature: ctx.headers['stripe-signature'],
+        });
         return badRequest({
           error: `Webhook Error: ${err}`,
         });
       }
+
+      const logger = ctx.logger.child({
+        stripe_event_type: event.type,
+        stripe_event_id: event.id,
+      });
+
+      logger.info(`Handling Stripe webhook event...`);
 
       let paymentEvent:
         | ({ payment: string; intent: string } & {
@@ -132,10 +142,8 @@ const factory: RouterFactory<StripeContext> = route => {
             if (intent.currency.toUpperCase() === 'EUR') {
               paymentEvent.amount = cents(intent.amount_received);
             } else {
-              console.log(
-                'Payment with non-euro currency',
-                intent.currency,
-                'received.',
+              logger.error(
+                `Payment with non-euro currency ${intent.currency} received.`,
               );
             }
 
@@ -149,7 +157,7 @@ const factory: RouterFactory<StripeContext> = route => {
       }
 
       if (paymentEvent) {
-        await bus.exec(paymentService.createPaymentEvent, {
+        const created = await bus.exec(paymentService.createPaymentEvent, {
           paymentId: paymentEvent.payment,
           type: paymentEvent.type ?? 'other',
           amount: paymentEvent.amount ?? cents(0),
@@ -164,6 +172,10 @@ const factory: RouterFactory<StripeContext> = route => {
           },
           time: undefined,
           transaction: null,
+        });
+
+        logger.info('Created payment event from Stripe event!', {
+          payment_event_id: created.id,
         });
       }
 

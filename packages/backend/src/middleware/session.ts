@@ -1,3 +1,4 @@
+import { Logger } from 'winston';
 import {
   InternalIdentity,
   internalIdentity,
@@ -16,7 +17,7 @@ type Redis = ReturnType<typeof createClient>;
 export type Session = { token: string } & t.TypeOf<typeof sessionData>;
 
 export type SessionMiddleware = Middleware.ChainedMiddleware<
-  { redis: Redis },
+  { redis: Redis; logger: Logger },
   { session: Session | null; isServiceRequest: boolean },
   | Response.BadRequest<string, undefined>
   | Response.Unauthorized<undefined, undefined>
@@ -41,7 +42,7 @@ const sessionData = t.union([
 
 export const sessionMiddleware =
   (config: Config): SessionMiddleware =>
-  async ({ redis, req }) => {
+  async ({ redis, req, logger }) => {
     const header = req.header('Authorization');
 
     if (!header) {
@@ -76,11 +77,13 @@ export const sessionMiddleware =
       if (E.isRight(result)) {
         data = result.right;
       } else {
-        console.error('Failed to deserialize session!', dataSerialized);
+        logger.error('Failed to deserialize session!', {
+          data: dataSerialized,
+        });
         return Middleware.stop(unauthorized());
       }
     } catch {
-      console.error('Failed to deserialize session!', dataSerialized);
+      logger.error('Failed to deserialize session!', { data: dataSerialized });
       return Middleware.stop(unauthorized());
     }
 

@@ -14,6 +14,8 @@ import { Session } from './middleware/session';
 import { setupMinio } from './minio';
 import { setupNats } from './nats';
 import { NatsConnection } from 'nats';
+import logger from './logger';
+import { Logger } from 'winston';
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -42,12 +44,13 @@ export type BusContext = {
   nats: NatsConnection;
   pg: Connection;
   session: Session | null;
+  logger: Logger;
 };
 
 const setupDeps = async () => {
   const nats = await setupNats(config);
   const bus = new LocalBus<BusContext>();
-  const jobs = new JobService(config, bus, pool, nats);
+  const jobs = new JobService(config, bus, pool, nats, logger);
   const minio = await setupMinio(config);
 
   return {
@@ -59,6 +62,7 @@ const setupDeps = async () => {
     emailTransport,
     minio,
     nats,
+    logger,
   };
 };
 
@@ -74,7 +78,11 @@ declare global {
 async function start() {
   const deps = await setupDeps();
   const app = await server(deps);
-  app.listen(PORT, () => console.log(`backend listening on port ${PORT} 🚀`));
+  app.listen(PORT, () =>
+    logger.info(`Backend listening on port ${PORT} 🚀`, {
+      port: parseInt(PORT),
+    }),
+  );
 }
 
 start();
