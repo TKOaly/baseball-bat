@@ -7,14 +7,14 @@ export default createModule({
 
   routes,
 
-  async setup({ pool, bus, nats, config }) {
+  async setup(context) {
     (async () => {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         try {
-          await startWorker(pool, bus, config, nats);
+          await startWorker(context);
         } catch (err) {
-          console.error('Worker threw an error:', err);
+          context.logger.error(`Worker threw an error: ${err}`);
         }
       }
     })();

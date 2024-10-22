@@ -17,6 +17,7 @@ import { shutdown } from '@/orchestrator';
 import { Pool } from '@/db/connection';
 import { createModule } from '@/module';
 import { NatsConnection } from 'nats';
+import { Logger } from 'winston';
 
 export type Processor<T = any, R = any, N extends string = string> = (
   bus: ExecutionContext<BusContext>,
@@ -43,6 +44,7 @@ export class JobService {
     private bus: Bus<BusContext>,
     private pool: Pool,
     private nats: NatsConnection,
+    private logger: Logger,
   ) {
     const events = new QueueEvents('reports', {
       connection: this.getConnectionConfig(),
@@ -100,8 +102,18 @@ export class JobService {
       children: [definition],
     });
 
+    const id = flow.children?.[0]?.job?.id;
+
+    this.logger.info(
+      `Created a job of type '${definition.name}' and ID '${id}'`,
+      {
+        lob_name: definition.name,
+        job_id: id,
+      },
+    );
+
     if (!flow.children) {
-      throw new Error('Created job does not have children');
+      throw new Error('Created flow does not contain any jobs!');
     }
 
     return flow.children[0];
@@ -113,13 +125,32 @@ export class JobService {
     options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
   ) {
     const callback: BaseProcessor = (job, token) => {
+      const attributes = {
+        job_id: job.id,
+      };
+
+      const logger = this.logger.child(attributes);
+
       return this.pool.tryWithConnection(async pg => {
         const ctx = this.bus.createContext({
           pg,
           nats: this.nats,
           session: null,
+          logger,
         });
-        return processor(ctx, job, token);
+
+        logger.info(
+          `Processing a job of type '${job.name}' with ID '${job.id}'`,
+        );
+
+        try {
+          const result = await processor(ctx, job, token);
+          return result;
+        } catch (err) {
+          logger.error(`Job ${job.id} of type ${job.name} failed:`, err);
+
+          throw err;
+        }
       });
     };
 

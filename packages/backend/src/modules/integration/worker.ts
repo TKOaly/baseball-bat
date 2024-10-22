@@ -1,11 +1,10 @@
 import { BusContext } from '@/app';
-import { Bus, ExecutionContext } from '@/bus';
-import { Config } from '@/config';
-import { AckPolicy, JsMsg, NatsConnection } from 'nats';
-import { Pool } from '@/db/connection';
+import { ExecutionContext } from '@/bus';
+import { AckPolicy, JsMsg } from 'nats';
 import * as payerService from '@/modules/payers/definitions';
 import * as t from 'io-ts';
 import { emailIdentity, tkoalyIdentity } from '@bbat/common/types';
+import { ModuleDeps } from '@/module';
 
 const messageType = t.type({
   type: t.union([t.literal('set'), t.literal('create'), t.literal('import')]),
@@ -16,13 +15,15 @@ const messageType = t.type({
 const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
   const payload = msg.json();
 
-  console.log('Got message', msg.seq);
-
   if (!messageType.is(payload)) {
     return;
   }
 
+  const logger = bus.context.logger.child({ memberId: payload.user });
+
   const handleEmailChange = async (memberId: number, email: string) => {
+    logger.info(`Handling email change...`, { email });
+
     const payerWithMemberId = await bus.exec(
       payerService.getPayerProfileByTkoalyIdentity,
       tkoalyIdentity(memberId),
@@ -67,8 +68,12 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
       });
     }
 
+    logger.info(`Email changed!`);
+
     return payerWithEmail;
   };
+
+  logger.info(`Handling update for member ${payload.user}...`);
 
   if (
     (payload.type === 'import' || payload.type === 'create') &&
@@ -93,8 +98,6 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
       tkoalyIdentity(payload.user),
     );
 
-    console.log('Email:', !!payerWithEmail);
-
     if (!payer || payerWithEmail) {
       return;
     }
@@ -104,28 +107,30 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
     'screen_name' in payload.fields &&
     typeof payload.fields.screen_name === 'string'
   ) {
+    logger.info('Handling name change...');
+
     const payer = await bus.exec(
       payerService.getPayerProfileByTkoalyIdentity,
       tkoalyIdentity(payload.user),
     );
 
     if (!payer) {
+      logger.info(`No matching payer profile.`);
       return;
     }
+
+    logger.info(`Found matching payer profile!`, { payerId: payer.id.value });
 
     await bus.exec(payerService.updatePayerName, {
       payerId: payer.id,
       name: payload.fields.screen_name,
     });
+
+    logger.info('Payer name updated.');
   }
 };
 
-export default async (
-  pool: Pool,
-  bus: Bus<BusContext>,
-  config: Config,
-  nats: NatsConnection,
-) => {
+export default async ({ pool, bus, nats, logger }: ModuleDeps) => {
   const jsm = await nats.jetstreamManager();
 
   await jsm.consumers.add('members', {
@@ -139,9 +144,24 @@ export default async (
     .jetstream()
     .consumers.get('members', 'baseball-bat');
 
+  logger.info('NATS worker started.');
+
   for await (const msg of await consumer.consume()) {
+    const childLogger = logger.child({
+      nats_subject: msg.subject,
+      nats_seq: msg.seq,
+    });
+
     await pool.tryWithConnection(async pg => {
-      const ctx = bus.createContext({ pg, nats, session: null });
+      const ctx = bus.createContext({
+        pg,
+        nats,
+        logger: childLogger,
+        session: null,
+      });
+      childLogger.info(
+        `Processing NATS message ${msg.seq} with subject '${msg.subject}'.`,
+      );
       await handleMessage(msg, ctx);
       msg.ack();
     });

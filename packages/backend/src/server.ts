@@ -40,7 +40,14 @@ export default async (deps: ApiDeps & ModuleDeps) => {
     .use((req, res, next) => {
       if (process.env.NODE_ENV !== 'testing') {
         res.on('finish', () =>
-          console.log(`${req.method} ${res.statusCode} ${req.originalUrl}`),
+          deps.logger.info(
+            `${req.method} ${req.originalUrl} ${res.statusCode}`,
+            {
+              method: req.method,
+              url: req.originalUrl,
+              status: res.statusCode,
+            },
+          ),
         );
       }
 

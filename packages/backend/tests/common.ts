@@ -1,5 +1,6 @@
 import { ApiDeps } from '@/api';
 import { BusContext } from '@/app';
+import winston from 'winston';
 import * as redis from 'redis';
 import { Config } from '@/config';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -111,9 +112,12 @@ export class Environment {
         env.onTeardown(async () => {
           const pool = await env.get('pool');
           const nats = await env.get('nats');
+          const logger = await env.get('logger');
 
           await pool.withConnection(pg =>
-            bus.createContext({ pg, nats, session: null }).emit(shutdown),
+            bus
+              .createContext({ pg, nats, logger, session: null })
+              .emit(shutdown),
           );
         });
 
@@ -144,8 +148,9 @@ export class Environment {
         const pool = await env.get('pool');
         const bus = await env.get('bus');
         const nats = await env.get('nats');
+        const logger = await env.get('logger');
 
-        return new JobService(env.config, bus, pool, nats);
+        return new JobService(env.config, bus, pool, nats, logger);
       },
       emailTransport: async () => {
         return {
@@ -164,6 +169,7 @@ export class Environment {
 
         return nats;
       },
+      logger: async () => winston.createLogger(),
     };
 
   deps: Partial<Deps> = {};
@@ -238,11 +244,13 @@ export class TestEnvironment {
     const pool = await this.env.get('pool');
     const bus = await this.env.get('bus');
     const nats = await this.env.get('nats');
+    const logger = await this.env.get('logger');
 
     return pool.tryWithConnection(async pg => {
       const ctx = bus.createContext({
         pg,
         nats,
+        logger,
         session: payerId
           ? {
               token: 'asd',
@@ -338,6 +346,7 @@ export const startServer = async (env: Environment) => {
     emailTransport: await env.get('emailTransport'),
     minio: await env.get('minio'),
     nats: await env.get('nats'),
+    logger: await env.get('logger'),
   });
 
   const url = await new Promise<string>((resolve, reject) => {
