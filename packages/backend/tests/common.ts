@@ -1,4 +1,5 @@
 import { ApiDeps } from '@/api';
+import opentelemetry from '@opentelemetry/api';
 import { BusContext } from '@/app';
 import winston from 'winston';
 import * as redis from 'redis';
@@ -114,11 +115,14 @@ export class Environment {
           const nats = await env.get('nats');
           const logger = await env.get('logger');
 
-          await pool.withConnection(pg =>
-            bus
-              .createContext({ pg, nats, logger, session: null })
-              .emit(shutdown),
-          );
+          await pool.withConnection(async pg => {
+            const tracer = opentelemetry.trace.getTracer('baseball-bat');
+            const span = tracer.startSpan('shutdown context');
+
+            await bus
+              .createContext({ pg, nats, logger, span, session: null })
+              .emit(shutdown);
+          });
         });
 
         return bus;
@@ -247,20 +251,26 @@ export class TestEnvironment {
     const logger = await this.env.get('logger');
 
     return pool.tryWithConnection(async pg => {
-      const ctx = bus.createContext({
-        pg,
-        nats,
-        logger,
-        session: payerId
-          ? {
-              token: 'asd',
-              authLevel: 'authenticated',
-              payerId: internalIdentity(payerId),
-            }
-          : null,
-      });
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
 
-      return await fn(ctx);
+      return tracer.startActiveSpan('context', async span => {
+        const ctx = bus.createContext({
+          pg,
+          nats,
+          logger,
+          span,
+          session: payerId
+            ? {
+                token: 'asd',
+                authLevel: 'authenticated',
+                payerId: internalIdentity(payerId),
+              }
+            : null,
+        });
+        const result = await fn(ctx);
+        span.end();
+        return result;
+      });
     });
   };
 

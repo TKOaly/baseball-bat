@@ -1,3 +1,8 @@
+import opentelemetry from '@opentelemetry/api';
+import {
+  ATTR_DB_QUERY_TEXT,
+  ATTR_DB_QUERY_PARAMETER,
+} from '@opentelemetry/semantic-conventions/incubating';
 import { SQLStatement } from 'sql-template-strings';
 import pg from 'pg';
 
@@ -58,6 +63,10 @@ export class Connection {
     return new Connection(pid, conn);
   }
 
+  get tracer() {
+    return opentelemetry.trace.getTracer('baseball-bat');
+  }
+
   escapeIdentifier(id: string) {
     return this.conn.escapeIdentifier(id);
   }
@@ -84,6 +93,22 @@ export class Connection {
     await this.many(query);
   }
 
+  async query(query: SQLStatement) {
+    const attributes: Record<string, string | number> = {
+      [ATTR_DB_QUERY_TEXT]: query.text,
+    };
+
+    query.values.forEach((value, index) => {
+      attributes[ATTR_DB_QUERY_PARAMETER((index + 1).toString())] = value;
+    });
+
+    return this.tracer.startActiveSpan('query', { attributes }, async span => {
+      const result = await this.conn.query(query);
+      span.end();
+      return result;
+    });
+  }
+
   async one<A>(query: SQLStatement): Promise<A | null> {
     const results = await this.many<A>(query);
 
@@ -95,7 +120,7 @@ export class Connection {
   }
 
   async many<T>(query: SQLStatement): Promise<T[]> {
-    const { rows } = await this.conn.query(query);
+    const { rows } = await this.query(query);
     return rows;
   }
 

@@ -1,3 +1,4 @@
+import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
 import {
   ConnectionOptions,
   FlowJob,
@@ -131,26 +132,48 @@ export class JobService {
 
       const logger = this.logger.child(attributes);
 
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
+
       return this.pool.tryWithConnection(async pg => {
-        const ctx = this.bus.createContext({
-          pg,
-          nats: this.nats,
-          session: null,
-          logger,
-        });
+        const name = `job: ${job.name}`;
 
-        logger.info(
-          `Processing a job of type '${job.name}' with ID '${job.id}'`,
+        return tracer.startActiveSpan(
+          name,
+          { attributes, root: true },
+          async span => {
+            const ctx = this.bus.createContext({
+              pg,
+              nats: this.nats,
+              session: null,
+              logger,
+              span,
+            });
+
+            logger.info(
+              `Processing a job of type '${job.name}' with ID '${job.id}'`,
+            );
+
+            try {
+              const result = await processor(ctx, job, token);
+              return result;
+            } catch (err) {
+              if (err instanceof Error) {
+                span.recordException(err);
+              }
+
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: `${err}`,
+              });
+
+              logger.error(`Job ${job.id} of type ${job.name} failed:`, err);
+
+              throw err;
+            } finally {
+              span.end();
+            }
+          },
         );
-
-        try {
-          const result = await processor(ctx, job, token);
-          return result;
-        } catch (err) {
-          logger.error(`Job ${job.id} of type ${job.name} failed:`, err);
-
-          throw err;
-        }
       });
     };
 

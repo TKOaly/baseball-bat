@@ -1,5 +1,8 @@
+import './instrumentation';
 import 'reflect-metadata';
+
 import { Config } from './config';
+import { Span } from '@opentelemetry/api';
 import { Pool, Connection } from './db/connection';
 import * as redis from 'redis';
 import {
@@ -45,6 +48,7 @@ export type BusContext = {
   pg: Connection;
   session: Session | null;
   logger: Logger;
+  span: Span;
 };
 
 const setupDeps = async () => {
@@ -78,6 +82,7 @@ declare global {
 async function start() {
   const deps = await setupDeps();
   const app = await server(deps);
+
   app.listen(PORT, () =>
     logger.info(`Backend listening on port ${PORT} 🚀`, {
       port: parseInt(PORT),

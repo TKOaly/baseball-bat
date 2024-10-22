@@ -1,3 +1,4 @@
+import opentelemetry from '@opentelemetry/api';
 import { Middleware } from 'typera-express';
 import { ModuleDefinition, createBaseRoute } from '@/module';
 import { ModuleDeps } from '@/module';
@@ -25,17 +26,41 @@ export default async (app: express.Express | null, deps: ModuleDeps) => {
   const route = createBaseRoute(deps);
 
   const initModule = async <T>(module: ModuleDefinition<T>) => {
-    const data = await module.setup(deps);
+    const tracer = opentelemetry.trace.getTracer('baseball-bat');
 
-    deps.logger.info(`Initialized module ${module.name}`);
+    await tracer.startActiveSpan(`init module ${module.name}`, async span => {
+      const data = await tracer.startActiveSpan(`module setup`, async span => {
+        const data = await module.setup({
+          ...deps,
+          logger: deps.logger.child({ module: module.name }),
+        });
 
-    if (app && module.routes) {
-      const router = module.routes(
-        route.use(() => Middleware.next({ module: data })),
-        { config: deps.config },
-      );
-      app.use(`/api/${module.name}`, router.handler());
-    }
+        span.end();
+
+        return data;
+      });
+
+      if (app && module.routes) {
+        const routes = module.routes;
+
+        tracer.startActiveSpan(`router setup`, span => {
+          const router = routes(
+            route.use(() =>
+              Middleware.next({
+                module: data,
+              }),
+            ),
+            { config: deps.config },
+          );
+          app.use(`/api/${module.name}`, router.handler());
+          span.end();
+        });
+      }
+
+      deps.logger.info(`Initialized module ${module.name}`);
+
+      span.end();
+    });
   };
 
   const registerModules = async <M extends Array<ModuleDefinition<any>>>(

@@ -1,6 +1,8 @@
 import { EventArgs } from '@/bus';
+import { Span } from '@opentelemetry/api';
 import { EventOf, EventType, defineEvent } from './event';
 import { Interface } from './interface';
+import opentelemetry from '@opentelemetry/api';
 import {
   PayloadOf,
   ProcedureArgs,
@@ -185,7 +187,7 @@ interface ProcedureHandlerWithOriginal<PT extends ProcedureType, C>
 }
 
 export class LocalBus<
-  C extends { nats: NatsConnection; pg: Connection },
+  C extends { nats: NatsConnection; pg: Connection; span: Span },
 > extends Bus<C> {
   private procedures = new Map<string, ProcedureHandlerWithOriginal<any, C>>();
   private eventHandlers = new Map<string, Array<EventHandler<any, C>>>();
@@ -274,7 +276,7 @@ export class LocalBus<
 
     const execHandler =
       (payload: PayloadOf<PT>): T.Task<unknown> =>
-      () =>
+      async () =>
         handler(payload, ctx, this.createContext(ctx));
 
     const responseType = procedure.responseType as Type<
@@ -343,12 +345,29 @@ export class LocalBus<
       throw new Error(`Handler for procedure ${name} already defined!`);
     }
 
+    const wrappedHandler = (p: unknown, context: C) => {
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
+      const spanContext = opentelemetry.trace.setSpan(
+        opentelemetry.context.active(),
+        context.span,
+      );
+
+      return tracer.startActiveSpan(name, {}, spanContext, async span => {
+        const newContext = { ...context, span };
+        const busContext = this.createContext(newContext);
+
+        const result = await handler(p, newContext, busContext);
+        span.end();
+        return result;
+      });
+    };
+
     const fn = (payload: unknown, context: C) =>
       pipe(
         payload,
         procedure.payloadType.decode,
         TE.fromEither,
-        TE.chain(p => () => handler(p, context, this.createContext(context))),
+        TE.chain(p => () => wrappedHandler(p, context)),
         a => a(),
       );
 
