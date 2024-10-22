@@ -1,4 +1,5 @@
 import { BusContext } from '@/app';
+import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
 import { ExecutionContext } from '@/bus';
 import { AckPolicy, JsMsg } from 'nats';
 import * as payerService from '@/modules/payers/definitions';
@@ -147,22 +148,49 @@ export default async ({ pool, bus, nats, logger }: ModuleDeps) => {
   logger.info('NATS worker started.');
 
   for await (const msg of await consumer.consume()) {
-    const childLogger = logger.child({
+    const attributes = {
       nats_subject: msg.subject,
       nats_seq: msg.seq,
-    });
+    };
+
+    const childLogger = logger.child(attributes);
 
     await pool.tryWithConnection(async pg => {
-      const ctx = bus.createContext({
-        pg,
-        nats,
-        logger: childLogger,
-        session: null,
-      });
-      childLogger.info(
-        `Processing NATS message ${msg.seq} with subject '${msg.subject}'.`,
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
+
+      await tracer.startActiveSpan(
+        'nats handler',
+        { attributes },
+        async span => {
+          const ctx = bus.createContext({
+            pg,
+            nats,
+            span,
+            logger: childLogger,
+            session: null,
+          });
+          childLogger.info(
+            `Processing NATS message ${msg.seq} with subject '${msg.subject}'.`,
+          );
+          try {
+            await handleMessage(msg, ctx);
+          } catch (err) {
+            if (err instanceof Error) {
+              span.recordException(err);
+            }
+
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: `${err}`,
+            });
+
+            throw err;
+          } finally {
+            span.end();
+          }
+        },
       );
-      await handleMessage(msg, ctx);
+
       msg.ack();
     });
   }

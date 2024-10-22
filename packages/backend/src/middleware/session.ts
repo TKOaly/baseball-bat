@@ -1,3 +1,4 @@
+import { Span } from '@opentelemetry/api';
 import { Logger } from 'winston';
 import {
   InternalIdentity,
@@ -17,7 +18,7 @@ type Redis = ReturnType<typeof createClient>;
 export type Session = { token: string } & t.TypeOf<typeof sessionData>;
 
 export type SessionMiddleware = Middleware.ChainedMiddleware<
-  { redis: Redis; logger: Logger },
+  { redis: Redis; span: Span; logger: Logger },
   { session: Session | null; isServiceRequest: boolean },
   | Response.BadRequest<string, undefined>
   | Response.Unauthorized<undefined, undefined>
@@ -42,10 +43,11 @@ const sessionData = t.union([
 
 export const sessionMiddleware =
   (config: Config): SessionMiddleware =>
-  async ({ redis, req, logger }) => {
+  async ({ redis, req, span, logger }) => {
     const header = req.header('Authorization');
 
     if (!header) {
+      span.setAttribute('session', 'no');
       return Middleware.next({ session: null, isServiceRequest: false });
     }
 
@@ -56,6 +58,7 @@ export const sessionMiddleware =
     }
 
     if (token === config.integrationSecret) {
+      span.setAttribute('session', 'integration');
       return Middleware.next({
         session: null,
         isServiceRequest: true,
@@ -86,6 +89,9 @@ export const sessionMiddleware =
       logger.error('Failed to deserialize session!', { data: dataSerialized });
       return Middleware.stop(unauthorized());
     }
+
+    span.setAttribute('session', 'yes');
+    span.setAttribute('session:auth', data.authLevel);
 
     return Middleware.next({
       session: {
