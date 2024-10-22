@@ -10,9 +10,9 @@ import {
 } from '@opentelemetry/sdk-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 
-import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+// import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 // For troubleshooting, set the log level to DiagLogLevel.DEBUG
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
+// diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
 const resource = new Resource({
   [ATTR_SERVICE_NAME]: 'baseball-bat',
