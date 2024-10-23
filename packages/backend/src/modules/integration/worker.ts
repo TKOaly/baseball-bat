@@ -160,7 +160,7 @@ export default async ({ pool, bus, nats, logger }: ModuleDeps) => {
 
       await tracer.startActiveSpan(
         'nats handler',
-        { attributes },
+        { attributes, root: true },
         async span => {
           const ctx = bus.createContext({
             pg,
