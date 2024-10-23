@@ -1,5 +1,5 @@
 import { EventArgs } from '@/bus';
-import { Span } from '@opentelemetry/api';
+import { Span, SpanStatusCode } from '@opentelemetry/api';
 import { EventOf, EventType, defineEvent } from './event';
 import { Interface } from './interface';
 import opentelemetry from '@opentelemetry/api';
@@ -356,9 +356,23 @@ export class LocalBus<
         const newContext = { ...context, span };
         const busContext = this.createContext(newContext);
 
-        const result = await handler(p, newContext, busContext);
-        span.end();
-        return result;
+        try {
+          const result = await handler(p, newContext, busContext);
+          return result;
+        } catch (err) {
+          if (err instanceof Error) {
+            span.recordException(err);
+          }
+
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: String(err),
+          });
+
+          throw err;
+        } finally {
+          span.end();
+        }
       });
     };
 
