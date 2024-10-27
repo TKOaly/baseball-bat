@@ -76,7 +76,7 @@ RUN corepack enable
 WORKDIR /usr/src/app
 COPY . /usr/src/app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
-CMD ["pnpm", "run", "--filter=@bbat/backend...", "--filter=@bbat/frontend...", "--recursive", "--stream", "--parallel", "start:dev"]
+CMD ["sh", "-c", "pnpm run --recursive build && pnpm run --filter=@bbat/backend... --filter=@bbat/frontend... --recursive --stream --parallel start:dev"]
 
 FROM nginx:alpine AS production-nginx 
 
