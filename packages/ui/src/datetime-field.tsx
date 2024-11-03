@@ -133,7 +133,7 @@ export const DateField = ({
               top: y ?? 0,
               left: x ?? 0,
             }}
-            className="absolute top-full z-10 mt-[-1px] rounded-b-md border border-gray-200 bg-white shadow-xl"
+            className="absolute top-full z-50 mt-[-1px] rounded-b-md border border-gray-200 bg-white shadow-xl"
             {...getFloatingProps()}
           >
             <DayPicker
