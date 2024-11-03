@@ -192,7 +192,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
           ? { type: 'debt_center', id: debtCenters[0].debtCenterId }
           : null,
       paymentCondition:
-        paymentConditions.length === 1
+        paymentConditions.length === 1 && paymentConditions[0].paymentCondition
           ? '' + paymentConditions[0].paymentCondition
           : null,
       components,
