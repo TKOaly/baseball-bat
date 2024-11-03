@@ -328,7 +328,7 @@ const factory: RouterFactory = route => {
             payerId: payerIdentity,
             centerId: t.string,
             dueDate: t.union([t.null, t.string]),
-            date: dbDateString,
+            date: t.union([t.null, dbDateString]),
             paymentCondition: t.union([t.null, t.number]),
             components: t.array(
               t.type({
