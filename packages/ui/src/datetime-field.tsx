@@ -71,7 +71,6 @@ export const DateField = ({
           type="text"
           className={`
             w-full
-            w-full
             rounded-md
             bg-white
             ${props.error ? 'border-red-400' : 'border-gray-200'}
@@ -85,20 +84,25 @@ export const DateField = ({
           onChange={evt => {
             setDisplayValue(evt.target.value);
 
-            if (
-              isMatch(evt.target.value, 'dd.MM.yyyy') ||
-              (evt.target.value === '' && allowEmpty)
-            ) {
+            let value = null;
+
+            if (evt.target.value === '' && allowEmpty) {
+              value = '';
+            } else if (isMatch(evt.target.value, 'dd.MM.yyyy')) {
+              value = format(
+                parse(evt.target.value, 'dd.MM.yyyy', new Date()),
+                formatString,
+              );
+            }
+
+            if (value !== null) {
               onChange?.({
                 ...evt,
                 target: {
                   ...evt.target,
                   name: evt.target.name,
                   id: evt.target.id,
-                  value: format(
-                    parse(evt.target.value, 'dd.MM.yyyy', new Date()),
-                    formatString,
-                  ),
+                  value,
                 },
               });
             }
