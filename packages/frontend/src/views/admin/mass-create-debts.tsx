@@ -70,7 +70,9 @@ const parseEuros = (v: string): EuroValue => {
 
   return euro.add(
     euro.euro(parseInt(euros, 10)),
-    euro.cents(parseInt(centsPart.padEnd(2, '0'), 10)),
+    centsPart !== undefined
+      ? euro.cents(parseInt(centsPart.padEnd(2, '0'), 10))
+      : euro.cents(0),
   );
 };
 
