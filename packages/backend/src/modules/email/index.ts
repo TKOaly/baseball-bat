@@ -1,4 +1,5 @@
 import axios from 'axios';
+import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import routes from './api';
@@ -167,24 +168,43 @@ export default createModule({
     const templatesDir = path.resolve(config.assetPath, 'templates/emails');
 
     async function getTemplatePath(name: string, type: TemplateType) {
-      const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
 
-      for (const ext of exts) {
-        const filepath = path.resolve(templatesDir, `${name}.${ext}`);
+      const attributes = {
+        template_name: name,
+        template_type: type,
+      };
 
-        try {
-          const result = await fs.stat(filepath);
+      return tracer.startActiveSpan(
+        'resolving template',
+        { attributes },
+        async span => {
+          const exts = type === TemplateType.HTML ? ['mjml', 'html'] : ['txt'];
 
-          if (result.isFile()) {
-            return filepath;
+          for (const ext of exts) {
+            const filepath = path.resolve(templatesDir, `${name}.${ext}`);
+
+            try {
+              const result = await fs.stat(filepath);
+
+              if (result.isFile()) {
+                span.end();
+                return filepath;
+              }
+            } catch (err) {
+              continue;
+            }
           }
-        } catch (err) {
-          continue;
-        }
-      }
 
-      throw new Error(
-        `Could not find template "${name}" of type "${type}" from ${templatesDir}`,
+          const error = `Could not find template "${name}" of type "${type}" from ${templatesDir}`;
+
+          span.setStatus({
+            message: error,
+            code: SpanStatusCode.ERROR,
+          });
+
+          throw new Error(error);
+        },
       );
     }
 
@@ -330,15 +350,41 @@ export default createModule({
         filename: template,
       };
 
-      const rendered = await ejs.renderFile(template, data, opts);
+      const tracer = opentelemetry.trace.getTracer('baseball-bat');
 
-      if (ext === 'mjml') {
-        const result = mjml2html(rendered).html;
+      const attributes = {
+        template,
+        template_type: type,
+      };
 
-        return result;
-      }
+      return tracer.startActiveSpan(
+        `rendering email`,
+        { attributes },
+        async span => {
+          const rendered = await tracer.startActiveSpan(
+            `rendering ejs`,
+            async subspan => {
+              const rendered = await ejs.renderFile(template, data, opts);
+              subspan.end();
+              return rendered;
+            },
+          );
 
-      return rendered;
+          if (ext === 'mjml') {
+            return tracer.startActiveSpan(`rendering mjml`, async subspan => {
+              const result = mjml2html(rendered).html;
+
+              subspan.end();
+              span.end();
+
+              return result;
+            });
+          }
+
+          span.end();
+          return rendered;
+        },
+      );
     }
 
     async function _sendEmail(
