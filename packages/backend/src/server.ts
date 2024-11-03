@@ -1,5 +1,11 @@
 import express from 'express';
 import path from 'path';
+import opentelemetry from '@opentelemetry/api';
+import {
+  ATTR_HTTP_ROUTE,
+  ATTR_HTTP_REQUEST_METHOD,
+  ATTR_HTTP_RESPONSE_STATUS_CODE,
+} from '@opentelemetry/semantic-conventions';
 import helmet, { HelmetOptions } from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -38,8 +44,34 @@ const helmetConfig: HelmetOptions = {
 export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
     .use((req, res, next) => {
-      if (process.env.NODE_ENV !== 'testing') {
-        res.on('finish', () =>
+      const { trace: tracing, propagation, context } = opentelemetry;
+
+      const tracer = tracing.getTracer('baseball-bat');
+      const name = `[${req.method}] ${req.originalUrl}`;
+
+      const newContext = propagation.extract(context.active(), {
+        traceparent: req.headers.traceparent,
+        tracestate: req.headers.tracestate,
+      });
+
+      const span = (req.span = tracer.startSpan(
+        name,
+        {
+          root: !req.headers.traceparent,
+          attributes: {
+            [ATTR_HTTP_ROUTE]: req.originalUrl,
+            [ATTR_HTTP_REQUEST_METHOD]: req.method,
+            parent: req.headers.taceparent,
+          },
+        },
+        newContext,
+      ));
+
+      // Set the created span as active in the deserialized context.
+      tracing.setSpan(newContext, span);
+
+      res.on('finish', () => {
+        if (process.env.NODE_ENV !== 'testing') {
           deps.logger.info(
             `${req.method} ${req.originalUrl} ${res.statusCode}`,
             {
@@ -47,9 +79,12 @@ export default async (deps: ApiDeps & ModuleDeps) => {
               url: req.originalUrl,
               status: res.statusCode,
             },
-          ),
-        );
-      }
+          );
+        }
+
+        span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
+        span.end();
+      });
 
       next();
     })

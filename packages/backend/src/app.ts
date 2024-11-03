@@ -75,6 +75,7 @@ declare global {
   namespace Express {
     export interface Request {
       rawBody?: Buffer;
+      span?: Span;
     }
   }
 }

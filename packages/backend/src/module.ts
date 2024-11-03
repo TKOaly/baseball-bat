@@ -96,6 +96,10 @@ const traceRequest: Middleware.Middleware<{ span: Span }, never> = ({
   req,
   res,
 }) => {
+  if (req.span) {
+    return Middleware.next({ span: req.span });
+  }
+
   const { trace: tracing } = opentelemetry;
 
   const tracer = tracing.getTracer('baseball-bat');
