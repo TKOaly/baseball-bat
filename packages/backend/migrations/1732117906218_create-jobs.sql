@@ -3,7 +3,7 @@
 CREATE TYPE job_state AS ENUM ('pending', 'scheduled', 'processing', 'failed', 'succeeded');
 
 CREATE TABLE jobs (
-  id UUID PRIMARY KEY DEFAULT generate_uuid_v4(),
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   type TEXT NOT NULL,
   data JSONB NOT NULL,
   result JSONB,
