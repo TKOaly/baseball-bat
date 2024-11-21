@@ -136,13 +136,16 @@ export const CurrencyField: React.FC<FieldProps & { value: EuroValue }> = ({
 }) => <Field {...props}>{formatEuro(value)}</Field>;
 
 export const DateField: React.FC<
-  FieldProps & { value: Date | string; time?: boolean }
+  FieldProps & { value: Date | string; time?: boolean; format?: string }
 > = ({ time, value, ...props }) => {
   try {
     const date = typeof value === 'string' ? new Date(value) : value;
-    const text = time
-      ? format(date, 'dd.MM.yyyy HH:mm')
-      : format(date, 'dd.MM.yyyy');
+
+    const text = props.format
+      ? format(date, props.format)
+      : time
+        ? format(date, 'dd.MM.yyyy HH:mm')
+        : format(date, 'dd.MM.yyyy');
 
     return <Field {...props}>{text}</Field>;
   } catch (e) {

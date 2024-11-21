@@ -2,7 +2,6 @@ import { Middleware, Router } from 'typera-express';
 import express from 'express';
 import { LocalBus } from '@/bus';
 import { Config } from '@/config';
-import { JobService } from '@/modules/jobs';
 import redis from 'redis';
 import { BusContext } from '@/app';
 import { Pool } from '@/db/connection';
@@ -15,7 +14,6 @@ export type ApiDeps = {
   config: Config;
   redis: ReturnType<typeof redis.createClient>;
   pool: Pool;
-  jobs: JobService;
 };
 
 export type ApiFactory = (deps: ApiDeps, route: BaseRoute<void>) => Router;

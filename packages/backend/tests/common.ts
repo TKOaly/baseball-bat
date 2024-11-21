@@ -22,7 +22,6 @@ import {
 } from '@/bus';
 import { Pool } from '@/db/connection';
 import { IEmailTransport } from '@/modules/email';
-import { JobService } from '@/modules/jobs';
 import server from '@/server';
 import { shutdown } from '@/orchestrator';
 import { mock } from 'node:test';
@@ -147,14 +146,6 @@ export class Environment {
         env.onTeardown(() => pool.end());
 
         return pool;
-      },
-      jobs: async env => {
-        const pool = await env.get('pool');
-        const bus = await env.get('bus');
-        const nats = await env.get('nats');
-        const logger = await env.get('logger');
-
-        return new JobService(env.config, bus, pool, nats, logger);
       },
       emailTransport: async () => {
         return {
@@ -352,7 +343,6 @@ export const startServer = async (env: Environment) => {
     config: env.config,
     bus: await env.get('bus'),
     redis: await env.get('redis'),
-    jobs: await env.get('jobs'),
     emailTransport: await env.get('emailTransport'),
     minio: await env.get('minio'),
     nats: await env.get('nats'),

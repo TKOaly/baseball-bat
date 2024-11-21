@@ -1,161 +1,57 @@
 import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
-import {
-  ConnectionOptions,
-  FlowJob,
-  FlowProducer,
-  Processor as BaseProcessor,
-  Queue,
-  WorkerOptions,
-  Worker,
-  Job,
-  QueueEvents,
-} from 'bullmq';
+import sql from 'sql-template-strings';
+import * as defs from './definitions';
 import routes from './api';
-import { Config } from '@/config';
-import { ExecutionContext, Bus } from '@/bus';
+import createSubscriber from 'pg-listen';
+import { ExecutionContext } from '@/bus';
 import { BusContext } from '@/app';
-import { shutdown } from '@/orchestrator';
-import { Pool } from '@/db/connection';
 import { createModule } from '@/module';
-import { NatsConnection } from 'nats';
-import { Logger } from 'winston';
+import { Job, DbJob } from '@bbat/common/types';
+import { createPaginatedQuery } from '@/db/pagination';
 
-export type Processor<T = any, R = any, N extends string = string> = (
-  bus: ExecutionContext<BusContext>,
-  job: Job<T, R, N>,
-  token?: string,
-) => Promise<R>;
+const formatJob = (db: DbJob): Job => ({
+  id: db.id,
+  type: db.type,
+  title: db.title ?? null,
+  state: db.state,
+  createdAt: db.created_at,
+  startedAt: db.started_at ?? null,
+  finishedAt: db.finished_at ?? null,
+  data: db.data,
+  result: db.result,
+});
 
-const logAllEvents = <EmitFn extends (...args: any[]) => any>(emitter: {
-  emit: EmitFn;
-}) => {
-  const oldEmit = emitter.emit;
+export default createModule({
+  name: 'jobs',
 
-  emitter.emit = function (...args: Parameters<EmitFn>) {
-    console.log('Event', ...args);
-    oldEmit.apply(emitter, args);
-  } as EmitFn;
-};
+  routes,
 
-export class JobService {
-  queues: Record<string, Queue> = {};
-
-  constructor(
-    public config: Config,
-    private bus: Bus<BusContext>,
-    private pool: Pool,
-    private nats: NatsConnection,
-    private logger: Logger,
-  ) {
-    const events = new QueueEvents('reports', {
-      connection: this.getConnectionConfig(),
-      prefix: 'bbat-jobs',
+  async setup({ config, pool, logger, bus, nats }) {
+    const subscriber = createSubscriber({
+      connectionString: config.dbUrl,
     });
 
-    logAllEvents(events);
+    const withNewContext = <T>(
+      span: string,
+      cb: (ctx: ExecutionContext<BusContext>) => Promise<T>,
+    ): Promise<T> => {
+      return pool.withConnection(async pg => {
+        const tracer = opentelemetry.trace.getTracer('baseball-bat');
 
-    bus.on(shutdown, () => events.close());
-  }
-
-  private getConnectionConfig(): ConnectionOptions {
-    const url = new URL(this.config.redisUrl);
-
-    return {
-      host: url.host.split(':')[0],
-      port: parseInt(url.port ?? '6379'),
-      username: url.username,
-      password: url.password,
-    };
-  }
-
-  getQueue<D, T, N extends string>(name: string): Queue<D, T, N> {
-    if (!this.queues[name]) {
-      const queue = (this.queues[name] = new Queue(name, {
-        connection: this.getConnectionConfig(),
-        prefix: 'bbat-jobs',
-      }));
-
-      this.bus.on(shutdown, () => queue.close());
-    }
-
-    return this.queues[name] as any;
-  }
-
-  flowProducer: FlowProducer | null = null;
-
-  getFlowProducer(): FlowProducer {
-    if (this.flowProducer === null) {
-      const producer = (this.flowProducer = new FlowProducer({
-        connection: this.getConnectionConfig(),
-        prefix: 'bbat-jobs',
-      }));
-
-      this.bus.on(shutdown, () => producer.close());
-    }
-
-    return this.flowProducer;
-  }
-
-  async createJob(definition: FlowJob) {
-    const flow = await this.getFlowProducer().add({
-      name: 'finish',
-      queueName: 'main',
-      children: [definition],
-    });
-
-    const id = flow.children?.[0]?.job?.id;
-
-    this.logger.info(
-      `Created a job of type '${definition.name}' and ID '${id}'`,
-      {
-        lob_name: definition.name,
-        job_id: id,
-      },
-    );
-
-    if (!flow.children) {
-      throw new Error('Created flow does not contain any jobs!');
-    }
-
-    return flow.children[0];
-  }
-
-  async createWorker<T, R>(
-    queue: string,
-    processor: Processor<T, R>,
-    options?: Omit<WorkerOptions, 'connection' | 'prefix'>,
-  ) {
-    const callback: BaseProcessor = (job, token) => {
-      const attributes = {
-        job_id: job.id,
-      };
-
-      const logger = this.logger.child(attributes);
-
-      const tracer = opentelemetry.trace.getTracer('baseball-bat');
-
-      return this.pool.tryWithConnection(async pg => {
-        const name = `job: ${job.name}`;
-
-        return tracer.startActiveSpan(
-          name,
-          { attributes, root: true },
+        return await tracer.startActiveSpan(
+          span,
+          { root: true },
           async span => {
-            const ctx = this.bus.createContext({
+            const context = bus.createContext({
               pg,
-              nats: this.nats,
+              nats,
               session: null,
-              logger,
               span,
+              logger,
             });
 
-            logger.info(
-              `Processing a job of type '${job.name}' with ID '${job.id}'`,
-            );
-
             try {
-              const result = await processor(ctx, job, token);
-              return result;
+              return await cb(context);
             } catch (err) {
               if (err instanceof Error) {
                 span.recordException(err);
@@ -163,10 +59,8 @@ export class JobService {
 
               span.setStatus({
                 code: SpanStatusCode.ERROR,
-                message: `${err}`,
+                message: String(err),
               });
-
-              logger.error(`Job ${job.id} of type ${job.name} failed:`, err);
 
               throw err;
             } finally {
@@ -177,57 +71,153 @@ export class JobService {
       });
     };
 
-    const worker = new Worker(queue, callback, {
-      ...options,
-      connection: this.getConnectionConfig(),
-      prefix: 'bbat-jobs',
+    bus.register(defs.poll, async (_, { pg, logger }) => {
+      const jobs = await pg.many<{ id: string }>(sql`
+        UPDATE jobs
+        SET state = 'scheduled'
+        FROM (
+          SELECT id
+          FROM jobs
+          WHERE state = 'pending'
+          FOR UPDATE SKIP LOCKED
+        ) pending
+        WHERE jobs.id = pending.id
+        RETURNING jobs.id
+      `);
+
+      if (jobs.length > 0) {
+        logger.info(`Dispatching ${jobs.length} jobs...`);
+      }
+
+      jobs.map(({ id }) =>
+        withNewContext('job execution', async ctx => {
+          try {
+            await ctx.exec(defs.execute, id);
+          } catch (err) {
+            ctx.context.logger.error(`Job ${id} failed: ${err}`, {
+              job_id: id,
+            });
+
+            await pool.withConnection(async conn => {
+              await conn.do(
+                sql`UPDATE jobs SET state = 'failed', finished_at = NOW() WHERE id = ${id}`,
+              );
+            });
+
+            throw err;
+          }
+        }),
+      );
     });
 
-    this.bus.on(shutdown, async () => {
-      await worker.close();
+    bus.register(defs.create, async (job, { pg }) => {
+      const result = await pg.one<{ id: string }>(
+        sql`INSERT INTO jobs (type, data, title) VALUES (${job.type}, ${job.data}, ${job.title}) RETURNING id`,
+      );
+
+      if (!result) {
+        throw new Error('Failed to create job: ' + job.type);
+      }
+
+      return result.id;
     });
 
-    return worker;
-  }
-
-  async getJob(queueName: string, id: string) {
-    const producer = this.getFlowProducer();
-    const flow = await producer.getFlow({
-      id,
-      queueName,
-      prefix: 'bbat-jobs',
-      maxChildren: 1000,
-    });
-
-    return flow;
-  }
-
-  async getJobs(limit?: number) {
-    const producer = this.getFlowProducer();
-    const queue = this.getQueue('main');
-    const jobs = await queue.getJobs(undefined, 0, limit);
-    const flows = await Promise.all(
-      jobs
-        .flatMap(job => (job.id ? [job.id] : []))
-        .map(id =>
-          producer.getFlow({
-            id,
-            queueName: 'main',
-            prefix: 'bbat-jobs',
-            maxChildren: 10000,
-          }),
-        ),
+    const paginatedQuery = createPaginatedQuery<DbJob>(
+      sql`SELECT * FROM jobs`,
+      'id',
     );
 
-    return flows.flatMap(flow => (flow.children ? [flow.children[0]] : []));
-  }
-}
+    bus.register(defs.list, async ({ limit, cursor, sort }, { pg }) => {
+      return paginatedQuery(pg, {
+        limit,
+        cursor,
+        order: sort
+          ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
+          : undefined,
+        map: formatJob,
+      });
+    });
 
-export default createModule({
-  name: 'jobs',
+    bus.register(defs.execute, async (id, { pg, logger }, bus) => {
+      const job = await bus.exec(defs.get, id);
 
-  routes,
+      if (!job) {
+        logger.warn(`No job with ID '${id}' found!`);
+        return;
+      }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  async setup() {},
+      const iface = bus.getInterface(defs.executor, job.type);
+
+      try {
+        await pool.withConnection(async conn => {
+          await conn.do(
+            sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
+          );
+        });
+
+        const result = await iface.execute(job);
+        await pg.do(
+          sql`UPDATE jobs SET state = 'succeeded', result = ${result}, finished_at = ${new Date()} WHERE id = ${id}`,
+        );
+      } catch (err) {
+        logger.error(`Job ${job.id} (${job.type}) failed: ${err}`, {
+          job_id: job.id,
+          job_type: job.type,
+        });
+
+        const traceId = opentelemetry.trace
+          .getActiveSpan()
+          ?.spanContext()?.traceId;
+
+        const error = {
+          name: 'Unknown',
+          message: `${err}`,
+          traceId: traceId ?? null,
+        };
+
+        if (err instanceof Error) {
+          Object.assign(error, {
+            name: `Exception: ${err.name}`,
+            message: err.message,
+          });
+        }
+
+        await pool.withConnection(async conn => {
+          await conn.do(
+            sql`UPDATE jobs SET state = 'failed', finished_at = ${new Date()}, result = ${error} WHERE id = ${id}`,
+          );
+        });
+      }
+    });
+
+    bus.register(defs.get, async (id, { pg }) => {
+      const result = await pg.one<DbJob>(
+        sql`SELECT * FROM jobs WHERE id = ${id}`,
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      return formatJob(result);
+    });
+
+    subscriber.notifications.on('new-job', ({ id }) => {
+      try {
+        withNewContext('new-job notification handler', async ctx => {
+          logger.info(`Got notification about job ${id}!`);
+          await ctx.exec(defs.poll);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    await subscriber.connect();
+    await subscriber.listenTo('new-job');
+
+    setInterval(() => {
+      withNewContext('periodic job poll', ctx => ctx.exec(defs.poll));
+    }, 10_000);
+  },
 });

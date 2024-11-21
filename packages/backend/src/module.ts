@@ -13,7 +13,6 @@ import dbMiddleware from '@/db/middleware';
 import { Logger } from 'winston';
 import { BusContext } from './app';
 import * as redis from 'redis';
-import { JobService } from './modules/jobs';
 import { Config } from './config';
 import { IEmailTransport } from './modules/email';
 import { Session, sessionMiddleware } from './middleware/session';
@@ -24,7 +23,6 @@ export type ModuleDeps = {
   bus: Bus<BusContext>;
   pool: Pool;
   redis: ReturnType<typeof redis.createClient>;
-  jobs: JobService;
   nats: NatsConnection;
   minio: MinioClient;
   config: Config;
@@ -123,13 +121,12 @@ export const createBaseRoute = ({
   pool,
   redis,
   minio,
-  jobs,
   nats,
   config,
   logger,
 }: ModuleDeps) =>
   route
-    .use(() => Middleware.next({ redis, jobs, minio, nats, logger }))
+    .use(() => Middleware.next({ redis, minio, nats, logger }))
     .use(traceRequest)
     .use(traceMiddleware('db', dbMiddleware(pool)))
     .use(traceMiddleware('session', sessionMiddleware(config)))

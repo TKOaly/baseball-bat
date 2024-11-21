@@ -1046,30 +1046,6 @@ export type DebtStatusReportOptions = {
   includeOnly: null | 'paid' | 'credited' | 'open';
 };
 
-export type JobStatus =
-  | 'completed'
-  | 'failed'
-  | 'active'
-  | 'delayed'
-  | 'waiting'
-  | 'prioritized'
-  | 'waiting-children'
-  | 'unknown';
-
-export type Job = {
-  name: string;
-  id: string;
-  status: JobStatus;
-  time: Date;
-  processedAt: Date | null;
-  finishedAt: Date | null;
-  duration: number;
-  children: Job[];
-  queue: string;
-  returnValue: unknown;
-  progress: number;
-};
-
 export const massCreateDebtsPayload = t.type({
   defaults: t.partial({
     tkoalyUserId: t.number,
@@ -1223,3 +1199,51 @@ export const auditEvent = t.type({
 });
 
 export type AuditEvent = t.TypeOf<typeof auditEvent>;
+
+export const jobState = t.union([
+  t.literal('pending'),
+  t.literal('scheduled'),
+  t.literal('processing'),
+  t.literal('finished'),
+  t.literal('failed'),
+]);
+
+export type JobState = t.TypeOf<typeof jobState>;
+
+export const dbJob = t.type({
+  id: t.string,
+  type: t.string,
+  title: nullable(t.string),
+  state: jobState,
+  created_at: tt.date,
+  started_at: nullable(tt.date),
+  finished_at: nullable(tt.date),
+  data: t.unknown,
+  result: t.unknown,
+});
+
+export const job = t.type({
+  id: t.string,
+  type: t.string,
+  title: nullable(t.string),
+  state: jobState,
+  createdAt: tt.date,
+  startedAt: nullable(tt.date),
+  finishedAt: nullable(tt.date),
+  data: t.unknown,
+  result: t.unknown,
+});
+
+export type DbJob = t.TypeOf<typeof dbJob>;
+
+export type Job<D = unknown, R = unknown> = {
+  id: string;
+  state: JobState;
+  type: string;
+  title: string | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  data: D;
+  result: R | null;
+};

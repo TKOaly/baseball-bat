@@ -1,42 +1,48 @@
 import { parseISO } from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
-import { Job, JobStatus } from '@bbat/common/types';
+import { Job, JobState, PaginationQueryResponse } from '@bbat/common/types';
+import { createPaginatedQuery } from './pagination';
 
 type ResponseJob = {
-  name: string;
   id: string;
-  status: JobStatus;
-  time: string;
-  processedAt: string;
+  type: string;
+  title: string | null;
+  state: JobState;
+  data: string;
+  result: string;
+  createdAt: string;
   finishedAt: string | null;
-  duration: number;
-  children: ResponseJob[];
-  queue: string;
-  returnValue: any;
-  progress: number;
+  startedAt: string | null;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
-  ...job,
-  time: parseISO(job.time),
-  processedAt: job.processedAt ? parseISO(job.processedAt) : null,
+  id: job.id,
+  state: job.state,
+  type: job.type,
+  title: job.title,
+  data: job.data,
+  result: job.result,
+  createdAt: parseISO(job.createdAt),
   finishedAt: job.finishedAt ? parseISO(job.finishedAt) : null,
-  children: job.children.map(transformJob),
+  startedAt: job.startedAt ? parseISO(job.startedAt) : null,
 });
 
 const jobsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    getJobs: builder.query<Job[], void>({
+    getJobs: createPaginatedQuery<Job>()(builder, {
       query: () => '/jobs/list',
-      transformResponse: (response: ResponseJob[]): Job[] =>
-        response.map(transformJob),
+      transformResponse: (response: PaginationQueryResponse<ResponseJob>) => ({
+        ...response,
+        result: response.result.map(transformJob),
+      }),
     }),
 
-    getJob: builder.query<Job, { queue: string; id: string }>({
-      query: ({ queue, id }) => `/jobs/queue/${queue}/${id}`,
+    getJob: builder.query<Job, { id: string }>({
+      query: ({ id }) => `/jobs/${id}`,
       transformResponse: transformJob,
     }),
   }),
 });
 
 export const { useGetJobsQuery, useGetJobQuery } = jobsApi;
+export default jobsApi;

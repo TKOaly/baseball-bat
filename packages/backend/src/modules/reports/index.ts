@@ -27,6 +27,7 @@ import {
   generateDebtStatusReport,
 } from '@/modules/debts/definitions';
 import * as defs from './definitions';
+import * as jobs from '@/modules/jobs/definitions';
 import { Connection } from '@/db/connection';
 import { createModule } from '@/module';
 
@@ -76,7 +77,7 @@ export default createModule({
 
   routes,
 
-  async setup({ config, bus, minio, jobs }) {
+  async setup({ config, bus, minio }) {
     let _browser: Browser | null = null;
 
     async function getBrowser() {
@@ -196,7 +197,7 @@ export default createModule({
       );
     }
 
-    bus.register(defs.createReport, async (options, { pg, session }) => {
+    bus.register(defs.createReport, async (options, { pg, session }, ctx) => {
       if (session?.authLevel !== 'authenticated') {
         throw new Error('Unauthenticated!');
       }
@@ -216,12 +217,12 @@ export default createModule({
         throw new Error('Failed to create report!');
       }
 
-      await jobs.createJob({
-        queueName: 'reports',
-        name: 'create-report',
+      await ctx.exec(jobs.create, {
+        type: 'create-report',
         data: {
           id: report.id,
         },
+        title: `Create report "${report.name}"`,
       });
 
       return report;
@@ -413,68 +414,73 @@ export default createModule({
       id: string;
     };
 
-    await jobs.createWorker<ReportJob, void>('reports', async (ctx, job) => {
-      const { id } = job.data;
+    bus.provideNamed(jobs.executor, 'create-report', {
+      async execute(job, _, ctx) {
+        const { id } = job.data as ReportJob;
 
-      const report = await ctx.exec(defs.getReport, id);
+        const report = await ctx.exec(defs.getReport, id);
 
-      if (!report) {
-        throw new Error('Report does not exist!');
-      }
+        if (!report) {
+          throw new Error('Report does not exist!');
+        }
 
-      if (report.status === 'finished') {
-        return;
-      }
+        if (report.status === 'finished') {
+          return;
+        }
 
-      if (!report.type) {
-        throw new Error('Report has undefined type!');
-      }
+        if (!report.type) {
+          throw new Error('Report has undefined type!');
+        }
 
-      try {
-        const reportType = ctx.getInterface(defs.reportTypeIface, report.type);
-        const details = await reportType.getDetails();
-        const template = await loadTemplate(details.template);
-        const generatedAt = new Date();
+        try {
+          const reportType = ctx.getInterface(
+            defs.reportTypeIface,
+            report.type,
+          );
+          const details = await reportType.getDetails();
+          const template = await loadTemplate(details.template);
+          const generatedAt = new Date();
 
-        const payload = await reportType.generate({
-          options: report.options,
-        });
+          const payload = await reportType.generate({
+            options: report.options,
+          });
 
-        const source = ejs.render(template, {
-          data: payload,
-          metadata: {
-            name: report.name,
-            humanId: report.humanId,
-            id: report.id,
-            generatedAt,
-            revision: report.revision,
-          },
-          utils: {
-            formatEuro,
-            formatDate: datefns.format,
-            sumEuroValues,
-            euro,
-            cents,
-          },
-        });
+          const source = ejs.render(template, {
+            data: payload,
+            metadata: {
+              name: report.name,
+              humanId: report.humanId,
+              id: report.id,
+              generatedAt,
+              revision: report.revision,
+            },
+            utils: {
+              formatEuro,
+              formatDate: datefns.format,
+              sumEuroValues,
+              euro,
+              cents,
+            },
+          });
 
-        const pdf = await render(source, details.scale ?? 0.8);
+          const pdf = await render(source, details.scale ?? 0.8);
 
-        await saveReport(report.id, pdf);
-        await updateReportStatus(ctx.context.pg, report.id, 'finished');
-        await ctx.emit(defs.onReportStatusChanged, {
-          report: id,
-          status: 'finished',
-        });
-      } catch (err) {
-        console.error('Report generation failed: ', err);
-        await updateReportStatus(ctx.context.pg, report.id, 'failed');
-        await ctx.emit(defs.onReportStatusChanged, {
-          report: id,
-          status: 'failed',
-        });
-        throw err;
-      }
+          await saveReport(report.id, pdf);
+          await updateReportStatus(ctx.context.pg, report.id, 'finished');
+          await ctx.emit(defs.onReportStatusChanged, {
+            report: id,
+            status: 'finished',
+          });
+        } catch (err) {
+          console.error('Report generation failed: ', err);
+          await updateReportStatus(ctx.context.pg, report.id, 'failed');
+          await ctx.emit(defs.onReportStatusChanged, {
+            report: id,
+            status: 'failed',
+          });
+          throw err;
+        }
+      },
     });
   },
 });

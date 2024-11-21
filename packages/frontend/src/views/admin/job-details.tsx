@@ -1,10 +1,8 @@
 import { format } from 'date-fns/format';
-import { formatDuration } from 'date-fns/formatDuration';
-import { useLocation } from 'wouter';
 import { useGetJobQuery } from '../../api/jobs';
 import { RouteComponentProps, Link } from 'wouter';
+import * as t from 'io-ts';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
-import { Table } from '@bbat/ui/table';
 import {
   Page,
   Header,
@@ -12,28 +10,48 @@ import {
   Section,
   TextField,
   DateField,
+  BadgeField,
+  BadgeColor,
+  Field,
 } from '../../components/resource-page/resource-page';
-import * as t from 'io-ts';
-import * as E from 'fp-ts/Either';
-import { pipe } from 'fp-ts/function';
+import { toNullable, fromEither } from 'fp-ts/lib/Option';
 
 type Props = RouteComponentProps<{
   id: string;
   queue: string;
 }>;
 
-const returnValueType = t.type({
+const errorDetailsType = t.type({
+  name: t.string,
   message: t.string,
+  traceId: t.union([t.null, t.string]),
 });
 
 export const JobDetails = (props: Props) => {
-  const { queue, id } = props.params;
-  const { data: job } = useGetJobQuery({ queue, id }, { pollingInterval: 500 });
-  const [, setLocation] = useLocation();
+  const { id } = props.params;
+  const { data: job } = useGetJobQuery({ id });
 
   if (!job) {
     return <div />;
   }
+
+  let stateColor: BadgeColor = 'gray';
+  let stateLabel = job.state as string;
+
+  if (job.state === 'finished') {
+    stateColor = 'green';
+    stateLabel = 'Finished';
+  } else if (job.state === 'failed') {
+    stateColor = 'red';
+    stateLabel = 'Failed';
+  } else if (job.state === 'processing') {
+    stateColor = 'blue';
+    stateLabel = 'Running';
+  }
+
+  const errorDetails = toNullable(
+    fromEither(errorDetailsType.decode(job.result)),
+  );
 
   return (
     <Page>
@@ -43,95 +61,49 @@ export const JobDetails = (props: Props) => {
             linkComponent={Link}
             segments={[
               { text: 'Jobs', url: '/admin/jobs' },
-              job?.name ?? 'Loading...',
+              job.title ?? job.id,
             ]}
           />
         </Title>
       </Header>
       <Section title="Details" columns={2}>
-        <TextField label="Name" value={job.name} />
-        <DateField time label="Created at" value={job.time} />
-        <DateField time label="Processed at" value={job?.processedAt ?? ''} />
+        <TextField label="Title" value={job.title ?? 'Untitled'} />
+        <TextField label="Type" value={job.type} />
+        <DateField
+          time
+          label="Created at"
+          value={job.createdAt}
+          format="d.m.y HH:mm:ss"
+        />
+        <DateField
+          time
+          label="Started at"
+          value={job?.startedAt ?? ''}
+          format="d.m.y HH:mm:ss"
+        />
         <TextField
           label="Finished at"
           value={
             job.finishedAt
-              ? format(job.finishedAt, 'd.m.y H:m')
+              ? format(job.finishedAt, 'd.m.y HH:mm:ss')
               : 'Not finished'
           }
         />
-        <TextField
-          label="Duration"
-          value={formatDuration({ seconds: job.duration / 1000 })}
-        />
-        <TextField label="Status" value={job.status} />
-        {job?.status === 'failed' &&
-          pipe(
-            job.returnValue,
-            returnValueType.decode,
-            E.fold(
-              () => null,
-              ({ message }) => (
-                <TextField label="Error Message" value={message} />
-              ),
-            ),
-          )}
-      </Section>
-      <Section title="Children">
-        <Table
-          persist="jobs"
-          rows={(job?.children ?? []).map(job => ({ ...job, key: job.id }))}
-          onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
-          columns={[
-            {
-              name: 'Time',
-              getValue: job => new Date(job.time),
-              render: time => format(time, 'dd.MM.yyyy HH:mm:ss'),
-            },
-            {
-              name: 'Name',
-              getValue: 'name',
-              render: (value, _, depth) => (
-                <div style={{ paddingLeft: `${depth * 1.5}em` }}>{value}</div>
-              ),
-            },
-            {
-              name: 'Duration',
-              getValue: job => formatDuration({ seconds: job.duration / 1000 }),
-            },
-            {
-              name: 'Children',
-              getValue: job => job.children.length,
-            },
-            {
-              name: 'Progress',
-              getValue: job => (job.progress === 0 ? 2 : job.progress),
-              render: (v, job) => {
-                const value = v === 2 ? 0 : v;
-
-                if (job.status === 'waiting') {
-                  return 'Waiting';
-                }
-
-                return (
-                  <div className="w-full">
-                    <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className={`h-full ${
-                          job.status === 'failed'
-                            ? 'bg-red-400'
-                            : 'bg-green-400'
-                        }`}
-                        style={{ width: `${(value * 100).toFixed()}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              },
-            },
-          ]}
-        />
+        <BadgeField label="State" text={stateLabel} color={stateColor} />
+        {job.state === 'failed' && errorDetails && (
+          <Field fullWidth label="Error">
+            <div className="rounded-sm border border-gray-200 bg-gray-100 p-2">
+              <strong className="block text-gray-800">
+                {errorDetails.name}
+              </strong>
+              <p>{errorDetails.message}</p>
+              <div className="mt-2">
+                <strong className="text-gray-700">Trace ID:</strong>{' '}
+                {errorDetails.traceId}
+              </div>
+            </div>
+          </Field>
+        )}
       </Section>
     </Page>
   );
