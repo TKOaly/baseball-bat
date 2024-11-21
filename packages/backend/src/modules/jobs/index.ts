@@ -8,6 +8,7 @@ import { BusContext } from '@/app';
 import { createModule } from '@/module';
 import { Job, DbJob } from '@bbat/common/types';
 import { createPaginatedQuery } from '@/db/pagination';
+import { shutdown } from '@/orchestrator';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -30,6 +31,8 @@ export default createModule({
     const subscriber = createSubscriber({
       connectionString: config.dbUrl,
     });
+
+    const runningJobs = new Set<Promise<void>>();
 
     const withNewContext = <T>(
       span: string,
@@ -72,6 +75,8 @@ export default createModule({
     };
 
     bus.register(defs.poll, async (_, { pg, logger }) => {
+      if (!running) return;
+
       const jobs = await pg.many<{ id: string }>(sql`
         UPDATE jobs
         SET state = 'scheduled'
@@ -89,8 +94,12 @@ export default createModule({
         logger.info(`Dispatching ${jobs.length} jobs...`);
       }
 
-      jobs.map(({ id }) =>
-        withNewContext('job execution', async ctx => {
+      if (!running) return;
+
+      const promises = jobs.map(async ({ id }) => {
+        if (!running) return;
+
+        await withNewContext('job execution', async ctx => {
           try {
             await ctx.exec(defs.execute, id);
           } catch (err) {
@@ -106,8 +115,13 @@ export default createModule({
 
             throw err;
           }
-        }),
-      );
+        });
+      });
+
+      promises.forEach(promise => {
+        promise.finally(() => runningJobs.delete(promise));
+        runningJobs.add(promise);
+      });
     });
 
     bus.register(defs.create, async (job, { pg }) => {
@@ -139,6 +153,8 @@ export default createModule({
     });
 
     bus.register(defs.execute, async (id, { pg, logger }, bus) => {
+      if (!running) return;
+
       const job = await bus.exec(defs.get, id);
 
       if (!job) {
@@ -202,22 +218,44 @@ export default createModule({
       return formatJob(result);
     });
 
-    subscriber.notifications.on('new-job', ({ id }) => {
+    subscriber.notifications.on('new-job', async ({ id }) => {
+      if (!running) return;
+
       try {
-        withNewContext('new-job notification handler', async ctx => {
+        await withNewContext('new-job notification handler', async ctx => {
           logger.info(`Got notification about job ${id}!`);
           await ctx.exec(defs.poll);
         });
       } catch (err) {
-        console.error(err);
+        logger.error('Handling of job notification failed: ' + err);
       }
     });
 
     await subscriber.connect();
     await subscriber.listenTo('new-job');
 
-    setInterval(() => {
-      withNewContext('periodic job poll', ctx => ctx.exec(defs.poll));
+    const interval = setInterval(async () => {
+      if (!running) return;
+
+      try {
+        await withNewContext('periodic job poll', ctx => ctx.exec(defs.poll));
+      } catch (err) {
+        logger.error('Periodic job poll failed: ' + err);
+      }
     }, 10_000);
+
+    let running = true;
+
+    bus.on(shutdown, async () => {
+      running = false;
+
+      clearInterval(interval);
+
+      await subscriber.unlistenAll();
+      await subscriber.close();
+
+      logger.info(`Waiting for ${runningJobs.size} jobs to finish...`);
+      await Promise.all(runningJobs);
+    });
   },
 });

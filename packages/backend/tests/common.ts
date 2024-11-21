@@ -102,7 +102,7 @@ type TeardownHook = () => Promise<void>;
 type Deps = ApiDeps & ModuleDeps;
 
 export class Environment {
-  private teardownHooks: Array<() => Promise<void>> = [];
+  private teardownHooks: Array<[number, () => Promise<void>]> = [];
 
   initializers: { [K in keyof Deps]: (env: Environment) => Promise<Deps[K]> } =
     {
@@ -121,8 +121,9 @@ export class Environment {
             await bus
               .createContext({ pg, nats, logger, span, session: null })
               .emit(shutdown);
+            console.log('Shutting down!');
           });
-        });
+        }, -1);
 
         return bus;
       },
@@ -181,12 +182,14 @@ export class Environment {
 
   constructor(public config: Config) {}
 
-  onTeardown(hook: TeardownHook) {
-    this.teardownHooks.splice(0, 0, hook);
+  onTeardown(hook: TeardownHook, priority = 0) {
+    this.teardownHooks.splice(0, 0, [priority, hook]);
   }
 
   async teardown() {
-    for (const hook of this.teardownHooks) {
+    const hooks = this.teardownHooks.sort(([a], [b]) => a - b);
+
+    for (const [, hook] of hooks) {
       await hook();
     }
   }
