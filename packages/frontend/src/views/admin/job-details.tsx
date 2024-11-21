@@ -15,6 +15,7 @@ import {
   Field,
 } from '../../components/resource-page/resource-page';
 import { toNullable, fromEither } from 'fp-ts/lib/Option';
+import { formatDuration, intervalToDuration } from 'date-fns';
 
 type Props = RouteComponentProps<{
   id: string;
@@ -38,7 +39,7 @@ export const JobDetails = (props: Props) => {
   let stateColor: BadgeColor = 'gray';
   let stateLabel = job.state as string;
 
-  if (job.state === 'finished') {
+  if (job.state === 'succeeded') {
     stateColor = 'green';
     stateLabel = 'Finished';
   } else if (job.state === 'failed') {
@@ -90,6 +91,10 @@ export const JobDetails = (props: Props) => {
           }
         />
         <BadgeField label="State" text={stateLabel} color={stateColor} />
+        <TextField
+          label="Retries"
+          value={`Attempt ${job.retries + 1} out of ${job.maxRetries}${job.state === 'pending' && job.delayedUntil ? ` (Next attempt in ${formatDuration(intervalToDuration({ start: new Date(), end: job.delayedUntil }))})` : ''}`}
+        />
         {job.state === 'failed' && errorDetails && (
           <Field fullWidth label="Error">
             <div className="rounded-sm border border-gray-200 bg-gray-100 p-2">

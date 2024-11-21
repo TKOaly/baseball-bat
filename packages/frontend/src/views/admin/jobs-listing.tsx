@@ -70,7 +70,7 @@ export const JobsListing = () => {
                 scheduled: { label: 'Scheduled', color: 'gray' },
                 processing: { label: 'Running', color: 'orange' },
                 failed: { label: 'Failed', color: 'red' },
-                finished: { label: 'Finished', color: 'green' },
+                succeeded: { label: 'Finished', color: 'green' },
               };
 
               const { color, label } = variants[value] ?? {
@@ -101,6 +101,10 @@ export const JobsListing = () => {
                 return String(err);
               }
             },
+          },
+          {
+            name: 'Retries',
+            getValue: 'retries',
           },
         ]}
       />

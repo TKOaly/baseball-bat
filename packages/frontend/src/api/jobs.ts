@@ -13,6 +13,10 @@ type ResponseJob = {
   createdAt: string;
   finishedAt: string | null;
   startedAt: string | null;
+  retries: number;
+  maxRetries: number;
+  delayedUntil: string | null;
+  retryTimeout: number;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -25,6 +29,10 @@ const transformJob = (job: ResponseJob): Job => ({
   createdAt: parseISO(job.createdAt),
   finishedAt: job.finishedAt ? parseISO(job.finishedAt) : null,
   startedAt: job.startedAt ? parseISO(job.startedAt) : null,
+  retries: job.retries,
+  maxRetries: job.maxRetries,
+  retryTimeout: job.retryTimeout,
+  delayedUntil: job.delayedUntil ? parseISO(job.delayedUntil) : null,
 });
 
 const jobsApi = rtkApi.injectEndpoints({

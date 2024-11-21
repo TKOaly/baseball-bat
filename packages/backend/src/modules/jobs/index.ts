@@ -9,6 +9,7 @@ import { createModule } from '@/module';
 import { Job, DbJob } from '@bbat/common/types';
 import { createPaginatedQuery } from '@/db/pagination';
 import { shutdown } from '@/orchestrator';
+import { addSeconds } from 'date-fns';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -20,6 +21,10 @@ const formatJob = (db: DbJob): Job => ({
   finishedAt: db.finished_at ?? null,
   data: db.data,
   result: db.result,
+  delayedUntil: db.delayed_until ?? null,
+  retries: db.retries,
+  maxRetries: db.max_retries,
+  retryTimeout: db.retry_timeout,
 });
 
 export default createModule({
@@ -74,6 +79,18 @@ export default createModule({
       });
     };
 
+    const triggerPoll = async () => {
+      if (!running) return;
+
+      try {
+        await withNewContext('new-job notification handler', async ctx => {
+          await ctx.exec(defs.poll);
+        });
+      } catch (err) {
+        logger.error('Job poll failed: ' + err);
+      }
+    };
+
     bus.register(defs.poll, async (_, { pg, logger }) => {
       if (!running) return;
 
@@ -83,7 +100,7 @@ export default createModule({
         FROM (
           SELECT id
           FROM jobs
-          WHERE state = 'pending'
+          WHERE state = 'pending' AND (delayed_until IS NULL OR delayed_until < NOW())
           FOR UPDATE SKIP LOCKED
         ) pending
         WHERE jobs.id = pending.id
@@ -125,9 +142,11 @@ export default createModule({
     });
 
     bus.register(defs.create, async (job, { pg }) => {
-      const result = await pg.one<{ id: string }>(
-        sql`INSERT INTO jobs (type, data, title) VALUES (${job.type}, ${job.data}, ${job.title}) RETURNING id`,
-      );
+      const result = await pg.one<{ id: string }>(sql`
+        INSERT INTO jobs (type, data, title, max_retries, retry_timeout)
+        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout})
+        RETURNING id
+      `);
 
       if (!result) {
         throw new Error('Failed to create job: ' + job.type);
@@ -199,9 +218,30 @@ export default createModule({
         }
 
         await pool.withConnection(async conn => {
-          await conn.do(
-            sql`UPDATE jobs SET state = 'failed', finished_at = ${new Date()}, result = ${error} WHERE id = ${id}`,
-          );
+          if (job.retries < job.maxRetries) {
+            const timeoutSeconds = job.retryTimeout * Math.pow(2, job.retries);
+            const delayedUntil = addSeconds(new Date(), timeoutSeconds);
+
+            await conn.do(sql`
+              UPDATE jobs
+              SET state = 'pending',
+                  finished_at = ${new Date()},
+                  result = ${error},
+                  delayed_until = ${delayedUntil},
+                  retries = ${job.retries + 1}
+              WHERE id = ${id}
+            `);
+
+            setTimeout(triggerPoll, timeoutSeconds * 1000);
+          } else {
+            await conn.do(sql`
+              UPDATE jobs
+              SET state = 'failed',
+                  finished_at = ${new Date()},
+                  result = ${error}
+              WHERE id = ${id}
+            `);
+          }
         });
       }
     });
@@ -219,30 +259,14 @@ export default createModule({
     });
 
     subscriber.notifications.on('new-job', async ({ id }) => {
-      if (!running) return;
-
-      try {
-        await withNewContext('new-job notification handler', async ctx => {
-          logger.info(`Got notification about job ${id}!`);
-          await ctx.exec(defs.poll);
-        });
-      } catch (err) {
-        logger.error('Handling of job notification failed: ' + err);
-      }
+      logger.info(`Got notification about job ${id}!`);
+      await triggerPoll();
     });
 
     await subscriber.connect();
     await subscriber.listenTo('new-job');
 
-    const interval = setInterval(async () => {
-      if (!running) return;
-
-      try {
-        await withNewContext('periodic job poll', ctx => ctx.exec(defs.poll));
-      } catch (err) {
-        logger.error('Periodic job poll failed: ' + err);
-      }
-    }, 10_000);
+    const interval = setInterval(triggerPoll, 10_000);
 
     let running = true;
 

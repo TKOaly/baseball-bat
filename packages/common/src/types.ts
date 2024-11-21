@@ -1204,7 +1204,7 @@ export const jobState = t.union([
   t.literal('pending'),
   t.literal('scheduled'),
   t.literal('processing'),
-  t.literal('finished'),
+  t.literal('succeeded'),
   t.literal('failed'),
 ]);
 
@@ -1220,6 +1220,10 @@ export const dbJob = t.type({
   finished_at: nullable(tt.date),
   data: t.unknown,
   result: t.unknown,
+  delayed_until: nullable(tt.date),
+  retries: t.number,
+  max_retries: t.number,
+  retry_timeout: t.number,
 });
 
 export const job = t.type({
@@ -1232,6 +1236,10 @@ export const job = t.type({
   finishedAt: nullable(tt.date),
   data: t.unknown,
   result: t.unknown,
+  delayedUntil: nullable(tt.date),
+  retries: t.number,
+  maxRetries: t.number,
+  retryTimeout: t.number,
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1246,4 +1254,8 @@ export type Job<D = unknown, R = unknown> = {
   finishedAt: Date | null;
   data: D;
   result: R | null;
+  delayedUntil: Date | null;
+  retries: number;
+  maxRetries: number;
+  retryTimeout: number;
 };

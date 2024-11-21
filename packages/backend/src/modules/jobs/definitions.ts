@@ -29,6 +29,8 @@ export const create = scope.defineProcedure({
     }),
     t.partial({
       title: t.string,
+      retries: t.Integer,
+      retryTimeout: t.Integer,
     }),
   ]),
   response: t.string,
