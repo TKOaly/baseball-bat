@@ -6,17 +6,20 @@ import { cva } from 'class-variance-authority';
 import { PropsWithChildren } from 'react';
 import { formatDuration, intervalToDuration } from 'date-fns';
 
-const badgeCva = cva('mr-1 rounded-[2pt] px-1 py-0.5 text-xs font-bold', {
-  variants: {
-    color: {
-      gray: 'bg-gray-300 text-gray-700',
-      green: 'bg-green-600 text-green-50',
-      blue: 'bg-blue-200 text-blue-600',
-      orange: 'bg-orange-200 text-orange-600',
-      red: 'bg-red-600 text-red-50',
+const badgeCva = cva(
+  'mr-1 rounded-[2pt] px-1 pt-0.5 pb-[0.15em] text-xs font-bold',
+  {
+    variants: {
+      color: {
+        gray: 'bg-gray-300 text-gray-700',
+        green: 'bg-green-600 text-green-50',
+        blue: 'bg-blue-200 text-blue-600',
+        orange: 'bg-orange-500 text-orange-50',
+        red: 'bg-red-600 text-red-50',
+      },
     },
   },
-});
+);
 
 type BadgeColor = 'green' | 'blue' | 'orange' | 'red' | 'gray';
 
