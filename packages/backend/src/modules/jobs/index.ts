@@ -329,6 +329,8 @@ export default createModule({
 
     let running = true;
 
+    triggerPoll();
+
     bus.on(shutdown, async () => {
       running = false;
 
