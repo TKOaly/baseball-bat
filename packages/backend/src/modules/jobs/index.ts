@@ -10,6 +10,7 @@ import { Job, DbJob } from '@bbat/common/types';
 import { createPaginatedQuery } from '@/db/pagination';
 import { shutdown } from '@/orchestrator';
 import { addSeconds } from 'date-fns';
+import { Connection } from '@/db/connection';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -184,13 +185,18 @@ export default createModule({
       const iface = bus.getInterface(defs.executor, job.type);
 
       try {
-        await pool.withConnection(async conn => {
+        const conn = await Connection.create(config.dbUrl);
+
+        try {
           await conn.do(
             sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
           );
-        });
+        } finally {
+          await conn.close();
+        }
 
         const result = await iface.execute(job);
+
         await pg.do(
           sql`UPDATE jobs SET state = 'succeeded', result = ${result}, finished_at = ${new Date()} WHERE id = ${id}`,
         );
@@ -217,32 +223,32 @@ export default createModule({
           });
         }
 
-        await pool.withConnection(async conn => {
-          if (job.retries < job.maxRetries) {
-            const timeoutSeconds = job.retryTimeout * Math.pow(2, job.retries);
-            const delayedUntil = addSeconds(new Date(), timeoutSeconds);
+        if (job.retries < job.maxRetries) {
+          const timeoutSeconds = job.retryTimeout * Math.pow(2, job.retries);
+          const delayedUntil = addSeconds(new Date(), timeoutSeconds);
 
-            await conn.do(sql`
-              UPDATE jobs
-              SET state = 'pending',
-                  finished_at = ${new Date()},
-                  result = ${error},
-                  delayed_until = ${delayedUntil},
-                  retries = ${job.retries + 1}
-              WHERE id = ${id}
-            `);
+          await pg.do(sql`
+            UPDATE jobs
+            SET state = 'pending',
+                finished_at = ${new Date()},
+                result = ${error},
+                delayed_until = ${delayedUntil},
+                retries = ${job.retries + 1}
+            WHERE id = ${id}
+          `);
 
-            setTimeout(triggerPoll, timeoutSeconds * 1000);
-          } else {
-            await conn.do(sql`
-              UPDATE jobs
-              SET state = 'failed',
-                  finished_at = ${new Date()},
-                  result = ${error}
-              WHERE id = ${id}
-            `);
-          }
-        });
+          setTimeout(triggerPoll, timeoutSeconds * 1000);
+        } else {
+          await pg.do(sql`
+            UPDATE jobs
+            SET state = 'failed',
+                finished_at = ${new Date()},
+                result = ${error}
+            WHERE id = ${id}
+          `);
+        }
+      } finally {
+        triggerPoll();
       }
     });
 

@@ -9,7 +9,7 @@ import pg from 'pg';
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 export class Pool {
-  protected pool: pg.Pool;
+  pool: pg.Pool;
 
   constructor(url: string) {
     this.pool = new pg.Pool({
@@ -48,9 +48,20 @@ export class Connection {
   onCommitHooks: Array<() => Promise<void>> = [];
 
   constructor(
-    private id: number,
-    private conn: pg.PoolClient,
+    public id: number,
+    private conn: pg.ClientBase,
   ) {}
+
+  static async create(url: string) {
+    const client = new pg.Client(url);
+    await client.connect();
+
+    const result = await client.query('SELECT pg_backend_pid() pid');
+    const pid = result.rows[0].pid;
+    await client.query('BEGIN');
+
+    return new Connection(pid, client);
+  }
 
   static async from(pool: pg.Pool) {
     const conn = await pool.connect();
@@ -86,7 +97,10 @@ export class Connection {
 
   async close() {
     await this.commit();
-    this.conn.release();
+
+    if ('release' in this.conn && typeof this.conn.release === 'function') {
+      this.conn.release();
+    }
   }
 
   async do(query: SQLStatement) {
