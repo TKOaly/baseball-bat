@@ -1224,6 +1224,8 @@ export const dbJob = t.type({
   retries: t.number,
   max_retries: t.number,
   retry_timeout: t.number,
+  limit_class: nullable(t.string),
+  concurrency_limit: nullable(t.Integer),
 });
 
 export const job = t.type({
@@ -1240,6 +1242,8 @@ export const job = t.type({
   retries: t.number,
   maxRetries: t.number,
   retryTimeout: t.number,
+  limitClass: nullable(t.string),
+  concurrencyLimit: nullable(t.Integer),
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1258,4 +1262,6 @@ export type Job<D = unknown, R = unknown> = {
   retries: number;
   maxRetries: number;
   retryTimeout: number;
+  limitClass: string | null;
+  concurrencyLimit: number | null;
 };

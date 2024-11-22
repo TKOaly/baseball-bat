@@ -9,7 +9,7 @@ import { createModule } from '@/module';
 import { Job, DbJob } from '@bbat/common/types';
 import { createPaginatedQuery } from '@/db/pagination';
 import { shutdown } from '@/orchestrator';
-import { addSeconds } from 'date-fns';
+import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
 
 const formatJob = (db: DbJob): Job => ({
@@ -26,6 +26,8 @@ const formatJob = (db: DbJob): Job => ({
   retries: db.retries,
   maxRetries: db.max_retries,
   retryTimeout: db.retry_timeout,
+  limitClass: db.limit_class ?? db.type,
+  concurrencyLimit: db.concurrency_limit ?? null,
 });
 
 export default createModule({
@@ -95,29 +97,63 @@ export default createModule({
     bus.register(defs.poll, async (_, { pg, logger }) => {
       if (!running) return;
 
-      const jobs = await pg.many<{ id: string }>(sql`
-        UPDATE jobs
-        SET state = 'scheduled'
-        FROM (
-          SELECT id
-          FROM jobs
-          WHERE state = 'pending' AND (delayed_until IS NULL OR delayed_until < NOW())
-          FOR UPDATE SKIP LOCKED
-        ) pending
-        WHERE jobs.id = pending.id
-        RETURNING jobs.id
-      `);
+      // Prevent concurrent writes, but allow reads.
+      await pg.do(sql`LOCK TABLE jobs IN EXCLUSIVE MODE`);
 
-      if (jobs.length > 0) {
-        logger.info(`Dispatching ${jobs.length} jobs...`);
-      }
+      const candidates = await pg.many<{ id: string }>(sql`
+        SELECT id
+        FROM jobs
+        WHERE state = 'pending'
+          AND (delayed_until IS NULL OR delayed_until < NOW())
+        ORDER BY created_at ASC
+      `);
 
       if (!running) return;
 
-      const promises = jobs.map(async ({ id }) => {
-        if (!running) return;
+      let scheduled = 0;
 
-        await withNewContext('job execution', async ctx => {
+      for (const { id } of candidates) {
+        const details = await pg.one<DbJob & { concurrency: number }>(sql`
+          SELECT *, COALESCE(limit_class, type) limit_class
+          FROM (
+            SELECT
+              *,
+              COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency
+            FROM jobs
+          ) s
+          WHERE id = ${id}
+        `);
+
+        if (!details) {
+          throw new Error('Failed to fetch job details!');
+        }
+
+        logger.info(
+          `Concurrency(${details.type}): ${details.concurrency}/${details.concurrency_limit}`,
+        );
+
+        if (
+          details.concurrency_limit &&
+          details.limit_class &&
+          details.concurrency >= details.concurrency_limit
+        ) {
+          logger.info(
+            `Skipping job ${details.id} (${details.type}) as limit class '${details.limit_class}' has ${details.concurrency} active jobs, which exceeds the concurrency limit of ${details.concurrency_limit} for this job.`,
+          );
+          continue;
+        }
+
+        await pg.do(sql`
+          UPDATE jobs
+          SET state = 'scheduled', scheduled_at = ${new Date()}
+          WHERE id = ${id}
+        `);
+
+        scheduled++;
+
+        logger.info(`Scheduled job ${id}.`);
+
+        const promise = withNewContext('job execution', async ctx => {
           try {
             await ctx.exec(defs.execute, id);
           } catch (err) {
@@ -134,18 +170,35 @@ export default createModule({
             throw err;
           }
         });
-      });
 
-      promises.forEach(promise => {
         promise.finally(() => runningJobs.delete(promise));
         runningJobs.add(promise);
-      });
+      }
+
+      if (candidates.length > 0) {
+        logger.info(
+          `Scheduled ${scheduled} out of ${candidates.length} candidates.`,
+        );
+      }
+
+      const zombies = await pg.many<{ id: string }>(sql`
+        UPDATE jobs
+        SET state = 'pending'
+        WHERE state = 'scheduled' AND scheduled_at < ${subMinutes(new Date(), 5)} 
+        RETURNING id
+      `);
+
+      if (zombies.length > 0) {
+        logger.info(
+          `Returned ${zombies.length} scheduled jobs to the pending state.`,
+        );
+      }
     });
 
     bus.register(defs.create, async (job, { pg }) => {
       const result = await pg.one<{ id: string }>(sql`
-        INSERT INTO jobs (type, data, title, max_retries, retry_timeout)
-        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout})
+        INSERT INTO jobs (type, data, title, max_retries, retry_timeout, limit_class, concurrency_limit)
+        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout}, ${job.limitClass}, ${job.concurrencyLimit})
         RETURNING id
       `);
 

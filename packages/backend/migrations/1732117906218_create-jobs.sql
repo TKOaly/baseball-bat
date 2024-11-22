@@ -15,14 +15,19 @@ CREATE TABLE jobs (
   result JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   started_at TIMESTAMPTZ,
+  scheduled_at TIMESTAMPTZ,
   finished_at TIMESTAMPTZ,
   state job_state NOT NULL DEFAULT 'pending'::job_state,
   title TEXT,
   delayed_until TIMESTAMPTZ,
   retries INT NOT NULL DEFAULT 0,
   max_retries INT NOT NULL DEFAULT 3,
-  retry_timeout INT NOT NULL DEFAULT 300
+  retry_timeout INT NOT NULL DEFAULT 300,
+  limit_class TEXT,
+  concurrency_limit INT
 );
+
+CREATE INDEX idx_jobs_state ON jobs (state);
 
 CREATE OR REPLACE FUNCTION job_notify() RETURNS TRIGGER AS $$
 BEGIN
