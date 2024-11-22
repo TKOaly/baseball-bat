@@ -33,6 +33,8 @@ export const create = scope.defineProcedure({
       retryTimeout: t.Integer,
       concurrencyLimit: t.Integer,
       limitClass: t.string,
+      ratelimit: t.Integer,
+      ratelimitPeriod: t.Integer,
     }),
   ]),
   response: t.string,

@@ -24,7 +24,9 @@ CREATE TABLE jobs (
   max_retries INT NOT NULL DEFAULT 3,
   retry_timeout INT NOT NULL DEFAULT 300,
   limit_class TEXT,
-  concurrency_limit INT
+  concurrency_limit INT,
+  ratelimit INT,
+  ratelimit_period INT
 );
 
 CREATE INDEX idx_jobs_state ON jobs (state);

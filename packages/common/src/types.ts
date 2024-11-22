@@ -1226,6 +1226,8 @@ export const dbJob = t.type({
   retry_timeout: t.number,
   limit_class: nullable(t.string),
   concurrency_limit: nullable(t.Integer),
+  ratelimit: nullable(t.Integer),
+  ratelimit_period: nullable(t.Integer),
 });
 
 export const job = t.type({
@@ -1244,6 +1246,8 @@ export const job = t.type({
   retryTimeout: t.number,
   limitClass: nullable(t.string),
   concurrencyLimit: nullable(t.Integer),
+  ratelimit: nullable(t.Integer),
+  ratelimitPeriod: nullable(t.Integer),
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1264,4 +1268,6 @@ export type Job<D = unknown, R = unknown> = {
   retryTimeout: number;
   limitClass: string | null;
   concurrencyLimit: number | null;
+  ratelimit: number | null;
+  ratelimitPeriod: number | null;
 };

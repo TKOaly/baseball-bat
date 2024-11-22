@@ -19,6 +19,8 @@ type ResponseJob = {
   retryTimeout: number;
   concurrencyLimit: number | null;
   limitClass: string | null;
+  ratelimit: number | null;
+  ratelimitPeriod: number | null;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -37,6 +39,8 @@ const transformJob = (job: ResponseJob): Job => ({
   delayedUntil: job.delayedUntil ? parseISO(job.delayedUntil) : null,
   concurrencyLimit: job.concurrencyLimit,
   limitClass: job.limitClass,
+  ratelimit: job.ratelimit,
+  ratelimitPeriod: job.ratelimitPeriod,
 });
 
 const jobsApi = rtkApi.injectEndpoints({

@@ -28,6 +28,8 @@ const formatJob = (db: DbJob): Job => ({
   retryTimeout: db.retry_timeout,
   limitClass: db.limit_class ?? db.type,
   concurrencyLimit: db.concurrency_limit ?? null,
+  ratelimit: db.ratelimit ?? null,
+  ratelimitPeriod: db.ratelimit_period ?? null,
 });
 
 export default createModule({
@@ -113,12 +115,15 @@ export default createModule({
       let scheduled = 0;
 
       for (const { id } of candidates) {
-        const details = await pg.one<DbJob & { concurrency: number }>(sql`
-          SELECT *, COALESCE(limit_class, type) limit_class
-          FROM (
+        const details = await pg.one<
+          DbJob & { concurrency: number; recent_run_count: number }
+        >(sql`
+          SELECT * FROM (
             SELECT
               *,
-              COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency
+              COALESCE(limit_class, type) limit_class,
+              COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency,
+              COUNT(*) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) recent_run_count
             FROM jobs
           ) s
           WHERE id = ${id}
@@ -128,17 +133,27 @@ export default createModule({
           throw new Error('Failed to fetch job details!');
         }
 
-        logger.info(
-          `Concurrency(${details.type}): ${details.concurrency}/${details.concurrency_limit}`,
-        );
+        const jobLogger = logger.child({
+          job_id: details.id,
+          job_type: details.type,
+        });
 
         if (
           details.concurrency_limit &&
-          details.limit_class &&
           details.concurrency >= details.concurrency_limit
         ) {
-          logger.info(
+          jobLogger.info(
             `Skipping job ${details.id} (${details.type}) as limit class '${details.limit_class}' has ${details.concurrency} active jobs, which exceeds the concurrency limit of ${details.concurrency_limit} for this job.`,
+          );
+          continue;
+        }
+
+        if (
+          details.ratelimit &&
+          details.recent_run_count >= details.ratelimit
+        ) {
+          jobLogger.info(
+            `Skipping job ${details.id} due to it's ratelimit (${details.ratelimit} runs in ${details.ratelimit_period} seconds)`,
           );
           continue;
         }
@@ -151,7 +166,7 @@ export default createModule({
 
         scheduled++;
 
-        logger.info(`Scheduled job ${id}.`);
+        jobLogger.info(`Scheduled job ${id}.`);
 
         const promise = withNewContext('job execution', async ctx => {
           try {
@@ -197,8 +212,8 @@ export default createModule({
 
     bus.register(defs.create, async (job, { pg }) => {
       const result = await pg.one<{ id: string }>(sql`
-        INSERT INTO jobs (type, data, title, max_retries, retry_timeout, limit_class, concurrency_limit)
-        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout}, ${job.limitClass}, ${job.concurrencyLimit})
+        INSERT INTO jobs (type, data, title, max_retries, retry_timeout, limit_class, concurrency_limit, ratelimit, ratelimit_period)
+        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout}, ${job.limitClass}, ${job.concurrencyLimit}, ${job.ratelimit}, ${job.ratelimitPeriod})
         RETURNING id
       `);
 
