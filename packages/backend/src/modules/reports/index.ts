@@ -223,6 +223,8 @@ export default createModule({
           id: report.id,
         },
         title: `Create report "${report.name}"`,
+        retries: 0,
+        concurrencyLimit: 2,
       });
 
       return report;

@@ -258,6 +258,11 @@ export default createModule({
           type: 'send-email',
           data: { id },
           title: `Send email to ${email.recipient}`,
+          retries: 3,
+          retryTimeout: 300,
+          concurrencyLimit: 1,
+          ratelimit: 1,
+          ratelimitPeriod: 1,
         });
       },
 
