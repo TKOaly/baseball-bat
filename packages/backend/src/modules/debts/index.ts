@@ -17,7 +17,7 @@ import {
   convertToDbDate,
   NewInvoice,
 } from '@bbat/common/build/src/types';
-import sql, { SQLStatement } from 'sql-template-strings';
+import { sql, Sql } from '@/db/template';
 import * as t from 'io-ts';
 import routes from './api';
 import reports from './reports';
@@ -1360,31 +1360,20 @@ export default createModule({
 
       const update = (
         table: string,
-        condition: SQLStatement,
+        condition: Sql,
         values: Record<string, any>,
       ) => {
-        let query = sql`UPDATE `.append(table).append(' SET ');
+        const assignments = Object.entries(values).map(
+          ([column, value]) =>
+            sql`${sql.raw(pg.escapeIdentifier(column))} = ${value}`,
+        );
 
-        let first = true;
-
-        for (const [column, value] of Object.entries(values)) {
-          if (value !== undefined) {
-            if (!first) {
-              query = query.append(', ');
-            }
-
-            query = query.append(column).append(sql` = ${value}`);
-
-            first = false;
-          }
-        }
-
-        query = query
-          .append(' WHERE ')
-          .append(condition)
-          .append(' RETURNING *');
-
-        return query;
+        return sql`
+          UPDATE ${sql.raw(pg.escapeIdentifier(table))}
+          SET ${sql`, `.join(assignments)}
+          WHERE ${condition}
+          RETURNING *
+        `;
       };
 
       let due_date: Date | null | undefined = debt.dueDate;

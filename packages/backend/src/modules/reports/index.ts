@@ -1,7 +1,7 @@
 import * as t from 'io-ts';
 import * as puppeteer from 'puppeteer';
 import { Browser } from 'puppeteer';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import routes from './api';
 import * as path from 'path';
 import * as paymentService from '@/modules/payments/definitions';

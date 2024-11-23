@@ -1,5 +1,5 @@
 import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import * as defs from './definitions';
 import routes from './api';
 import createSubscriber from 'pg-listen';

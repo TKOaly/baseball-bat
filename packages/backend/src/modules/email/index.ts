@@ -3,7 +3,7 @@ import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import routes from './api';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import mjml2html from 'mjml';
 import nodemailer from 'nodemailer';
 import ejs from 'ejs';

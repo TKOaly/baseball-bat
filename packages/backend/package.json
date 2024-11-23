@@ -89,7 +89,6 @@
     "redis": "^4.6.13",
     "reflect-metadata": "^0.2.1",
     "remeda": "^1.47.0",
-    "sql-template-strings": "^2.2.2",
     "stripe": "^14.20.0",
     "typedi": "^0.10.0",
     "typera-common": "^2.4.3",

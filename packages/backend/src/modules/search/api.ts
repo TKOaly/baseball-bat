@@ -1,5 +1,5 @@
 import { router } from 'typera-express';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import { ok } from 'typera-express/response';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';

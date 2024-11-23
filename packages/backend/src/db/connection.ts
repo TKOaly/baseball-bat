@@ -3,7 +3,7 @@ import {
   ATTR_DB_QUERY_TEXT,
   ATTR_DB_QUERY_PARAMETER,
 } from '@opentelemetry/semantic-conventions/incubating';
-import { SQLStatement } from 'sql-template-strings';
+import { Sql } from './template';
 import pg from 'pg';
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
@@ -103,17 +103,18 @@ export class Connection {
     }
   }
 
-  async do(query: SQLStatement) {
+  async do(query: Sql) {
     await this.many(query);
   }
 
-  async query(query: SQLStatement) {
+  async query(query: Sql) {
     const attributes: Record<string, string | number> = {
       [ATTR_DB_QUERY_TEXT]: query.text,
     };
 
     query.values.forEach((value, index) => {
-      attributes[ATTR_DB_QUERY_PARAMETER((index + 1).toString())] = value;
+      attributes[ATTR_DB_QUERY_PARAMETER((index + 1).toString())] =
+        typeof value === 'number' ? value : String(value);
     });
 
     return this.tracer.startActiveSpan('query', { attributes }, async span => {
@@ -123,7 +124,7 @@ export class Connection {
     });
   }
 
-  async one<A>(query: SQLStatement): Promise<A | null> {
+  async one<A>(query: Sql): Promise<A | null> {
     const results = await this.many<A>(query);
 
     if (results.length > 1) {
@@ -133,7 +134,7 @@ export class Connection {
     return results[0] ?? null;
   }
 
-  async many<T>(query: SQLStatement): Promise<T[]> {
+  async many<T>(query: Sql): Promise<T[]> {
     const { rows } = await this.query(query);
     return rows;
   }

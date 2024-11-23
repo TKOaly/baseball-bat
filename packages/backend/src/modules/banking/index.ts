@@ -6,7 +6,7 @@ import {
   BankStatement,
 } from '@bbat/common/types';
 import * as audit from '@/modules/audit/definitions';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import * as paymentsService from '@/modules/payments/definitions';
 import { cents } from '@bbat/common/currency';
 import { formatPayment } from '../payments';

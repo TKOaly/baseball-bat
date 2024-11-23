@@ -1,4 +1,4 @@
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import {
   DbDebt,
   DbPayerProfile,
@@ -503,13 +503,20 @@ export default createModule({
 
         const options = result.right;
 
+        const paymentTypeCondition = options.paymentType
+          ? sql` payment.type = ${options.paymentType} `
+          : sql` TRUE `;
+
+        const eventTypeCondition = options.eventTypes
+          ? sql` event.type = ANY (${options.eventTypes}) `
+          : sql` TRUE `;
+
         const results = await pg.many<{
           event: DbPaymentEvent;
           debt: DbDebt;
           payment: DbPayment;
           payer: DbPayerProfile;
-        }>(
-          sql`
+        }>(sql`
           SELECT DISTINCT ON (event.id, debt.id)
             TO_JSONB(event.*) AS event,
             TO_JSONB(debt.*) AS debt,
@@ -520,21 +527,10 @@ export default createModule({
           JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
           JOIN debt ON debt.id = pdm.debt_id
           JOIN payer_profiles payer ON payer.id = debt.payer_id
-          WHERE
-            event.time BETWEEN ${options.startDate} AND ${options.endDate} AND
-          `
-            .append(
-              options.paymentType
-                ? sql` payment.type = ${options.paymentType} `
-                : sql` TRUE `,
-            )
-            .append(sql`AND`)
-            .append(
-              options.eventTypes
-                ? sql` event.type = ANY (${options.eventTypes}) `
-                : sql` TRUE `,
-            ),
-        );
+          WHERE event.time BETWEEN ${options.startDate} AND ${options.endDate}
+            AND ${paymentTypeCondition}
+            AND ${eventTypeCondition}
+        `);
 
         const events = R.sortBy(
           results.map(({ payment, payer, event, debt }) => ({

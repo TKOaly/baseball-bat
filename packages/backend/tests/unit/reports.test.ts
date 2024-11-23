@@ -1,7 +1,7 @@
 import { emailIdentity } from '@bbat/common/types';
 import setup from './setup';
 import * as defs from '@/modules/reports/definitions';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import { createPayerProfileFromEmailIdentity } from '@/modules/payers/definitions';
 import assert from 'assert';
 import parsePdf from 'pdf-parse';

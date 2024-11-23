@@ -1,6 +1,6 @@
 import { DbDebtCenter, DebtCenter } from '@bbat/common/build/src/types';
 import accountingIface from '../accounting/definitions';
-import sql, { SQLStatement } from 'sql-template-strings';
+import { sql, Sql } from '@/db/template';
 import { cents } from '@bbat/common/build/src/currency';
 import * as E from 'fp-ts/Either';
 import routes from './api';
@@ -33,8 +33,7 @@ export default createModule({
   routes,
 
   async setup({ bus }) {
-    const debtCenterQuery = (where: SQLStatement) =>
-      sql`
+    const debtCenterQuery = (where: Sql) => sql`
       WITH counts AS (
         SELECT 
           d.debt_center_id AS id,
@@ -66,8 +65,8 @@ export default createModule({
       FROM debt_center dc
       LEFT JOIN counts USING (id)
       LEFT JOIN amounts USING (id)
-      WHERE
-    `.append(where);
+      WHERE ${where}
+    `;
 
     bus.register(defs.getDebtCenters, async (_, { pg }) => {
       return pg

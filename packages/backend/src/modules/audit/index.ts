@@ -1,5 +1,5 @@
 import { createModule } from '@/module';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import iface from './definitions';
 import routes from './api';
 import * as A from 'fp-ts/Array';
