@@ -99,7 +99,22 @@ export default createModule({
     bus.register(defs.poll, async (_, { pg, logger }) => {
       if (!running) return;
 
-      // Prevent concurrent writes, but allow reads.
+      // Try to acquire an advisory lock no. 1, which is used to ensure that
+      // only one poll is running at a time. The lock numbers are arbitrary
+      // and application-defined. We'll just use 1 here, because this is the
+      // only lock we use.
+      const result = await pg.one<{ acquired: boolean }>(
+        sql`SELECT pg_try_advisory_xact_lock(1) acquired`,
+      );
+
+      if (!result || !result.acquired) {
+        logger.info('Another poll already in progress.');
+        return;
+      }
+
+      // If no other polls are in progress, we'll continue by locking the table
+      // to prevent any concurrent writes. Concurrent reads continue to be
+      // allowed. Note that, unlike for the previous lock, we wait for this lock.
       await pg.do(sql`LOCK TABLE jobs IN EXCLUSIVE MODE`);
 
       const candidates = await pg.many<{ id: string }>(sql`
