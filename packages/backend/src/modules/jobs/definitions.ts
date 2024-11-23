@@ -30,7 +30,7 @@ export const create = scope.defineProcedure({
     t.partial({
       title: t.string,
       retries: t.Integer,
-      retryTimeout: t.Integer,
+      retryDelay: t.Integer,
       concurrencyLimit: t.Integer,
       limitClass: t.string,
       ratelimit: t.Integer,

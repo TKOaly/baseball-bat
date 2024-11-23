@@ -1223,7 +1223,7 @@ export const dbJob = t.type({
   delayed_until: nullable(tt.date),
   retries: t.number,
   max_retries: t.number,
-  retry_timeout: t.number,
+  retry_delay: t.number,
   limit_class: nullable(t.string),
   concurrency_limit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
@@ -1243,7 +1243,7 @@ export const job = t.type({
   delayedUntil: nullable(tt.date),
   retries: t.number,
   maxRetries: t.number,
-  retryTimeout: t.number,
+  retryDelay: t.number,
   limitClass: nullable(t.string),
   concurrencyLimit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
@@ -1265,7 +1265,7 @@ export type Job<D = unknown, R = unknown> = {
   delayedUntil: Date | null;
   retries: number;
   maxRetries: number;
-  retryTimeout: number;
+  retryDelay: number;
   limitClass: string | null;
   concurrencyLimit: number | null;
   ratelimit: number | null;

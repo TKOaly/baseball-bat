@@ -22,7 +22,7 @@ CREATE TABLE jobs (
   delayed_until TIMESTAMPTZ,
   retries INT NOT NULL DEFAULT 0,
   max_retries INT NOT NULL DEFAULT 3,
-  retry_timeout INT NOT NULL DEFAULT 300,
+  retry_delay INT NOT NULL DEFAULT 300,
   limit_class TEXT,
   concurrency_limit INT,
   ratelimit INT,

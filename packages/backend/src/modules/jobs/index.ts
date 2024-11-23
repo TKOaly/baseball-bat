@@ -25,7 +25,7 @@ const formatJob = (db: DbJob): Job => ({
   delayedUntil: db.delayed_until ?? null,
   retries: db.retries,
   maxRetries: db.max_retries,
-  retryTimeout: db.retry_timeout,
+  retryDelay: db.retry_delay,
   limitClass: db.limit_class ?? db.type,
   concurrencyLimit: db.concurrency_limit ?? null,
   ratelimit: db.ratelimit ?? null,
@@ -212,8 +212,18 @@ export default createModule({
 
     bus.register(defs.create, async (job, { pg }) => {
       const result = await pg.one<{ id: string }>(sql`
-        INSERT INTO jobs (type, data, title, max_retries, retry_timeout, limit_class, concurrency_limit, ratelimit, ratelimit_period)
-        VALUES (${job.type}, ${job.data}, ${job.title}, ${job.retries}, ${job.retryTimeout}, ${job.limitClass}, ${job.concurrencyLimit}, ${job.ratelimit}, ${job.ratelimitPeriod})
+        INSERT INTO jobs (type, data, title, max_retries, retry_delay, limit_class, concurrency_limit, ratelimit, ratelimit_period)
+        VALUES (
+          ${job.type},
+          ${job.data},
+          ${job.title},
+          ${job.retries},
+          ${job.retryDelay},
+          ${job.limitClass},
+          ${job.concurrencyLimit},
+          ${job.ratelimit},
+          ${job.ratelimitPeriod}
+        )
         RETURNING id
       `);
 
@@ -292,7 +302,7 @@ export default createModule({
         }
 
         if (job.retries < job.maxRetries) {
-          const timeoutSeconds = job.retryTimeout * Math.pow(2, job.retries);
+          const timeoutSeconds = job.retryDelay * Math.pow(2, job.retries);
           const delayedUntil = addSeconds(new Date(), timeoutSeconds);
 
           await pg.do(sql`

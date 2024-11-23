@@ -16,7 +16,7 @@ type ResponseJob = {
   retries: number;
   maxRetries: number;
   delayedUntil: string | null;
-  retryTimeout: number;
+  retryDelay: number;
   concurrencyLimit: number | null;
   limitClass: string | null;
   ratelimit: number | null;
@@ -35,7 +35,7 @@ const transformJob = (job: ResponseJob): Job => ({
   startedAt: job.startedAt ? parseISO(job.startedAt) : null,
   retries: job.retries,
   maxRetries: job.maxRetries,
-  retryTimeout: job.retryTimeout,
+  retryDelay: job.retryDelay,
   delayedUntil: job.delayedUntil ? parseISO(job.delayedUntil) : null,
   concurrencyLimit: job.concurrencyLimit,
   limitClass: job.limitClass,

@@ -259,7 +259,7 @@ export default createModule({
           data: { id },
           title: `Send email to ${email.recipient}`,
           retries: 3,
-          retryTimeout: 300,
+          retryDelay: 300,
           concurrencyLimit: 1,
           ratelimit: 1,
           ratelimitPeriod: 1,
