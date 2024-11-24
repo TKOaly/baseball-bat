@@ -418,7 +418,7 @@ export const startServer = async (env: Environment) => {
 
     env.onTeardown(async () => {
       logger.debug('Closing the HTTP socket...');
-      await new Promise<void>(resolve => listener.close(() => resolve()));
+      listener.close();
     });
   });
 
