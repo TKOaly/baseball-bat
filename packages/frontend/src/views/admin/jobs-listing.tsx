@@ -42,6 +42,7 @@ export const JobsListing = () => {
         onRowClick={job => setLocation(`/admin/jobs/${job.id}`)}
         persist="jobs"
         initialSort={{ column: 'Created', direction: 'desc' }}
+        refresh={5000}
         columns={[
           {
             name: 'Created',
