@@ -32,6 +32,29 @@ const formatJob = (db: DbJob): Job => ({
   ratelimitPeriod: db.ratelimit_period ?? null,
 });
 
+const formatMicros = (ms: bigint) => {
+  if (ms > 60_000_000_000) {
+    const units = ['s', 'm', 'h'];
+    const seconds = Number(ms / 1_000_000_000n);
+    let scale = 0;
+    while (seconds >= Math.pow(60, scale) && scale < units.length) scale++;
+    const parts = [];
+    let reminder = seconds;
+    for (let i = scale - 1; i >= 0; i--) {
+      const wholes = Math.floor(reminder / Math.pow(60, i));
+      reminder = reminder % Math.pow(60, i);
+      parts.push(`${wholes}${units[i]}`);
+    }
+
+    return parts.join(' ');
+  }
+
+  const units = ['μs', 'ns', 'ms', 's'];
+  let scale = 0;
+  while (ms >= Math.pow(1000, scale) && scale < units.length) scale++;
+  return `${(Number(ms) / Math.pow(1000, scale - 1)).toFixed(2)}${units[Math.min(units.length - 1, scale - 1)]}`;
+};
+
 export default createModule({
   name: 'jobs',
 
@@ -185,7 +208,13 @@ export default createModule({
 
         const promise = withNewContext('job execution', async ctx => {
           try {
+            jobLogger.info(`Starting job ${id}...`);
+            const before = process.hrtime.bigint();
             await ctx.exec(defs.execute, id);
+            const after = process.hrtime.bigint();
+            jobLogger.info(
+              `Job ${id} done in ${formatMicros(after - before)}!`,
+            );
           } catch (err) {
             ctx.context.logger.error(`Job ${id} failed: ${err}`, {
               job_id: id,
