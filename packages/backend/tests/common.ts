@@ -84,7 +84,7 @@ const setupMinio = async () => {
       MINIO_ROOT_USER: accessKey,
       MINIO_ROOT_PASSWORD: secretKey,
     })
-    .withWaitStrategy(Wait.forHttp('/minio/health/live', 9000))
+    .withWaitStrategy(Wait.forSuccessfulCommand('mc ready local'))
     .start();
 
   const uri = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
