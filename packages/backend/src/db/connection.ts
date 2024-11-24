@@ -4,7 +4,7 @@ import {
   ATTR_DB_QUERY_PARAMETER,
 } from '@opentelemetry/semantic-conventions/incubating';
 import { Sql } from './template';
-import pg from 'pg';
+import pg, { Client } from 'pg';
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
@@ -100,6 +100,8 @@ export class Connection {
 
     if ('release' in this.conn && typeof this.conn.release === 'function') {
       this.conn.release();
+    } else if (this.conn instanceof Client) {
+      await this.conn.end();
     }
   }
 
