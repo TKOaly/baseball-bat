@@ -10,6 +10,7 @@ pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 export class Pool {
   pool: pg.Pool;
+  connections: Set<Connection> = new Set();
 
   constructor(url: string) {
     this.pool = new pg.Pool({
@@ -20,7 +21,7 @@ export class Pool {
   }
 
   async connect() {
-    return await Connection.from(this.pool);
+    return await Connection.from(this);
   }
 
   async withConnection<T>(fn: (conn: Connection) => Promise<T>): Promise<T> {
@@ -38,6 +39,7 @@ export class Pool {
   }
 
   async end() {
+    await Promise.all([...this.connections].map(conn => conn.closed));
     return this.pool.end();
   }
 }
@@ -47,10 +49,29 @@ export class Connection {
 
   onCommitHooks: Array<() => Promise<void>> = [];
 
+  public closed: Promise<void>;
+
   constructor(
     public id: number,
     private conn: pg.ClientBase,
-  ) {}
+    private pool?: Pool,
+  ) {
+    const stack = new Error().stack;
+
+    conn.on('error', err => {
+      console.log(`Connection error: ${err}\nCreated at: ${stack}`);
+    });
+
+    this.closed = new Promise(resolve => {
+      conn.on('end', () => {
+        if (pool) {
+          pool.connections.delete(this);
+        }
+
+        resolve();
+      });
+    });
+  }
 
   static async create(url: string) {
     const client = new pg.Client(url);
@@ -63,15 +84,17 @@ export class Connection {
     return new Connection(pid, client);
   }
 
-  static async from(pool: pg.Pool) {
-    const conn = await pool.connect();
+  static async from(pool: Pool) {
+    const client = await pool.pool.connect();
 
-    const result = await conn.query('SELECT pg_backend_pid() pid');
+    const result = await client.query('SELECT pg_backend_pid() pid');
     const pid = result.rows[0].pid;
 
-    await conn.query('BEGIN');
+    await client.query('BEGIN');
 
-    return new Connection(pid, conn);
+    const conn = new Connection(pid, client, pool);
+    pool.connections.add(conn);
+    return conn;
   }
 
   get tracer() {
@@ -97,6 +120,10 @@ export class Connection {
 
   async close() {
     await this.commit();
+
+    if (this.pool) {
+      this.pool.connections.delete(this);
+    }
 
     if ('release' in this.conn && typeof this.conn.release === 'function') {
       this.conn.release();
