@@ -35,6 +35,9 @@ type TestContext = Parameters<TestFn>[0];
 export class UnitTestEnvironment extends TestEnvironment {
   public bus!: ExecutionContext<BusContext>;
   public busRoot!: LocalBus<BusContext>;
+  public withNewContext!: <T>(
+    fn: (ctx: UnitTestEnvironment) => Promise<T> | T,
+  ) => Promise<T>;
 
   constructor(
     public t: TestContext,
@@ -81,10 +84,16 @@ export default (name: string, callback: CustomSuiteFn) =>
             throw new Error('Failed to create user!');
           }
 
-          await testEnv.withContext(async ctx => {
-            testEnv.bus = ctx;
-            await fn(testEnv);
-          }, payer.id.value);
+          const _withContext = <T>(
+            fn: (ctx: UnitTestEnvironment) => Promise<T> | T,
+          ) =>
+            testEnv.withContext(async ctx => {
+              testEnv.bus = ctx;
+              testEnv.withNewContext = _withContext;
+              return await fn(testEnv);
+            }, payer.id.value);
+
+          await _withContext(fn);
         } finally {
           await env.teardown();
         }
