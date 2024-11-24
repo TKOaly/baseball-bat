@@ -30,6 +30,9 @@ const formatJob = (db: DbJob): Job => ({
   concurrencyLimit: db.concurrency_limit ?? null,
   ratelimit: db.ratelimit ?? null,
   ratelimitPeriod: db.ratelimit_period ?? null,
+  rate: db.rate,
+  concurrency: db.concurrency,
+  nextPoll: db.next_poll,
 });
 
 const formatMicros = (ms: bigint) => {
@@ -126,7 +129,20 @@ export default createModule({
       inFlightPeriodicPolls.add(promise);
     };
 
-    bus.register(defs.poll, async (_, { pg, logger }) => {
+    const jobQuery = sql`
+      SELECT * FROM (SELECT
+        *,
+        COALESCE(limit_class, type) limit_class,
+        COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency,
+        COUNT(*) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) rate,
+        (CASE
+          WHEN ratelimit IS NULL THEN NULL
+          ELSE MIN(started_at) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) + make_interval(secs => jobs.ratelimit_period)
+        END) next_poll
+      FROM jobs) s
+    `;
+
+    bus.register(defs.poll, async (_, { pg, logger }, bus) => {
       if (!running) return;
 
       // Try to acquire an advisory lock no. 1, which is used to ensure that
@@ -159,20 +175,10 @@ export default createModule({
 
       let scheduled = 0;
 
+      const ratelimitPollScheduled = new Set<string>();
+
       for (const { id } of candidates) {
-        const details = await pg.one<
-          DbJob & { concurrency: number; recent_run_count: number }
-        >(sql`
-          SELECT * FROM (
-            SELECT
-              *,
-              COALESCE(limit_class, type) limit_class,
-              COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency,
-              COUNT(*) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) recent_run_count
-            FROM jobs
-          ) s
-          WHERE id = ${id}
-        `);
+        const details = await bus.exec(defs.get, id);
 
         if (!details) {
           throw new Error('Failed to fetch job details!');
@@ -184,22 +190,37 @@ export default createModule({
         });
 
         if (
-          details.concurrency_limit &&
-          details.concurrency >= details.concurrency_limit
+          details.concurrencyLimit &&
+          details.concurrency >= details.concurrencyLimit
         ) {
           jobLogger.info(
-            `Skipping job ${details.id} (${details.type}) as limit class '${details.limit_class}' has ${details.concurrency} active jobs, which exceeds the concurrency limit of ${details.concurrency_limit} for this job.`,
+            `Skipping job ${details.id} (${details.type}) as limit class '${details.limitClass}' has ${details.concurrency} active jobs, which exceeds the concurrency limit of ${details.concurrencyLimit} for this job.`,
           );
           continue;
         }
 
-        if (
-          details.ratelimit &&
-          details.recent_run_count >= details.ratelimit
-        ) {
+        if (details.ratelimit && details.rate >= details.ratelimit) {
           jobLogger.info(
-            `Skipping job ${details.id} due to it's ratelimit (${details.ratelimit} runs in ${details.ratelimit_period} seconds)`,
+            `Skipping job ${details.id} due to it's ratelimit (${details.ratelimit} runs in ${details.ratelimitPeriod} seconds)`,
           );
+
+          if (!ratelimitPollScheduled.has(details.limitClass)) {
+            ratelimitPollScheduled.add(details.limitClass);
+
+            const timeout = details.nextPoll
+              ? details.nextPoll.valueOf() - new Date().valueOf()
+              : 0;
+
+            setTimeout(() => {
+              ratelimitPollScheduled.delete(details.limitClass);
+              triggerPoll();
+            }, timeout);
+
+            jobLogger.info(
+              `Scheduled a poll in ${timeout}ms due to a ratelimit for limit class ${details.limitClass} on job ${id}.`,
+            );
+          }
+
           continue;
         }
 
@@ -279,10 +300,7 @@ export default createModule({
       return result.id;
     });
 
-    const paginatedQuery = createPaginatedQuery<DbJob>(
-      sql`SELECT * FROM jobs`,
-      'id',
-    );
+    const paginatedQuery = createPaginatedQuery<DbJob>(jobQuery, 'id');
 
     bus.register(defs.list, async ({ limit, cursor, sort }, { pg }) => {
       return paginatedQuery(pg, {
@@ -398,9 +416,7 @@ export default createModule({
     });
 
     bus.register(defs.get, async (id, { pg }) => {
-      const result = await pg.one<DbJob>(
-        sql`SELECT * FROM jobs WHERE id = ${id}`,
-      );
+      const result = await pg.one<DbJob>(sql`${jobQuery} WHERE id = ${id}`);
 
       if (!result) {
         return null;

@@ -1224,10 +1224,13 @@ export const dbJob = t.type({
   retries: t.number,
   max_retries: t.number,
   retry_delay: t.number,
-  limit_class: nullable(t.string),
+  limit_class: t.string,
   concurrency_limit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimit_period: nullable(t.Integer),
+  concurrency: t.Integer,
+  rate: t.Integer,
+  next_poll: nullable(tt.date),
 });
 
 export const job = t.type({
@@ -1244,10 +1247,13 @@ export const job = t.type({
   retries: t.number,
   maxRetries: t.number,
   retryDelay: t.number,
-  limitClass: nullable(t.string),
+  limitClass: t.string,
   concurrencyLimit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimitPeriod: nullable(t.Integer),
+  concurrency: t.Integer,
+  rate: t.Integer,
+  nextPoll: nullable(tt.date),
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1266,8 +1272,11 @@ export type Job<D = unknown, R = unknown> = {
   retries: number;
   maxRetries: number;
   retryDelay: number;
-  limitClass: string | null;
+  limitClass: string;
   concurrencyLimit: number | null;
   ratelimit: number | null;
   ratelimitPeriod: number | null;
+  rate: number;
+  concurrency: number;
+  nextPoll: Date | null;
 };
