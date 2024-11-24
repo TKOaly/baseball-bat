@@ -95,6 +95,17 @@ export const JobDetails = (props: Props) => {
           label="Retries"
           value={`Attempt ${job.retries + 1} out of ${job.maxRetries}${job.state === 'pending' && job.delayedUntil ? ` (Next attempt in ${formatDuration(intervalToDuration({ start: new Date(), end: job.delayedUntil }))})` : ''}`}
         />
+        <TextField label="Limit class" value={job.limitClass} />
+        {job.ratelimit && (
+          <TextField
+            label="Rate"
+            value={`${job.rate} out of ${job.ratelimit} allowed jobs within ${job.ratelimitPeriod} seconds`}
+          />
+        )}
+        <TextField
+          label="Concurrency"
+          value={`${job.concurrency} concurrent jobs${job.concurrencyLimit ? ` out of ${job.concurrencyLimit} allowed` : ''}`}
+        />
         {job.state === 'failed' && errorDetails && (
           <Field fullWidth label="Error">
             <div className="rounded-sm border border-gray-200 bg-gray-100 p-2">

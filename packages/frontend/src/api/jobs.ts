@@ -18,9 +18,12 @@ type ResponseJob = {
   delayedUntil: string | null;
   retryDelay: number;
   concurrencyLimit: number | null;
-  limitClass: string | null;
+  limitClass: string;
   ratelimit: number | null;
   ratelimitPeriod: number | null;
+  concurrency: number;
+  rate: number;
+  nextPoll: string | null;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -40,7 +43,10 @@ const transformJob = (job: ResponseJob): Job => ({
   concurrencyLimit: job.concurrencyLimit,
   limitClass: job.limitClass,
   ratelimit: job.ratelimit,
+  rate: job.rate,
+  concurrency: job.concurrency,
   ratelimitPeriod: job.ratelimitPeriod,
+  nextPoll: job.nextPoll ? parseISO(job.nextPoll) : null,
 });
 
 const jobsApi = rtkApi.injectEndpoints({
