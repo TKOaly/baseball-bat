@@ -107,16 +107,23 @@ export default createModule({
       });
     };
 
+    const inFlightPeriodicPolls = new Set<Promise<void>>();
+
     const triggerPoll = async () => {
       if (!running) return;
 
-      try {
-        await withNewContext('new-job notification handler', async ctx => {
-          await ctx.exec(defs.poll);
-        });
-      } catch (err) {
-        logger.error('Job poll failed: ' + err);
-      }
+      const promise = (async () => {
+        try {
+          await withNewContext('new-job notification handler', async ctx => {
+            await ctx.exec(defs.poll);
+          });
+        } catch (err) {
+          logger.error('Job poll failed: ' + err);
+        }
+      })();
+
+      promise.finally(() => inFlightPeriodicPolls.delete(promise));
+      inFlightPeriodicPolls.add(promise);
     };
 
     bus.register(defs.poll, async (_, { pg, logger }) => {
@@ -407,6 +414,8 @@ export default createModule({
 
       await subscriber.unlistenAll();
       await subscriber.close();
+
+      await Promise.allSettled(inFlightPeriodicPolls);
 
       logger.info(`Waiting for ${runningJobs.size} jobs to finish...`);
       await Promise.all(runningJobs);
