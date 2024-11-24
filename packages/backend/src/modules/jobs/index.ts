@@ -215,13 +215,7 @@ export default createModule({
 
         const promise = withNewContext('job execution', async ctx => {
           try {
-            jobLogger.info(`Starting job ${id}...`);
-            const before = process.hrtime.bigint();
             await ctx.exec(defs.execute, id);
-            const after = process.hrtime.bigint();
-            jobLogger.info(
-              `Job ${id} done in ${formatMicros(after - before)}!`,
-            );
           } catch (err) {
             ctx.context.logger.error(`Job ${id} failed: ${err}`, {
               job_id: id,
@@ -313,42 +307,58 @@ export default createModule({
 
       const iface = bus.getInterface(defs.executor, job.type);
 
+      const conn = await Connection.create(config.dbUrl);
+
       try {
-        const conn = await Connection.create(config.dbUrl);
+        await conn.do(
+          sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
+        );
+      } finally {
+        await conn.close();
+      }
 
-        try {
-          await conn.do(
-            sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
-          );
-        } finally {
-          await conn.close();
-        }
+      logger.info(`Starting job ${id}...`);
+      const before = process.hrtime.bigint();
+      let after: bigint;
 
+      let error: unknown = null;
+
+      try {
         const result = await iface.execute(job);
 
         await pg.do(
           sql`UPDATE jobs SET state = 'succeeded', result = ${result}, finished_at = ${new Date()} WHERE id = ${id}`,
         );
       } catch (err) {
-        logger.error(`Job ${job.id} (${job.type}) failed: ${err}`, {
-          job_id: job.id,
-          job_type: job.type,
-        });
+        error = err;
+      } finally {
+        after = process.hrtime.bigint();
+        triggerPoll();
+      }
+
+      if (error) {
+        logger.error(
+          `Job ${job.id} (${job.type}) failed after ${formatMicros(after - before)}: ${error}`,
+          {
+            job_id: job.id,
+            job_type: job.type,
+          },
+        );
 
         const traceId = opentelemetry.trace
           .getActiveSpan()
           ?.spanContext()?.traceId;
 
-        const error = {
+        const result = {
           name: 'Unknown',
-          message: `${err}`,
+          message: `${error}`,
           traceId: traceId ?? null,
         };
 
-        if (err instanceof Error) {
-          Object.assign(error, {
-            name: `Exception: ${err.name}`,
-            message: err.message,
+        if (error instanceof Error) {
+          Object.assign(result, {
+            name: `Exception: ${error.name}`,
+            message: error.message,
           });
         }
 
@@ -360,7 +370,7 @@ export default createModule({
             UPDATE jobs
             SET state = 'pending',
                 finished_at = ${new Date()},
-                result = ${error},
+                result = ${result},
                 delayed_until = ${delayedUntil},
                 retries = ${job.retries + 1}
             WHERE id = ${id}
@@ -372,12 +382,18 @@ export default createModule({
             UPDATE jobs
             SET state = 'failed',
                 finished_at = ${new Date()},
-                result = ${error}
+                result = ${result}
             WHERE id = ${id}
           `);
         }
-      } finally {
-        triggerPoll();
+      } else {
+        logger.info(
+          `Job ${job.id} (${job.type}) finished in ${formatMicros(after - before)}.`,
+          {
+            job_id: job.id,
+            job_type: job.type,
+          },
+        );
       }
     });
 
