@@ -50,28 +50,40 @@ export class Connection {
   onCommitHooks: Array<() => Promise<void>> = [];
 
   public closed: Promise<void>;
+  private resolveClosed: () => void;
+  private constructorStack?: string;
 
   constructor(
     public id: number,
     private conn: pg.ClientBase,
     private pool?: Pool,
   ) {
-    const stack = new Error().stack;
+    this.constructorStack = new Error().stack;
 
-    conn.on('error', err => {
-      console.log(`Connection error: ${err}\nCreated at: ${stack}`);
-    });
+    conn.on('error', this.onError);
+    conn.on('end', this.onClose);
 
     this.closed = new Promise(resolve => {
-      conn.on('end', () => {
-        if (pool) {
-          pool.connections.delete(this);
-        }
-
-        resolve();
-      });
+      this.resolveClosed = resolve;
     });
   }
+
+  onError = (err: unknown) => {
+    console.log(
+      `Connection error: ${err}\nCreated at: ${this.constructorStack}`,
+    );
+  };
+
+  onClose = () => {
+    if (this.pool) {
+      this.pool.connections.delete(this);
+    }
+
+    this.conn.off('end', this.onClose);
+    this.conn.off('error', this.onError);
+
+    this.resolveClosed();
+  };
 
   static async create(url: string) {
     const client = new pg.Client(url);
@@ -121,15 +133,13 @@ export class Connection {
   async close() {
     await this.commit();
 
-    if (this.pool) {
-      this.pool.connections.delete(this);
-    }
-
     if ('release' in this.conn && typeof this.conn.release === 'function') {
       this.conn.release();
     } else if (this.conn instanceof Client) {
       await this.conn.end();
     }
+
+    this.onClose();
   }
 
   async do(query: Sql) {
