@@ -1,7 +1,7 @@
 import { ApiDeps } from '@/api';
 import opentelemetry from '@opentelemetry/api';
 import { BusContext } from '@/app';
-import winston from 'winston';
+import winston, { Logger } from 'winston';
 import * as redis from 'redis';
 import { Config } from '@/config';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -29,8 +29,12 @@ import { ModuleDeps } from '@/module';
 import { internalIdentity } from '@bbat/common/types';
 import { randomString } from 'remeda';
 
-export const setupPostgres = async () => {
+export const setupPostgres = async (logger: Logger) => {
+  logger.debug('Starting PostgreSQL...');
+
   const container = await new PostgreSqlContainer().start();
+
+  logger.debug('Running migrations...');
 
   await migrate({
     databaseUrl: container.getConnectionUri(),
@@ -48,7 +52,9 @@ export const setupPostgres = async () => {
   };
 };
 
-const setupRedis = async () => {
+const setupRedis = async (logger: Logger) => {
+  logger.debug('Starting redis...');
+
   const container = await new GenericContainer('redis')
     .withExposedPorts(6379)
     .withWaitStrategy(Wait.forLogMessage(/Ready to accept connections/, 1))
@@ -59,7 +65,9 @@ const setupRedis = async () => {
   return { container, uri };
 };
 
-const setupNats = async () => {
+const setupNats = async (logger: Logger) => {
+  logger.debug('Staring NATS...');
+
   const container = await new GenericContainer('nats')
     .withCommand(['-js'])
     .withExposedPorts(4222)
@@ -74,7 +82,9 @@ const setupNats = async () => {
   return { container, config };
 };
 
-const setupMinio = async () => {
+const setupMinio = async (logger: Logger) => {
+  logger.debug('Starting MinIO...');
+
   const secretKey = randomString(16);
   const accessKey = randomString(16);
 
@@ -123,10 +133,11 @@ export class Environment {
             const tracer = opentelemetry.trace.getTracer('baseball-bat');
             const span = tracer.startSpan('shutdown context');
 
+            logger.debug('Emitting shutdown event...');
+
             await bus
               .createContext({ pg, nats, logger, span, session: null })
               .emit(shutdown);
-            console.log('Shutting down!');
           });
         }, -1);
 
@@ -141,6 +152,8 @@ export class Environment {
         await client.connect();
 
         env.onTeardown(async () => {
+          const logger = await env.get('logger');
+          logger.debug('Closing Redis connection...');
           await client.quit();
         });
 
@@ -149,7 +162,11 @@ export class Environment {
       pool: async env => {
         const pool = new Pool(env.config.dbUrl);
 
-        env.onTeardown(() => pool.end());
+        env.onTeardown(async () => {
+          const logger = await env.get('logger');
+          logger.debug('Draining database connection pool...');
+          pool.end();
+        });
 
         return pool;
       },
@@ -165,25 +182,14 @@ export class Environment {
         const nats = await connectNats(env.config);
 
         env.onTeardown(async () => {
+          const logger = await env.get('logger');
+          logger.debug('Closing NATS connection...');
           await nats.close();
         });
 
         return nats;
       },
-      logger: async () =>
-        winston.createLogger({
-          transports: [
-            new winston.transports.Console({
-              format: winston.format.combine(
-                winston.format.colorize({ level: true }),
-                winston.format.printf(info => {
-                  const module = info.module ? `[${info.module}] ` : '';
-                  return `[${info.level}] ${module}${info.message}`;
-                }),
-              ),
-            }),
-          ],
-        }),
+      logger: async () => this.logger,
     };
 
   deps: Partial<Deps> = {};
@@ -198,7 +204,10 @@ export class Environment {
     return (this.deps[thing] = await this.initializers[thing](this));
   }
 
-  constructor(public config: Config) {}
+  constructor(
+    public config: Config,
+    private logger: Logger,
+  ) {}
 
   onTeardown(hook: TeardownHook, priority = 0) {
     this.teardownHooks.splice(0, 0, [priority, hook]);
@@ -206,6 +215,8 @@ export class Environment {
 
   async teardown() {
     const hooks = this.teardownHooks.sort(([a], [b]) => a - b);
+
+    this.logger.debug(`Running ${hooks.length} teardown hooks...`);
 
     for (const [, hook] of hooks) {
       await hook();
@@ -294,11 +305,26 @@ export class TestEnvironment {
 }
 
 export const createEnvironment = async (): Promise<Environment> => {
+  const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL ?? 'info',
+    transports: [
+      new winston.transports.Console({
+        format: winston.format.combine(
+          winston.format.colorize({ level: true }),
+          winston.format.printf(info => {
+            const module = info.module ? `[${info.module}] ` : '';
+            return `[${info.level}] ${module}${info.message}`;
+          }),
+        ),
+      }),
+    ],
+  });
+
   const [postgres, redis, minio, nats] = await Promise.all([
-    setupPostgres(),
-    setupRedis(),
-    setupMinio(),
-    setupNats(),
+    setupPostgres(logger),
+    setupRedis(logger),
+    setupMinio(logger),
+    setupNats(logger),
   ]);
 
   const dataPath = await fs.mkdtemp(path.resolve(os.tmpdir(), 'bbat-'));
@@ -345,9 +371,11 @@ export const createEnvironment = async (): Promise<Environment> => {
     integrationSecret: 'unsecure',
   });
 
-  const environment = new Environment(config);
+  const environment = new Environment(config, logger);
 
   environment.onTeardown(async () => {
+    logger.debug('Tearing down environment...');
+
     await fs.rm(dataPath, { recursive: true });
     await redis.container.stop();
     await postgres.container.stop();
@@ -359,6 +387,7 @@ export const createEnvironment = async (): Promise<Environment> => {
 };
 
 export const startServer = async (env: Environment) => {
+  const logger = await env.get('logger');
   const app = await server({
     pool: await env.get('pool'),
     config: env.config,
@@ -367,7 +396,7 @@ export const startServer = async (env: Environment) => {
     emailTransport: await env.get('emailTransport'),
     minio: await env.get('minio'),
     nats: await env.get('nats'),
-    logger: await env.get('logger'),
+    logger,
   });
 
   const url = await new Promise<string>((resolve, reject) => {
@@ -387,9 +416,10 @@ export const startServer = async (env: Environment) => {
       resolve(`http://127.0.0.1:${address.port}`);
     });
 
-    env.onTeardown(
-      () => new Promise(resolve => listener.close(() => resolve())),
-    );
+    env.onTeardown(async () => {
+      logger.debug('Closing the HTTP socket...');
+      await new Promise<void>(resolve => listener.close(() => resolve()));
+    });
   });
 
   const start = Date.now();

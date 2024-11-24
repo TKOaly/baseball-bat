@@ -444,13 +444,14 @@ export default createModule({
 
       clearInterval(interval);
 
+      logger.debug('Disconnecting PostgreSQL NOTIFY listener...');
       await subscriber.unlistenAll();
       await subscriber.close();
 
       await Promise.allSettled(inFlightPeriodicPolls);
 
       logger.info(`Waiting for ${runningJobs.size} jobs to finish...`);
-      await Promise.all(runningJobs);
+      await Promise.allSettled(runningJobs);
     });
   },
 });
