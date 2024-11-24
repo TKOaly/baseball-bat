@@ -155,7 +155,7 @@ export class Environment {
           },
         };
       },
-      minio: ({ config }) => setupMinioClient(config),
+      minio: async env => setupMinioClient(env.config, await env.get('logger')),
       nats: async env => {
         const nats = await connectNats(env.config);
 

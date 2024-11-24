@@ -53,7 +53,7 @@ export type BusContext = {
 const setupDeps = async () => {
   const nats = await setupNats(config);
   const bus = new LocalBus<BusContext>();
-  const minio = await setupMinio(config);
+  const minio = await setupMinio(config, logger);
 
   return {
     pool,
