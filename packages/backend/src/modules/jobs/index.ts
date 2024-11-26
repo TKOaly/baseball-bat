@@ -6,11 +6,12 @@ import createSubscriber from 'pg-listen';
 import { ExecutionContext } from '@/bus';
 import { BusContext } from '@/app';
 import { createModule } from '@/module';
-import { Job, DbJob } from '@bbat/common/types';
+import { Job, DbJob, internalIdentity } from '@bbat/common/types';
 import { createPaginatedQuery } from '@/db/pagination';
 import { shutdown } from '@/orchestrator';
 import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
+import { Session } from '@/middleware/session';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -34,6 +35,7 @@ const formatJob = (db: DbJob): Job => ({
   concurrency: db.concurrency,
   nextPoll: db.next_poll,
   progress: db.progress,
+  triggeredBy: db.triggered_by ? internalIdentity(db.triggered_by) : null,
 });
 
 const formatMicros = (ms: bigint) => {
@@ -73,6 +75,7 @@ export default createModule({
 
     const withNewContext = <T>(
       span: string,
+      session: Session | null,
       cb: (ctx: ExecutionContext<BusContext>) => Promise<T>,
     ): Promise<T> => {
       return pool.withConnection(async pg => {
@@ -85,7 +88,7 @@ export default createModule({
             const context = bus.createContext({
               pg,
               nats,
-              session: null,
+              session,
               span,
               logger,
             });
@@ -118,9 +121,13 @@ export default createModule({
 
       const promise = (async () => {
         try {
-          await withNewContext('new-job notification handler', async ctx => {
-            await ctx.exec(defs.poll);
-          });
+          await withNewContext(
+            'new-job notification handler',
+            null,
+            async ctx => {
+              await ctx.exec(defs.poll);
+            },
+          );
         } catch (err) {
           logger.error('Job poll failed: ' + err);
         }
@@ -241,7 +248,15 @@ export default createModule({
 
         jobLogger.info(`Scheduled job ${id}.`);
 
-        const promise = withNewContext('job execution', async ctx => {
+        const session: Session | null = details.triggeredBy
+          ? {
+              authLevel: 'authenticated',
+              payerId: details.triggeredBy,
+              token: '',
+            }
+          : null;
+
+        const promise = withNewContext('job execution', session, async ctx => {
           try {
             await ctx.exec(defs.execute, id);
           } catch (err) {
@@ -283,9 +298,12 @@ export default createModule({
       }
     });
 
-    bus.register(defs.create, async (job, { pg }) => {
+    bus.register(defs.create, async (job, { pg, session }) => {
+      const triggeredBy =
+        session?.authLevel === 'authenticated' ? session.payerId.value : null;
+
       const result = await pg.one<{ id: string }>(sql`
-        INSERT INTO jobs (type, data, title, max_retries, retry_delay, limit_class, concurrency_limit, ratelimit, ratelimit_period)
+        INSERT INTO jobs (type, data, title, max_retries, retry_delay, limit_class, concurrency_limit, ratelimit, ratelimit_period, triggered_by)
         VALUES (
           ${job.type},
           ${job.data},
@@ -295,7 +313,8 @@ export default createModule({
           ${job.limitClass},
           ${job.concurrencyLimit},
           ${job.ratelimit},
-          ${job.ratelimitPeriod}
+          ${job.ratelimitPeriod},
+          ${triggeredBy}
         )
         RETURNING id
       `);

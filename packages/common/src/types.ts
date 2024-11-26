@@ -1234,6 +1234,7 @@ export const dbJob = t.type({
   concurrency_limit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimit_period: nullable(t.Integer),
+  triggered_by: nullable(t.string),
   concurrency: t.Integer,
   rate: t.Integer,
   next_poll: nullable(tt.date),
@@ -1258,6 +1259,7 @@ export const job = t.type({
   concurrencyLimit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimitPeriod: nullable(t.Integer),
+  triggeredBy: nullable(internalIdentityT),
   concurrency: t.Integer,
   rate: t.Integer,
   nextPoll: nullable(tt.date),
@@ -1284,6 +1286,7 @@ export type Job<D = unknown, R = unknown> = {
   concurrencyLimit: number | null;
   ratelimit: number | null;
   ratelimitPeriod: number | null;
+  triggeredBy: InternalIdentity | null;
   rate: number;
   concurrency: number;
   nextPoll: Date | null;

@@ -13,9 +13,12 @@ import {
   BadgeField,
   BadgeColor,
   Field,
+  LinkField,
 } from '../../components/resource-page/resource-page';
 import { toNullable, fromEither } from 'fp-ts/lib/Option';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import { useGetPayerQuery } from '../../api/payers';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 type Props = RouteComponentProps<{
   id: string;
@@ -31,6 +34,9 @@ const errorDetailsType = t.type({
 export const JobDetails = (props: Props) => {
   const { id } = props.params;
   const { data: job } = useGetJobQuery({ id });
+  const { data: triggeredBy } = useGetPayerQuery(
+    job?.triggeredBy?.value ?? skipToken,
+  );
 
   if (!job) {
     return <div />;
@@ -70,6 +76,13 @@ export const JobDetails = (props: Props) => {
       <Section title="Details" columns={2}>
         <TextField label="Title" value={job.title ?? 'Untitled'} />
         <TextField label="Type" value={job.type} />
+        {(job.triggeredBy && (
+          <LinkField
+            label="Triggered by"
+            text={triggeredBy?.name ?? ''}
+            to={`/admin/payers/${job.triggeredBy.value}`}
+          />
+        )) || <TextField label="Triggered by" value="System" />}
         <DateField
           time
           label="Created at"
