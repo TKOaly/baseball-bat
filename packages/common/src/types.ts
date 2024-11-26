@@ -1210,6 +1210,12 @@ export const jobState = t.union([
 
 export type JobState = t.TypeOf<typeof jobState>;
 
+export const Percentage = t.refinement(
+  t.number,
+  value => value >= 0 && value <= 1,
+  'Percentage',
+);
+
 export const dbJob = t.type({
   id: t.string,
   type: t.string,
@@ -1231,6 +1237,7 @@ export const dbJob = t.type({
   concurrency: t.Integer,
   rate: t.Integer,
   next_poll: nullable(tt.date),
+  progress: Percentage,
 });
 
 export const job = t.type({
@@ -1254,6 +1261,7 @@ export const job = t.type({
   concurrency: t.Integer,
   rate: t.Integer,
   nextPoll: nullable(tt.date),
+  progress: Percentage,
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1279,4 +1287,5 @@ export type Job<D = unknown, R = unknown> = {
   rate: number;
   concurrency: number;
   nextPoll: Date | null;
+  progress: number;
 };

@@ -33,6 +33,7 @@ const formatJob = (db: DbJob): Job => ({
   rate: db.rate,
   concurrency: db.concurrency,
   nextPoll: db.next_poll,
+  progress: db.progress,
 });
 
 const formatMicros = (ms: bigint) => {
@@ -138,7 +139,13 @@ export default createModule({
         (CASE
           WHEN ratelimit IS NULL THEN NULL
           ELSE MIN(started_at) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) + make_interval(secs => jobs.ratelimit_period)
-        END) next_poll
+        END) next_poll,
+        (CASE
+          WHEN state = 'succeeded' THEN 1
+          WHEN state = 'failed' AND progress IS NULL THEN 0
+          WHEN progress IS NOT NULL THEN progress
+          ELSE 0
+        END) progress
       FROM jobs) s
     `;
 
@@ -423,6 +430,26 @@ export default createModule({
       }
 
       return formatJob(result);
+    });
+
+    bus.register(defs.update, async ({ id, progress }) => {
+      const assignments = [];
+
+      if (progress !== undefined) {
+        assignments.push(sql`progress = ${progress}`);
+      }
+
+      const conn = await Connection.create(config.dbUrl);
+
+      try {
+        await conn.do(sql`
+          UPDATE jobs
+          SET ${sql`, `.join(assignments)}
+          WHERE id = ${id}
+        `);
+      } finally {
+        await conn.close();
+      }
     });
 
     subscriber.notifications.on('new-job', async ({ id }) => {

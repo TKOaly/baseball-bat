@@ -24,6 +24,7 @@ type ResponseJob = {
   concurrency: number;
   rate: number;
   nextPoll: string | null;
+  progress: number;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -47,6 +48,7 @@ const transformJob = (job: ResponseJob): Job => ({
   concurrency: job.concurrency,
   ratelimitPeriod: job.ratelimitPeriod,
   nextPoll: job.nextPoll ? parseISO(job.nextPoll) : null,
+  progress: job.progress,
 });
 
 const jobsApi = rtkApi.injectEndpoints({
