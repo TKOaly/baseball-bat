@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@bbat/ui/button';
 import { useCreateBankStatementMutation } from '../../api/banking/statements';
-import { useLocation } from 'wouter';
 import {
   CamtStatement,
   parseCamtStatement,
@@ -15,6 +14,8 @@ import {
   subEuroValues,
   sumEuroValues,
 } from '@bbat/common/src/currency';
+import { useGetJobQuery } from '../../api/jobs';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const parseCamtStatementFromFile = (file: File): Promise<CamtStatement> =>
   new Promise((resolve, reject) => {
@@ -39,8 +40,12 @@ export const ImportXMLStatement = () => {
   const [parsedStatement, setParsedStatement] = useState<CamtStatement | null>(
     null,
   );
+  const [_poll, setPoll] = useState(true);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const { data: job } = useGetJobQuery(jobId ? { id: jobId } : skipToken, {
+    pollingInterval: 1000,
+  });
   const [isLoading, setLoading] = useState(false);
-  const [, setLocation] = useLocation();
 
   const [createBankStatement] = useCreateBankStatementMutation();
 
@@ -65,9 +70,9 @@ export const ImportXMLStatement = () => {
         const result = await createBankStatement(statementFile);
 
         if ('data' in result) {
-          setLocation(`/admin/banking/statements/${result.data.id}`);
+          setJobId(result.data.job);
         }
-      } finally {
+      } catch {
         setLoading(false);
       }
     }
@@ -81,6 +86,13 @@ export const ImportXMLStatement = () => {
 
     el.click();
   };
+
+  useEffect(() => {
+    if (job?.state === 'succeeded' || job?.state === 'failed') {
+      setPoll(false);
+      setLoading(false);
+    }
+  }, [job]);
 
   return (
     <div>
@@ -173,7 +185,7 @@ export const ImportXMLStatement = () => {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         {parsedStatement ? (
           <Button secondary onClick={selectFile}>
             Select another file
@@ -185,6 +197,14 @@ export const ImportXMLStatement = () => {
           <Button loading={isLoading} onClick={handleImport}>
             Submit
           </Button>
+        )}
+        {job?.state === 'processing' && (
+          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200">
+            <div
+              className="h-full bg-blue-400"
+              style={{ width: `${(job?.progress * 100 ?? 0).toFixed()}%` }}
+            />
+          </div>
         )}
       </div>
     </div>

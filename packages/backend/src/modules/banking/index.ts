@@ -6,15 +6,23 @@ import {
   BankStatement,
 } from '@bbat/common/types';
 import * as audit from '@/modules/audit/definitions';
+import * as consumers from 'stream/consumers';
 import { sql } from '@/db/template';
 import * as paymentsService from '@/modules/payments/definitions';
+import * as jobs from '@/modules/jobs/definitions';
 import { cents } from '@bbat/common/currency';
 import { formatPayment } from '../payments';
-import iface, { onTransaction } from './definitions';
+import iface, {
+  onTransaction,
+  getBankStatement,
+  createBankStatement,
+  createBankTransaction,
+} from './definitions';
 import routes from './api';
 import { parseISO } from 'date-fns';
 import { createModule } from '@/module';
 import { createPaginatedQuery } from '@/db/pagination';
+import { parseCamtStatement } from '@bbat/common/camt-parser';
 
 const formatBankStatement = (
   stmt: DbBankStatement,
@@ -86,7 +94,7 @@ export default createModule({
 
   routes,
 
-  async setup({ bus }) {
+  async setup({ bus, minio }) {
     bus.provide(iface, {
       async createBankAccount(account, { pg }) {
         const result = await pg.one<BankAccount>(sql`
@@ -115,11 +123,6 @@ export default createModule({
       },
 
       async createBankStatement(details, { pg }, bus) {
-        const dates = details.transactions.map(tx => tx.date).sort();
-
-        const start_date = dates[0];
-        const end_date = dates[dates.length - 1];
-
         const statement = await pg.one<DbBankStatement>(sql`
           INSERT INTO bank_statements (id, account, opening_balance_date, opening_balance, closing_balance_date, closing_balance, generated_at, imported_at, start_date, end_date)
           VALUES (
@@ -131,8 +134,8 @@ export default createModule({
             ${details.closingBalance.amount.value},
             ${details.generatedAt},
             ${new Date()},
-            ${start_date},
-            ${end_date}
+            ${details.openingBalance.date},
+            ${details.closingBalance.date}
           )
           RETURNING *
         `);
@@ -142,55 +145,12 @@ export default createModule({
         }
 
         const transactions = await Promise.all(
-          details.transactions.map(async tx => {
-            const existing = await pg.many<DbBankTransaction>(
-              sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`,
-            );
-
-            let transaction;
-
-            if (existing.length > 0) {
-              transaction = formatBankTransaction(existing[0]);
-            } else {
-              const created = await pg.one<DbBankTransaction>(sql`
-                INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
-                VALUES (
-                  ${details.accountIban},
-                  ${tx.id},
-                  ${tx.amount.value},
-                  ${tx.type},
-                  ${tx.otherParty.name},
-                  ${tx.otherParty.account},
-                  ${tx.date},
-                  ${tx.reference},
-                  ${tx.message}
-                )
-                RETURNING *
-              `);
-
-              if (!created) {
-                throw new Error('Could not create bank transaction');
-              }
-
-              transaction = formatBankTransaction(created);
-
-              await bus.emit(onTransaction, transaction);
-            }
-
-            if (!transaction) {
-              throw new Error('Could not create transaction');
-            }
-
-            await pg.do(sql`
-              INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
-              VALUES (
-                ${statement.id},
-                ${transaction.id}
-              )
-            `);
-
-            return transaction;
-          }),
+          (details.transactions ?? []).map(tx =>
+            bus.exec(createBankTransaction, {
+              ...tx,
+              bankStatementId: statement.id,
+            }),
+          ),
         );
 
         await bus.exec(audit.logEvent, {
@@ -214,8 +174,64 @@ export default createModule({
 
         return {
           statement: formatBankStatement(statement),
-          transactions: transactions,
+          transactions,
         };
+      },
+
+      async createBankTransaction(tx, { pg }, bus) {
+        const statement = await bus.exec(getBankStatement, tx.bankStatementId);
+
+        if (!statement) {
+          throw new Error('No such bank statement!');
+        }
+
+        const existing = await pg.many<DbBankTransaction>(
+          sql`SELECT  * FROM bank_transactions WHERE id = ${tx.id}`,
+        );
+
+        let transaction;
+
+        if (existing.length > 0) {
+          transaction = formatBankTransaction(existing[0]);
+        } else {
+          const created = await pg.one<DbBankTransaction>(sql`
+            INSERT INTO bank_transactions (account, id, amount, type, other_party_name, other_party_account, value_time, reference, message)
+            VALUES (
+              ${statement.accountIban},
+              ${tx.id},
+              ${tx.amount.value},
+              ${tx.type},
+              ${tx.otherParty.name},
+              ${tx.otherParty.account},
+              ${tx.date},
+              ${tx.reference},
+              ${tx.message}
+            )
+            RETURNING *
+          `);
+
+          if (!created) {
+            throw new Error('Could not create bank transaction');
+          }
+
+          transaction = formatBankTransaction(created);
+
+          await bus.emit(onTransaction, transaction);
+        }
+
+        if (!transaction) {
+          throw new Error('Could not create transaction');
+        }
+
+        await pg.do(sql`
+          INSERT INTO bank_statement_transaction_mapping (bank_statement_id, bank_transaction_id)
+          VALUES (
+            ${statement.id},
+            ${transaction.id}
+          )
+        `);
+
+        return transaction;
       },
 
       async getTransactionsWithoutRegistration(_, { pg }) {
@@ -316,6 +332,52 @@ export default createModule({
           limit,
           order: sort ? [[sort.column, sort.dir]] : undefined,
         });
+      },
+    });
+
+    bus.provideNamed(jobs.executor, 'import-statement', {
+      async execute({ data, id }, _, bus) {
+        const { bucket, key } = data as { bucket: string; key: string };
+
+        const stream = await minio.getObject(bucket, key);
+        const content = await consumers.text(stream);
+        const statement = await parseCamtStatement(content);
+
+        await bus.exec(jobs.update, {
+          id,
+          title: `Import CAMT statement ${statement.id}`,
+        });
+
+        const bankStatement = await bus.exec(createBankStatement, {
+          id: statement.id,
+          accountIban: statement.account.iban,
+          generatedAt: statement.creationDateTime,
+          openingBalance: statement.openingBalance,
+          closingBalance: statement.closingBalance,
+        });
+
+        let i = 0;
+        for (const entry of statement.entries) {
+          i++;
+
+          await bus.exec(createBankTransaction, {
+            bankStatementId: bankStatement.statement.id,
+            id: entry.id,
+            amount: entry.amount,
+            date: entry.valueDate,
+            type: entry.type,
+            otherParty: entry.otherParty,
+            message: entry.message,
+            reference: entry.reference,
+          });
+
+          await bus.exec(jobs.update, {
+            id,
+            progress: i / statement.entries.length,
+          });
+        }
+
+        return { bankStatementId: bankStatement.statement.id };
       },
     });
   },

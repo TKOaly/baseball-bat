@@ -6,12 +6,11 @@ import * as T from 'fp-ts/Task';
 import * as D from 'fp-ts/Date';
 import * as O from 'fp-ts/Option';
 import * as bankingService from '@/modules/banking/definitions';
-import { parseCamtStatement } from '@bbat/common/build/src/camt-parser';
+import * as jobs from '@/modules/jobs/definitions';
 import { validateBody } from '@/validate-middleware';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
 import { flow } from 'fp-ts/lib/function';
-import * as consumers from 'stream/consumers';
 import { randomUUID } from 'crypto';
 import { uploadToMinio } from '@/middleware/minio-upload';
 
@@ -95,33 +94,18 @@ const factory: RouterFactory = (route, { config }) => {
         key: () => `statements/${randomUUID()}`,
       }),
     )
-    .handler(async ({ bus, minio, ...ctx }) => {
+    .handler(async ({ bus, ...ctx }) => {
       if (!ctx.file) {
         return badRequest('File `statement` required.');
       }
 
-      const stream = await minio.getObject(ctx.file.bucket, ctx.file.key);
-      const content = await consumers.text(stream);
-      const statement = await parseCamtStatement(content);
-
-      const result = await bus.exec(bankingService.createBankStatement, {
-        id: statement.id,
-        accountIban: statement.account.iban,
-        generatedAt: statement.creationDateTime,
-        transactions: statement.entries.map(entry => ({
-          id: entry.id,
-          amount: entry.amount,
-          date: entry.valueDate,
-          type: entry.type,
-          otherParty: entry.otherParty,
-          message: entry.message,
-          reference: entry.reference,
-        })),
-        openingBalance: statement.openingBalance,
-        closingBalance: statement.closingBalance,
+      const job = await bus.exec(jobs.create, {
+        type: 'import-statement',
+        data: ctx.file,
+        title: 'Import CAMT statement',
       });
 
-      return ok(result.statement);
+      return ok({ job });
     });
 
   const getAccountTransactions = route

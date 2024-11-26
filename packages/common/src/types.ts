@@ -919,7 +919,7 @@ export const bankTransaction = t.type({
 
 export type BankTransaction = t.TypeOf<typeof bankTransaction>;
 
-const newBankTransaction = t.intersection([
+const newBankTransactionBase = t.intersection([
   t.type({
     id: t.string,
     amount: euroValue,
@@ -936,19 +936,30 @@ const newBankTransaction = t.intersection([
   }),
 ]);
 
+export const newBankTransaction = t.intersection([
+  newBankTransactionBase,
+  t.type({
+    bankStatementId: t.string,
+  }),
+]);
+
 const balance = t.type({
   date: tt.date,
   amount: euroValue,
 });
 
-export const newBankStatement = t.type({
-  id: t.string,
-  accountIban: t.string,
-  generatedAt: tt.date,
-  transactions: t.array(newBankTransaction),
-  openingBalance: balance,
-  closingBalance: balance,
-});
+export const newBankStatement = t.intersection([
+  t.type({
+    id: t.string,
+    accountIban: t.string,
+    generatedAt: tt.date,
+    openingBalance: balance,
+    closingBalance: balance,
+  }),
+  t.partial({
+    transactions: t.array(newBankTransactionBase),
+  }),
+]);
 
 export const bankStatement = t.type({
   id: t.string,

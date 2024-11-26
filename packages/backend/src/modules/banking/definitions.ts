@@ -33,6 +33,11 @@ const iface = createInterface('banking', builder => ({
     }),
   }),
 
+  createBankTransaction: builder.proc({
+    payload: types.newBankTransaction,
+    response: types.bankTransaction,
+  }),
+
   /*assignTransactionsToPaymentByReferenceNumber: builder.proc({
     payload: t.type({
       paymentId: t.string,
@@ -96,6 +101,7 @@ export const {
   getBankAccounts,
   getBankStatementTransactions,
   createBankStatement,
+  createBankTransaction,
   // assignTransactionsToPaymentByReferenceNumber
   getTransactionsWithoutRegistration,
   getAccountTransactions,
