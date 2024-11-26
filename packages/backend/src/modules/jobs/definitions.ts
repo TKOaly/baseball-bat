@@ -63,6 +63,7 @@ export const update = scope.defineProcedure({
       id: t.string,
     }),
     t.partial({
+      title: t.string,
       progress: Percentage,
     }),
   ]),

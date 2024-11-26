@@ -432,8 +432,12 @@ export default createModule({
       return formatJob(result);
     });
 
-    bus.register(defs.update, async ({ id, progress }) => {
+    bus.register(defs.update, async ({ id, title, progress }) => {
       const assignments = [];
+
+      if (title !== undefined) {
+        assignments.push(sql`title = ${title}`);
+      }
 
       if (progress !== undefined) {
         assignments.push(sql`progress = ${progress}`);
