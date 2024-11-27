@@ -418,8 +418,8 @@ export const startServer = async (env: Environment) => {
 
     env.onTeardown(async () => {
       logger.debug('Closing the HTTP socket...');
-      listener.close();
-    });
+      await new Promise(resolve => listener.close(resolve));
+    }, -2);
   });
 
   const start = Date.now();
