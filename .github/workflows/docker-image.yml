@@ -120,7 +120,6 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ steps.stripe-secret.outputs.secret }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           NODE_ENV: development
-          LOG_LEVEL: debug
 
       - uses: actions/upload-artifact@v4
         if: always()
