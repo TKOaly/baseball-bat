@@ -86,6 +86,21 @@ export const JobsListing = () => {
             },
           },
           {
+            name: 'Progress',
+            getValue: 'progress',
+            render: value => (
+              <div className="w-full">
+                <div className="text-xs">{(value * 100).toFixed(0)}%</div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full bg-green-400"
+                    style={{ width: `${(value * 100).toFixed()}%` }}
+                  />
+                </div>
+              </div>
+            ),
+          },
+          {
             name: 'Duration',
             getValue: row => {
               try {

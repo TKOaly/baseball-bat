@@ -19,7 +19,7 @@ type ResponseBankStatement = Omit<
 
 const statementsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
-    createBankStatement: builder.mutation<BankStatement, File>({
+    createBankStatement: builder.mutation<{ job: string }, File>({
       query: file => {
         const body = new FormData();
 

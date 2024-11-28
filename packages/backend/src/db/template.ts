@@ -15,8 +15,9 @@ export class Sql {
       if (value instanceof Sql) {
         if (value.strings.length > 1) {
           this.values.splice(i, 1, ...value.values);
-          this.strings[i] += value.strings[0];
-          this.strings[i + 1] = value.strings.at(-1) + this.strings[i + 1];
+          this.strings[i] = (this.strings[i] ?? '') + value.strings[0];
+          this.strings[i + 1] =
+            value.strings.at(-1) + (this.strings[i + 1] ?? '');
           this.strings.splice(i + 1, 0, ...value.strings.slice(1, -1));
           count += value.values.length;
         } else {
@@ -24,7 +25,9 @@ export class Sql {
           this.strings.splice(
             i,
             2,
-            this.strings[i] + value.strings[0] + this.strings[i + 1],
+            (this.strings[i] ?? '') +
+              value.strings[0] +
+              (this.strings[i + 1] ?? ''),
           );
           count -= 1;
         }
@@ -35,7 +38,10 @@ export class Sql {
   }
 
   get text() {
-    return this.strings.reduce((prev, curr, i) => prev + '$' + i + curr);
+    return this.strings.reduce(
+      (prev, curr, i) => prev + (i > 0 ? '$' + i : '') + curr,
+      '',
+    );
   }
 
   append(other: Sql) {
@@ -47,7 +53,7 @@ export class Sql {
   }
 
   join(array: unknown[]) {
-    const strings = new Array(array.length - 1).fill(sql.raw(''));
+    const strings = new Array(Math.max(0, array.length - 1)).fill(sql.raw(''));
     const interleaved: unknown[] = [];
 
     array.forEach((value, i) => {

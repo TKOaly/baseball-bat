@@ -94,6 +94,7 @@ test('uploading bank statement', async ({ page, bbat }) => {
   await expect(page.getByText('Not found!')).not.toBeVisible();
 
   await page.getByRole('button', { name: 'Submit' }).click();
+  await page.getByRole('button', { name: 'View statement' }).click();
 
   await expect(bbat.getResourceField('Account IBAN')).toHaveText(IBAN);
   await expect(bbat.getResourceField('Start Date')).toHaveText('01.01.2024');
@@ -163,6 +164,7 @@ test('automatic payment registration', async ({ page, bbat }) => {
   ]);
 
   await page.getByRole('button', { name: 'Submit' }).click();
+  await page.getByRole('button', { name: 'View statement' }).click();
 
   await page.pause();
 
@@ -235,6 +237,7 @@ test.describe('manual registration', () => {
       ]);
 
       await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'View statement' }).click();
 
       const table = bbat.table(
         bbat.getResourceSection('Transactions').getByRole('table'),
@@ -350,6 +353,7 @@ test.describe('manual registration', () => {
     ]);
 
     await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'View statement' }).click();
 
     const table = bbat.table(
       bbat.getResourceSection('Transactions').getByRole('table'),
@@ -425,6 +429,7 @@ test.describe('manual registration', () => {
     ]);
 
     await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'View statement' }).click();
 
     const table = bbat.table(
       bbat.getResourceSection('Transactions').getByRole('table'),

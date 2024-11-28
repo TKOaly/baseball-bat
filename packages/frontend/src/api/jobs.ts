@@ -1,6 +1,11 @@
 import { parseISO } from 'date-fns/parseISO';
 import rtkApi from './rtk-api';
-import { Job, JobState, PaginationQueryResponse } from '@bbat/common/types';
+import {
+  InternalIdentity,
+  Job,
+  JobState,
+  PaginationQueryResponse,
+} from '@bbat/common/types';
 import { createPaginatedQuery } from './pagination';
 
 type ResponseJob = {
@@ -24,6 +29,8 @@ type ResponseJob = {
   concurrency: number;
   rate: number;
   nextPoll: string | null;
+  progress: number;
+  triggeredBy: InternalIdentity | null;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -47,6 +54,8 @@ const transformJob = (job: ResponseJob): Job => ({
   concurrency: job.concurrency,
   ratelimitPeriod: job.ratelimitPeriod,
   nextPoll: job.nextPoll ? parseISO(job.nextPoll) : null,
+  progress: job.progress,
+  triggeredBy: job.triggeredBy,
 });
 
 const jobsApi = rtkApi.injectEndpoints({

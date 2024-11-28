@@ -919,7 +919,7 @@ export const bankTransaction = t.type({
 
 export type BankTransaction = t.TypeOf<typeof bankTransaction>;
 
-const newBankTransaction = t.intersection([
+const newBankTransactionBase = t.intersection([
   t.type({
     id: t.string,
     amount: euroValue,
@@ -936,19 +936,30 @@ const newBankTransaction = t.intersection([
   }),
 ]);
 
+export const newBankTransaction = t.intersection([
+  newBankTransactionBase,
+  t.type({
+    bankStatementId: t.string,
+  }),
+]);
+
 const balance = t.type({
   date: tt.date,
   amount: euroValue,
 });
 
-export const newBankStatement = t.type({
-  id: t.string,
-  accountIban: t.string,
-  generatedAt: tt.date,
-  transactions: t.array(newBankTransaction),
-  openingBalance: balance,
-  closingBalance: balance,
-});
+export const newBankStatement = t.intersection([
+  t.type({
+    id: t.string,
+    accountIban: t.string,
+    generatedAt: tt.date,
+    openingBalance: balance,
+    closingBalance: balance,
+  }),
+  t.partial({
+    transactions: t.array(newBankTransactionBase),
+  }),
+]);
 
 export const bankStatement = t.type({
   id: t.string,
@@ -1210,6 +1221,12 @@ export const jobState = t.union([
 
 export type JobState = t.TypeOf<typeof jobState>;
 
+export const Percentage = t.refinement(
+  t.number,
+  value => value >= 0 && value <= 1,
+  'Percentage',
+);
+
 export const dbJob = t.type({
   id: t.string,
   type: t.string,
@@ -1228,9 +1245,11 @@ export const dbJob = t.type({
   concurrency_limit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimit_period: nullable(t.Integer),
+  triggered_by: nullable(t.string),
   concurrency: t.Integer,
   rate: t.Integer,
   next_poll: nullable(tt.date),
+  progress: Percentage,
 });
 
 export const job = t.type({
@@ -1251,9 +1270,11 @@ export const job = t.type({
   concurrencyLimit: nullable(t.Integer),
   ratelimit: nullable(t.Integer),
   ratelimitPeriod: nullable(t.Integer),
+  triggeredBy: nullable(internalIdentityT),
   concurrency: t.Integer,
   rate: t.Integer,
   nextPoll: nullable(tt.date),
+  progress: Percentage,
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1276,7 +1297,9 @@ export type Job<D = unknown, R = unknown> = {
   concurrencyLimit: number | null;
   ratelimit: number | null;
   ratelimitPeriod: number | null;
+  triggeredBy: InternalIdentity | null;
   rate: number;
   concurrency: number;
   nextPoll: Date | null;
+  progress: number;
 };

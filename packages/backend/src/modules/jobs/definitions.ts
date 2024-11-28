@@ -1,5 +1,6 @@
 import { createScope, createInterface } from '@/bus';
 import {
+  Percentage,
   job,
   paginationQueryPayload,
   paginationQueryResponse,
@@ -53,6 +54,20 @@ export const list = scope.defineProcedure({
     t.partial({ parent: t.string }),
   ]),
   response: paginationQueryResponse(job),
+});
+
+export const update = scope.defineProcedure({
+  name: 'update',
+  payload: t.intersection([
+    t.type({
+      id: t.string,
+    }),
+    t.partial({
+      title: t.string,
+      progress: Percentage,
+    }),
+  ]),
+  response: t.void,
 });
 
 export const executor = createInterface('executor', builder => ({
