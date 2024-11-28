@@ -1,5 +1,5 @@
 import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
-import { sql } from '@/db/template';
+import { Sql, sql } from '@/db/template';
 import * as defs from './definitions';
 import routes from './api';
 import createSubscriber from 'pg-listen';
@@ -351,15 +351,19 @@ export default createModule({
 
       const iface = bus.getInterface(defs.executor, job.type);
 
-      const conn = await Connection.create(config.dbUrl);
+      const withSeprateConnection = async (sql: Sql) => {
+        const conn = await Connection.create(config.dbUrl);
 
-      try {
-        await conn.do(
-          sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
-        );
-      } finally {
-        await conn.close();
-      }
+        try {
+          return await conn.do(sql);
+        } finally {
+          await conn.close();
+        }
+      };
+
+      await withSeprateConnection(
+        sql`UPDATE jobs SET state = 'processing', started_at = ${new Date()} WHERE id = ${id}`,
+      );
 
       logger.info(`Starting job ${id}...`);
       const before = process.hrtime.bigint();
@@ -410,7 +414,7 @@ export default createModule({
           const timeoutSeconds = job.retryDelay * Math.pow(2, job.retries);
           const delayedUntil = addSeconds(new Date(), timeoutSeconds);
 
-          await pg.do(sql`
+          await withSeprateConnection(sql`
             UPDATE jobs
             SET state = 'pending',
                 finished_at = ${new Date()},
@@ -422,7 +426,7 @@ export default createModule({
 
           setTimeout(triggerPoll, timeoutSeconds * 1000);
         } else {
-          await pg.do(sql`
+          await withSeprateConnection(sql`
             UPDATE jobs
             SET state = 'failed',
                 finished_at = ${new Date()},
@@ -430,6 +434,8 @@ export default createModule({
             WHERE id = ${id}
           `);
         }
+
+        await pg.rollback();
       } else {
         logger.info(
           `Job ${job.id} (${job.type}) finished in ${formatMicros(after - before)}.`,
