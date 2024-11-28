@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import opentelemetry from '@opentelemetry/api';
+import crypto from 'crypto';
 import {
   ATTR_HTTP_ROUTE,
   ATTR_HTTP_REQUEST_METHOD,
@@ -70,21 +71,25 @@ export default async (deps: ApiDeps & ModuleDeps) => {
       // Set the created span as active in the deserialized context.
       tracing.setSpan(newContext, span);
 
+      const id = crypto.randomBytes(4).toString('hex');
+
       res.on('finish', () => {
-        if (process.env.NODE_ENV !== 'testing') {
-          deps.logger.info(
-            `${req.method} ${req.originalUrl} ${res.statusCode}`,
-            {
-              method: req.method,
-              url: req.originalUrl,
-              status: res.statusCode,
-            },
-          );
-        }
+        deps.logger.info(
+          `[${id}] ${`[${req.method}]`.padEnd(6)} ${req.originalUrl} ${res.statusCode}`,
+          {
+            method: req.method,
+            url: req.originalUrl,
+            status: res.statusCode,
+          },
+        );
 
         span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
         span.end();
       });
+
+      deps.logger.info(
+        `[${id}] ${`[${req.method}]`.padEnd(6)} ${req.originalUrl}`,
+      );
 
       next();
     })
