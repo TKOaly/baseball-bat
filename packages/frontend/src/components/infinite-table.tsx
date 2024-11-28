@@ -63,7 +63,7 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
     );
 
   useEffect(() => {
-    if (refresh !== null) {
+    if (refresh) {
       const interval = setInterval(() => refetch(), refresh);
       return () => clearInterval(interval);
     }
