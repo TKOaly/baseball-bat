@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@bbat/ui/button';
+import * as t from 'io-ts';
 import { useCreateBankStatementMutation } from '../../api/banking/statements';
 import {
   CamtStatement,
@@ -16,6 +17,9 @@ import {
 } from '@bbat/common/src/currency';
 import { useGetJobQuery } from '../../api/jobs';
 import { skipToken } from '@reduxjs/toolkit/query';
+import { useLocation } from 'wouter';
+import { isRight } from 'fp-ts/lib/Either';
+import { AlertCircle } from 'react-feather';
 
 const parseCamtStatementFromFile = (file: File): Promise<CamtStatement> =>
   new Promise((resolve, reject) => {
@@ -34,7 +38,19 @@ const parseCamtStatementFromFile = (file: File): Promise<CamtStatement> =>
     reader.readAsText(file);
   });
 
+const errorDetailsType = t.type({
+  name: t.string,
+  message: t.string,
+  traceId: t.union([t.null, t.string]),
+});
+
+const isErrorResult = (
+  result: unknown,
+): result is t.TypeOf<typeof errorDetailsType> =>
+  isRight(errorDetailsType.decode(result));
+
 export const ImportXMLStatement = () => {
+  const [, setLocation] = useLocation();
   const { data: accounts } = useGetBankAccountsQuery();
   const [statementFile, setStatementFile] = useState<File | null>(null);
   const [parsedStatement, setParsedStatement] = useState<CamtStatement | null>(
@@ -93,6 +109,15 @@ export const ImportXMLStatement = () => {
       setLoading(false);
     }
   }, [job]);
+
+  const bankStatementId =
+    job?.state === 'succeeded' &&
+    typeof job.result === 'object' &&
+    job.result &&
+    'bankStatementId' in job.result &&
+    typeof job.result.bankStatementId === 'string'
+      ? job.result.bankStatementId
+      : null;
 
   return (
     <div>
@@ -185,6 +210,23 @@ export const ImportXMLStatement = () => {
         </div>
       )}
 
+      {job?.state === 'failed' && isErrorResult(job.result) && (
+        <div className="mb-4 flex items-stretch overflow-hidden rounded shadow-sm">
+          <div className="rounded-l border-y border-l border-red-600 bg-red-500 p-2 text-white">
+            <AlertCircle className="size-6" />
+          </div>
+          <div className="grow rounded-r border border-gray-200 p-3">
+            <strong className="flex items-center gap-2 text-gray-800">
+              Error occurred while importing statement!
+            </strong>
+            <p className="mb-4 mt-2">{job?.result.message}</p>
+            <Button onClick={() => setLocation(`/admin/jobs/${job.id}`)}>
+              View error details
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {parsedStatement ? (
           <Button secondary onClick={selectFile}>
@@ -205,6 +247,15 @@ export const ImportXMLStatement = () => {
               style={{ width: `${(job?.progress * 100 ?? 0).toFixed()}%` }}
             />
           </div>
+        )}
+        {bankStatementId && (
+          <Button
+            onClick={() =>
+              setLocation(`/admin/banking/statements/${bankStatementId}`)
+            }
+          >
+            View statement
+          </Button>
         )}
       </div>
     </div>
