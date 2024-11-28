@@ -74,12 +74,14 @@ export default async (deps: ApiDeps & ModuleDeps) => {
       const id = crypto.randomBytes(4).toString('hex');
       const start = process.hrtime.bigint();
 
+      const idSegment = deps.logger.isDebugEnabled() ? `[${id}] ` : '';
+
       res.on('finish', () => {
         const end = process.hrtime.bigint();
         const duration = Number(end - start);
 
         deps.logger.info(
-          `[${id}] ${`[${req.method}]`.padEnd(6)} ${req.originalUrl} [${res.statusCode}] [${(duration / 1_000_0000).toFixed(2)}ms]`,
+          `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl} [${res.statusCode}] [${(duration / 1_000_0000).toFixed(2)}ms]`,
           {
             method: req.method,
             url: req.originalUrl,
@@ -92,7 +94,7 @@ export default async (deps: ApiDeps & ModuleDeps) => {
       });
 
       deps.logger.debug(
-        `[${id}] ${`[${req.method}]`.padEnd(6)} ${req.originalUrl}`,
+        `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl}`,
       );
 
       next();
