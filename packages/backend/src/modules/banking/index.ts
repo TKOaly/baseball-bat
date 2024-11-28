@@ -348,6 +348,12 @@ export default createModule({
           title: `Import CAMT statement ${statement.id}`,
         });
 
+        const existing = await bus.exec(getBankStatement, statement.id);
+
+        if (existing) {
+          throw new Error('Bank statement already imported!');
+        }
+
         const bankStatement = await bus.exec(createBankStatement, {
           id: statement.id,
           accountIban: statement.account.iban,
