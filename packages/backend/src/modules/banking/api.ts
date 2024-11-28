@@ -103,6 +103,7 @@ const factory: RouterFactory = (route, { config }) => {
         type: 'import-statement',
         data: ctx.file,
         title: 'Import CAMT statement',
+        retries: 0,
       });
 
       return ok({ job });
