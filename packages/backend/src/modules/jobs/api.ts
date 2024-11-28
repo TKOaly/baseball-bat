@@ -1,90 +1,37 @@
-import { JobNode } from 'bullmq';
-import { router } from 'typera-express';
-import { notFound, ok } from 'typera-express/response';
+import { Parser, router } from 'typera-express';
+import { internalServerError, notFound, ok } from 'typera-express/response';
 import auth from '@/auth-middleware';
-import { Job } from '@bbat/common/src/types';
+import * as defs from './definitions';
 import { RouterFactory } from '@/module';
-
-const formatJob = async (node: JobNode): Promise<Job> => {
-  const children = await Promise.all((node.children ?? []).map(formatJob));
-
-  let status = (await node.job.getState()) ?? 'unknown';
-
-  if (children.some(c => c.status === 'failed')) {
-    status = 'failed';
-  } else if (
-    status === 'completed' &&
-    node.job.returnvalue?.result === 'error'
-  ) {
-    status = 'failed';
-  }
-
-  if (!node.job.id) {
-    throw new Error('Job should have an ID!');
-  }
-
-  return {
-    name: node.job.data.name ?? node.job.name,
-    id: node.job.id,
-    status,
-    time: new Date(node.job.timestamp),
-    processedAt: node.job.processedOn ? new Date(node.job.processedOn) : null,
-    finishedAt: node.job.finishedOn ? new Date(node.job.finishedOn) : null,
-    duration:
-      (children.length > 0
-        ? children.map(c => c.duration).reduce((a, b) => a + b)
-        : 0) +
-      (node.job.finishedOn ?? 0) -
-      (node.job.processedOn ?? 0),
-    children,
-    queue: node.job.queueName,
-    returnValue: node.job.returnvalue,
-    progress:
-      children.length > 0
-        ? children.map(job => job.progress).reduce((a, b) => a + b, 0) /
-          children.length
-        : ['completed', 'failed'].indexOf(status) === -1
-          ? 0
-          : 1,
-  };
-};
+import { paginationQuery } from '@bbat/common/types';
 
 const factory: RouterFactory = route => {
   const getJobs = route
     .get('/list')
-    .use(auth())
-    .handler(async ({ jobs }) => {
-      const allJobs = await jobs.getJobs(100);
-
-      return ok(await Promise.all(allJobs.map(formatJob)));
+    .use(Parser.query(paginationQuery))
+    .handler(async ({ bus, query }) => {
+      const result = await bus.exec(defs.list, query);
+      return ok(result);
     });
 
   const getJob = route
-    .get('/queue/:queue/:id')
+    .get('/:id')
     .use(auth())
-    .handler(async ({ jobs, ...ctx }) => {
-      const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
+    .handler(async ({ routeParams, bus }) => {
+      const result = await bus.exec(defs.get, routeParams.id);
 
-      if (!node) {
+      if (!result) {
         return notFound();
       }
 
-      return ok(await formatJob(node));
+      return ok(result);
     });
 
   const retryJob = route
-    .post('/queue/:queue/:id/retry')
+    .post('/:id/retry')
     .use(auth())
-    .handler(async ({ jobs, ...ctx }) => {
-      const node = await jobs.getJob(ctx.routeParams.queue, ctx.routeParams.id);
-
-      if (!node) {
-        return notFound();
-      }
-
-      await node.job.retry('failed');
-
-      return ok();
+    .handler(async () => {
+      return internalServerError('Not implemented.');
     });
 
   return router(getJobs, getJob, retryJob);

@@ -343,7 +343,7 @@ const Admin = () => {
               </Route>
               <Route path="/admin/reports" component={ReportsListing} />
               <Route path="/admin/jobs" component={JobsListing} />
-              <Route path="/admin/jobs/:queue/:id" component={JobDetails} />
+              <Route path="/admin/jobs/:id" component={JobDetails} />
               <Route
                 path="/admin/banking/import-statement"
                 component={ImportXMLStatement}

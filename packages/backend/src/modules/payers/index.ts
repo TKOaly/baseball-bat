@@ -17,7 +17,7 @@ import {
 import * as usersService from '@/modules/users/definitions';
 import * as audit from '@/modules/audit/definitions';
 import * as defs from './definitions';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import { cents } from '@bbat/common/build/src/currency';
 import { BusContext } from '@/app';
 import { ExecutionContext, PayloadOf } from '@/bus';

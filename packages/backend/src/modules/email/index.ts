@@ -3,7 +3,7 @@ import opentelemetry, { SpanStatusCode } from '@opentelemetry/api';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import routes from './api';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import mjml2html from 'mjml';
 import nodemailer from 'nodemailer';
 import ejs from 'ejs';
@@ -22,11 +22,8 @@ import {
   generateBarcodeImage,
 } from '@bbat/common/build/src/virtual-barcode';
 import { formatReferenceNumber } from '../payments';
-import { Job } from 'bullmq';
-import { BusContext } from '@/app';
 import iface, * as defs from './definitions';
-import { Connection } from '@/db/connection';
-import { ExecutionContext } from '@/bus';
+import * as jobs from '@/modules/jobs/definitions';
 import { createModule } from '@/module';
 import { createPaginatedQuery } from '@/db/pagination';
 
@@ -118,18 +115,6 @@ export const createSMTPTransport = (config: SMTPConfig) => {
   };
 };
 
-type EmailSendJobData = {
-  emailId: string;
-};
-
-type EmailSendJobResult = { result: 'error' } | { result: 'success' };
-type EmailBatchSendJobResult = { result: 'error' } | { result: 'success' };
-
-type EmailSendJob = Job<EmailSendJobData, EmailSendJobResult, 'send'>;
-type EmailBatchSendJob = Job<void, EmailBatchSendJobResult, 'batch'>;
-
-type EmailJob = EmailSendJob | EmailBatchSendJob;
-
 const TemplateType = {
   HTML: 'html',
   TEXT: 'text',
@@ -147,24 +132,7 @@ export default createModule({
 
   routes,
 
-  async setup({ jobs, config, bus, emailTransport: transport }) {
-    async function handleEmailJob(
-      ctx: ExecutionContext<BusContext>,
-      job: EmailJob,
-    ) {
-      if (job.name === 'send') {
-        try {
-          await _sendEmail(ctx, ctx.context.pg, job.data.emailId);
-        } catch (err) {
-          throw new Error(`Sending email failed: ${err}`);
-        }
-
-        return { result: 'success' };
-      } else {
-        return { result: 'success' };
-      }
-    }
-
+  async setup({ config, bus, emailTransport: transport }) {
     const templatesDir = path.resolve(config.assetPath, 'templates/emails');
 
     async function getTemplatePath(name: string, type: TemplateType) {
@@ -276,22 +244,26 @@ export default createModule({
       },
 
       async batchSendEmails(ids, _, bus) {
-        const children = await Promise.all(
-          ids.map(id => createEmailJobDescription(bus, id)),
-        );
-
-        await jobs.createJob({
-          queueName: 'emails',
-          name: 'batch',
-          data: { name: `Send ${ids.length} emails` },
-          children,
-        });
+        await Promise.all(ids.map(id => bus.exec(defs.sendEmail, id)));
       },
 
       async sendEmail(id, _, bus) {
-        const description = await createEmailJobDescription(bus, id);
+        const email = await bus.exec(defs.getEmail, id);
 
-        await jobs.createJob(description);
+        if (!email) {
+          throw new Error('No such email!');
+        }
+
+        await bus.exec(jobs.create, {
+          type: 'send-email',
+          data: { id },
+          title: `Send email to ${email.recipient}`,
+          retries: 3,
+          retryDelay: 300,
+          concurrencyLimit: 1,
+          ratelimit: 1,
+          ratelimitPeriod: 1,
+        });
       },
 
       async getEmails(query, { pg }) {
@@ -387,75 +359,26 @@ export default createModule({
       );
     }
 
-    async function _sendEmail(
-      bus: ExecutionContext<BusContext>,
-      pg: Connection,
-      id: string,
-    ) {
-      const email = await bus.exec(defs.getEmail, id);
+    bus.provideNamed(jobs.executor, 'send-email', {
+      async execute({ data }, { pg }, bus) {
+        const { id } = data as { id: string };
 
-      if (!email) {
-        throw 'No such email';
-      }
+        const email = await bus.exec(defs.getEmail, id);
 
-      await sendRawEmail({
-        to: email.recipient,
-        from: 'velat@tko-aly.fi',
-        replyTo: 'rahastonhoitaja@tko-aly.fi',
-        subject: email.subject,
-        text: email.text,
-        html: email.html,
-      });
+        if (!email) {
+          throw 'No such email';
+        }
 
-      await pg.do(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
-    }
+        await sendRawEmail({
+          to: email.recipient,
+          from: 'velat@tko-aly.fi',
+          replyTo: 'rahastonhoitaja@tko-aly.fi',
+          subject: email.subject,
+          text: email.text,
+          html: email.html,
+        });
 
-    async function createEmailJobDescription(
-      bus: ExecutionContext<BusContext>,
-      id: string,
-    ) {
-      const email = await bus.exec(defs.getEmail, id);
-
-      return {
-        queueName: 'emails',
-        name: 'send',
-        data: {
-          name: `Send email to ${email?.recipient}`,
-          emailId: id,
-        },
-        opts: {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 60 * 2000,
-          },
-        },
-      };
-    }
-
-    /*async function getEmailsByAddress(email: string) {
-      const emails = await pg.any<DbEmail>(
-        sql`SELECT * FROM emails WHERE recipient = ${email}`,
-      );
-
-      return emails.map(formatEmail);
-    }
-
-    async function getEmailsByPayer(payer: InternalIdentity) {
-      const emails = await pg.any<DbEmail>(sql`
-          SELECT emails.*
-          FROM payer_emails
-          JOIN emails ON emails.recipient = payer_emails.email
-          WHERE payer_emails.payer_id = ${payer.value}
-        `);
-
-      return emails.map(formatEmail);
-    }*/
-
-    await jobs.createWorker('emails', handleEmailJob as any, {
-      limiter: {
-        max: 1,
-        duration: 1000,
+        await pg.do(sql`UPDATE emails SET sent_at = NOW() WHERE id = ${id}`);
       },
     });
   },

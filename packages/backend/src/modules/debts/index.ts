@@ -17,7 +17,7 @@ import {
   convertToDbDate,
   NewInvoice,
 } from '@bbat/common/build/src/types';
-import sql, { SQLStatement } from 'sql-template-strings';
+import { sql, Sql } from '@/db/template';
 import * as t from 'io-ts';
 import routes from './api';
 import reports from './reports';
@@ -31,6 +31,7 @@ import * as payerService from '@/modules/payers/definitions';
 import * as paymentService from '@/modules/payments/definitions';
 import * as usersService from '@/modules/users/definitions';
 import * as debtCentersService from '@/modules/debt-centers/definitions';
+import * as jobs from '@/modules/jobs/definitions';
 import * as E from 'fp-ts/Either';
 import * as TE from 'fp-ts/TaskEither';
 import * as A from 'fp-ts/Array';
@@ -51,7 +52,6 @@ import {
   parseISO,
   subMonths,
 } from 'date-fns';
-import { Job } from 'bullmq';
 import { validate } from 'uuid';
 import { BusContext } from '@/app';
 import { isAccountingPeriodOpen } from '../accounting/definitions';
@@ -123,7 +123,7 @@ export default createModule({
 
   routes,
 
-  async setup({ bus, config, jobs }) {
+  async setup({ bus, config }) {
     reports(bus);
 
     const logDebtEvent = async (
@@ -750,7 +750,7 @@ export default createModule({
       }
     }
 
-    async function handleDebtJob(
+    /*async function handleDebtJob(
       bus: ExecutionContext<BusContext>,
       job: Job<DebtJobDefinition, DebtJobResult, string>,
     ): Promise<DebtJobResult> {
@@ -1153,33 +1153,28 @@ export default createModule({
           message: `Unknown job type "${job.name}".`,
         };
       }
-    }
+    }*/
 
     bus.register(
       defs.batchCreateDebts,
-      async ({ debts, components, token, dryRun }) => {
-        const { job } = await jobs.createJob({
-          queueName: 'debts',
-          name: 'batch',
-          data: { name: 'Create debts from CSV' },
-          children: debts.map(details => ({
-            name: 'create',
-            queueName: 'debts',
-            data: {
-              name: `Create debt for ${(details as any).name}`,
-              details,
-              token,
-              dryRun,
-              components,
-            },
-          })),
-        });
+      async ({ debts, components, token, dryRun }, _, bus) => {
+        await Promise.all(
+          debts.map(async details => {
+            await bus.exec(jobs.create, {
+              type: 'create-debt',
+              data: {
+                name: `Create debt for ${(details as any).name}`,
+                details,
+                token,
+                dryRun,
+                components,
+              },
+              title: `Create debt for ${(details as any).name}`,
+            });
+          }),
+        );
 
-        if (job.id === undefined) {
-          throw new Error('Created job has no id!');
-        }
-
-        return job.id;
+        return '';
       },
     );
 
@@ -1365,31 +1360,20 @@ export default createModule({
 
       const update = (
         table: string,
-        condition: SQLStatement,
+        condition: Sql,
         values: Record<string, any>,
       ) => {
-        let query = sql`UPDATE `.append(table).append(' SET ');
+        const assignments = Object.entries(values).map(
+          ([column, value]) =>
+            sql`${sql.raw(pg.escapeIdentifier(column))} = ${value}`,
+        );
 
-        let first = true;
-
-        for (const [column, value] of Object.entries(values)) {
-          if (value !== undefined) {
-            if (!first) {
-              query = query.append(', ');
-            }
-
-            query = query.append(column).append(sql` = ${value}`);
-
-            first = false;
-          }
-        }
-
-        query = query
-          .append(' WHERE ')
-          .append(condition)
-          .append(' RETURNING *');
-
-        return query;
+        return sql`
+          UPDATE ${sql.raw(pg.escapeIdentifier(table))}
+          SET ${sql`, `.join(assignments)}
+          WHERE ${condition}
+          RETURNING *
+        `;
       };
 
       let due_date: Date | null | undefined = debt.dueDate;
@@ -2222,6 +2206,386 @@ export default createModule({
       },
     );
 
-    await jobs.createWorker('debts', handleDebtJob);
+    bus.provideNamed(jobs.executor, 'create-debt', {
+      async execute(job, _, bus) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const missingField = (
+          field: string,
+        ): DebtJobResult & { result: 'error' } => ({
+          result: 'error',
+          soft: true,
+          code: 'MISSING_FIELD',
+          message: `Required field "${field}" not specified.`,
+        });
+
+        try {
+          const { details, token, components, dryRun } =
+            job.data as DebtJobDefinition;
+
+          const payer = await resolvePayer(bus, details, token, dryRun);
+
+          if (!payer && !details.email) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'NO_PAYER_OR_EXPLICIT_EMAIL',
+              message:
+                'Cannot create debt without sufficient payer information.',
+            };
+          }
+
+          let email = details.email;
+          let emailSource = 'explicit';
+
+          if (!email && payer) {
+            const primary = await bus.exec(
+              payerService.getPayerPrimaryEmail,
+              payer.id,
+            );
+
+            if (!primary) {
+              return {
+                result: 'error',
+                soft: true,
+                code: 'PAYER_HAS_NO_EMAIL',
+                message: 'Could not resolve an email address for the payer.',
+              };
+            }
+
+            email = primary.email;
+            emailSource = 'profile';
+          }
+
+          if (!details.title) {
+            return missingField('title');
+          }
+
+          if (!details.description) {
+            details.description = '';
+          }
+
+          if (!details.debtCenter) {
+            return missingField('debtCenter');
+          }
+
+          if (!details.accountingPeriod) {
+            return missingField('accountingPeriod');
+          }
+
+          const accountingPeriodOpen = await bus.exec(
+            isAccountingPeriodOpen,
+            details.accountingPeriod,
+          );
+
+          if (!accountingPeriodOpen) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'ACCOUNTING_PERIOD_CLOSED',
+              message: `The specified accounting period (${details.accountingPeriod}) is not open.`,
+            };
+          }
+
+          const debtCenter = await resolveDebtCenter(
+            bus,
+            details.debtCenter,
+            dryRun,
+            details.accountingPeriod,
+          );
+
+          if (!debtCenter) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'COULD_NOT_RESOLVE_DEBT_CENTER',
+              message: 'Could not resolve debt center for the debt.',
+            };
+          }
+
+          let dueDate = null;
+
+          if (details.dueDate) {
+            dueDate = convertToDbDate(details.dueDate);
+
+            if (!dueDate) {
+              return {
+                result: 'error',
+                soft: true,
+                code: 'INVALID_VALUE',
+                message: 'Invalid value provided for the field "dueDate".',
+              };
+            }
+          }
+
+          let date = null;
+
+          if (details.date) {
+            date = convertToDbDate(details.date);
+
+            if (!date) {
+              return {
+                result: 'error',
+                soft: true,
+                code: 'INVALID_VALUE',
+                message: 'Invalid value provided for the field "date".',
+              };
+            }
+          }
+
+          let publishedAt = null;
+
+          if (details.publishedAt) {
+            publishedAt = convertToDbDate(details.publishedAt);
+
+            if (!publishedAt) {
+              return {
+                result: 'error',
+                soft: true,
+                code: 'INVALID_VALUE',
+                message: 'Invalid value provided for the field "publishedAt".',
+              };
+            }
+          }
+
+          let paymentCondition = details.paymentCondition;
+
+          if (dueDate && paymentCondition) {
+            return {
+              result: 'error',
+              soft: true,
+              code: 'BOTH_DUE_DATE_AND_CONDITION',
+              message:
+                'Both a due date and a payment condition were specified for the same debt.',
+            };
+          } else if (!dueDate && !paymentCondition) {
+            const zero = t.Int.decode(0);
+
+            if (E.isRight(zero)) {
+              paymentCondition = zero.right;
+            } else {
+              throw Error('Unreachable.');
+            }
+          }
+
+          let createdDebt: Debt | null = null;
+          let debtComponents: Array<DebtComponent> = [];
+
+          if (!dryRun) {
+            if (!payer) {
+              return {
+                result: 'error',
+                soft: true,
+                code: 'NO_PAYER',
+                message: 'No payer could be resolved for the debt.',
+              };
+            }
+
+            const existingDebtComponents = await bus.exec(
+              defs.getDebtComponentsByCenter,
+              debtCenter.id,
+            );
+
+            debtComponents = await Promise.all(
+              (details?.components ?? []).map(async c => {
+                const match = existingDebtComponents.find(ec => ec.name === c);
+
+                if (match) {
+                  return match;
+                }
+
+                const componentDetails = components.find(
+                  ({ name }) => name === c,
+                );
+
+                if (componentDetails) {
+                  return await bus.exec(defs.createDebtComponent, {
+                    name: c,
+                    amount: componentDetails.amount,
+                    debtCenterId: debtCenter.id,
+                    description: c,
+                  });
+                }
+
+                return Promise.reject({
+                  result: 'error',
+                  soft: true,
+                  code: 'NO_COMPONENT',
+                  message: `Component "${c}" present on a debt but not defined.`,
+                });
+              }),
+            );
+
+            if (details.amount) {
+              const existingBasePrice = existingDebtComponents.find(dc => {
+                return (
+                  dc.name === 'Base Price' &&
+                  dc.amount.value === details.amount?.value &&
+                  dc.amount.currency === details.amount?.currency
+                );
+              });
+
+              if (existingBasePrice) {
+                debtComponents.push(existingBasePrice);
+              } else {
+                debtComponents.push(
+                  await bus.exec(defs.createDebtComponent, {
+                    name: 'Base Price',
+                    amount: details.amount,
+                    debtCenterId: debtCenter.id,
+                    description: 'Base Price',
+                  }),
+                );
+              }
+            }
+
+            const options: CreateDebtOptions = {};
+
+            if (details.paymentNumber || details.referenceNumber) {
+              options.defaultPayment = {};
+
+              if (details.paymentNumber) {
+                options.defaultPayment.paymentNumber = details.paymentNumber;
+              }
+
+              if (details.referenceNumber) {
+                options.defaultPayment.referenceNumber =
+                  details.referenceNumber;
+              }
+            }
+
+            const accountingPeriod = E.getOrElseW(() => null)(
+              t.Int.decode(details.accountingPeriod),
+            );
+
+            if (!accountingPeriod) {
+              throw new Error('Invalid accounting period!');
+            }
+
+            const newDebt = {
+              centerId: debtCenter.id,
+              accountingPeriod,
+              description: details.description,
+              name: details.title,
+              payer: payer.id,
+              dueDate,
+              date: date ?? undefined,
+              publishedAt: publishedAt ?? undefined,
+              paymentCondition: paymentCondition ?? null,
+              components: debtComponents.map(c => c.id),
+              tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
+            };
+
+            createdDebt = await bus.exec(defs.createDebt, {
+              debt: newDebt,
+              options,
+            });
+          } else {
+            createdDebt = {
+              id: '',
+              humanId: '',
+              payerId: payer?.id ?? internalIdentity(''),
+              date: null,
+              name: details.title,
+              description: details.description,
+              markedAsPaid: null,
+              draft: true,
+              publishedAt: null,
+              debtCenterId: debtCenter.id,
+              status: 'unpaid',
+              lastReminded: null,
+              dueDate: dueDate ? parseISO(dueDate) : null,
+              paymentCondition: paymentCondition ?? null,
+              defaultPayment: null,
+              accountingPeriod: details.accountingPeriod,
+              total: debtComponents
+                .map(c => c.amount)
+                .reduce(sumEuroValues, cents(0)),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              debtComponents,
+              credited: false,
+              publishedBy: null,
+              creditedAt: null,
+              creditedBy: null,
+              tags: (details.tags ?? []).map(name => ({ name, hidden: false })),
+              paymentOptions: null,
+            };
+
+            if (details.components && details.components.length > 0) {
+              debtComponents = await Promise.all(
+                details.components.map(async c => {
+                  const componentDetails = components.find(
+                    ({ name }) => name === c,
+                  );
+
+                  if (componentDetails) {
+                    return {
+                      id: '',
+                      name: c,
+                      amount: componentDetails.amount,
+                      description: '',
+                      debtCenterId: debtCenter.id,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                    } as DebtComponent;
+                  }
+
+                  const existing = await bus.exec(
+                    defs.getDebtComponentsByCenter,
+                    debtCenter.id,
+                  );
+
+                  const match = existing.find(ec => ec.name === c);
+
+                  if (match) {
+                    return match;
+                  }
+
+                  return Promise.reject({
+                    result: 'error',
+                    soft: true,
+                    code: 'NO_SUCH_COMPONENT',
+                    message: `Component "${c}" present on a debt but is no defined.`,
+                  });
+                }),
+              );
+            }
+
+            if (details.amount) {
+              debtComponents.push({
+                id: '8d12e7ef-51db-465e-a5fa-b01cf01db5a8',
+                name: 'Base Price',
+                amount: details.amount,
+                description: 'Base Price',
+                debtCenterId: debtCenter.id,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+            }
+          }
+
+          return {
+            result: 'success',
+            data: {
+              payer,
+              email,
+              emailSource,
+              debt: createdDebt,
+              components: debtComponents,
+              debtCenter,
+            },
+          };
+        } catch (err) {
+          return {
+            result: 'error',
+            soft: false,
+            code: 'UNKNOWN',
+            message: `Unknown error: ${err}`,
+            stack: err instanceof Error ? err.stack : undefined,
+          };
+        }
+      },
+    });
   },
 });

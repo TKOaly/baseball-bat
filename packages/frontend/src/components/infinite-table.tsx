@@ -5,7 +5,7 @@ import {
 import { TableViewProps, Table } from '@bbat/ui/src/table';
 import { QueryDefinition } from '@reduxjs/toolkit/query';
 import { TypedUseLazyQuery, TypedUseQuery } from '@reduxjs/toolkit/query/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type Hooks<T, Q extends PaginationQueryArgs> = {
   useQuery: TypedUseQuery<PaginationQueryResponse<T>, Q, any>;
@@ -25,6 +25,7 @@ export type Props<T, Q extends PaginationQueryArgs> = Omit<
   endpoint: Hooks<T, Q>;
   chunk?: number;
   query?: Omit<Q, keyof PaginatedBaseQuery>;
+  refresh?: number;
 };
 
 export type PaginatedBaseQuery = {
@@ -40,6 +41,7 @@ export type PaginatedQueryDefinition<
 export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
   endpoint,
   chunk: limit = 30,
+  refresh,
   ...props
 }: Props<T, Q>) => {
   const [sort, setSort] = useState<[string, 'asc' | 'desc']>();
@@ -52,12 +54,20 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
   };
 
   const [fetchMoreQuery] = endpoint.useLazyQuery();
-  const { data, isLoading, isFetching, originalArgs } = endpoint.useQuery(
-    createQuery({
-      limit,
-      sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
-    }),
-  );
+  const { data, isLoading, isFetching, originalArgs, refetch } =
+    endpoint.useQuery(
+      createQuery({
+        limit,
+        sort: sort ? { column: sort[0], dir: sort[1] } : undefined,
+      }),
+    );
+
+  useEffect(() => {
+    if (refresh) {
+      const interval = setInterval(() => refetch(), refresh);
+      return () => clearInterval(interval);
+    }
+  }, [refresh, refetch]);
 
   const fetchMore = useCallback(
     (amount: number | null) => {
@@ -82,7 +92,7 @@ export const InfiniteTable = <T, Q extends PaginationQueryArgs>({
   return (
     <Table
       loading={isLoading}
-      refreshing={isFetching && !originalArgs?.cursor}
+      refreshing={isFetching && !originalArgs?.cursor && refresh === null}
       showBottomLoading={!!data?.nextCursor}
       onSortChange={(col, dir) =>
         col && dir ? setSort([col, dir]) : setSort(undefined)

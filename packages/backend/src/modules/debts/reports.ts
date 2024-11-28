@@ -1,6 +1,6 @@
 import { BusContext } from '@/app';
 import { Bus } from '@/bus';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import { reportTypeIface } from '../reports/definitions';
 import * as E from 'fp-ts/Either';
 import * as A from 'fp-ts/Array';

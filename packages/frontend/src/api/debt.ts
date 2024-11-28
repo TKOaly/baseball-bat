@@ -11,7 +11,6 @@ import {
   DebtComponentPatch,
   MultipleDebtPatchValues,
   DebtCenter,
-  MassCreateDebtsPayload,
 } from '@bbat/common/types';
 import { omit } from 'remeda';
 import { parseISO } from 'date-fns/parseISO';
@@ -25,10 +24,6 @@ export type DebtResponse = DebtWithPayer & {
 export type CreateDebtPayload = Omit<NewDebt, 'components' | 'centerId'> & {
   components: (string | Omit<NewDebtComponent, 'debtCenterId'>)[];
   center: string | { name: string; url: string; description: string };
-};
-
-type MassCreateDebtsResponse = {
-  progress: string;
 };
 
 const debtApi = rtkApi.injectEndpoints({
@@ -149,27 +144,6 @@ const debtApi = rtkApi.injectEndpoints({
       ],
     }),
 
-    massCreateDebts: builder.mutation<
-      MassCreateDebtsResponse,
-      MassCreateDebtsPayload
-    >({
-      query: payload => ({
-        method: 'POST',
-        url: '/debt/mass-create',
-        body: payload,
-      }),
-      invalidatesTags: [{ type: 'Debt', id: 'LIST' }],
-    }),
-
-    massCreateDebtsProgress: builder.query<
-      { current: number; total: number; message: string; result: unknown },
-      string
-    >({
-      query: id => ({
-        url: '/debt/mass-create/poll/' + id,
-      }),
-    }),
-
     deleteDebt: builder.mutation<void, string>({
       query: id => ({
         method: 'DELETE',
@@ -281,7 +255,6 @@ export const {
   useGetDebtQuery,
   useGetDebtsQuery,
   usePublishDebtsMutation,
-  useMassCreateDebtsMutation,
   useGetDebtsByPaymentQuery,
   useDeleteDebtMutation,
   useCreditDebtMutation,
@@ -292,7 +265,6 @@ export const {
   useUpdateDebtMutation,
   useDeleteDebtComponentMutation,
   useUpdateMultipleDebtsMutation,
-  useMassCreateDebtsProgressQuery,
   useUpdateDebtComponentMutation,
   useGetDebtsByEmailQuery,
   useMarkAsPaidMutation,

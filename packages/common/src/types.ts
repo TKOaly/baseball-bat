@@ -1046,30 +1046,6 @@ export type DebtStatusReportOptions = {
   includeOnly: null | 'paid' | 'credited' | 'open';
 };
 
-export type JobStatus =
-  | 'completed'
-  | 'failed'
-  | 'active'
-  | 'delayed'
-  | 'waiting'
-  | 'prioritized'
-  | 'waiting-children'
-  | 'unknown';
-
-export type Job = {
-  name: string;
-  id: string;
-  status: JobStatus;
-  time: Date;
-  processedAt: Date | null;
-  finishedAt: Date | null;
-  duration: number;
-  children: Job[];
-  queue: string;
-  returnValue: unknown;
-  progress: number;
-};
-
 export const massCreateDebtsPayload = t.type({
   defaults: t.partial({
     tkoalyUserId: t.number,
@@ -1223,3 +1199,84 @@ export const auditEvent = t.type({
 });
 
 export type AuditEvent = t.TypeOf<typeof auditEvent>;
+
+export const jobState = t.union([
+  t.literal('pending'),
+  t.literal('scheduled'),
+  t.literal('processing'),
+  t.literal('succeeded'),
+  t.literal('failed'),
+]);
+
+export type JobState = t.TypeOf<typeof jobState>;
+
+export const dbJob = t.type({
+  id: t.string,
+  type: t.string,
+  title: nullable(t.string),
+  state: jobState,
+  created_at: tt.date,
+  started_at: nullable(tt.date),
+  finished_at: nullable(tt.date),
+  data: t.unknown,
+  result: t.unknown,
+  delayed_until: nullable(tt.date),
+  retries: t.number,
+  max_retries: t.number,
+  retry_delay: t.number,
+  limit_class: t.string,
+  concurrency_limit: nullable(t.Integer),
+  ratelimit: nullable(t.Integer),
+  ratelimit_period: nullable(t.Integer),
+  concurrency: t.Integer,
+  rate: t.Integer,
+  next_poll: nullable(tt.date),
+});
+
+export const job = t.type({
+  id: t.string,
+  type: t.string,
+  title: nullable(t.string),
+  state: jobState,
+  createdAt: tt.date,
+  startedAt: nullable(tt.date),
+  finishedAt: nullable(tt.date),
+  data: t.unknown,
+  result: t.unknown,
+  delayedUntil: nullable(tt.date),
+  retries: t.number,
+  maxRetries: t.number,
+  retryDelay: t.number,
+  limitClass: t.string,
+  concurrencyLimit: nullable(t.Integer),
+  ratelimit: nullable(t.Integer),
+  ratelimitPeriod: nullable(t.Integer),
+  concurrency: t.Integer,
+  rate: t.Integer,
+  nextPoll: nullable(tt.date),
+});
+
+export type DbJob = t.TypeOf<typeof dbJob>;
+
+export type Job<D = unknown, R = unknown> = {
+  id: string;
+  state: JobState;
+  type: string;
+  title: string | null;
+  createdAt: Date;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  data: D;
+  result: R | null;
+  delayedUntil: Date | null;
+  retries: number;
+  maxRetries: number;
+  retryDelay: number;
+  limitClass: string;
+  concurrencyLimit: number | null;
+  ratelimit: number | null;
+  ratelimitPeriod: number | null;
+  rate: number;
+  concurrency: number;
+  nextPoll: Date | null;
+};

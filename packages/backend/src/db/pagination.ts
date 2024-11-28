@@ -1,9 +1,9 @@
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
-import sql, { SQLStatement } from 'sql-template-strings';
 import { Connection } from './connection';
 import { flow, pipe } from 'fp-ts/function';
 import * as O from 'fp-ts/Option';
+import { sql, Sql } from './template';
 
 const cursor = t.record(
   t.string,
@@ -26,7 +26,7 @@ const parseCursor = (cursorString: string) => {
 };
 
 type QueryOptions<Row, Result> = {
-  where?: SQLStatement;
+  where?: Sql;
   order?: Array<[string, 'desc' | 'asc']>;
   cursor?: string;
   limit?: number;
@@ -48,7 +48,7 @@ type MappedResult<T extends QueryOptions<any, any>> = Coalesce<
 >;
 
 export const createPaginatedQuery =
-  <Row>(query: SQLStatement, paginateBy: string) =>
+  <Row>(query: Sql, paginateBy: string) =>
   async <Options extends QueryOptions<Row, any>>(
     conn: Connection,
     { where, map, limit, cursor: cursorStr, order }: Options,
@@ -96,7 +96,7 @@ export const createPaginatedQuery =
       ][]) => {
         const c = sql``;
 
-        const escaped = conn.escapeIdentifier(col);
+        const escaped = sql.raw(conn.escapeIdentifier(col));
 
         // The following if-else-mess generates a different comparison expression
         // depending on the ordering and the nulliness of the cursorc value.
@@ -112,25 +112,25 @@ export const createPaginatedQuery =
 
         if (dir === 'desc' && val !== null) {
           c.append(escaped);
-          c.append(' IS NULL OR ');
+          c.append(sql` IS NULL OR `);
           c.append(escaped);
           c.append(sql` < ${val}`);
 
           if (rest.length > 0) {
-            c.append(' OR (');
+            c.append(sql` OR (`);
             c.append(escaped);
             c.append(sql` = ${val} AND (`);
             c.append(compare(rest));
-            c.append('))');
+            c.append(sql`))`);
           }
         } else if (dir === 'desc' && val === null) {
           c.append(escaped);
-          c.append(' IS NULL');
+          c.append(sql` IS NULL`);
 
           if (rest.length > 0) {
-            c.append(' AND (');
+            c.append(sql` AND (`);
             c.append(compare(rest));
-            c.append(')');
+            c.append(sql`)`);
           }
         } else if (dir === 'asc' && val !== null) {
           c.append(escaped);
@@ -139,22 +139,22 @@ export const createPaginatedQuery =
           c.append(sql` > ${val}`);
 
           if (rest.length > 0) {
-            c.append(' OR (');
+            c.append(sql` OR (`);
             c.append(escaped);
             c.append(sql` = ${val} AND (`);
             c.append(compare(rest));
-            c.append('))');
+            c.append(sql`))`);
           }
         } else if (dir === 'asc' && val === null) {
           c.append(escaped);
-          c.append(' IS NOT NULL');
+          c.append(sql` IS NOT NULL`);
 
           if (rest.length > 0) {
-            c.append(' OR (');
+            c.append(sql` OR (`);
             c.append(escaped);
-            c.append(' IS NULL AND (');
+            c.append(sql` IS NULL AND (`);
             c.append(compare(rest));
-            c.append('))');
+            c.append(sql`))`);
           }
         } else {
           throw new Error('Unreachable!');
@@ -176,22 +176,26 @@ export const createPaginatedQuery =
           q.append(sql` AND `);
         }
 
-        q.append('(').append(condition).append(')');
+        q.append(sql`(`)
+          .append(condition)
+          .append(sql`)`);
       });
     }
 
     if (orderCols) {
-      q.append(' ORDER BY ');
+      q.append(sql` ORDER BY `);
 
       orderCols.forEach(([col, dir], i) => {
         if (i > 0) {
-          q.append(', ');
+          q.append(sql`, `);
         }
 
         q.append(
-          `${
-            typeof col === 'string' ? conn.escapeIdentifier(col) : col
-          } ${dir.toUpperCase()} NULLS ${dir === 'asc' ? 'FIRST' : 'LAST'}`,
+          sql.raw(
+            `${
+              typeof col === 'string' ? conn.escapeIdentifier(col) : col
+            } ${dir.toUpperCase()} NULLS ${dir === 'asc' ? 'FIRST' : 'LAST'}`,
+          ),
         );
       });
     }

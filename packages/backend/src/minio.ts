@@ -1,7 +1,8 @@
+import { Logger } from 'winston';
 import { Config } from './config';
 import * as Minio from 'minio';
 
-export const setupMinio = async (config: Config) => {
+export const setupMinio = async (config: Config, logger: Logger) => {
   const minioUrl = new URL(config.minioUrl);
 
   const endPoint = minioUrl.hostname;
@@ -16,8 +17,15 @@ export const setupMinio = async (config: Config) => {
     secretKey: config.minioSecretKey,
   });
 
-  if (!(await minio.bucketExists(config.minioBucket))) {
-    await minio.makeBucket(config.minioBucket);
+  try {
+    if (!(await minio.bucketExists(config.minioBucket))) {
+      logger.info(`Created MinIO bucket: ${config.minioBucket}`);
+      await minio.makeBucket(config.minioBucket);
+    }
+  } catch (err) {
+    logger.error('Failed to create MinIO bucket: ' + err);
+
+    throw err;
   }
 
   return minio;

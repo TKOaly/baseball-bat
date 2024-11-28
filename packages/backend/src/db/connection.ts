@@ -3,13 +3,14 @@ import {
   ATTR_DB_QUERY_TEXT,
   ATTR_DB_QUERY_PARAMETER,
 } from '@opentelemetry/semantic-conventions/incubating';
-import { SQLStatement } from 'sql-template-strings';
-import pg from 'pg';
+import { Sql } from './template';
+import pg, { Client } from 'pg';
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 export class Pool {
-  protected pool: pg.Pool;
+  pool: pg.Pool;
+  connections: Set<Connection> = new Set();
 
   constructor(url: string) {
     this.pool = new pg.Pool({
@@ -20,7 +21,7 @@ export class Pool {
   }
 
   async connect() {
-    return await Connection.from(this.pool);
+    return await Connection.from(this);
   }
 
   async withConnection<T>(fn: (conn: Connection) => Promise<T>): Promise<T> {
@@ -38,6 +39,7 @@ export class Pool {
   }
 
   async end() {
+    await Promise.all([...this.connections].map(conn => conn.closed));
     return this.pool.end();
   }
 }
@@ -47,20 +49,64 @@ export class Connection {
 
   onCommitHooks: Array<() => Promise<void>> = [];
 
+  public closed: Promise<void>;
+  private resolveClosed: () => void;
+  private constructorStack?: string;
+
   constructor(
-    private id: number,
-    private conn: pg.PoolClient,
-  ) {}
+    public id: number,
+    private conn: pg.ClientBase,
+    private pool?: Pool,
+  ) {
+    this.constructorStack = new Error().stack;
 
-  static async from(pool: pg.Pool) {
-    const conn = await pool.connect();
+    conn.on('error', this.onError);
+    conn.on('end', this.onClose);
 
-    const result = await conn.query('SELECT pg_backend_pid() pid');
+    this.closed = new Promise(resolve => {
+      this.resolveClosed = resolve;
+    });
+  }
+
+  onError = (err: unknown) => {
+    console.log(
+      `Connection error: ${err}\nCreated at: ${this.constructorStack}`,
+    );
+  };
+
+  onClose = () => {
+    if (this.pool) {
+      this.pool.connections.delete(this);
+    }
+
+    this.conn.off('end', this.onClose);
+    this.conn.off('error', this.onError);
+
+    this.resolveClosed();
+  };
+
+  static async create(url: string) {
+    const client = new pg.Client(url);
+    await client.connect();
+
+    const result = await client.query('SELECT pg_backend_pid() pid');
+    const pid = result.rows[0].pid;
+    await client.query('BEGIN');
+
+    return new Connection(pid, client);
+  }
+
+  static async from(pool: Pool) {
+    const client = await pool.pool.connect();
+
+    const result = await client.query('SELECT pg_backend_pid() pid');
     const pid = result.rows[0].pid;
 
-    await conn.query('BEGIN');
+    await client.query('BEGIN');
 
-    return new Connection(pid, conn);
+    const conn = new Connection(pid, client, pool);
+    pool.connections.add(conn);
+    return conn;
   }
 
   get tracer() {
@@ -86,20 +132,28 @@ export class Connection {
 
   async close() {
     await this.commit();
-    this.conn.release();
+
+    if ('release' in this.conn && typeof this.conn.release === 'function') {
+      this.conn.release();
+    } else if (this.conn instanceof Client) {
+      await this.conn.end();
+    }
+
+    this.onClose();
   }
 
-  async do(query: SQLStatement) {
+  async do(query: Sql) {
     await this.many(query);
   }
 
-  async query(query: SQLStatement) {
+  async query(query: Sql) {
     const attributes: Record<string, string | number> = {
       [ATTR_DB_QUERY_TEXT]: query.text,
     };
 
     query.values.forEach((value, index) => {
-      attributes[ATTR_DB_QUERY_PARAMETER((index + 1).toString())] = value;
+      attributes[ATTR_DB_QUERY_PARAMETER((index + 1).toString())] =
+        typeof value === 'number' ? value : String(value);
     });
 
     return this.tracer.startActiveSpan('query', { attributes }, async span => {
@@ -109,7 +163,7 @@ export class Connection {
     });
   }
 
-  async one<A>(query: SQLStatement): Promise<A | null> {
+  async one<A>(query: Sql): Promise<A | null> {
     const results = await this.many<A>(query);
 
     if (results.length > 1) {
@@ -119,7 +173,7 @@ export class Connection {
     return results[0] ?? null;
   }
 
-  async many<T>(query: SQLStatement): Promise<T[]> {
+  async many<T>(query: Sql): Promise<T[]> {
     const { rows } = await this.query(query);
     return rows;
   }

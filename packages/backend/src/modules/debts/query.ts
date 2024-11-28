@@ -12,7 +12,7 @@ import {
   euro,
   internalIdentity,
 } from '@bbat/common/types';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 import { formatPayerProfile } from '../payers';
 import { addDays } from 'date-fns';
 import { formatDebtCenter } from '../debt-centers';

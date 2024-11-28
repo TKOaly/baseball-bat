@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import opentelemetry from '@opentelemetry/api';
+import crypto from 'crypto';
 import {
   ATTR_HTTP_ROUTE,
   ATTR_HTTP_REQUEST_METHOD,
@@ -43,7 +44,7 @@ const helmetConfig: HelmetOptions = {
 
 export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
-    .use((req, res, next) => {
+    .use('/api', (req, res, next) => {
       const { trace: tracing, propagation, context } = opentelemetry;
 
       const tracer = tracing.getTracer('baseball-bat');
@@ -70,21 +71,31 @@ export default async (deps: ApiDeps & ModuleDeps) => {
       // Set the created span as active in the deserialized context.
       tracing.setSpan(newContext, span);
 
+      const id = crypto.randomBytes(4).toString('hex');
+      const start = process.hrtime.bigint();
+
+      const idSegment = deps.logger.isDebugEnabled() ? `[${id}] ` : '';
+
       res.on('finish', () => {
-        if (process.env.NODE_ENV !== 'testing') {
-          deps.logger.info(
-            `${req.method} ${req.originalUrl} ${res.statusCode}`,
-            {
-              method: req.method,
-              url: req.originalUrl,
-              status: res.statusCode,
-            },
-          );
-        }
+        const end = process.hrtime.bigint();
+        const duration = Number(end - start);
+
+        deps.logger.info(
+          `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl} [${res.statusCode}] [${(duration / 1_000_0000).toFixed(2)}ms]`,
+          {
+            method: req.method,
+            url: req.originalUrl,
+            status: res.statusCode,
+          },
+        );
 
         span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
         span.end();
       });
+
+      deps.logger.debug(
+        `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl}`,
+      );
 
       next();
     })

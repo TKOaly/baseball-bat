@@ -1,72 +1,114 @@
 import { format } from 'date-fns/format';
-import { formatDuration } from 'date-fns/formatDuration';
 import { useLocation } from 'wouter';
-import { useGetJobsQuery } from '../../api/jobs';
-import { Table } from '@bbat/ui/table';
+import jobsApi from '../../api/jobs';
+import { InfiniteTable } from '../../components/infinite-table';
+import { cva } from 'class-variance-authority';
+import { PropsWithChildren } from 'react';
+import { formatDuration, intervalToDuration } from 'date-fns';
+
+const badgeCva = cva(
+  'mr-1 rounded-[2pt] px-1 pt-0.5 pb-[0.15em] text-xs font-bold',
+  {
+    variants: {
+      color: {
+        gray: 'bg-gray-300 text-gray-700',
+        green: 'bg-green-600 text-green-50',
+        blue: 'bg-blue-200 text-blue-600',
+        orange: 'bg-orange-500 text-orange-50',
+        red: 'bg-red-600 text-red-50',
+      },
+    },
+  },
+);
+
+type BadgeColor = 'green' | 'blue' | 'orange' | 'red' | 'gray';
+
+const Badge = ({
+  children,
+  color,
+  className,
+}: PropsWithChildren<{ color: BadgeColor; className?: string }>) => (
+  <span className={badgeCva({ color, className })}>{children}</span>
+);
 
 export const JobsListing = () => {
-  const { data: jobs } = useGetJobsQuery(undefined, { pollingInterval: 1000 });
   const [, setLocation] = useLocation();
 
   return (
     <div>
       <h1 className="mb-5 mt-10 text-2xl">Jobs</h1>
-      <Table
+      <InfiniteTable
+        endpoint={jobsApi.endpoints.getJobs}
+        onRowClick={job => setLocation(`/admin/jobs/${job.id}`)}
         persist="jobs"
-        rows={(jobs ?? []).map(job => ({ ...job, key: job.id }))}
-        onRowClick={job => setLocation(`/admin/jobs/${job.queue}/${job.id}`)}
+        initialSort={{ column: 'Created', direction: 'desc' }}
+        refresh={5000}
         columns={[
           {
-            name: 'Time',
-            getValue: job => job.time,
+            name: 'Created',
+            getValue: job => job.createdAt,
             render: time => format(time, 'dd.MM.yyyy HH:mm:ss'),
+            key: 'created_at',
           },
           {
-            name: 'Name',
-            getValue: 'name',
-            render: (value, _, depth) => (
-              <div style={{ paddingLeft: `${depth * 1.5}em` }}>{value}</div>
-            ),
+            name: 'Type',
+            getValue: 'type',
+            key: 'type',
+            render: value => <Badge color="gray">{value}</Badge>,
+          },
+          {
+            name: 'Title',
+            getValue: 'title',
+            key: 'title',
+          },
+          {
+            name: 'State',
+            getValue: 'state',
+            key: 'state',
+            render: value => {
+              const variants: Record<
+                string,
+                { label: string; color: BadgeColor }
+              > = {
+                pending: { label: 'Pending', color: 'gray' },
+                scheduled: { label: 'Scheduled', color: 'gray' },
+                processing: { label: 'Running', color: 'orange' },
+                failed: { label: 'Failed', color: 'red' },
+                succeeded: { label: 'Finished', color: 'green' },
+              };
+
+              const { color, label } = variants[value] ?? {
+                label: value,
+                color: 'gray',
+              };
+
+              return <Badge color={color}>{label}</Badge>;
+            },
           },
           {
             name: 'Duration',
-            getValue: job => formatDuration({ seconds: job.duration / 1000 }),
-          },
-          {
-            name: 'Children',
-            getValue: job => job.children.length,
-          },
-          {
-            name: 'Progress',
-            getValue: job => (job.progress === 0 ? 2 : job.progress),
-            render: (v, job) => {
-              const value = v === 2 ? 0 : v;
+            getValue: row => {
+              try {
+                if (row.startedAt === null) return '';
 
-              if (job.status === 'waiting') {
-                return 'Waiting';
+                const end = row.finishedAt ?? new Date();
+
+                const duration = formatDuration(
+                  intervalToDuration({
+                    start: row.startedAt,
+                    end,
+                  }),
+                );
+
+                return duration !== '' ? duration : 'Under 1 second';
+              } catch (err) {
+                return String(err);
               }
-
-              const color =
-                (
-                  {
-                    failed: 'bg-red-400',
-                    completed: 'bg-green-400',
-                    delayed: 'bg-yellow-400',
-                  } as Record<string, string>
-                )[job.status] ?? 'bg-green-400';
-
-              return (
-                <div className="w-full">
-                  <div className="text-xs">{(value * 100).toFixed(0)}%</div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className={`h-full ${color}`}
-                      style={{ width: `${(value * 100).toFixed()}%` }}
-                    />
-                  </div>
-                </div>
-              );
             },
+          },
+          {
+            name: 'Retries',
+            getValue: 'retries',
           },
         ]}
       />

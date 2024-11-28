@@ -1,7 +1,7 @@
 import { router } from 'typera-express';
 import { internalServerError, ok } from 'typera-express/response';
 import { ApiFactory } from '.';
-import sql from 'sql-template-strings';
+import { sql } from '@/db/template';
 
 const factory: ApiFactory = ({ config }, route) => {
   const check = route.get('/').handler(async ({ pg, redis, minio }) => {

@@ -620,39 +620,6 @@ const factory: RouterFactory = route => {
       });
     });
 
-  const massCreateDebtsProgressPoll = route
-    .get('/mass-create/poll/:id')
-    .use(auth())
-    .handler(async ctx => {
-      const flow = await ctx.jobs.getFlowProducer().getFlow({
-        id: ctx.routeParams.id,
-        queueName: 'debts',
-        prefix: 'bbat-jobs',
-      });
-
-      if (!flow?.children) {
-        return internalServerError();
-      }
-
-      const total = await flow.job.getDependenciesCount();
-
-      if (!total) {
-        return internalServerError();
-      }
-
-      const result =
-        flow.job.returnvalue?.result === 'success'
-          ? flow.job.returnvalue?.data?.debts
-          : undefined;
-
-      return ok({
-        current: total.processed ?? 0,
-        total: (total.unprocessed ?? 0) + (total.processed ?? 0),
-        result,
-        return: flow.job.returnvalue,
-      });
-    });
-
   const deleteDebt = route
     .delete('/:id')
     .use(auth())
@@ -831,7 +798,6 @@ const factory: RouterFactory = route => {
     publishDebts,
     getPaymentsContainingDebt,
     massCreateDebts,
-    massCreateDebtsProgressPoll,
     deleteDebt,
     creditDebt,
     markPaidWithCash,

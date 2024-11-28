@@ -10,7 +10,6 @@ import {
   createSMTPTransport,
   IEmailTransport,
 } from './modules/email';
-import { JobService } from './modules/jobs';
 import { LocalBus } from './bus';
 import server from './server';
 import { Session } from './middleware/session';
@@ -54,15 +53,13 @@ export type BusContext = {
 const setupDeps = async () => {
   const nats = await setupNats(config);
   const bus = new LocalBus<BusContext>();
-  const jobs = new JobService(config, bus, pool, nats, logger);
-  const minio = await setupMinio(config);
+  const minio = await setupMinio(config, logger);
 
   return {
     pool,
     config,
     bus,
     redis: redisClient,
-    jobs,
     emailTransport,
     minio,
     nats,

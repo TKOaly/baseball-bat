@@ -1,33 +1,32 @@
 import { emailIdentity } from '@bbat/common/types';
 import setup from './setup';
 import * as defs from '@/modules/reports/definitions';
-import sql from 'sql-template-strings';
 import { createPayerProfileFromEmailIdentity } from '@/modules/payers/definitions';
 import assert from 'assert';
 import parsePdf from 'pdf-parse';
 import { EventOf } from '@/bus';
 
 setup('Reports service', ({ test }) => {
-  test('rendering', async ({ bus, busRoot }) => {
-    busRoot.provideNamed(defs.reportTypeIface, 'test', {
-      getDetails: async () => ({ template: 'test' }),
-      generate: async () => ({ value: 'TESTVALUE' }),
+  test('rendering', async ({ withNewContext, bus }) => {
+    const report = await withNewContext(async ({ busRoot, bus }) => {
+      busRoot.provideNamed(defs.reportTypeIface, 'test', {
+        getDetails: async () => ({ template: 'test' }),
+        generate: async () => ({ value: 'TESTVALUE' }),
+      });
+
+      const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
+        id: emailIdentity('test@test.test'),
+        name: 'Teppo Testaaja',
+      });
+
+      assert.ok(payer);
+
+      return await bus.exec(defs.createReport, {
+        template: 'test',
+        name: 'Test Report',
+        options: {},
+      });
     });
-
-    const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
-      id: emailIdentity('test@test.test'),
-      name: 'Teppo Testaaja',
-    });
-
-    assert.ok(payer);
-
-    const report = await bus.exec(defs.createReport, {
-      template: 'test',
-      name: 'Test Report',
-      options: {},
-    });
-
-    bus.context.pg.do(sql`COMMIT; BEGIN`);
 
     assert.equal(report.status, 'generating');
 
