@@ -44,7 +44,7 @@ const helmetConfig: HelmetOptions = {
 
 export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
-    .use((req, res, next) => {
+    .use('/api', (req, res, next) => {
       const { trace: tracing, propagation, context } = opentelemetry;
 
       const tracer = tracing.getTracer('baseball-bat');
