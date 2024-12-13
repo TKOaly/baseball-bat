@@ -14,7 +14,7 @@ export class Pool {
 
   constructor(url: string) {
     this.pool = new pg.Pool({
-      max: 5,
+      max: 30,
       min: 0,
       connectionString: url,
     });
