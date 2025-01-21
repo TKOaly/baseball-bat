@@ -1,5 +1,5 @@
 import { Parser, router } from 'typera-express';
-import { internalServerError, notFound, ok } from 'typera-express/response';
+import { notFound, ok } from 'typera-express/response';
 import auth from '@/auth-middleware';
 import * as defs from './definitions';
 import { RouterFactory } from '@/module';
@@ -30,11 +30,21 @@ const factory: RouterFactory = route => {
   const retryJob = route
     .post('/:id/retry')
     .use(auth())
-    .handler(async () => {
-      return internalServerError('Not implemented.');
+    .handler(async ({ routeParams, bus }) => {
+      await bus.exec(defs.retry, routeParams.id);
+
+      return ok();
     });
 
-  return router(getJobs, getJob, retryJob);
+  const terminateJob = route
+    .post('/:id/terminate')
+    .use(auth())
+    .handler(async ({ routeParams, bus }) => {
+      const result = await bus.exec(defs.terminate, routeParams.id);
+      return ok(result);
+    });
+
+  return router(getJobs, getJob, retryJob, terminateJob);
 };
 
 export default factory;

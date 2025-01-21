@@ -1,5 +1,9 @@
 import { format } from 'date-fns/format';
-import { useGetJobQuery } from '../../api/jobs';
+import {
+  useGetJobQuery,
+  useRetryJobMutation,
+  useTerminateJobMutation,
+} from '../../api/jobs';
 import { RouteComponentProps, Link } from 'wouter';
 import * as t from 'io-ts';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
@@ -14,6 +18,8 @@ import {
   BadgeColor,
   Field,
   LinkField,
+  Actions,
+  ActionButton,
 } from '../../components/resource-page/resource-page';
 import { toNullable, fromEither } from 'fp-ts/lib/Option';
 import { formatDuration, intervalToDuration } from 'date-fns';
@@ -37,6 +43,8 @@ export const JobDetails = (props: Props) => {
   const { data: triggeredBy } = useGetPayerQuery(
     job?.triggeredBy?.value ?? skipToken,
   );
+  const [terminateJob] = useTerminateJobMutation();
+  const [retryJob] = useRetryJobMutation();
 
   if (!job) {
     return <div />;
@@ -72,6 +80,26 @@ export const JobDetails = (props: Props) => {
             ]}
           />
         </Title>
+        <Actions>
+          {job.state === 'processing' && (
+            <ActionButton
+              onClick={async () => {
+                terminateJob({ id: job.id });
+              }}
+            >
+              Terminate
+            </ActionButton>
+          )}
+          {job.state === 'failed' && (
+            <ActionButton
+              onClick={async () => {
+                retryJob({ id: job.id });
+              }}
+            >
+              Retry
+            </ActionButton>
+          )}
+        </Actions>
       </Header>
       <Section title="Details" columns={2}>
         <TextField label="Title" value={job.title ?? 'Untitled'} />

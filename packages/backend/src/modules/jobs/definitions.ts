@@ -41,6 +41,20 @@ export const create = scope.defineProcedure({
   response: t.string,
 });
 
+export const terminate = scope.defineProcedure({
+  name: 'terminate',
+  payload: t.string,
+  response: t.type({
+    terminated: t.array(t.string),
+  }),
+});
+
+export const retry = scope.defineProcedure({
+  name: 'retry',
+  payload: t.string,
+  response: t.void,
+});
+
 export const get = scope.defineProcedure({
   name: 'get',
   payload: t.string,

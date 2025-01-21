@@ -12,6 +12,8 @@ import { shutdown } from '@/orchestrator';
 import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
 import { Session } from '@/middleware/session';
+import { partition } from 'remeda';
+import { Logger } from 'winston';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -157,6 +159,49 @@ export default createModule({
       FROM jobs) s
     `;
 
+    const scheduleJob = async (
+      pg: Connection,
+      logger: Logger,
+      details: Job,
+    ) => {
+      await pg.do(sql`
+        UPDATE jobs
+        SET state = 'scheduled', scheduled_at = ${new Date()}
+        WHERE id = ${details.id}
+      `);
+
+      logger.info(`Scheduled job ${details.id}.`);
+
+      const session: Session | null = details.triggeredBy
+        ? {
+            authLevel: 'authenticated',
+            payerId: details.triggeredBy,
+            token: '',
+          }
+        : null;
+
+      const promise = withNewContext('job execution', session, async ctx => {
+        try {
+          await ctx.exec(defs.execute, details.id);
+        } catch (err) {
+          ctx.context.logger.error(`Job ${details.id} failed: ${err}`, {
+            job_id: details.id,
+          });
+
+          await pool.withConnection(async conn => {
+            await conn.do(
+              sql`UPDATE jobs SET state = 'failed', finished_at = NOW() WHERE id = ${details.id}`,
+            );
+          });
+
+          throw err;
+        }
+      });
+
+      promise.finally(() => runningJobs.delete(promise));
+      runningJobs.add(promise);
+    };
+
     bus.register(defs.poll, async (_, { pg, logger }, bus) => {
       if (!running) return;
 
@@ -205,7 +250,7 @@ export default createModule({
 
       if (!running) return;
 
-      let scheduled = 0;
+      const scheduled = 0;
 
       const ratelimitPollScheduled = new Set<string>();
 
@@ -256,44 +301,7 @@ export default createModule({
           continue;
         }
 
-        await pg.do(sql`
-          UPDATE jobs
-          SET state = 'scheduled', scheduled_at = ${new Date()}
-          WHERE id = ${id}
-        `);
-
-        scheduled++;
-
-        jobLogger.info(`Scheduled job ${id}.`);
-
-        const session: Session | null = details.triggeredBy
-          ? {
-              authLevel: 'authenticated',
-              payerId: details.triggeredBy,
-              token: '',
-            }
-          : null;
-
-        const promise = withNewContext('job execution', session, async ctx => {
-          try {
-            await ctx.exec(defs.execute, id);
-          } catch (err) {
-            ctx.context.logger.error(`Job ${id} failed: ${err}`, {
-              job_id: id,
-            });
-
-            await pool.withConnection(async conn => {
-              await conn.do(
-                sql`UPDATE jobs SET state = 'failed', finished_at = NOW() WHERE id = ${id}`,
-              );
-            });
-
-            throw err;
-          }
-        });
-
-        promise.finally(() => runningJobs.delete(promise));
-        runningJobs.add(promise);
+        await scheduleJob(pg, jobLogger, details);
       }
 
       if (candidates.length > 0) {
@@ -508,6 +516,60 @@ export default createModule({
       } finally {
         await conn.close();
       }
+    });
+
+    bus.register(defs.retry, async (id, { pg, logger }, bus) => {
+      const details = await bus.exec(defs.get, id);
+
+      if (!details) {
+        logger.error(`No such job: ${id}`);
+        return;
+      }
+
+      const jobLogger = logger.child({
+        job_id: details.id,
+        job_type: details.type,
+      });
+
+      await scheduleJob(pg, jobLogger, details);
+    });
+
+    bus.register(defs.terminate, async (id, { pg }) => {
+      const results = await pg.many<{ id: string; terminated: boolean }>(sql`
+        SELECT jobs.id, pg_terminate_backend(pid) AS terminated
+        FROM jobs
+        JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
+        WHERE jobs.state = 'processing' AND id = ${id}
+      `);
+
+      const [terminated, notTerminated] = partition(
+        results,
+        row => row.terminated,
+      );
+
+      for (const { id } of terminated) {
+        logger.info(`Terminated job ${id} per user request.`);
+
+        await pg.do(
+          sql`UPDATE jobs SET state = 'failed', finished_at = NOW() WHERE id = ${id}`,
+        );
+      }
+
+      for (const { id } of notTerminated) {
+        logger.info(
+          `User requested the termination of job ${id} but it could not be terminated!`,
+        );
+      }
+
+      if (terminated.length === 0 && notTerminated.length === 0) {
+        logger.info(
+          `User requested the termination of job ${id} but it has no associated connection!`,
+        );
+      }
+
+      return {
+        terminated: terminated.map(row => row.id),
+      };
     });
 
     subscriber.notifications.on('new-job', async ({ id }) => {
