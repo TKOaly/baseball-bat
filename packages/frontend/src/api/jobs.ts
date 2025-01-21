@@ -91,9 +91,21 @@ const jobsApi = rtkApi.injectEndpoints({
             ]
           : [],
     }),
+
+    retryJob: builder.mutation<{ terminated: string[] }, { id: string }>({
+      query: ({ id }) => ({
+        url: `/jobs/${id}/retry`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_, __, { id }) => [{ type: 'Job' as const, id }],
+    }),
   }),
 });
 
-export const { useGetJobsQuery, useGetJobQuery, useTerminateJobMutation } =
-  jobsApi;
+export const {
+  useGetJobsQuery,
+  useGetJobQuery,
+  useTerminateJobMutation,
+  useRetryJobMutation,
+} = jobsApi;
 export default jobsApi;

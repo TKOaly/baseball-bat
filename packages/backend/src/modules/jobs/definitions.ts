@@ -49,6 +49,12 @@ export const terminate = scope.defineProcedure({
   }),
 });
 
+export const retry = scope.defineProcedure({
+  name: 'retry',
+  payload: t.string,
+  response: t.void,
+});
+
 export const get = scope.defineProcedure({
   name: 'get',
   payload: t.string,

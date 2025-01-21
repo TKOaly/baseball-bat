@@ -1,5 +1,9 @@
 import { format } from 'date-fns/format';
-import { useGetJobQuery, useTerminateJobMutation } from '../../api/jobs';
+import {
+  useGetJobQuery,
+  useRetryJobMutation,
+  useTerminateJobMutation,
+} from '../../api/jobs';
 import { RouteComponentProps, Link } from 'wouter';
 import * as t from 'io-ts';
 import { Breadcrumbs } from '@bbat/ui/breadcrumbs';
@@ -40,6 +44,7 @@ export const JobDetails = (props: Props) => {
     job?.triggeredBy?.value ?? skipToken,
   );
   const [terminateJob] = useTerminateJobMutation();
+  const [retryJob] = useRetryJobMutation();
 
   if (!job) {
     return <div />;
@@ -83,6 +88,15 @@ export const JobDetails = (props: Props) => {
               }}
             >
               Terminate
+            </ActionButton>
+          )}
+          {job.state === 'failed' && (
+            <ActionButton
+              onClick={async () => {
+                retryJob({ id: job.id });
+              }}
+            >
+              Retry
             </ActionButton>
           )}
         </Actions>
