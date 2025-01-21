@@ -64,6 +64,7 @@ const jobsApi = rtkApi.injectEndpoints({
   endpoints: builder => ({
     getJobs: createPaginatedQuery<Job>()(builder, {
       query: () => '/jobs/list',
+      providesTags: [{ type: 'Job', id: 'LIST' }],
       transformResponse: (response: PaginationQueryResponse<ResponseJob>) => ({
         ...response,
         result: response.result.map(transformJob),
@@ -72,10 +73,27 @@ const jobsApi = rtkApi.injectEndpoints({
 
     getJob: builder.query<Job, { id: string }>({
       query: ({ id }) => `/jobs/${id}`,
+      providesTags: response =>
+        response ? [{ type: 'Job', id: response.id }] : [],
       transformResponse: transformJob,
+    }),
+
+    terminateJob: builder.mutation<{ terminated: string[] }, { id: string }>({
+      query: ({ id }) => ({
+        url: `/jobs/${id}/terminate`,
+        method: 'POST',
+      }),
+      invalidatesTags: response =>
+        response
+          ? [
+              { type: 'Job', id: 'LIST' },
+              ...response.terminated.map(id => ({ type: 'Job' as const, id })),
+            ]
+          : [],
     }),
   }),
 });
 
-export const { useGetJobsQuery, useGetJobQuery } = jobsApi;
+export const { useGetJobsQuery, useGetJobQuery, useTerminateJobMutation } =
+  jobsApi;
 export default jobsApi;

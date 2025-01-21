@@ -12,6 +12,7 @@ import { shutdown } from '@/orchestrator';
 import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
 import { Session } from '@/middleware/session';
+import { partition } from 'remeda';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -508,6 +509,44 @@ export default createModule({
       } finally {
         await conn.close();
       }
+    });
+
+    bus.register(defs.terminate, async (id, { pg }) => {
+      const results = await pg.many<{ id: string; terminated: boolean }>(sql`
+        SELECT jobs.id, pg_terminate_backend(pid) AS terminated
+        FROM jobs
+        JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
+        WHERE jobs.state = 'processing' AND id = ${id}
+      `);
+
+      const [terminated, notTerminated] = partition(
+        results,
+        row => row.terminated,
+      );
+
+      for (const { id } of terminated) {
+        logger.info(`Terminated job ${id} per user request.`);
+
+        await pg.do(
+          sql`UPDATE jobs SET state = 'failed', finished_at = NOW() WHERE id = ${id}`,
+        );
+      }
+
+      for (const { id } of notTerminated) {
+        logger.info(
+          `User requested the termination of job ${id} but it could not be terminated!`,
+        );
+      }
+
+      if (terminated.length === 0 && notTerminated.length === 0) {
+        logger.info(
+          `User requested the termination of job ${id} but it has no associated connection!`,
+        );
+      }
+
+      return {
+        terminated: terminated.map(row => row.id),
+      };
     });
 
     subscriber.notifications.on('new-job', async ({ id }) => {

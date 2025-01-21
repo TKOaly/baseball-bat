@@ -48,5 +48,6 @@ export default createApi({
     'Report',
     'AccountingPeriod',
     'PaymentEvent',
+    'Job',
   ],
 });

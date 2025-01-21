@@ -34,7 +34,15 @@ const factory: RouterFactory = route => {
       return internalServerError('Not implemented.');
     });
 
-  return router(getJobs, getJob, retryJob);
+  const terminateJob = route
+    .post('/:id/terminate')
+    .use(auth())
+    .handler(async ({ routeParams, bus }) => {
+      const result = await bus.exec(defs.terminate, routeParams.id);
+      return ok(result);
+    });
+
+  return router(getJobs, getJob, retryJob, terminateJob);
 };
 
 export default factory;
