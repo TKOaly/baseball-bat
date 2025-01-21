@@ -28,7 +28,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2024,
+      accountingPeriod: 2025,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -38,7 +38,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2024 as any,
+        accountingPeriod: 2025 as any,
         components: [],
         payer: payer.id,
         tags: [],
@@ -56,7 +56,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2024,
+      accountingPeriod: 2025,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -73,7 +73,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2024 as any,
+        accountingPeriod: 2025 as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -112,7 +112,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2024,
+      accountingPeriod: 2025,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -129,7 +129,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2024 as any,
+        accountingPeriod: 2025 as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -166,7 +166,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2024,
+      accountingPeriod: 2025,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -183,7 +183,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2024 as any,
+        accountingPeriod: 2025 as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -266,7 +266,7 @@ setup('Debts service', ({ test }) => {
 
         const center = await bus.exec(createDebtCenter, {
           name: 'Test Center',
-          accountingPeriod: 2024,
+          accountingPeriod: 2025,
           description: 'Desc',
           url: 'https://google.com/',
         });
@@ -283,7 +283,7 @@ setup('Debts service', ({ test }) => {
             name: 'Name',
             description: 'Desc',
             centerId: center.id,
-            accountingPeriod: 2024 as any,
+            accountingPeriod: 2025 as any,
             components: [component.id],
             payer: payer.id,
             dueDate: overdue
@@ -342,7 +342,7 @@ setup('Debts service', ({ test }) => {
 
       const center = await bus.exec(createDebtCenter, {
         name: 'Test Center',
-        accountingPeriod: 2024,
+        accountingPeriod: 2025,
         description: 'Desc',
         url: 'https://google.com/',
       });
@@ -359,7 +359,7 @@ setup('Debts service', ({ test }) => {
           name: 'Name',
           description: 'Desc',
           centerId: center.id,
-          accountingPeriod: 2024 as any,
+          accountingPeriod: 2025 as any,
           components: [component.id],
           payer: payer.id,
           dueDate: dateToDbDateString(subDays(new Date(), 1)),
@@ -397,7 +397,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2024,
+      accountingPeriod: 2025,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -414,7 +414,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2024 as any,
+        accountingPeriod: 2025 as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
