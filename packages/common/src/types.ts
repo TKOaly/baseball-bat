@@ -1250,6 +1250,7 @@ export const dbJob = t.type({
   rate: t.Integer,
   next_poll: nullable(tt.date),
   progress: Percentage,
+  lock_id: t.Integer,
 });
 
 export const job = t.type({
@@ -1275,6 +1276,7 @@ export const job = t.type({
   rate: t.Integer,
   nextPoll: nullable(tt.date),
   progress: Percentage,
+  lockId: t.Integer,
 });
 
 export type DbJob = t.TypeOf<typeof dbJob>;
@@ -1302,4 +1304,5 @@ export type Job<D = unknown, R = unknown> = {
   concurrency: number;
   nextPoll: Date | null;
   progress: number;
+  lockId: number;
 };
