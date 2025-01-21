@@ -36,6 +36,7 @@ const formatJob = (db: DbJob): Job => ({
   nextPoll: db.next_poll,
   progress: db.progress,
   triggeredBy: db.triggered_by ? internalIdentity(db.triggered_by) : null,
+  lockId: db.lock_id,
 });
 
 const formatMicros = (ms: bigint) => {
@@ -176,6 +177,23 @@ export default createModule({
       // to prevent any concurrent writes. Concurrent reads continue to be
       // allowed. Note that, unlike for the previous lock, we wait for this lock.
       await pg.do(sql`LOCK TABLE jobs IN EXCLUSIVE MODE`);
+
+      const orphans = await pg.many<{ id: string }>(sql`
+        UPDATE jobs
+        SET state = 'failed', finished_at = NOW()
+        FROM (
+          SELECT jobs.id
+          FROM jobs
+          LEFT JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
+          WHERE pg_locks.locktype IS NULL AND jobs.state = 'processing'
+        ) orphans
+        WHERE jobs.id = orphans.id
+        RETURNING jobs.id
+      `);
+
+      if (orphans.length > 0) {
+        logger.warn(`Marked ${orphans.length} orphaned jobs as failed!`);
+      }
 
       const candidates = await pg.many<{ id: string }>(sql`
         SELECT id
@@ -372,6 +390,17 @@ export default createModule({
       let error: unknown = null;
 
       try {
+        const lockResult = await pg.one<{ acquired: boolean }>(
+          sql`SELECT pg_try_advisory_xact_lock(2, ${job.lockId}) AS acquired`,
+        );
+
+        if (!lockResult?.acquired) {
+          logger.error(
+            `Advisory lock for job ${job.id} held by an another transaction! Aborting...`,
+          );
+          throw new Error('Advisory lock not available.');
+        }
+
         const result = await iface.execute(job);
 
         await pg.do(

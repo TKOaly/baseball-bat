@@ -31,6 +31,7 @@ type ResponseJob = {
   nextPoll: string | null;
   progress: number;
   triggeredBy: InternalIdentity | null;
+  lockId: number;
 };
 
 const transformJob = (job: ResponseJob): Job => ({
@@ -56,6 +57,7 @@ const transformJob = (job: ResponseJob): Job => ({
   nextPoll: job.nextPoll ? parseISO(job.nextPoll) : null,
   progress: job.progress,
   triggeredBy: job.triggeredBy,
+  lockId: job.lockId,
 });
 
 const jobsApi = rtkApi.injectEndpoints({
