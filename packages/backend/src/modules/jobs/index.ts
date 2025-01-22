@@ -218,11 +218,6 @@ export default createModule({
         return;
       }
 
-      // If no other polls are in progress, we'll continue by locking the table
-      // to prevent any concurrent writes. Concurrent reads continue to be
-      // allowed. Note that, unlike for the previous lock, we wait for this lock.
-      await pg.do(sql`LOCK TABLE jobs IN EXCLUSIVE MODE`);
-
       const orphans = await pg.many<{ id: string }>(sql`
         UPDATE jobs
         SET state = 'failed', finished_at = NOW()
@@ -231,6 +226,7 @@ export default createModule({
           FROM jobs
           LEFT JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
           WHERE pg_locks.locktype IS NULL AND jobs.state = 'processing'
+          FOR UPDATE
         ) orphans
         WHERE jobs.id = orphans.id
         RETURNING jobs.id
@@ -246,6 +242,7 @@ export default createModule({
         WHERE state = 'pending'
           AND (delayed_until IS NULL OR delayed_until < NOW())
         ORDER BY created_at ASC
+        FOR UPDATE
       `);
 
       if (!running) return;
