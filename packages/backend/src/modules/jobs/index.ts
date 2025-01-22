@@ -222,11 +222,15 @@ export default createModule({
         UPDATE jobs
         SET state = 'failed', finished_at = NOW()
         FROM (
-          SELECT jobs.id
+          SELECT id
           FROM jobs
-          LEFT JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
-          WHERE pg_locks.locktype IS NULL AND jobs.state = 'processing'
-          FOR UPDATE
+          WHERE id IN (
+            SELECT jobs.id
+            FROM jobs
+            LEFT JOIN pg_locks ON objid = jobs.lock_id AND locktype = 'advisory' AND classid = 2
+            WHERE pg_locks.locktype IS NULL AND jobs.state = 'processing'
+          )
+          FOR NO KEY UPDATE
         ) orphans
         WHERE jobs.id = orphans.id
         RETURNING jobs.id
@@ -242,7 +246,7 @@ export default createModule({
         WHERE state = 'pending'
           AND (delayed_until IS NULL OR delayed_until < NOW())
         ORDER BY created_at ASC
-        FOR UPDATE
+        FOR NO KEY UPDATE
       `);
 
       if (!running) return;
