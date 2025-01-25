@@ -1,22 +1,14 @@
 import { RouterFactory } from '@/module';
 import auth from '@/auth-middleware';
-import { router, Parser } from 'typera-express';
-import { paginationQuery } from '@bbat/common/types';
-import * as defs from './definitions';
-import { ok } from 'typera-express/response';
+import { router } from 'typera-express';
+import { auditQuery } from './query';
 
 const factory: RouterFactory = route => {
   const getAuditLogEvents = route
     .use(auth())
-    .use(Parser.query(paginationQuery))
+    .use(auditQuery.middleware())
     .get('/events')
-    .handler(async ({ bus, query }) => {
-      const results = await bus.exec(defs.getLogEvents, {
-        ...query,
-      });
-
-      return ok(results);
-    });
+    .handler(auditQuery.handler());
 
   return router(getAuditLogEvents);
 };

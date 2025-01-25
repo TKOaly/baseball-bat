@@ -78,6 +78,10 @@ export const BankStatement = ({ id }: { id: string }) => {
       <Section title="Transactions">
         <SectionContent>
           <TransactionList
+            initialSort={{
+              column: 'value_time',
+              direction: 'desc',
+            }}
             endpoint={transactionsApi.endpoints.getStatementTransactions}
             query={{ id }}
           />

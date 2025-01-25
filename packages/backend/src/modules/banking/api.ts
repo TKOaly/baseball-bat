@@ -1,6 +1,6 @@
-import { Parser, router } from 'typera-express';
+import { router } from 'typera-express';
 import { badRequest, notFound, ok } from 'typera-express/response';
-import { bankAccount, paginationQuery } from '@bbat/common/build/src/types';
+import { bankAccount } from '@bbat/common/build/src/types';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Task';
 import * as D from 'fp-ts/Date';
@@ -13,6 +13,8 @@ import { RouterFactory } from '@/module';
 import { flow } from 'fp-ts/lib/function';
 import { randomUUID } from 'crypto';
 import { uploadToMinio } from '@/middleware/minio-upload';
+import { transactionQuery } from './query';
+import { sql } from '@/db/template';
 
 const factory: RouterFactory = (route, { config }) => {
   const getInfo = route
@@ -112,20 +114,12 @@ const factory: RouterFactory = (route, { config }) => {
   const getAccountTransactions = route
     .get('/accounts/:iban/transactions')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query, ...ctx }) => {
-      const transactions = await bus.exec(
-        bankingService.getAccountTransactions,
-        {
-          iban: ctx.routeParams.iban,
-          cursor: query.cursor,
-          sort: query.sort,
-          limit: query.limit,
-        },
-      );
-
-      return ok(transactions);
-    });
+    .use(transactionQuery.middleware())
+    .handler(
+      transactionQuery.handler(({ routeParams }) => ({
+        where: sql`account = ${routeParams.iban}`,
+      })),
+    );
 
   const getBankStatement = route
     .get('/statements/:id')
@@ -173,20 +167,12 @@ const factory: RouterFactory = (route, { config }) => {
   const getBankStatementTransactions = route
     .get('/statements/:id/transactions')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query: { cursor, limit, sort }, ...ctx }) => {
-      const transactions = await bus.exec(
-        bankingService.getBankStatementTransactions,
-        {
-          id: ctx.routeParams.id,
-          cursor,
-          limit,
-          sort,
-        },
-      );
-
-      return ok(transactions);
-    });
+    .use(transactionQuery.middleware())
+    .handler(
+      transactionQuery.handler(({ routeParams }) => ({
+        where: sql`id IN (SELECT bank_transaction_id FROM bank_statement_transaction_mapping WHERE bank_statement_id = ${routeParams.id})`,
+      })),
+    );
 
   const autoregisterTransactions = route
     .post('/autoregister')

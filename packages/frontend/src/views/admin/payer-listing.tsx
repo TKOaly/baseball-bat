@@ -12,7 +12,7 @@ import * as TE from 'fp-ts/TaskEither';
 import { pipe } from 'fp-ts/function';
 import { ErrorDialog } from '../../components/dialogs/error-dialog';
 import { MergeProfilesDialog } from '../../components/dialogs/merge-profiles-dialog';
-import { useState } from 'react';
+import { ComponentProps, useState } from 'react';
 import { PayerProfile } from '@bbat/common/src/types';
 import { InfiniteTable } from '../../components/infinite-table';
 
@@ -50,6 +50,10 @@ export const PayerListing = () => {
         endpoint={payersApi.endpoints.getPayers}
         persist="payers"
         onRowClick={({ id }) => setLocation(`/admin/payers/${id.value}`)}
+        initialSort={{
+          column: 'unpaid_value',
+          direction: 'desc',
+        }}
         actions={[
           {
             key: 'remind',
@@ -124,18 +128,38 @@ export const PayerListing = () => {
             name: 'Name',
             key: 'name',
             getValue: 'name',
+            filter: {
+              search: true,
+              pushdown: true,
+            },
           },
           {
             name: 'Email',
             key: 'primary_email',
             getValue: 'primaryEmail',
+            filter: {
+              search: true,
+              pushdown: true,
+            },
           },
           {
             name: 'Membership',
             key: 'tkoaly_user_id',
             getValue: p => (p.tkoalyUserId?.value ? 'Member' : 'Non-member'),
-            render: (_, p) =>
-              p.tkoalyUserId?.value ? (
+            filter: {
+              options: ['Member', 'Non-member'],
+              pushdown: (value, include) => {
+                return {
+                  tkoaly_user_id: {
+                    [(value === 'Non-member') != include
+                      ? 'is_not_null'
+                      : 'is_null']: true,
+                  },
+                };
+              },
+            },
+            render: value =>
+              value === 'Member' ? (
                 <span className="rounded-[2pt] bg-blue-500 px-1.5 py-0.5 text-xs font-bold text-white">
                   Member
                 </span>
@@ -147,13 +171,19 @@ export const PayerListing = () => {
           },
           ...(!showDisabled
             ? []
-            : [
+            : ([
                 {
                   name: 'Disabled',
                   key: 'disabled',
                   getValue: (p: PayerProfile) => (p.disabled ? 'Yes' : 'No'),
-                  render: (_: any, p: PayerProfile) =>
-                    p.disabled ? (
+                  filter: {
+                    options: ['Yes', 'No'],
+                    pushdown: (value, include) => ({
+                      disabled: { eq: (value === 'Yes') != !include },
+                    }),
+                  },
+                  render: value =>
+                    value === 'Yes' ? (
                       <span className="rounded-[2pt] bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
                         Yes
                       </span>
@@ -163,7 +193,9 @@ export const PayerListing = () => {
                       </span>
                     ),
                 },
-              ]),
+              ] as ComponentProps<
+                typeof InfiniteTable<PayerProfile, any>
+              >['columns'])),
           {
             name: 'Paid percentage',
             key: 'paid_ratio',

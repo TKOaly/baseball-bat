@@ -21,19 +21,16 @@ import { validateBody } from '@/validate-middleware';
 import { euroValue } from '@bbat/common/build/src/currency';
 import auth from '@/auth-middleware';
 import { RouterFactory } from '@/module';
-import { Parser } from 'typera-express';
-import { Payment, paginationQuery } from '@bbat/common/types';
+import { Payment } from '@bbat/common/types';
 import { pipe, flow } from 'fp-ts/function';
+import { paymentsQuery } from './query';
 
 const factory: RouterFactory = route => {
   const getPayments = route
     .get('/')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query }) => {
-      const payments = await bus.exec(paymentService.getPayments, query);
-      return ok(payments);
-    });
+    .use(paymentsQuery.middleware())
+    .handler(paymentsQuery.handler());
 
   const getPayment = route
     .get('/:id')

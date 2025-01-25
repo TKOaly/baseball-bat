@@ -39,7 +39,7 @@ export const DebtListing = () => {
       <p className="text-md mb-7 text-gray-800">
         {tag
           ? `Here are listed all debts associated with the tag "${tag}".`
-          : 'Here are listed all individual debts in the system.'}
+          : 'Here are listed all individual debts in the system.'}{' '}
         A debt corresponds usually to a single event registration, but may not
         have one-to-one mapping to a payment.
       </p>

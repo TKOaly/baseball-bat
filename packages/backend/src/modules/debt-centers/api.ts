@@ -1,11 +1,10 @@
-import { Parser, router } from 'typera-express';
+import { router } from 'typera-express';
 import { ok, badRequest, notFound } from 'typera-express/response';
 import {
   emailIdentity,
   convertToDbDate,
   Registration,
   createDebtCenterFromEventBody,
-  paginationQuery,
 } from '@bbat/common/build/src/types';
 import * as t from 'io-ts';
 import * as E from 'fp-ts/Either';
@@ -18,6 +17,8 @@ import { validateBody } from '@/validate-middleware';
 import { pipe } from 'fp-ts/function';
 import { euroValue } from '@bbat/common/build/src/currency';
 import { RouterFactory } from '@/module';
+import { queryDebts } from '../debts/query';
+import { sql } from '@/db/template';
 
 const componentRule = t.type({
   type: t.literal('CUSTOM_FIELD'),
@@ -56,15 +57,12 @@ const factory: RouterFactory = route => {
   const getDebtsByCenter = route
     .get('/:id/debts')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query, ...ctx }) => {
-      const debts = await bus.exec(debtService.getDebtsByCenter, {
-        centerId: ctx.routeParams.id,
-        ...query,
-      });
-
-      return ok(debts);
-    });
+    .use(queryDebts.middleware())
+    .handler(
+      queryDebts.handler(({ routeParams }) => ({
+        where: sql`debt_center_id = ${routeParams.id}`,
+      })),
+    );
 
   const getDebtComponentsByCenter = route
     .get('/:id/components')

@@ -13,11 +13,11 @@ import {
   internalIdentity,
 } from '@bbat/common/types';
 import { sql } from '@/db/template';
-import { formatPayerProfile } from '../payers';
 import { addDays } from 'date-fns';
 import { formatDebtCenter } from '../debt-centers';
+import { formatPayerProfile } from '../payers/query';
 import { cents } from '@bbat/common/currency';
-import { createPaginatedQuery } from '@/db/pagination';
+import { defineQuery } from '@/db/pagination';
 
 const formatDebtTag = (tag: DbDebtTag): DebtTag => ({
   name: tag.name,
@@ -96,8 +96,18 @@ export const formatDebtComponent = (
   updatedAt: null,
 });
 
-export const queryDebts = createPaginatedQuery<DbDebt>(
-  sql`
+export const queryDebts = defineQuery({
+  map: formatDebt,
+  paginateBy: 'human_id',
+  filters: {
+    status: {
+      is_overdue: (_lhs, _rhs) =>
+        sql`published_at IS NOT NULL AND due_date IS NOT NULL AND due_date <= NOW() AND status = 'unpaid'`,
+      is_not_overdue: (_lhs, _rhs) =>
+        sql`published_at IS NULL OR due_date IS NULL OR due_date > NOW() OR status <> 'unpaid'`,
+    },
+  },
+  query: sql`
     WITH components AS (
       SELECT
         d.id,
@@ -121,7 +131,7 @@ export const queryDebts = createPaginatedQuery<DbDebt>(
       TO_JSON(payer_profiles.*) AS payer,
       TO_JSON(debt_center.*) AS debt_center,
       ds.is_paid,
-      CASE WHEN ds.is_paid THEN 'paid' ELSE 'unpaid' END AS status
+      ds.status
     FROM debt
     LEFT JOIN components USING (id)
     LEFT JOIN tags USING (id)
@@ -129,5 +139,4 @@ export const queryDebts = createPaginatedQuery<DbDebt>(
     LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
     LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
   `,
-  'human_id',
-);
+});

@@ -35,6 +35,7 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
     ComponentProps<typeof Table<BankTransaction & { key: string }, any, any>>,
     ComponentProps<typeof InfiniteTable<BankTransaction & { key: string }, any>>
   > = {
+    onFilterChange: undefined,
     footer: undefined,
     selectable: undefined,
     onRowClick: undefined,
@@ -47,6 +48,10 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
         name: 'Type',
         key: 'type',
         getValue: tx => tx.type,
+        filter: {
+          pushdown: true,
+          options: ['credit', 'debit'],
+        },
         render: value => {
           if (value === 'credit') {
             return (
@@ -77,21 +82,37 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
         getValue: tx => tx.amount.value,
         render: value => formatEuro(cents(value)),
         align: 'right',
+        width: 'min-content',
       },
       {
         name: 'Other Party',
         key: 'other_party_name',
+        filter: {
+          search: true,
+          pushdown: true,
+        },
         getValue: tx => tx.otherParty?.name,
+        width: 'minmax(min-content, auto)',
       },
       {
         name: 'Reference',
         key: 'reference',
-        getValue: tx => tx.reference,
+        filter: {
+          search: true,
+          pushdown: true,
+        },
+        getValue: tx => tx.reference ?? '',
+        width: 'minmax(min-content, auto)',
       },
       {
         name: 'Message',
         key: 'message',
-        getValue: tx => tx.message,
+        filter: {
+          search: true,
+          pushdown: true,
+        },
+        getValue: tx => tx.message ?? '',
+        width: '1fr',
       },
       {
         name: 'Payment',

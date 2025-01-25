@@ -1128,9 +1128,24 @@ export const createDebtCenterFromEventBody = t.type({
   }),
 });
 
+const filterOperator = t.union([
+  t.literal('eq'),
+  t.literal('neq'),
+  t.literal('gt'),
+  t.literal('lt'),
+  t.literal('gte'),
+  t.literal('lte'),
+  t.literal('like'),
+  t.literal('in'),
+  t.literal('not_in'),
+  t.literal('is_null'),
+  t.literal('is_not_null'),
+]);
+
 export const paginationQuery = t.partial({
   cursor: t.string,
   limit: tt.NumberFromString,
+  filter: t.record(t.string, t.record(t.string, t.unknown)),
   sort: t.type({
     column: t.string,
     dir: t.union([t.literal('asc'), t.literal('desc')]),
@@ -1142,6 +1157,7 @@ export type PaginationQuery = t.TypeOf<typeof paginationQuery>;
 export const paginationQueryPayload = t.partial({
   cursor: t.string,
   limit: t.number,
+  filter: t.record(t.string, t.record(filterOperator, t.unknown)),
   sort: t.type({
     column: t.string,
     dir: t.union([t.literal('asc'), t.literal('desc')]),
