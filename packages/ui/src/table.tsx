@@ -894,7 +894,7 @@ export const TableInner = <
     gridTemplateColumns.push('2.5em');
   }
 
-  columns.forEach(({ width }) => gridTemplateColumns.push(width ?? 'auto'));
+  columns.forEach(_ => gridTemplateColumns.push('auto'));
 
   if (actions) {
     gridTemplateColumns.push('2.5em');
