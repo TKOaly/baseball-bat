@@ -181,15 +181,15 @@ test.describe('manual registration', () => {
 
   // prettier-ignore
   const params: TestParams[] = [
-    [[10    ], [[0, 0, 10]            ],  true, '1 payment, 1 transaction, exact amount'],
-    [[10    ], [[1, 0, 10]            ], false, '1 payment, 1 transaction, transaction amount surpassed'],
-    [[ 5    ], [[0, 0, 10]            ],  true, '1 payment, 1 transaction, payment amount surpassed'],
-    [[10    ], [[0, 0,  5], [1, 0,  5]],  true, '1 payment, 2 transactions, exact amount'],
-    [[10    ], [[0, 0,  6], [1, 0,  5]],  true, '1 payment, 2 transactions, payment amount surpassed'],
-    [[10    ], [[0, 0,  4], [1, 0,  6]], false, '1 payment, 2 transactions, transaction amount surpassed'],
-    [[ 5,  5], [[0, 0,  5], [0, 1,  5]],  true, '2 payments, 1 transactions, exact amount'],
-    [[ 5, 10], [[0, 0,  5], [0, 1,  6]], false, '2 payments, 1 transactions, transaction amount surpassed'],
-    [[ 5, 10], [[0, 0,  5], [0, 1,  6]], false, '2 payments, 2 transactions, transaction amount surpassed'],
+    [[10    ], [[1, 0, 10]            ],  true, '1 payment, 1 transaction, exact amount'],
+    [[10    ], [[0, 0, 10]            ], false, '1 payment, 1 transaction, transaction amount surpassed'],
+    [[ 5    ], [[1, 0, 10]            ],  true, '1 payment, 1 transaction, payment amount surpassed'],
+    [[10    ], [[1, 0,  5], [0, 0,  5]],  true, '1 payment, 2 transactions, exact amount'],
+    [[10    ], [[1, 0,  6], [0, 0,  5]],  true, '1 payment, 2 transactions, payment amount surpassed'],
+    [[10    ], [[1, 0,  4], [0, 0,  6]], false, '1 payment, 2 transactions, transaction amount surpassed'],
+    [[ 5,  5], [[1, 0,  5], [1, 1,  5]],  true, '2 payments, 1 transactions, exact amount'],
+    [[ 5, 10], [[1, 0,  5], [1, 1,  6]], false, '2 payments, 1 transactions, transaction amount surpassed'],
+    [[ 5, 10], [[1, 0,  5], [1, 1,  6]], false, '2 payments, 2 transactions, transaction amount surpassed'],
   ];
 
   for (const [paymentAmounts, registrations, shouldSucceed, name] of params) {
