@@ -9,7 +9,7 @@ import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import * as dateFns from 'date-fns';
 import { Config } from '../../config';
-import { DbEmail, Email } from '@bbat/common/build/src/types';
+import { DbEmail } from '@bbat/common/build/src/types';
 import {
   formatEuro,
   sumEuroValues,
@@ -25,19 +25,7 @@ import { formatReferenceNumber } from '../payments';
 import iface, * as defs from './definitions';
 import * as jobs from '@/modules/jobs/definitions';
 import { createModule } from '@/module';
-import { createPaginatedQuery } from '@/db/pagination';
-
-const formatEmail = (email: DbEmail): Email => ({
-  id: email.id,
-  recipient: email.recipient,
-  subject: email.subject,
-  template: email.template,
-  html: email.html,
-  text: email.text,
-  draft: email.draft,
-  createdAt: email.created_at,
-  sentAt: email.sent_at,
-});
+import { emailQuery, formatEmail } from './query';
 
 type EmailTransportOptions = {
   from: string;
@@ -121,11 +109,6 @@ const TemplateType = {
 };
 
 type TemplateType = (typeof TemplateType)[keyof typeof TemplateType];
-
-const emailQuery = createPaginatedQuery<DbEmail>(
-  sql`SELECT * FROM emails`,
-  'id',
-);
 
 export default createModule({
   name: 'emails',
@@ -220,9 +203,9 @@ export default createModule({
         );
 
         const result = await pg.one<DbEmail>(sql`
-            INSERT INTO emails (recipient, subject, template, html, text)
-            VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
-            RETURNING *
+          INSERT INTO emails (recipient, subject, template, html, text)
+          VALUES (${email.recipient}, ${email.subject}, ${email.template}, ${html}, ${text})
+          RETURNING *
          `);
 
         if (!result) {
@@ -267,27 +250,26 @@ export default createModule({
       },
 
       async getEmails(query, { pg }) {
-        return emailQuery(pg, {
+        return emailQuery.execute(pg, {
           ...query,
           order: query.sort ? [[query.sort.column, query.sort.dir]] : undefined,
-          map: formatEmail,
         });
       },
 
       async getEmail(id, { pg }) {
-        const email = await pg.one<DbEmail>(
-          sql`SELECT * FROM emails WHERE id = ${id}`,
-        );
+        const { result } = await emailQuery.execute(pg, {
+          where: sql`id = ${id}`,
+          limit: 1,
+        });
 
-        return email && formatEmail(email);
+        return result[0];
       },
 
       async getEmailsByDebt({ debtId, ...query }, { pg }) {
-        return emailQuery(pg, {
+        return emailQuery.execute(pg, {
           ...query,
           where: sql`id IN (SELECT email_id FROM email_debt_mapping WHERE debt_id = ${debtId})`,
           order: query.sort ? [[query.sort.column, query.sort.dir]] : undefined,
-          map: formatEmail,
         });
       },
     });

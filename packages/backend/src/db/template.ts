@@ -53,7 +53,7 @@ export class Sql {
   }
 
   join(array: unknown[]) {
-    const strings = new Array(Math.max(0, array.length - 1)).fill(sql.raw(''));
+    const strings = new Array(Math.max(0, array.length - 1)).fill('');
     const interleaved: unknown[] = [];
 
     array.forEach((value, i) => {

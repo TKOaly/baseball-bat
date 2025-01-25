@@ -37,7 +37,7 @@ export const createPaginatedQuery =
   ) =>
     builder.query<PaginationQueryResponse<T>, Q & PaginationQueryArgs>({
       ...(options as any),
-      query: ({ cursor, sort, limit, ...rest }) => {
+      query: ({ cursor, sort, limit, filter, ...rest }) => {
         const query = options.query?.(rest as any);
 
         let url;
@@ -96,6 +96,14 @@ export const createPaginatedQuery =
           if (sort) {
             opts.params['sort[column]'] = sort.column;
             opts.params['sort[dir]'] = sort.dir;
+          }
+
+          if (filter) {
+            for (const [column, conditions] of Object.entries(filter)) {
+              for (const [operator, value] of Object.entries(conditions)) {
+                opts.params[`filter[${column}][${operator}]`] = value;
+              }
+            }
           }
         }
 

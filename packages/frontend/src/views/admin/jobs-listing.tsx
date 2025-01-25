@@ -41,7 +41,7 @@ export const JobsListing = () => {
         endpoint={jobsApi.endpoints.getJobs}
         onRowClick={job => setLocation(`/admin/jobs/${job.id}`)}
         persist="jobs"
-        initialSort={{ column: 'Created', direction: 'desc' }}
+        initialSort={{ column: 'created_at', direction: 'desc' }}
         refresh={5000}
         columns={[
           {
@@ -55,16 +55,35 @@ export const JobsListing = () => {
             getValue: 'type',
             key: 'type',
             render: value => <Badge color="gray">{value}</Badge>,
+            filter: {
+              search: true,
+              options: ['send-email', 'import-statement', 'generate-report'],
+              pushdown: true,
+            },
           },
           {
             name: 'Title',
             getValue: 'title',
             key: 'title',
+            filter: {
+              search: true,
+              pushdown: true,
+            },
           },
           {
             name: 'State',
             getValue: 'state',
             key: 'state',
+            filter: {
+              options: [
+                'pending',
+                'scheduled',
+                'processing',
+                'failed',
+                'succeeded',
+              ],
+              pushdown: true,
+            },
             render: value => {
               const variants: Record<
                 string,
@@ -87,6 +106,7 @@ export const JobsListing = () => {
           },
           {
             name: 'Progress',
+            key: 'progress',
             getValue: 'progress',
             render: value => (
               <div className="w-full">
@@ -102,6 +122,7 @@ export const JobsListing = () => {
           },
           {
             name: 'Duration',
+            key: 'duration',
             getValue: row => {
               try {
                 if (row.startedAt === null) return '';
@@ -123,6 +144,7 @@ export const JobsListing = () => {
           },
           {
             name: 'Retries',
+            key: 'retries',
             getValue: 'retries',
           },
         ]}

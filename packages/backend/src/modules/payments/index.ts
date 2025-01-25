@@ -25,11 +25,11 @@ import * as T from 'fp-ts/Task';
 import { isLeft } from 'fp-ts/Either';
 import * as R from 'remeda';
 import { formatDebt } from '../debts/query';
-import { formatPayerProfile } from '../payers';
+import { formatPayerProfile } from '../payers/query';
 import { toArray } from 'fp-ts/Record';
 import { getDebtCenter } from '../debt-centers/definitions';
 import { createModule } from '@/module';
-import { createPaginatedQuery } from '@/db/pagination';
+import { paymentsQuery } from './query';
 
 export class RegistrationError extends Error {}
 
@@ -100,38 +100,6 @@ export const formatPayment = (db: DbPayment): Payment => ({
   payers: db.payers ?? [],
 });
 
-const queryPayments = createPaginatedQuery<DbPayment>(
-  sql`
-    SELECT
-      p.*,
-      s.balance,
-      s.status,
-      s.payer,
-      s.payer->>'name' AS payer_name,
-      aggs.debts,
-      aggs.debt_count,
-      aggs.payers,
-      (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
-      (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
-      (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
-      (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
-      COALESCE(s.updated_at, p.created_at) AS updated_at
-    FROM payments p
-    JOIN payment_statuses s ON s.id = p.id
-    LEFT JOIN LATERAL (
-      SELECT
-        ARRAY_AGG(DISTINCT jsonb_build_object('id', d.id, 'name', d.name)) AS debts,
-        COUNT(d.id) AS debt_count,
-        ARRAY_AGG(DISTINCT jsonb_build_object('id', pp.id, 'name', pp.name)) AS payers
-      FROM payment_debt_mappings pdm
-      INNER JOIN debt d ON pdm.debt_id = d.id
-      INNER JOIN payer_profiles pp ON pp.id = d.payer_id
-      WHERE pdm.payment_id = p.id
-    ) aggs ON true
-  `,
-  'id',
-);
-
 export default createModule({
   name: 'payments',
 
@@ -139,7 +107,7 @@ export default createModule({
 
   async setup({ bus }) {
     bus.register(defs.getPayments, async ({ cursor, sort, limit }, { pg }) =>
-      queryPayments(pg, {
+      paymentsQuery.execute(pg, {
         limit,
         cursor,
         order: sort ? [[sort.column, sort.dir]] : undefined,
@@ -148,7 +116,7 @@ export default createModule({
     );
 
     bus.register(defs.getPayment, async (id, { pg }) => {
-      const { result } = await queryPayments(pg, {
+      const { result } = await paymentsQuery.execute(pg, {
         limit: 1,
         where: sql`id = ${id}`,
         map: formatPayment,
@@ -224,7 +192,7 @@ export default createModule({
     );
 
     bus.register(defs.getPaymentsByData, async (data, { pg }) => {
-      const { result } = await queryPayments(pg, {
+      const { result } = await paymentsQuery.execute(pg, {
         where: sql`data @> ${data}`,
         map: formatPayment,
       });
@@ -265,7 +233,7 @@ export default createModule({
     );
 
     bus.register(defs.getPayerPayments, async (id, { pg }) => {
-      const { result } = await queryPayments(pg, {
+      const { result } = await paymentsQuery.execute(pg, {
         where: sql`
           s.payer->>'id' = ${id.value} AND (
             SELECT every(d.published_at IS NOT NULL)
@@ -283,7 +251,7 @@ export default createModule({
     bus.register(
       defs.getPaymentsContainingDebt,
       async ({ debtId, cursor, sort, limit }, { pg }) => {
-        return queryPayments(pg, {
+        return paymentsQuery.execute(pg, {
           where: sql`id IN (SELECT payment_id FROM payment_debt_mappings WHERE debt_id = ${debtId})`,
           limit,
           cursor,
@@ -296,7 +264,7 @@ export default createModule({
     bus.register(
       defs.getDefaultInvoicePaymentForDebt,
       async (debtId, { pg }) => {
-        const { result } = await queryPayments(pg, {
+        const { result } = await paymentsQuery.execute(pg, {
           where: sql`id = (SELECT default_payment FROM debt WHERE id = ${debtId})`,
           map: formatPayment,
         });

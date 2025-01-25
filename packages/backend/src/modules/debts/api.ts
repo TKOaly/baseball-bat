@@ -38,6 +38,7 @@ import * as accountingService from '@/modules/accounting/definitions';
 import { euroValue } from '@bbat/common/build/src/currency';
 import * as EQ from 'fp-ts/Eq';
 import { RouterFactory } from '@/module';
+import { queryDebts } from './query';
 
 const debtCenter = t.type({
   name: t.string,
@@ -123,14 +124,8 @@ const factory: RouterFactory = route => {
   const getDebts = route
     .get('/')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query }) => {
-      const result = await bus.exec(debtService.getDebts, {
-        ...query,
-      });
-
-      return ok(result);
-    });
+    .use(queryDebts.middleware())
+    .handler(queryDebts.handler());
 
   const getDebtsByTag = route
     .get('/by-tag/:name')

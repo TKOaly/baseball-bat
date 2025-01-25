@@ -224,6 +224,7 @@ export const TransactionRegistrationDialog = ({
             columns={[
               {
                 name: 'Amount',
+                key: 'amount',
                 getValue: ({ amount }) => amount,
                 render: (amount: EuroValue, { id }) => (
                   <EuroField
@@ -238,6 +239,7 @@ export const TransactionRegistrationDialog = ({
               },
               {
                 name: 'Payment',
+                key: 'payment',
                 getValue: () => '',
                 render: (_, { id, payment }) => (
                   <ResourceSelectField
@@ -253,6 +255,7 @@ export const TransactionRegistrationDialog = ({
               },
               {
                 name: '',
+                key: 'actions',
                 getValue: () => '',
                 render: (_, { id }) => (
                   <Button

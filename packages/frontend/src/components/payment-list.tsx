@@ -50,7 +50,7 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
       selectable
       onRowClick={row => setLocation(`/admin/payments/${row.id}`)}
       initialSort={{
-        column: 'Created',
+        column: 'created_at',
         direction: 'asc',
       }}
       persist="payments"
@@ -59,6 +59,10 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.paymentNumber,
           name: 'Number',
           key: 'payment_number',
+          filter: {
+            search: true,
+            pushdown: true,
+          },
         },
         {
           getValue: row => row.createdAt,
@@ -78,6 +82,10 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.type,
           name: 'Type',
           key: 'type',
+          filter: {
+            options: ['stripe', 'cash', 'invoice'],
+            pushdown: true,
+          },
           render: type => (
             <span className={twMerge(typeBadgeCva({ type }))}>
               {capitalize(type)}
@@ -88,11 +96,23 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.title,
           name: 'Title',
           key: 'title',
+          width: '1fr',
+          filter: {
+            search: true,
+            pushdown: true,
+          },
         },
         {
           getValue: row => row.payers,
           name: 'Payer',
           key: 'payer_name',
+          filter: {
+            search: true,
+            pushdown: (value, include) => ({
+              payer_id: { [include ? 'eq' : 'neq']: value.id },
+            }),
+          },
+          compareBy: v => (Array.isArray(v) ? v[0] : v),
           render: (value: { id: string; name: string }[]) => {
             if (!value || value.length === 0) return 'No payer';
             else if (value.length > 1) return 'Multiple';
@@ -108,17 +128,44 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.debts?.length ?? 0,
           name: 'Debts',
           key: 'debt_count',
+          filter: {
+            range: {
+              min: 0,
+              max: 20,
+              step: 1,
+            },
+            pushdown: true,
+          },
         },
         {
           getValue: row => {
             if (row.credited) {
-              return 'Credited';
+              return 'credited';
             }
 
             return row.status;
           },
           name: 'Status',
           key: 'status',
+          filter: {
+            options: ['paid', 'credited', 'mispaid', 'unpaid', 'cancelled'],
+            pushdown: (value, include) => {
+              if (value === 'credited') {
+                return { credited: { [include ? 'eq' : 'neq']: 'true' } };
+              } else if (value === 'unpaid') {
+                if (include) {
+                  return {
+                    credited: { [include ? 'neq' : 'eq']: 'true' },
+                    status: { [include ? 'eq' : 'neq']: 'unpaid' },
+                  };
+                }
+              } else {
+                return {
+                  status: { [include ? 'eq' : 'neq']: value.toLowerCase() },
+                };
+              }
+            },
+          },
           render: type => (
             <span className={twMerge(statusBadgeCva({ type }))}>
               {capitalize(type)}
@@ -132,6 +179,14 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => addEuros(row.initialAmount, row.balance),
           render: formatEuro,
           compareBy: amount => amount.value,
+          filter: {
+            pushdown: true,
+            range: {
+              min: -20000,
+              max: 20000,
+              step: 100,
+            },
+          },
         },
         {
           name: 'Total',
@@ -140,6 +195,14 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.initialAmount,
           render: formatEuro,
           compareBy: amount => amount.value,
+          filter: {
+            pushdown: true,
+            range: {
+              min: -20000,
+              max: 20000,
+              step: 100,
+            },
+          },
         },
       ]}
     />

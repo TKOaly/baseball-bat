@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ChevronDown, ChevronRight } from 'react-feather';
+import { ChevronDown, ChevronRight, Loader } from 'react-feather';
 import {
   useInteractions,
   useFloating,
@@ -36,7 +36,7 @@ import {
 import { cva } from 'class-variance-authority';
 
 const itemCva = cva(
-  'text-left hover:bg-gray-50 flex items-center justify-between flex-nowrap',
+  'text-left hover:bg-gray-50 flex items-center flex-nowrap',
   {
     variants: {
       nested: {
@@ -91,6 +91,7 @@ const DropdownComponent = forwardRef<
       flat,
       options,
       searchable,
+      onSearchChange,
       scroll,
       keepOpen,
       value,
@@ -107,10 +108,12 @@ const DropdownComponent = forwardRef<
     const labelsRef = useRef([] as string[]);
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const [isOpen, setOpen] = useState(false);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(props.search ?? '');
     const item = useListItem();
     const isNested = parentId !== null;
     const itemsRef = useRef<Map<number, ItemInfo>>(new Map());
+
+    useEffect(() => setSearch(props.search ?? ''), [props.search, null]);
 
     useEffect(() => {
       if (!tree) return;
@@ -198,7 +201,6 @@ const DropdownComponent = forwardRef<
       );
 
       if (currentNoMatches !== noMatches) {
-        console.log('NOMATCH');
         setNoMatches(currentNoMatches);
       }
     };
@@ -228,7 +230,7 @@ const DropdownComponent = forwardRef<
               open: isOpen,
               focusInside: false,
               flat: !!flat,
-              className: (console.log(props.className), props.className),
+              className: props.className,
             })}
             tabIndex={
               !isNested ? undefined : parent.activeIndex === item.index ? 0 : -1
@@ -264,7 +266,10 @@ const DropdownComponent = forwardRef<
                   {searchable && (
                     <Search
                       value={search}
-                      onInput={evt => setSearch(evt.currentTarget.value)}
+                      onInput={evt => {
+                        setSearch(evt.currentTarget.value);
+                        onSearchChange?.(evt.currentTarget.value);
+                      }}
                     />
                   )}
                   <div
@@ -368,7 +373,6 @@ const Highlight = ({ label, search }: { label: string; search: string }) => {
 
   const result = [];
   let cursor = 0;
-  console.log(matches);
 
   for (const match of matches) {
     match;
@@ -394,6 +398,7 @@ export const DropdownItem = forwardRef<
   HTMLButtonElement,
   DropdownItemProps & React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ disabled, label, aside, value, text, ...props }, forwardedRef) => {
+  const [loading, setLoading] = useState(false);
   const textValue = text ?? label?.toString() ?? '';
 
   const dropdown = useContext(DropdownContext);
@@ -439,10 +444,15 @@ export const DropdownItem = forwardRef<
       })}
       style={{ display: isHidden ? 'none' : 'inline-flex' }}
       {...dropdown.getItemProps({
-        onClick(evt: React.MouseEvent<HTMLButtonElement>) {
-          props.onClick?.(evt);
-          props.onSelect?.(evt);
-          dropdown.onSelect?.(value);
+        async onClick(evt: React.MouseEvent<HTMLButtonElement>) {
+          setLoading(true);
+          try {
+            await Promise.resolve(props.onClick?.(evt));
+            await Promise.resolve(props.onSelect?.(evt));
+            await Promise.resolve(dropdown.onSelect?.(value));
+          } finally {
+            setLoading(false);
+          }
 
           if (tree) {
             tree.events.emit('close');
@@ -453,11 +463,18 @@ export const DropdownItem = forwardRef<
         },
       })}
     >
-      {typeof label === 'string' ? (
-        <Highlight label={label} search={dropdown.search} />
-      ) : (
-        label
-      )}
+      <Loader
+        className={`-ml-1 mr-2 h-5 animate-[spin_3s_linear_infinite] duration-200 ${
+          loading ? 'w-5' : 'w-0'
+        } overflow-hidden`}
+      />
+      <span className="grow-1">
+        {typeof label === 'string' ? (
+          <Highlight label={label} search={dropdown.search} />
+        ) : (
+          label
+        )}
+      </span>
       <span className="ml-2 shrink-0 text-gray-400">{aside}</span>
     </button>
   );
@@ -476,6 +493,7 @@ type Option =
 interface DropdownProps {
   label: string | React.ReactNode;
   searchable?: boolean;
+  search?: string;
   flat?: boolean;
   options?: Option[];
   scroll?: boolean;
@@ -483,6 +501,7 @@ interface DropdownProps {
   value?: any;
   onSelect?: (value: any) => void;
   keepOpen?: boolean;
+  onSearchChange?: (value: string) => void;
 }
 
 export const Dropdown = forwardRef<

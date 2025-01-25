@@ -113,6 +113,11 @@ export const DebtDetails = ({ params }: Props) => {
       text: 'Paid',
       color: 'green',
     };
+  } else if (debt.status === 'mispaid') {
+    statusBadge = {
+      text: 'Paid',
+      color: 'red',
+    };
   }
 
   return (

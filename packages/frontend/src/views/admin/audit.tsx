@@ -308,7 +308,7 @@ export const AuditEvents = () => {
       <h1 className="mb-5 mt-10 text-2xl">Audit Log</h1>
       <InfiniteTable
         endpoint={auditApi.endpoints.getAuditEvents}
-        initialSort={{ column: 'Time', direction: 'desc' }}
+        initialSort={{ column: 'time', direction: 'desc' }}
         columns={[
           {
             name: 'Time',
