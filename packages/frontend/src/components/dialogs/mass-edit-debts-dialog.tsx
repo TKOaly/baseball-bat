@@ -311,10 +311,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                       columns={[
                         {
                           name: 'Name',
+                          key: 'name',
                           getValue: row => row.name,
                         },
                         {
                           name: 'Presence',
+                          key: 'presence',
                           getValue: row => {
                             const count =
                               tagsSummary.find(
@@ -374,6 +376,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                         },
                         {
                           name: '',
+                          key: 'actions',
                           getValue: row => row,
                           render: row => (
                             <div className="flex gap-2">
@@ -506,10 +509,12 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                       columns={[
                         {
                           name: 'Name',
+                          key: 'name',
                           getValue: component => component.name,
                         },
                         {
                           name: 'Presence',
+                          key: 'presence',
                           getValue: component => {
                             const count = componentSummary.find(
                               ([{ id }]) => id === component.id,
@@ -568,6 +573,7 @@ export const MassEditDebtsDialog = ({ onClose, debts }: Props) => {
                         },
                         {
                           name: '',
+                          key: 'actions',
                           getValue: row => row,
                           render: row => (
                             <div className="flex gap-2">

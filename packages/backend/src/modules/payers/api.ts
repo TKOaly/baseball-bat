@@ -14,6 +14,7 @@ import {
 import { validateBody } from '@/validate-middleware';
 import { body } from 'typera-express/parser';
 import { RouterFactory } from '@/module';
+import { payerQuery } from './query';
 
 const factory: RouterFactory = route => {
   const getPayer = route
@@ -70,11 +71,8 @@ const factory: RouterFactory = route => {
   const getPayers = route
     .get('/')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query }) => {
-      const payers = await bus.exec(payerService.getPayerProfiles, query);
-      return ok(payers);
-    });
+    .use(payerQuery.middleware())
+    .handler(payerQuery.handler());
 
   const getPayerByEmail = route
     .get('/by-email/:email')
