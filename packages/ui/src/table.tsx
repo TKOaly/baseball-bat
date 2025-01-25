@@ -1018,7 +1018,7 @@ export const TableInner = <
           </div>
         </div>
       )}
-      <div className="w-full overflow-x-clip rounded-md border bg-white shadow-sm">
+      <div className="w-full rounded-md border bg-white shadow-sm">
         <div
           className="grid min-w-full"
           style={{ gridTemplateColumns: gridTemplateColumns.join(' ') }}
