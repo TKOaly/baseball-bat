@@ -20,6 +20,8 @@ import {
   ChevronUp,
   Circle,
   Code,
+  Eye,
+  EyeOff,
   Loader,
   MinusSquare,
   MoreVertical,
@@ -51,6 +53,7 @@ export type Column<R, Name extends string, Value> = {
   align?: 'right';
   compareBy?: (value: Value) => any;
   width?: string;
+  visibility?: 'always' | 'hidden';
   filter?: {
     search?: boolean;
     options?: Value[];
@@ -67,36 +70,48 @@ export type State = {
   filters: Record<string, FilterState>;
   rows: (string | number)[];
   columnWidths: Record<string, number>;
+  columnVisibility: Record<string, boolean | null>;
 };
 
-type CreateReducerHandlers<State> = Record<
+type CreateReducerHandlers<State, Context> = Record<
   string,
-  (draft: Draft<State>, payload: any) => State | void | undefined
+  (
+    draft: Draft<State>,
+    payload: any,
+    context: Context,
+  ) => State | void | undefined
 >;
 type HandlerPayload<Handler> = Handler extends (
   draft: Draft<State>,
   payload: infer P,
+  context: any,
 ) => State | void | undefined
   ? P
   : Record<string, never>;
-type CreateReducerEvent<Handlers extends CreateReducerHandlers<any>> = {
+type CreateReducerEvent<Handlers extends CreateReducerHandlers<any, any>> = {
   [T in keyof Handlers]: HandlerPayload<Handlers[T]> & { type: T };
 }[keyof Handlers];
 
 interface CreateReducer {
-  <State, Handlers extends CreateReducerHandlers<State>>(
+  <State, Context, Handlers extends CreateReducerHandlers<State, Context>>(
     handlers: Handlers,
   ): (
+    context: Context,
+  ) => (
     state: Immutable<Draft<State>>,
     event: CreateReducerEvent<Handlers>,
   ) => State;
 }
 
-const createReducer: CreateReducer = handlers =>
-  produce((draft, event) => handlers[event.type](draft, event));
+const createReducer: CreateReducer = handlers => props =>
+  produce((draft, event) => handlers[event.type](draft, event, props));
 
 const reducer = createReducer({
-  cycleSort(state: State, event: { column: string }) {
+  cycleSort(
+    state: State,
+    event: { column: string },
+    _: TableViewProps<any, any, any>,
+  ) {
     if (state?.sort?.[0] === event.column) {
       if (state.sort[1] === 'desc') {
         state.sort[1] = 'asc';
@@ -200,6 +215,17 @@ const reducer = createReducer({
 
   resetColumnWidths(state) {
     state.columnWidths = {};
+  },
+
+  cycleColumnVisibility(state, event: { column: string }, props) {
+    const column = props.columns.find(c => c.key === event.column);
+
+    if (!column || column.visibility === 'always') return;
+
+    const current =
+      state.columnVisibility[event.column] ?? column.visibility !== 'hidden';
+
+    state.columnVisibility[column.key] = !current;
   },
 });
 
@@ -506,14 +532,21 @@ const TableRow = <R extends Row>({
             )}
           </button>
         )}
-        {columns.map((column, i) => (
-          <TableCell
-            column={column}
-            row={data}
-            columnIndex={i + (selectable ? 1 : 0)}
-            rowIndex={rowIndex}
-          />
-        ))}
+        {columns
+          .map((column, i) => ({ column, i }))
+          .filter(
+            ({ column }) =>
+              state.columnVisibility[column.key] ??
+              column.visibility !== 'hidden',
+          )
+          .map(({ column, i }) => (
+            <TableCell
+              column={column}
+              row={data}
+              columnIndex={i + (selectable ? 1 : 0)}
+              rowIndex={rowIndex}
+            />
+          ))}
         {actions && (
           <div
             className={`
@@ -666,7 +699,7 @@ const saveState = (key: string, state: State) => {
 
 const TableContext = createContext<{
   state: State;
-  dispatch: Dispatch<Parameters<typeof reducer>[1]>;
+  dispatch: Dispatch<Parameters<ReturnType<typeof reducer>>[1]>;
   props: TableViewProps<any, any, any>;
   getHeaderRef: (index: number) => (el: HTMLElement | null) => void;
   getCellMeasurerRef: (index: number) => (el: HTMLElement | null) => void;
@@ -679,6 +712,7 @@ const TableContext = createContext<{
     rows: [],
     filters: {},
     columnWidths: {},
+    columnVisibility: {},
   },
   props: {
     columns: [],
@@ -708,11 +742,12 @@ const TableProvider = ({
         rows: [],
         filters: {},
         columnWidths: {},
+        columnVisibility: {},
       },
     [props.persist],
   );
 
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer(props), initialState);
   const headersRef = useRef<(HTMLElement | null)[]>([]);
   const observersRef = useRef<(ResizeObserver | null)[]>([]);
   const headerInitialWidthRef = useRef<(number | null)[]>([]);
@@ -923,7 +958,7 @@ const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
 };
 
 const TableHeaders = () => {
-  const { props, setHeaderContainerRef, getHeaderRef } =
+  const { props, state, setHeaderContainerRef, getHeaderRef } =
     useContext(TableContext);
 
   return (
@@ -935,9 +970,16 @@ const TableHeaders = () => {
         {props.selectable && (
           <div className="min-w-[2.5em]" ref={getHeaderRef(0)} />
         )}
-        {props.columns.map((column, i) => (
-          <Header column={column} index={i + (props.selectable ? 1 : 0)} />
-        ))}
+        {props.columns
+          .map((column, i) => ({ column, i }))
+          .filter(
+            ({ column }) =>
+              state.columnVisibility[column.key] ??
+              column.visibility !== 'hidden',
+          )
+          .map(({ column, i }) => (
+            <Header column={column} index={i + (props.selectable ? 1 : 0)} />
+          ))}
         {props.actions && props.actions.length > 0 && (
           <div
             className="min-w-[2.5em]"
@@ -1117,13 +1159,18 @@ export const TableInner = <
     gridTemplateColumns.push('2.5em');
   }
 
-  columns.forEach(({ width, key }) =>
-    gridTemplateColumns.push(
-      state.columnWidths[key]
-        ? `${state.columnWidths[key]}px`
-        : `minmax(min-content, ${width ?? 'auto'})`,
-    ),
-  );
+  columns
+    .filter(
+      column =>
+        state.columnVisibility[column.key] ?? column.visibility !== 'hidden',
+    )
+    .forEach(({ width, key }) =>
+      gridTemplateColumns.push(
+        state.columnWidths[key]
+          ? `${state.columnWidths[key]}px`
+          : `minmax(min-content, ${width ?? 'auto'})`,
+      ),
+    );
 
   if (actions) {
     gridTemplateColumns.push('2.5em');
@@ -1171,6 +1218,38 @@ export const TableInner = <
                 })
               }
             />
+            <Dropdown flat keepOpen label="Columns">
+              {columns.map(column => (
+                <DropdownItem
+                  onSelect={() =>
+                    dispatch({
+                      type: 'cycleColumnVisibility',
+                      column: column.key,
+                    })
+                  }
+                  label={
+                    <div className="flex w-full items-center justify-between">
+                      {column.name}
+                      {state.columnVisibility[column.key] ??
+                      column.visibility !== 'hidden' ? (
+                        <Eye className="size-4 text-gray-600" />
+                      ) : (
+                        <EyeOff className="size-4 text-gray-600" />
+                      )}
+                    </div>
+                  }
+                />
+              ))}
+              <div className="-mx-1 my-1 h-[1px] bg-gray-200" />
+              <DropdownItem
+                label="Reset widths"
+                onSelect={() =>
+                  dispatch({
+                    type: 'resetColumnWidths',
+                  })
+                }
+              />
+            </Dropdown>
             {columns.some(col => col.filter) && (
               <Dropdown flat keepOpen label="Filter">
                 {columns
@@ -1208,11 +1287,6 @@ export const TableInner = <
                             dispatch({
                               type: 'clearSelection',
                             }),
-                        },
-                        {
-                          text: 'Reset columns',
-                          onSelect: () =>
-                            dispatch({ type: 'resetColumnWidths' }),
                         },
                         {
                           text: 'Invert selection',
