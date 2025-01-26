@@ -251,64 +251,66 @@ const DropdownComponent = forwardRef<
               />
             )}
           </button>
-          <FloatingList elementsRef={elementsRef} labelsRef={labelsRef}>
-            <FloatingPortal>
-              <FloatingFocusManager modal={false} context={context}>
-                <div
-                  ref={refs.setFloating}
-                  style={{
-                    ...floatingStyles,
-                    display: isOpen ? floatingStyles.display : 'none',
-                  }}
-                  className="relative z-50 min-w-[13em] overflow-hidden rounded-md border bg-white shadow-sm"
-                  {...getFloatingProps()}
-                >
-                  {searchable && (
-                    <Search
-                      value={search}
-                      onInput={evt => {
-                        setSearch(evt.currentTarget.value);
-                        onSearchChange?.(evt.currentTarget.value);
-                      }}
-                    />
-                  )}
+          {isOpen && (
+            <FloatingList elementsRef={elementsRef} labelsRef={labelsRef}>
+              <FloatingPortal>
+                <FloatingFocusManager modal={false} context={context}>
                   <div
-                    className={`flex w-full flex-col items-stretch p-1 text-sm ${scroll && 'max-h-[15em] overflow-y-auto'}`}
+                    ref={refs.setFloating}
+                    style={{
+                      ...floatingStyles,
+                      display: isOpen ? floatingStyles.display : 'none',
+                    }}
+                    className="relative z-50 min-w-[13em] overflow-hidden rounded-md border bg-white shadow-sm"
+                    {...getFloatingProps()}
                   >
-                    {children}
-                    {options?.map(option => {
-                      if ('divider' in option && option.divider) {
-                        return <div />;
-                      }
-
-                      if (
-                        typeof option.text === 'object' &&
-                        option.text !== null &&
-                        'type' in option.text &&
-                        option.text.type === Dropdown
-                      ) {
-                        return option.text;
-                      }
-
-                      return (
-                        <DropdownItem
-                          value={option.value}
-                          label={option.text}
-                          aside={option.label}
-                          onSelect={option.onSelect}
-                        />
-                      );
-                    })}
-                    {noMatches && (
-                      <div className="mx-2 py-1 text-sm text-gray-500">
-                        No matches!
-                      </div>
+                    {searchable && (
+                      <Search
+                        value={search}
+                        onInput={evt => {
+                          setSearch(evt.currentTarget.value);
+                          onSearchChange?.(evt.currentTarget.value);
+                        }}
+                      />
                     )}
+                    <div
+                      className={`flex w-full flex-col items-stretch p-1 text-sm ${scroll && 'max-h-[15em] overflow-y-auto'}`}
+                    >
+                      {children}
+                      {options?.map(option => {
+                        if ('divider' in option && option.divider) {
+                          return <div />;
+                        }
+
+                        if (
+                          typeof option.text === 'object' &&
+                          option.text !== null &&
+                          'type' in option.text &&
+                          option.text.type === Dropdown
+                        ) {
+                          return option.text;
+                        }
+
+                        return (
+                          <DropdownItem
+                            value={option.value}
+                            label={option.text}
+                            aside={option.label}
+                            onSelect={option.onSelect}
+                          />
+                        );
+                      })}
+                      {noMatches && (
+                        <div className="mx-2 py-1 text-sm text-gray-500">
+                          No matches!
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </FloatingFocusManager>
-            </FloatingPortal>
-          </FloatingList>
+                </FloatingFocusManager>
+              </FloatingPortal>
+            </FloatingList>
+          )}
         </DropdownContext.Provider>
       </FloatingNode>
     );

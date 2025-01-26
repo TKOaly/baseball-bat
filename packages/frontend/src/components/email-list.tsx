@@ -25,7 +25,7 @@ export const EmailList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           name: 'Recipient',
           key: 'recipient',
           getValue: 'recipient',
-          width: 'minmax(auto, 17.5em)',
+          width: '17.5em',
           filter: {
             search: true,
             pushdown: true,

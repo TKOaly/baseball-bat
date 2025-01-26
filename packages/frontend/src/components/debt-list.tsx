@@ -59,7 +59,7 @@ export const DebtList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
         key: 'name',
         name: 'Name',
         getValue: 'name',
-        width: 'minmax(min-content, 1fr)',
+        width: '1fr',
         filter: {
           search: true,
           pushdown: true,

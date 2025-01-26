@@ -5,6 +5,7 @@ import { Draft, Immutable, produce } from 'immer';
 import {
   Dispatch,
   PropsWithChildren,
+  ReactNode,
   createContext,
   useCallback,
   useContext,
@@ -28,17 +29,6 @@ import {
 import { pipe, reduce, map, debounce } from 'remeda';
 import { Dropdown, DropdownItem } from './dropdown';
 import { FilledDisc } from './filled-disc';
-
-const getRowColumnValue = <R extends Record<string, V>, V>(
-  column: Column<R, any, V>,
-  row: R,
-): V => {
-  if (typeof column.getValue === 'function') {
-    return column.getValue(row);
-  } else {
-    return row[column.getValue];
-  }
-};
 
 export type Row<C = any> = { key: string | number; children?: Array<C> };
 
@@ -400,6 +390,56 @@ const FilterDropdownItem = ({ column, rows }: FilterDropdownItemProps) => {
   );
 };
 
+type TableCellProps<Row, Value> = {
+  column: Column<Row, any, Value>;
+  columnIndex: number;
+  row: Row;
+  rowIndex: number;
+};
+
+const TableCell = <R extends Row, Value extends ReactNode>(
+  props: TableCellProps<R, Value>,
+) => {
+  const { props: tableProps, getCellMeasurerRef } = useContext(TableContext);
+  const { onRowClick } = tableProps;
+  const { column, row } = props;
+
+  const value = getColumnValue(column, row);
+  let content = value;
+
+  if (column.render) {
+    content = column.render(value, row);
+  }
+
+  return (
+    <div
+      key={column.key}
+      role="cell"
+      data-row={props.rowIndex}
+      data-column={column.name}
+      data-value={`${value}`}
+      ref={
+        props.rowIndex === 0 ? getCellMeasurerRef(props.columnIndex) : undefined
+      }
+      className={`
+          relative
+          flex
+          min-w-0
+          items-center
+          overflow-hidden
+          whitespace-nowrap
+          border-b-gray-100
+          px-3
+          py-2
+          ${onRowClick && 'cursor-pointer'}
+          ${column.align === 'right' && 'justify-end'}
+        `}
+    >
+      {content}
+    </div>
+  );
+};
+
 type TableRowProps<R extends Row> = {
   data: R;
   rowIndex: number;
@@ -428,15 +468,12 @@ const TableRow = <R extends Row>({
       <div
         role="row"
         data-row={rowIndex}
-        className="row contents"
+        className="row contents divide-x [&>*]:border-b"
         onClick={() => onRowClick?.(data)}
       >
         {selectable && (
           <button
-            className={`
-              relative flex items-center justify-center border-b-gray-100 px-3 py-2
-              ${rowIndex < rowCount - 1 && 'border-b'}
-            `}
+            className="relative flex items-center justify-center px-3 py-2"
             onClick={evt => {
               evt.stopPropagation();
               dispatch({
@@ -458,42 +495,14 @@ const TableRow = <R extends Row>({
             )}
           </button>
         )}
-        {columns.map((column, columnIndex) => {
-          const value = getRowColumnValue(column, data);
-          let content = value;
-
-          if (column.render) {
-            content = column.render(value, data);
-          }
-
-          return (
-            <div
-              key={column.key}
-              role="cell"
-              data-row={rowIndex}
-              data-column={column.name}
-              data-value={`${value}`}
-              className={`
-                  relative
-                  flex
-                  min-w-0
-                  items-center
-                  overflow-hidden
-                  whitespace-nowrap
-                  ${columnIndex > 0 || selectable ? 'border-l' : ''}
-                  border-b-gray-100
-                  px-3
-                  py-2
-                  ${rowIndex < rowCount - 1 && 'border-b'}
-                  ${(columnIndex > 0 || selectable) && 'border-l-gray-100'}
-                  ${onRowClick && 'cursor-pointer'}
-                  ${column.align === 'right' && 'justify-end'}
-                `}
-            >
-              {content}
-            </div>
-          );
-        })}
+        {columns.map((column, columnIndex) => (
+          <TableCell
+            column={column}
+            row={data}
+            columnIndex={columnIndex}
+            rowIndex={rowIndex}
+          />
+        ))}
         {actions && (
           <div
             className={`
@@ -647,40 +656,121 @@ const saveState = (key: string, state: State) => {
 const TableContext = createContext<{
   state: State;
   dispatch: Dispatch<Parameters<typeof reducer>[1]>;
+  props: TableViewProps<any, any, any>;
+  getHeaderRef: (index: number) => (el: HTMLElement | null) => void;
+  getCellMeasurerRef: (index: number) => (el: HTMLElement | null) => void;
+  setHeaderContainerRef: (el: HTMLElement | null) => void;
+  setBodyContainerRef: (el: HTMLElement | null) => void;
 }>({
   state: {
     sort: null,
     rows: [],
     filters: {},
   },
+  props: {
+    columns: [],
+    rows: [],
+  },
   dispatch: () => {},
+  getHeaderRef: () => () => {},
+  getCellMeasurerRef: () => () => {},
+  setHeaderContainerRef: () => {},
+  setBodyContainerRef: () => {},
 });
 
 const TableProvider = ({
   children,
-  initialSort,
-  persist,
-}: PropsWithChildren<
-  Pick<TableViewProps<any, any, any>, 'persist' | 'initialSort'>
->) => {
+  ...props
+}: PropsWithChildren<TableViewProps<any, any, any>>) => {
   const initialState = useMemo(
     () =>
-      (persist ? loadInitialState(persist) : undefined) ?? {
-        sort: initialSort
-          ? ([initialSort.column, initialSort.direction] as State['sort'])
+      (props.persist ? loadInitialState(props.persist) : undefined) ?? {
+        sort: props.initialSort
+          ? ([
+              props.initialSort.column,
+              props.initialSort.direction,
+            ] as State['sort'])
           : null,
         rows: [],
         filters: {},
       },
-    [persist],
+    [props.persist],
   );
 
   const [state, dispatch] = useReducer(reducer, initialState);
+  const headersRef = useRef<(HTMLElement | null)[]>([]);
+  const observersRef = useRef<(ResizeObserver | null)[]>([]);
+  const headerInitialWidthRef = useRef<(number | null)[]>([]);
 
-  console.log('State', state);
+  const getHeaderRef = useCallback(
+    (index: number) => (el: HTMLElement | null) => {
+      console.log('HEADER:', index, el);
+      headersRef.current[index] = el;
+      headerInitialWidthRef.current[index] = el?.clientWidth ?? null;
+    },
+    [headersRef],
+  );
+
+  const getCellMeasurerRef = useCallback(
+    (index: number) => (el: HTMLElement | null) => {
+      console.log(`getCellMeasurerRef: ${index}`, el);
+      const oldObserver = observersRef.current[index];
+
+      if (oldObserver) {
+        oldObserver.disconnect();
+      }
+
+      if (el) {
+        const observer = (observersRef.current[index] = new ResizeObserver(
+          ([entry]) => {
+            const headerEl = headersRef.current[index];
+
+            console.log('Observed!', index, entry, el, headersRef.current);
+
+            if (headerEl) {
+              headerEl.style.width = `${entry.borderBoxSize[0].inlineSize}px`;
+            }
+          },
+        ));
+
+        if (headerInitialWidthRef.current[index] && !el.style.minWidth) {
+          el.style.minWidth = `${headerInitialWidthRef.current[index]}px`;
+        }
+
+        observer.observe(el);
+      }
+    },
+    [headersRef, observersRef],
+  );
+
+  const headerContainerRef = useRef<HTMLElement>();
+
+  const setBodyContainerRef = useCallback(
+    (el: HTMLElement | null) => {
+      if (el) {
+        el.addEventListener('scroll', () => {
+          if (headerContainerRef.current) {
+            headerContainerRef.current.scrollLeft = el.scrollLeft;
+          }
+        });
+      }
+    },
+    [headerContainerRef],
+  );
 
   return (
-    <TableContext.Provider value={{ state, dispatch }}>
+    <TableContext.Provider
+      value={{
+        state,
+        dispatch,
+        props,
+        getCellMeasurerRef,
+        getHeaderRef,
+        setHeaderContainerRef: el =>
+          (headerContainerRef.current = el ?? undefined),
+        setBodyContainerRef,
+      }}
+    >
       {children}
     </TableContext.Provider>
   );
@@ -693,10 +783,71 @@ export const Table = <
 >(
   props: TableViewProps<R, ColumnNames, ColumnTypeMap>,
 ) => (
-  <TableProvider persist={props.persist} initialSort={props.initialSort}>
+  <TableProvider {...props}>
     <TableInner {...props} />
   </TableProvider>
 );
+
+type HeaderProps<Row, Value> = {
+  column: Column<Row, any, Value>;
+  index: number;
+};
+
+const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
+  const { state, dispatch, getHeaderRef } = useContext(TableContext);
+
+  const sort =
+    state.sort !== null && state.sort[0] === column.key ? state.sort[1] : null;
+
+  return (
+    <div
+      role="columnheader"
+      key={column.key}
+      ref={getHeaderRef(index)}
+      onClick={() =>
+        dispatch({
+          type: 'cycleSort',
+          column: column.key,
+        })
+      }
+      className={`
+        flex cursor-pointer select-none items-center justify-between
+        whitespace-nowrap
+        px-3
+        py-2 text-sm
+        font-bold
+        text-gray-700
+      `}
+    >
+      {column.name}
+      <div className="size-5">
+        {sort === 'asc' && <ChevronUp className="h-5 text-gray-400" />}
+        {sort === 'desc' && <ChevronDown className="h-5 text-gray-400" />}
+      </div>
+    </div>
+  );
+};
+
+const TableHeaders = () => {
+  const { props, setHeaderContainerRef } = useContext(TableContext);
+
+  return (
+    <div
+      className="sticky top-0 z-10 overflow-hidden rounded-t-md border-b bg-gray-50"
+      ref={setHeaderContainerRef}
+    >
+      <div className="flex w-max min-w-full divide-x">
+        {props.selectable && <div className="min-w-[2.5em]" />}
+        {props.columns.map((column, i) => (
+          <Header column={column} index={i} />
+        ))}
+        {props.actions && props.actions.length > 0 && (
+          <div className="min-w-[2.5em]" />
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const TableInner = <
   R extends Row,
@@ -720,7 +871,7 @@ export const TableInner = <
   refreshing,
   persist,
 }: TableViewProps<R, ColumnNames, ColumnTypeMap>) => {
-  const { state, dispatch } = useContext(TableContext);
+  const { state, dispatch, setBodyContainerRef } = useContext(TableContext);
 
   const sortedRowsRef = useRef<R[]>([]);
 
@@ -805,17 +956,6 @@ export const TableInner = <
     return (sortedRowsRef.current = result);
   }, [rows, state.sort, columns, state.filters]);
 
-  // useEffect(() => {
-  //   if (!more) {
-  //     const callbacks = completeRowsCallbacks.current;
-  //     completeRowsCallbacks.current = [];
-
-  //     for (const action of callbacks) {
-  //       dispatch(action);
-  //     }
-  //   }
-  // }, [more, completeRowsCallbacks, dispatch]);
-
   const scrollDetectorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -839,19 +979,6 @@ export const TableInner = <
 
     return () => observer.unobserve(el);
   }, [scrollDetectorRef, fetchMore, more]);
-
-  // const toggleRowExpanded = (row: Row['key']) => {
-  //   const newSet = [...expandedRows];
-  //   const index = expandedRows.indexOf(row);
-
-  //   if (index > -1) {
-  //     newSet.splice(index, 1);
-  //   } else {
-  //     newSet.push(row);
-  //   }
-
-  //   setExpandedRows(newSet);
-  // };
 
   const availableActions = useMemo(() => {
     if (!actions || actions.length === 0) return [];
@@ -877,24 +1004,15 @@ export const TableInner = <
     return matches.flatMap((matches, i) => (matches ? [actions[i]] : []));
   }, [state.rows, actions]);
 
-  const handleColumnHeaderClick = (column: Column<any, any, any>) => {
-    if (column.sortable === false) {
-      return;
-    }
-
-    dispatch({
-      type: 'cycleSort',
-      column: column.key,
-    });
-  };
-
   const gridTemplateColumns = [];
 
   if (selectable) {
     gridTemplateColumns.push('2.5em');
   }
 
-  columns.forEach(_ => gridTemplateColumns.push('auto'));
+  columns.forEach(({ width }) =>
+    gridTemplateColumns.push(`minmax(min-content, ${width ?? 'auto'})`),
+  );
 
   if (actions) {
     gridTemplateColumns.push('2.5em');
@@ -1019,47 +1137,12 @@ export const TableInner = <
         </div>
       )}
       <div className="w-full rounded-md border bg-white shadow-sm">
+        <TableHeaders />
         <div
-          className="grid min-w-full"
+          className="grid min-w-full overflow-x-auto"
+          ref={setBodyContainerRef}
           style={{ gridTemplateColumns: gridTemplateColumns.join(' ') }}
         >
-          {selectable && (
-            <div className="sticky top-0 z-10 border-b bg-gray-50" />
-          )}
-          {columns.map((column, i) => (
-            <div
-              role="columnheader"
-              key={column.key}
-              onClick={() => handleColumnHeaderClick(column)}
-              className={`
-                sticky
-                top-0 z-10 flex cursor-pointer items-center justify-between whitespace-nowrap
-                border-b ${(i > 0 || selectable) && 'border-l'} select-none
-                bg-gray-50
-                px-3
-                py-2 text-sm
-                font-bold
-                text-gray-700
-              `}
-            >
-              {column.name}
-              <div className="size-5">
-                {state.sort !== null &&
-                  state.sort[0] === column.key &&
-                  state.sort[1] === 'asc' && (
-                    <ChevronUp className="h-5 text-gray-400" />
-                  )}
-                {state.sort !== null &&
-                  state.sort[0] === column.key &&
-                  state.sort[1] === 'desc' && (
-                    <ChevronDown className="h-5 text-gray-400" />
-                  )}
-              </div>
-            </div>
-          ))}
-          {actions && (
-            <div className="sticky top-0 z-10 border-b border-l bg-gray-50" />
-          )}
           {sortedRows.flatMap((row, i) => (
             <TableRow
               data={row}
