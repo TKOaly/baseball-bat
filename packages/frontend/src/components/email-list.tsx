@@ -25,11 +25,21 @@ export const EmailList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           name: 'Recipient',
           key: 'recipient',
           getValue: 'recipient',
+          width: '17.5em',
+          filter: {
+            search: true,
+            pushdown: true,
+          },
         },
         {
           name: 'Subject',
           key: 'subject',
           getValue: 'subject',
+          width: '1fr',
+          filter: {
+            search: true,
+            pushdown: true,
+          },
         },
         {
           name: 'Created',
@@ -46,13 +56,24 @@ export const EmailList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
         {
           name: 'Status',
           key: 'draft',
+          filter: {
+            options: ['draft', 'pending'],
+            pushdown: (value, include) => {
+              const isTrue = (value === 'pending') != include;
+
+              return {
+                draft: { [isTrue ? 'eq' : 'neq']: 'true' },
+              };
+            },
+          },
           getValue: row => {
             if (row.draft) {
-              return 'Draft';
+              return 'draft';
             }
 
-            return 'Pending';
+            return 'pending';
           },
+          render: value => value[0].toUpperCase() + value.substring(1),
         },
       ]}
       selectable={true}

@@ -41,15 +41,27 @@ export const DebtCentersListing = () => {
         rows={rows}
         onRowClick={item => setLocation(`/admin/debt-centers/${item.id}`)}
         columns={[
-          { name: 'Identifier', getValue: 'humanId' },
-          { name: 'Title', getValue: 'name' },
+          {
+            name: 'Identifier',
+            key: 'id',
+            getValue: 'humanId',
+            filter: { search: true },
+          },
+          {
+            name: 'Title',
+            key: 'title',
+            getValue: 'name',
+            filter: { search: true },
+          },
           {
             name: 'Created',
+            key: 'created',
             getValue: 'createdAt',
             render: value => format(parseISO(value), 'dd.MM.yyyy'),
           },
           {
             name: 'Paid percentage',
+            key: 'paid_percentage',
             getValue: row =>
               !row.debtCount ? 0 : (row.paidCount ?? 0) / row.debtCount,
             render: value => (
@@ -64,10 +76,21 @@ export const DebtCentersListing = () => {
               </div>
             ),
           },
-          { name: 'Paid', getValue: 'paidCount', align: 'right' },
-          { name: 'Debts Count', getValue: 'debtCount', align: 'right' },
+          {
+            name: 'Paid',
+            key: 'paid_count',
+            getValue: 'paidCount',
+            align: 'right',
+          },
+          {
+            name: 'Debts Count',
+            key: 'debt_count',
+            getValue: 'debtCount',
+            align: 'right',
+          },
           {
             name: 'Total value',
+            key: 'total_value',
             getValue: row => row.total?.value ?? 0,
             align: 'right',
             render: value => formatEuro(cents(value)),

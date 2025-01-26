@@ -1,33 +1,29 @@
-import { Parser, router } from 'typera-express';
+import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import * as emailService from '@/modules/email/definitions';
 import auth from '@/auth-middleware';
 import { validateBody } from '@/validate-middleware';
 import * as t from 'io-ts';
 import { RouterFactory } from '@/module';
-import { paginationQuery } from '@bbat/common/types';
+import { emailQuery } from './query';
+import { sql } from '@/db/template';
 
 const factory: RouterFactory = route => {
   const getEmails = route
     .get('/')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ query, bus }) => {
-      const emails = await bus.exec(emailService.getEmails, query);
-      return ok(emails);
-    });
+    .use(emailQuery.middleware())
+    .handler(emailQuery.handler());
 
   const getEmailsByDebt = route
     .get('/by-debt/:debt')
     .use(auth())
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query, ...ctx }) => {
-      const emails = await bus.exec(emailService.getEmailsByDebt, {
-        debtId: ctx.routeParams.debt,
-        ...query,
-      });
-      return ok(emails);
-    });
+    .use(emailQuery.middleware())
+    .handler(
+      emailQuery.handler(({ routeParams }) => ({
+        where: sql`id IN (SELECT email_id FROM email_debt_mapping WHERE debt_id = ${routeParams.debt})`,
+      })),
+    );
 
   const getEmail = route
     .get('/:id')

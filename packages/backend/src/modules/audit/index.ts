@@ -5,66 +5,7 @@ import routes from './api';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Task';
 import { pipe } from 'fp-ts/function';
-import { createPaginatedQuery } from '@/db/pagination';
-import { AuditEvent, auditEvent, internalIdentity } from '@bbat/common/types';
-import { isLeft } from 'fp-ts/lib/Either';
-
-const query = createPaginatedQuery<AuditLogDb>(
-  sql`
-  SELECT
-    e.*,
-    (SELECT ARRAY_AGG(TO_JSON(l.*)) FROM audit_log_link l WHERE l.entry_id = e.entry_id) AS links
-  FROM audit_log e
-`,
-  'entry_id',
-);
-
-type AuditLogDb = {
-  entry_id: string;
-  time: Date;
-  type: string;
-  subject: string | null;
-  details: unknown;
-  object_type: string;
-  object_id: string;
-  links: {
-    type: string;
-    label: string;
-    target_type: string;
-    target_id: string;
-  }[];
-};
-
-const formatAuditLogEntry = (db: AuditLogDb): AuditEvent => {
-  const mapped = {
-    entryId: db.entry_id,
-    time: db.time,
-    action: db.type,
-    subject: db.subject ? internalIdentity(db.subject) : null,
-    /*object: {
-      type: db.object_type,
-      id: db.object_id,
-    },*/
-    details: db.details,
-    links: db.links.map(link => ({
-      type: link.type,
-      label: link.label,
-      target: {
-        type: link.target_type,
-        id: link.target_id,
-      },
-    })),
-  };
-
-  const result = auditEvent.decode(mapped);
-
-  if (isLeft(result)) {
-    console.log(mapped);
-    throw new Error('Failed to decode auditLogEntry from DB response!');
-  }
-
-  return result.right;
-};
+import { auditQuery } from './query';
 
 export default createModule({
   name: 'audit',
@@ -101,10 +42,9 @@ export default createModule({
       },
 
       async getLogEvents({ sort, ...options }, { pg }) {
-        return query(pg, {
+        return auditQuery.execute(pg, {
           ...options,
           order: sort ? [[sort.column, sort.dir]] : undefined,
-          map: formatAuditLogEntry,
         });
       },
     });

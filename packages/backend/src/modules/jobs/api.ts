@@ -1,18 +1,16 @@
-import { Parser, router } from 'typera-express';
+import { router } from 'typera-express';
 import { notFound, ok } from 'typera-express/response';
 import auth from '@/auth-middleware';
 import * as defs from './definitions';
 import { RouterFactory } from '@/module';
-import { paginationQuery } from '@bbat/common/types';
+import { jobQuery } from './query';
 
 const factory: RouterFactory = route => {
   const getJobs = route
+    .use(auth())
     .get('/list')
-    .use(Parser.query(paginationQuery))
-    .handler(async ({ bus, query }) => {
-      const result = await bus.exec(defs.list, query);
-      return ok(result);
-    });
+    .use(jobQuery.middleware())
+    .handler(jobQuery.handler());
 
   const getJob = route
     .get('/:id')

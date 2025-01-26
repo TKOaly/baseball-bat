@@ -131,7 +131,9 @@ export class Table {
     const cell = this.page
       .getByRole('cell')
       .and(
-        this.page.locator(`[data-column="${column}"][data-value="${value}"]`),
+        this.page
+          .locator(`[data-column="${column}"]`)
+          .filter({ hasText: value }),
       );
 
     const row = this.root.getByRole('row').filter({ has: cell });

@@ -47,6 +47,7 @@ export const BankAccount = ({ iban }: { iban: string }) => {
       <Section title="Statements">
         <SectionContent>
           <Button
+            className="mb-4"
             onClick={() => setLocation('/admin/banking/import-statement')}
           >
             Import bank statement
@@ -57,31 +58,45 @@ export const BankAccount = ({ iban }: { iban: string }) => {
             onRowClick={row =>
               setLocation(`/admin/banking/statements/${row.id}`)
             }
+            initialSort={{
+              column: 'end_date',
+              direction: 'asc',
+            }}
             columns={[
               {
                 name: 'Start Date',
+                key: 'start_date',
+                width: '20ch',
                 getValue: stmt => new Date(stmt.openingBalance.date),
                 render: date => format(date, 'dd.MM.yyyy'),
               },
               {
                 name: 'End Date',
+                key: 'end_date',
+                width: '20ch',
                 getValue: stmt => new Date(stmt.closingBalance.date),
                 render: date => format(date, 'dd.MM.yyyy'),
               },
               {
                 name: 'Opening Balance',
+                key: 'opening_balance',
+                width: '20ch',
                 getValue: stmt => stmt.openingBalance.amount.value,
                 render: amount => formatEuro(cents(amount)),
               },
               {
                 name: 'Closing Balance',
+                key: 'closing_balance',
+                width: '20ch',
                 getValue: stmt => stmt.closingBalance.amount.value,
                 render: amount => formatEuro(cents(amount)),
               },
               {
                 name: 'Generated',
+                key: 'generated',
                 getValue: stmt => new Date(stmt.generatedAt),
                 render: date => format(date, 'dd.MM.yyyy'),
+                width: '1fr',
               },
             ]}
           />
@@ -90,6 +105,10 @@ export const BankAccount = ({ iban }: { iban: string }) => {
       <Section title="Transactions">
         <SectionContent>
           <TransactionList
+            initialSort={{
+              column: 'value_time',
+              direction: 'desc',
+            }}
             endpoint={transactionsApi.endpoints.getAccountTransactions}
             query={{ iban }}
           />

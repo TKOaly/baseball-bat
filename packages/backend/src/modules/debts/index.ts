@@ -167,15 +167,15 @@ export default createModule({
       async getDebt(id, { pg }) {
         const {
           result: [debt],
-        } = await queryDebts(pg, {
+        } = await queryDebts.execute(pg, {
           where: sql`id = ${id}`,
         });
 
-        return debt ? formatDebt(debt) : null;
+        return debt;
       },
 
       async getDebtsByCenter({ centerId, cursor, sort, limit }, { pg }) {
-        return queryDebts(pg, {
+        return queryDebts.execute(pg, {
           where: sql`debt_center_id = ${centerId}`,
           cursor,
           limit,
@@ -449,7 +449,7 @@ export default createModule({
         { id, includeDrafts, includeCredited, cursor, sort, limit },
         { pg },
       ) {
-        return queryDebts(pg, {
+        return queryDebts.execute(pg, {
           where: sql`
             payer_id = ${id.value}
               AND (${includeDrafts} OR published_at IS NOT NULL)
@@ -465,7 +465,7 @@ export default createModule({
       },
 
       async getDebtsByPayerMemberId({ memberId, cursor, sort, limit }, { pg }) {
-        return queryDebts(pg, {
+        return queryDebts.execute(pg, {
           where: sql`
             payer_id IN (SELECT id FROM payer_profiles WHERE tkoaly_user_id = ${memberId})
               AND published_at IS NOT NULL
@@ -1179,15 +1179,15 @@ export default createModule({
     );
 
     bus.register(defs.getDebtsByTag, async (tag, { pg }) => {
-      const { result } = await queryDebts(pg, {
+      const { result } = await queryDebts.execute(pg, {
         where: sql`id = ANY (SELECT dt.debt_id FROM debt_tags dt WHERE dt.name = ${tag})`,
       });
 
-      return result.map(formatDebt);
+      return result;
     });
 
     bus.register(defs.getDebts, async ({ cursor, sort, limit }, { pg }) => {
-      return queryDebts(pg, {
+      return queryDebts.execute(pg, {
         limit,
         cursor,
         order: sort
@@ -1852,7 +1852,7 @@ export default createModule({
     });
 
     async function getOverdueDebts(pg: Connection) {
-      const { result } = await queryDebts(pg, {
+      const { result } = await queryDebts.execute(pg, {
         where: sql`
           due_date < NOW() AND
           credited_at IS NULL AND
@@ -1861,7 +1861,7 @@ export default createModule({
         `,
       });
 
-      return result.map(formatDebt);
+      return result;
 
       /*const debts = await pg.any<DbDebt>(sql`
         SELECT
@@ -1890,7 +1890,7 @@ export default createModule({
     }
 
     async function getDebtsPendingReminder(pg: Connection) {
-      const { result } = await queryDebts(pg, {
+      const { result } = await queryDebts.execute(pg, {
         where: sql`
           due_date < NOW()
           AND published_at IS NOT NULL
@@ -1900,35 +1900,7 @@ export default createModule({
         `,
       });
 
-      return result.map(formatDebt);
-
-      const debts = await pg.many<DbDebt>(sql`
-        SELECT
-          debt.*,
-          TO_JSON(payer_profiles.*) AS payer,
-          TO_JSON(debt_center.*) AS debt_center,
-          CASE WHEN EVERY(debt_statuses.is_paid) THEN 'paid' ELSE 'unpaid' END AS status,
-          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
-          (
-            SELECT SUM(dc.amount) AS total
-            FROM debt_component_mapping dcm
-            JOIN debt_component dc ON dc.id = dcm.debt_component_id
-            WHERE dcm.debt_id = debt.id
-          ) AS total
-        FROM debt
-        JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-        JOIN debt_center ON debt_center.id = debt.debt_center_id
-        JOIN debt_statuses ON debt_statuses.id = debt.id
-        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-        WHERE debt.due_date < NOW()
-          AND debt.published_at IS NOT NULL
-          AND (debt.last_reminded IS NULL OR debt.last_reminded < NOW() - INTERVAL '1 month')
-          AND NOT debt_statuses.is_paid
-        GROUP BY debt.id, payer_profiles.*, debt_center.*
-      `);
-
-      return debts.map(formatDebt);
+      return result;
     }
 
     async function setDebtLastReminded(
@@ -2102,7 +2074,7 @@ export default createModule({
     );
 
     bus.register(defs.getDebtsByEmail, async (emailId, { pg }) => {
-      const { result: debts } = await queryDebts(pg, {
+      const { result: debts } = await queryDebts.execute(pg, {
         where: sql`id IN (SELECT debt_id FROM email_debt_mapping WHERE email_id = ${emailId})`,
         map: formatDebt,
       });

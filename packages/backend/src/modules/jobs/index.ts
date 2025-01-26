@@ -6,40 +6,14 @@ import createSubscriber from 'pg-listen';
 import { ExecutionContext } from '@/bus';
 import { BusContext } from '@/app';
 import { createModule } from '@/module';
-import { Job, DbJob, internalIdentity } from '@bbat/common/types';
-import { createPaginatedQuery } from '@/db/pagination';
+import { Job } from '@bbat/common/types';
 import { shutdown } from '@/orchestrator';
 import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
 import { Session } from '@/middleware/session';
 import { partition } from 'remeda';
 import { Logger } from 'winston';
-
-const formatJob = (db: DbJob): Job => ({
-  id: db.id,
-  type: db.type,
-  title: db.title ?? null,
-  state: db.state,
-  createdAt: db.created_at,
-  startedAt: db.started_at ?? null,
-  finishedAt: db.finished_at ?? null,
-  data: db.data,
-  result: db.result,
-  delayedUntil: db.delayed_until ?? null,
-  retries: db.retries,
-  maxRetries: db.max_retries,
-  retryDelay: db.retry_delay,
-  limitClass: db.limit_class ?? db.type,
-  concurrencyLimit: db.concurrency_limit ?? null,
-  ratelimit: db.ratelimit ?? null,
-  ratelimitPeriod: db.ratelimit_period ?? null,
-  rate: db.rate,
-  concurrency: db.concurrency,
-  nextPoll: db.next_poll,
-  progress: db.progress,
-  triggeredBy: db.triggered_by ? internalIdentity(db.triggered_by) : null,
-  lockId: db.lock_id,
-});
+import { jobQuery } from './query';
 
 const formatMicros = (ms: bigint) => {
   if (ms > 60_000_000_000) {
@@ -139,25 +113,6 @@ export default createModule({
       promise.finally(() => inFlightPeriodicPolls.delete(promise));
       inFlightPeriodicPolls.add(promise);
     };
-
-    const jobQuery = sql`
-      SELECT * FROM (SELECT
-        *,
-        COALESCE(limit_class, type) limit_class,
-        COUNT(*) FILTER (WHERE state = 'processing' OR state = 'scheduled') OVER (PARTITION BY COALESCE(limit_class, type)) concurrency,
-        COUNT(*) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) rate,
-        (CASE
-          WHEN ratelimit IS NULL THEN NULL
-          ELSE MIN(started_at) FILTER (WHERE started_at > now() - make_interval(secs => jobs.ratelimit_period)) OVER (PARTITION BY COALESCE(limit_class, type)) + make_interval(secs => jobs.ratelimit_period)
-        END) next_poll,
-        (CASE
-          WHEN state = 'succeeded' THEN 1
-          WHEN state = 'failed' AND progress IS NULL THEN 0
-          WHEN progress IS NOT NULL THEN progress
-          ELSE 0
-        END) progress
-      FROM jobs) s
-    `;
 
     const scheduleJob = async (
       pg: Connection,
@@ -353,16 +308,13 @@ export default createModule({
       return result.id;
     });
 
-    const paginatedQuery = createPaginatedQuery<DbJob>(jobQuery, 'id');
-
     bus.register(defs.list, async ({ limit, cursor, sort }, { pg }) => {
-      return paginatedQuery(pg, {
+      return jobQuery.execute(pg, {
         limit,
         cursor,
         order: sort
           ? [[sort.column, sort.dir] as [string, 'asc' | 'desc']]
           : undefined,
-        map: formatJob,
       });
     });
 
@@ -486,13 +438,12 @@ export default createModule({
     });
 
     bus.register(defs.get, async (id, { pg }) => {
-      const result = await pg.one<DbJob>(sql`${jobQuery} WHERE id = ${id}`);
+      const { result } = await jobQuery.execute(pg, {
+        where: sql`id = ${id}`,
+        limit: 1,
+      });
 
-      if (!result) {
-        return null;
-      }
-
-      return formatJob(result);
+      return result[0];
     });
 
     bus.register(defs.update, async ({ id, title, progress }) => {

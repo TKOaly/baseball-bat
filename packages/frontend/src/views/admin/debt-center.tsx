@@ -105,9 +105,10 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
               key: component.id,
             }))}
             columns={[
-              { name: 'Name', getValue: 'name' },
+              { name: 'Name', key: 'name', getValue: 'name' },
               {
                 name: 'Amount',
+                key: 'amount',
                 getValue: row => row.amount.value,
                 render: (_value, row) => (
                   <div className="align-self-end">{formatEuro(row.amount)}</div>
@@ -116,6 +117,7 @@ export const DebtCenterDetails = ({ id }: { id: string }) => {
               },
               {
                 name: 'Description',
+                key: 'description',
                 getValue: 'description',
               },
             ]}

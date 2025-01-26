@@ -752,15 +752,18 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
       columns={[
         {
           name: 'Participant',
+          key: 'participant',
           getValue: (registration): string => registration.name,
           render: value => value,
         },
         {
           name: 'Event',
+          key: 'event',
           getValue: registration => registration.event.name,
         },
         {
           name: 'Answers',
+          key: 'answers',
           getValue: r => r.answers.filter(answer => answer.answer !== ''),
           compareBy: value => `${value.question_id}:${value.answer}`,
           render: (value: CustomFieldAnswer[]) => (
@@ -773,6 +776,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
         },
         {
           name: 'Components',
+          key: 'components',
           getValue: r => r.components,
           compareBy: value => value.name,
           render: (value: EvaluatedDebtComponent[]) =>
@@ -782,6 +786,7 @@ const RegistrationTable: React.FC<RegistrationTableProps> = ({
         },
         {
           name: 'Total',
+          key: 'total',
           getValue: r =>
             r.components.map(c => c.amount).reduce(sumEuroValues, euro(0)),
           compareBy: v => v.value,
@@ -952,19 +957,23 @@ const ConfirmationView: React.FC<ConfirmationViewProps> = ({
         columns={[
           {
             name: 'Component',
+            key: 'component',
             getValue: row => row.name,
           },
           {
             name: 'Price',
+            key: 'price',
             getValue: row => row.price,
             render: formatEuro,
           },
           {
             name: 'Count',
+            key: 'count',
             getValue: row => row.count,
           },
           {
             name: 'Total',
+            key: 'total',
             getValue: row => row.amount,
             render: formatEuro,
           },
