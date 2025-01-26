@@ -92,7 +92,6 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
           pushdown: true,
         },
         getValue: tx => tx.otherParty?.name,
-        width: 'minmax(min-content, auto)',
       },
       {
         name: 'Reference',
@@ -102,7 +101,6 @@ export const TransactionList = <Q extends PaginatedBaseQuery>(
           pushdown: true,
         },
         getValue: tx => tx.reference ?? '',
-        width: 'minmax(min-content, auto)',
       },
       {
         name: 'Message',
