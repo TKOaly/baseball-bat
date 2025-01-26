@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  Code,
   Loader,
   MinusSquare,
   MoreVertical,
@@ -29,6 +30,7 @@ import {
 import { pipe, reduce, map, debounce } from 'remeda';
 import { Dropdown, DropdownItem } from './dropdown';
 import { FilledDisc } from './filled-disc';
+import { useMergeRefs } from '@floating-ui/react';
 
 export type Row<C = any> = { key: string | number; children?: Array<C> };
 
@@ -64,6 +66,7 @@ export type State = {
   sort: [string, 'asc' | 'desc'] | null;
   filters: Record<string, FilterState>;
   rows: (string | number)[];
+  columnWidths: Record<string, number>;
 };
 
 type CreateReducerHandlers<State> = Record<
@@ -189,6 +192,14 @@ const reducer = createReducer({
     }
 
     filters.search = event.search;
+  },
+
+  setColumnSize(state, event: { column: string; width: number }) {
+    state.columnWidths[event.column] = event.width;
+  },
+
+  resetColumnWidths(state) {
+    state.columnWidths = {};
   },
 });
 
@@ -422,18 +433,18 @@ const TableCell = <R extends Row, Value extends ReactNode>(
         props.rowIndex === 0 ? getCellMeasurerRef(props.columnIndex) : undefined
       }
       className={`
-          relative
-          flex
-          min-w-0
-          items-center
-          overflow-hidden
-          whitespace-nowrap
-          border-b-gray-100
-          px-3
-          py-2
-          ${onRowClick && 'cursor-pointer'}
-          ${column.align === 'right' && 'justify-end'}
-        `}
+        relative
+        flex
+        min-w-0
+        items-center
+        overflow-hidden
+        whitespace-nowrap
+        border-gray-100
+        px-3
+        py-2
+        ${onRowClick && 'cursor-pointer'}
+        ${column.align === 'right' && 'justify-end'}
+      `}
     >
       {content}
     </div>
@@ -468,7 +479,7 @@ const TableRow = <R extends Row>({
       <div
         role="row"
         data-row={rowIndex}
-        className="row contents divide-x [&>*]:border-b"
+        className="row contents [&>*:not(:first-child)]:border-l [&>*]:border-b [&>*]:border-gray-100"
         onClick={() => onRowClick?.(data)}
       >
         {selectable && (
@@ -495,11 +506,11 @@ const TableRow = <R extends Row>({
             )}
           </button>
         )}
-        {columns.map((column, columnIndex) => (
+        {columns.map((column, i) => (
           <TableCell
             column={column}
             row={data}
-            columnIndex={columnIndex}
+            columnIndex={i + (selectable ? 1 : 0)}
             rowIndex={rowIndex}
           />
         ))}
@@ -660,12 +671,14 @@ const TableContext = createContext<{
   getHeaderRef: (index: number) => (el: HTMLElement | null) => void;
   getCellMeasurerRef: (index: number) => (el: HTMLElement | null) => void;
   setHeaderContainerRef: (el: HTMLElement | null) => void;
-  setBodyContainerRef: (el: HTMLElement | null) => void;
+  setBodyContainerRef: (el: HTMLElement | null | undefined) => void;
+  setColumnWidth: (index: number, width: number) => void;
 }>({
   state: {
     sort: null,
     rows: [],
     filters: {},
+    columnWidths: {},
   },
   props: {
     columns: [],
@@ -676,6 +689,7 @@ const TableContext = createContext<{
   getCellMeasurerRef: () => () => {},
   setHeaderContainerRef: () => {},
   setBodyContainerRef: () => {},
+  setColumnWidth: () => {},
 });
 
 const TableProvider = ({
@@ -693,6 +707,7 @@ const TableProvider = ({
           : null,
         rows: [],
         filters: {},
+        columnWidths: {},
       },
     [props.persist],
   );
@@ -701,19 +716,58 @@ const TableProvider = ({
   const headersRef = useRef<(HTMLElement | null)[]>([]);
   const observersRef = useRef<(ResizeObserver | null)[]>([]);
   const headerInitialWidthRef = useRef<(number | null)[]>([]);
+  const bodyContainerRef = useRef<HTMLElement>();
+  const headerContainerRef = useRef<HTMLElement>();
 
   const getHeaderRef = useCallback(
     (index: number) => (el: HTMLElement | null) => {
-      console.log('HEADER:', index, el);
       headersRef.current[index] = el;
-      headerInitialWidthRef.current[index] = el?.clientWidth ?? null;
+      if (!headerInitialWidthRef.current[index]) {
+        headerInitialWidthRef.current[index] = el?.clientWidth ?? null;
+      }
     },
     [headersRef],
   );
 
+  const setColumnWidth = useCallback(
+    (index: number, pWidth: number) => {
+      const width = Math.max(
+        50,
+        headerInitialWidthRef.current[index] ?? 0,
+        pWidth,
+      );
+      const columnIndex = index - (props.selectable ? 1 : 0);
+      const column = props.columns[columnIndex].key;
+
+      const sum = headersRef.current
+        .map((el, i) =>
+          i === index ? width : el?.getClientRects()[0].width ?? 0,
+        )
+        .reduce((a, b) => a + b, 0);
+
+      const body = bodyContainerRef.current?.getClientRects()[0].width ?? 0;
+
+      dispatch({
+        type: 'setColumnSize',
+        column,
+        width,
+      });
+
+      if (sum < body) {
+        dispatch({
+          type: 'setColumnSize',
+          column: props.columns[index + 1 - (props.selectable ? 1 : 0)].key,
+          width:
+            (headersRef.current[index + 1]?.getClientRects()[0].width ?? 0) +
+            (body - sum),
+        });
+      }
+    },
+    [headersRef, props, bodyContainerRef, headersRef],
+  );
+
   const getCellMeasurerRef = useCallback(
     (index: number) => (el: HTMLElement | null) => {
-      console.log(`getCellMeasurerRef: ${index}`, el);
       const oldObserver = observersRef.current[index];
 
       if (oldObserver) {
@@ -724,10 +778,9 @@ const TableProvider = ({
         const observer = (observersRef.current[index] = new ResizeObserver(
           ([entry]) => {
             const headerEl = headersRef.current[index];
+            const key = props.columns[index - (props.selectable ? 1 : 0)].key;
 
-            console.log('Observed!', index, entry, el, headersRef.current);
-
-            if (headerEl) {
+            if (headerEl && !state.columnWidths[key]) {
               headerEl.style.width = `${entry.borderBoxSize[0].inlineSize}px`;
             }
           },
@@ -740,10 +793,8 @@ const TableProvider = ({
         observer.observe(el);
       }
     },
-    [headersRef, observersRef],
+    [headersRef, observersRef, state.columnWidths],
   );
-
-  const headerContainerRef = useRef<HTMLElement>();
 
   const setBodyContainerRef = useCallback(
     (el: HTMLElement | null) => {
@@ -768,7 +819,11 @@ const TableProvider = ({
         getHeaderRef,
         setHeaderContainerRef: el =>
           (headerContainerRef.current = el ?? undefined),
-        setBodyContainerRef,
+        setBodyContainerRef: useMergeRefs([
+          setBodyContainerRef,
+          bodyContainerRef,
+        ])!,
+        setColumnWidth,
       }}
     >
       {children}
@@ -794,7 +849,33 @@ type HeaderProps<Row, Value> = {
 };
 
 const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
-  const { state, dispatch, getHeaderRef } = useContext(TableContext);
+  const { state, dispatch, getHeaderRef, setColumnWidth } =
+    useContext(TableContext);
+  const headerElRef = useRef<HTMLDivElement>();
+  const [active, setActive] = useState(false);
+
+  const handleMouseDown: React.MouseEventHandler = evt => {
+    const startWidth = headerElRef.current?.getBoundingClientRect().width ?? 0;
+    const startX = evt.pageX;
+
+    const onMouseMove = (evt: MouseEvent) => {
+      setColumnWidth(index, startWidth + evt.pageX - startX);
+    };
+
+    const onMouseUp = (evt: MouseEvent) => {
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mousemove', onMouseMove);
+      evt.preventDefault();
+      evt.stopPropagation();
+      setActive(false);
+    };
+
+    setActive(true);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const headerRef = useMergeRefs([getHeaderRef(index), headerElRef]);
 
   const sort =
     state.sort !== null && state.sort[0] === column.key ? state.sort[1] : null;
@@ -803,7 +884,10 @@ const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
     <div
       role="columnheader"
       key={column.key}
-      ref={getHeaderRef(index)}
+      ref={headerRef}
+      style={{
+        width: `${state.columnWidths[column.key]}px`,
+      }}
       onClick={() =>
         dispatch({
           type: 'cycleSort',
@@ -811,10 +895,11 @@ const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
         })
       }
       className={`
-        flex cursor-pointer select-none items-center justify-between
+        relative flex cursor-pointer select-none items-center
+        justify-between
         whitespace-nowrap
-        px-3
-        py-2 text-sm
+        px-3 py-2
+        text-sm
         font-bold
         text-gray-700
       `}
@@ -824,12 +909,22 @@ const Header = <Row, Value>({ column, index }: HeaderProps<Row, Value>) => {
         {sort === 'asc' && <ChevronUp className="h-5 text-gray-400" />}
         {sort === 'desc' && <ChevronDown className="h-5 text-gray-400" />}
       </div>
+      <div
+        className="group absolute -right-3 z-10 mr-[0px] flex h-full w-6 cursor-col-resize items-center justify-center"
+        onMouseDown={handleMouseDown}
+        onClick={evt => evt.stopPropagation()}
+      >
+        <Code
+          className={`size-4 ${active ? 'block text-blue-400' : 'hidden text-gray-400 group-hover:block'}`}
+        />
+      </div>
     </div>
   );
 };
 
 const TableHeaders = () => {
-  const { props, setHeaderContainerRef } = useContext(TableContext);
+  const { props, setHeaderContainerRef, getHeaderRef } =
+    useContext(TableContext);
 
   return (
     <div
@@ -837,12 +932,19 @@ const TableHeaders = () => {
       ref={setHeaderContainerRef}
     >
       <div className="flex w-max min-w-full divide-x">
-        {props.selectable && <div className="min-w-[2.5em]" />}
+        {props.selectable && (
+          <div className="min-w-[2.5em]" ref={getHeaderRef(0)} />
+        )}
         {props.columns.map((column, i) => (
-          <Header column={column} index={i} />
+          <Header column={column} index={i + (props.selectable ? 1 : 0)} />
         ))}
         {props.actions && props.actions.length > 0 && (
-          <div className="min-w-[2.5em]" />
+          <div
+            className="min-w-[2.5em]"
+            ref={getHeaderRef(
+              props.columns.length + (props.selectable ? 1 : 0),
+            )}
+          />
         )}
       </div>
     </div>
@@ -888,9 +990,14 @@ export const TableInner = <
     onFilterChange?.(state.filters);
   }, [state.filters, onFilterChange]);
 
+  const saveStateDebounced = useMemo(
+    () => debounce(saveState, { waitMs: 500 }),
+    [],
+  );
+
   useEffect(() => {
     if (persist) {
-      saveState(persist, state);
+      saveStateDebounced.call(persist, state);
     }
   }, [persist, state]);
 
@@ -1010,15 +1117,17 @@ export const TableInner = <
     gridTemplateColumns.push('2.5em');
   }
 
-  columns.forEach(({ width }) =>
-    gridTemplateColumns.push(`minmax(min-content, ${width ?? 'auto'})`),
+  columns.forEach(({ width, key }) =>
+    gridTemplateColumns.push(
+      state.columnWidths[key]
+        ? `${state.columnWidths[key]}px`
+        : `minmax(min-content, ${width ?? 'auto'})`,
+    ),
   );
 
   if (actions) {
     gridTemplateColumns.push('2.5em');
   }
-
-  console.log(gridTemplateColumns.join(' '));
 
   return (
     <div
@@ -1101,6 +1210,11 @@ export const TableInner = <
                             }),
                         },
                         {
+                          text: 'Reset columns',
+                          onSelect: () =>
+                            dispatch({ type: 'resetColumnWidths' }),
+                        },
+                        {
                           text: 'Invert selection',
                           onSelect: () =>
                             fetchAllAnd(({ dispatch, rows }) =>
@@ -1140,8 +1254,8 @@ export const TableInner = <
         <TableHeaders />
         <div
           className="grid min-w-full overflow-x-auto"
-          ref={setBodyContainerRef}
           style={{ gridTemplateColumns: gridTemplateColumns.join(' ') }}
+          ref={setBodyContainerRef}
         >
           {sortedRows.flatMap((row, i) => (
             <TableRow
