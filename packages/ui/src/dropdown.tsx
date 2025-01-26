@@ -470,7 +470,7 @@ export const DropdownItem = forwardRef<
           loading ? 'w-5' : 'w-0'
         } overflow-hidden`}
       />
-      <span className="grow-1">
+      <span className="grow">
         {typeof label === 'string' ? (
           <Highlight label={label} search={dropdown.search} />
         ) : (
