@@ -200,7 +200,7 @@ export default createModule({
         return sendRawEmail({
           to: options.recipient,
           from: 'velat@tko-aly.fi',
-          replyTo: 'rahastonhoitaja@tko-aly.fi',
+          replyTo: 'laskut@tko-aly.fi',
           subject: options.subject,
           text,
           html,
@@ -372,7 +372,7 @@ export default createModule({
         await sendRawEmail({
           to: email.recipient,
           from: 'velat@tko-aly.fi',
-          replyTo: 'rahastonhoitaja@tko-aly.fi',
+          replyTo: 'laskut@tko-aly.fi',
           subject: email.subject,
           text: email.text,
           html: email.html,
