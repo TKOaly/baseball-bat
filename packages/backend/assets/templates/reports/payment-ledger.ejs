@@ -94,7 +94,7 @@
         <td rowspan=<%= event.debts.length %>><%= capitalize(event.payment.type) %></td>
         <td rowspan=<%= event.debts.length %>><%= event.payment.humanId %></td>
         <td><%= event.debts[0].humanId %></td>
-        <td><%= event.debts[0].name %></td>
+        <td class="name"><%= event.debts[0].name %></td>
         <!--<td rowspan=<%= event.debts.length %>><%= event.payment.title %></td>-->
         <td rowspan=<%= event.debts.length %>><%= event.payer.name %></td>
         <td rowspan=<%= event.debts.length %>><%= event.type %></td>
@@ -105,7 +105,7 @@
           %>
             <tr class="<%= even ? 'even' : 'odd' %>">
               <td><%= event.debts[i].humanId %></td>
-              <td><%= event.debts[i].name %></td>
+              <td class="name"><%= event.debts[i].name %></td>
             </tr>
           <%
           }
@@ -129,9 +129,13 @@
   }
 
   #content td {
-    @apply px-1 py-0.5;
+    @apply px-2 py-0.5;
 
     vertical-align: top;
+
+    &:not(.name) {
+      white-space: nowrap;
+    }
   }
 
   #content tbody tr.even {
