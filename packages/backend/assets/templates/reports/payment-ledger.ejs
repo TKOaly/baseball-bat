@@ -1,3 +1,7 @@
+<%
+  const capitalize = (s) => s.at(0)?.toUpperCase() + s.substring(1);
+%>
+
 <div class="p-10">
   <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
 
@@ -51,18 +55,21 @@
   <table id="content">
     <tr>
       <th class="header-border">Time</th>
+      <th class="header-border">Type</th>
       <th class="header-border">Payment</th>
-      <th class="header-border">Debt</th>
-      <th class="header-border">Title</th>
+      <th class="header-border">Debt ID</th>
+      <th class="header-border">Debt Name</th>
       <th class="header-border">Payer</th>
       <th class="header-border">Action</th>
       <th class="header-border text-right">Amount</th>
     </tr>
     <%
+      let even = false;
       for (const { name, id, events } of data.groups) {
         if (name) {
+          even = !even;
     %>
-      <tr>
+      <tr class="<%= even ? 'even' : 'odd' %>">
         <td class="font-bold"><%= id %></td>
         <td class="font-bold" colspan=5><%= name %></td>
         <td class="font-bold text-right"><%= utils.formatEuro(events.map(event => event.amount).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
@@ -71,17 +78,28 @@
         }
 
         for (const event of events) {
+          even = !even;
     %>
-      <tr>
-        <td <%- name ? 'class="!pl-4"' : '' %>><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
-        <td><%= event.payment.humanId %></td>
-        <td><%= event.debt.humanId %></td>
-        <td><%= event.payment.title %></td>
-        <td><%= event.payer.name %></td>
-        <td><%= event.type %></td>
-        <td class="text-right"><%= utils.formatEuro(event.amount) %></td>
+      <tr class="<%= even ? 'even' : 'odd' %>">
+        <td rowspan=<%= event.debts.length %> <%- name ? 'class="!pl-4"' : '' %>><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
+        <td rowspan=<%= event.debts.length %>><%= capitalize(event.payment.type) %></td>
+        <td rowspan=<%= event.debts.length %>><%= event.payment.humanId %></td>
+        <td><%= event.debts[0].humanId %></td>
+        <td><%= event.debts[0].name %></td>
+        <!--<td rowspan=<%= event.debts.length %>><%= event.payment.title %></td>-->
+        <td rowspan=<%= event.debts.length %>><%= event.payer.name %></td>
+        <td rowspan=<%= event.debts.length %>><%= event.type %></td>
+        <td rowspan=<%= event.debts.length %> class="text-right"><%= utils.formatEuro(event.amount) %></td>
       </tr>
     <%
+          for (let i = 1; i < event.debts.length; i++) {
+          %>
+            <tr class="<%= even ? 'even' : 'odd' %>">
+              <td><%= event.debts[i].humanId %></td>
+              <td><%= event.debts[i].name %></td>
+            </tr>
+          <%
+          }
         }
       }
     %>
@@ -107,7 +125,7 @@
     vertical-align: top;
   }
 
-  #content tbody tr:nth-child(even) {
+  #content tbody tr.even {
     @apply bg-gray-100;
   }
 </style>

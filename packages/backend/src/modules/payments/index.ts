@@ -513,32 +513,45 @@ export default createModule({
 
         const results = await pg.many<{
           event: DbPaymentEvent;
-          debt: DbDebt;
+          debts: DbDebt[];
           payment: DbPayment;
           payer: DbPayerProfile;
         }>(sql`
-          SELECT DISTINCT ON (event.id, debt.id)
-            TO_JSONB(event.*) AS event,
-            TO_JSONB(debt.*) AS debt,
+          SELECT
+            TO_JSONB(event.*) event,
             TO_JSONB(payment.*) AS payment,
-            TO_JSONB(payer.*) AS payer
+            TO_JSONB(payer.*) AS payer,
+            debts.*,
+            payer.*
           FROM payment_events event
           JOIN payments payment ON payment.id = event.payment_id
-          JOIN payment_debt_mappings pdm ON pdm.payment_id = event.payment_id
-          JOIN debt ON debt.id = pdm.debt_id
-          JOIN payer_profiles payer ON payer.id = debt.payer_id
+          JOIN LATERAL (
+            SELECT
+              JSONB_AGG(TO_JSONB(debt.*)) debts
+            FROM payment_debt_mappings pdm
+            JOIN debt ON debt.id = pdm.debt_id
+            WHERE pdm.payment_id = event.payment_id
+          ) debts ON true
+          JOIN LATERAL (
+            SELECT TO_JSONB(payer.*) payer
+            FROM payment_debt_mappings pdm
+            JOIN debt ON debt.id = pdm.debt_id
+            JOIN payer_profiles payer ON payer.id = debt.payer_id
+            WHERE pdm.payment_id = event.payment_id
+            LIMIT 1
+          ) payer ON true
           WHERE event.time BETWEEN ${options.startDate} AND ${options.endDate}
             AND ${paymentTypeCondition}
             AND ${eventTypeCondition}
         `);
 
         const events = R.sortBy(
-          results.map(({ payment, payer, event, debt }) => ({
+          results.map(({ payment, payer, event, debts }) => ({
             ...formatPaymentEvent({
               ...event,
               time: parseISO(event.time as any),
             }),
-            debt: formatDebt(debt),
+            debts: debts.map(formatDebt),
             payer: formatPayerProfile(payer),
             payment: formatPayment({ ...payment, events: [] }),
           })),
@@ -550,11 +563,15 @@ export default createModule({
         let groups;
 
         if (options.groupBy) {
+          throw new Error('Grouping disabled for now!');
+        }
+
+        if (options.groupBy) {
           let getGroupKey;
           let getGroupDetails;
 
           if (options.groupBy === 'center') {
-            getGroupKey = (event: EventDetails) => event.debt.debtCenterId;
+            getGroupKey = (event: EventDetails) => event.debts[0].debtCenterId;
             getGroupDetails = async (id: string) => {
               const center = await bus.exec(getDebtCenter, id);
               return {
