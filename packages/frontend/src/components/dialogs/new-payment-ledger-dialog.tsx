@@ -93,7 +93,7 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
                   { value: 'stripe', text: 'Stripe' },
                 ]}
               />
-              <InputGroup
+              {/*<InputGroup
                 label="Group By"
                 name="groupBy"
                 component={DropdownField}
@@ -102,7 +102,7 @@ export const NewPaymentLedgerDialog = ({ onClose, defaults = {} }: Props) => {
                   { value: 'payer', text: 'Payer' },
                   { value: 'center', text: 'Debt Center' },
                 ]}
-              />
+              />*/}
               <InputGroup
                 label="Event Types"
                 name="eventTypes"
