@@ -610,7 +610,12 @@ export default createModule({
           groups = [{ events }];
         }
 
-        return { options, groups };
+        const totals = R.mapValues(
+          R.groupBy(events, event => event.payment.type),
+          events => events.map(e => e.amount).reduce(sumEuroValues, cents(0)),
+        );
+
+        return { options, groups, totals };
       },
     });
   },

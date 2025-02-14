@@ -48,6 +48,15 @@
           <th class="text-left pr-2">Total amount</th>
           <td><%= utils.formatEuro(data.groups.flatMap(({ events }) => events).map((event) => event.amount).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
         </tr>
+        <tr>
+          <th colspan=2 class="text-left pt-2">Total by payment type</th>
+        <tr>
+        <% for (const [type, amount] of Object.entries(data.totals)) { %>
+        <tr>
+          <th class="text-left pl-5 pr-2"><%= capitalize(type) %></th>
+          <td class="text-right"><%= utils.formatEuro(amount) %></td>
+        </tr>
+        <% } %>
       </table>
     </div>
   </div>
