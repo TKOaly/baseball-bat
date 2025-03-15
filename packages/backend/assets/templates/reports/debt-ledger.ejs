@@ -42,7 +42,7 @@
         </tr>
         <tr>
           <th class="text-left pr-2">Unique payer count</th>
-          <td><%= (new Set(data.groups.flatMap(({ debts }) => debts.map((debt) => debt.payerId.value)))).size %></td>
+          <td><%= (new Set(data.groups.flatMap(({ debts }) => debts.filter((debt) => debt.payerId).map((debt) => debt.payerId.value)))).size %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Total published value</th>

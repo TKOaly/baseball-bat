@@ -14,7 +14,7 @@ import * as payerService from '@/modules/payers/definitions';
 import * as debtService from '@/modules/debts/definitions';
 import * as defs from './definitions';
 import { createEmail, sendEmail } from '../email/definitions';
-import { format, parseISO } from 'date-fns';
+import { endOfDay, format, parseISO, startOfDay } from 'date-fns';
 import { createReport, reportTypeIface } from '../reports/definitions';
 import * as t from 'io-ts';
 import * as tt from 'io-ts-types';
@@ -540,7 +540,7 @@ export default createModule({
             WHERE pdm.payment_id = event.payment_id
             LIMIT 1
           ) payer ON true
-          WHERE event.time BETWEEN ${options.startDate} AND ${options.endDate}
+          WHERE event.time BETWEEN ${startOfDay(options.startDate)} AND ${endOfDay(options.endDate)}
             AND ${paymentTypeCondition}
             AND ${eventTypeCondition}
         `);
