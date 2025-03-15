@@ -13,6 +13,7 @@ import { CheckCircle, ExternalLink, Loader, XCircle } from 'react-feather';
 import { useGetPayerQuery } from '../../api/payers';
 import { Link } from 'wouter';
 import { ReactNode } from 'react';
+import reportApi from '../../api/report';
 
 type Params = {
   onClose: () => void;
@@ -34,6 +35,8 @@ const UserLink = ({ id }: { id: InternalIdentity }) => {
 };
 
 export const ReportHistoryDialog = ({ onClose, reports }: Params) => {
+  const [getReportLink] = reportApi.endpoints.getReportLink.useLazyQuery();
+
   return (
     <DialogBase wide onClose={() => onClose()}>
       <DialogHeader>Report version history</DialogHeader>
@@ -96,11 +99,12 @@ export const ReportHistoryDialog = ({ onClose, reports }: Params) => {
                   <Button
                     disabled={report.status !== 'finished'}
                     small
-                    onClick={() => {
-                      window.open(
-                        `/api/reports/${report.id}/content`,
-                        '_blank',
-                      );
+                    onClick={async () => {
+                      const result = await getReportLink(report.id);
+
+                      if (result?.data?.url) {
+                        window.open(result.data.url, '_blank');
+                      }
                     }}
                   >
                     View
