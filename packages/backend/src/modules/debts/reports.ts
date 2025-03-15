@@ -15,6 +15,8 @@ import * as debtCentersService from '@/modules/debt-centers/definitions';
 import * as payerService from '@/modules/payers/definitions';
 import * as paymentService from '@/modules/payments/definitions';
 import { queryDebts, formatDebt } from './query';
+import { startOfDay } from 'date-fns/startOfDay';
+import { endOfDay } from 'date-fns/endOfDay';
 
 const debtLedgerOptions = t.type({
   startDate: tt.DateFromISOString,
@@ -60,12 +62,17 @@ export default (bus: Bus<BusContext>) => {
 
       let criteria;
 
+      const startTime = startOfDay(options.startDate);
+      const endTime = endOfDay(options.endDate);
+      const createDateRange = (column: string) =>
+        sql`${sql.raw(column)} BETWEEN ${startTime} AND ${endTime}`;
+
       if (options.includeDrafts === 'include') {
-        criteria = sql`date IS NULL OR date BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`date IS NULL OR ${createDateRange('date')}`;
       } else if (options.includeDrafts === 'exclude') {
-        criteria = sql`published_at IS NOT NULL AND date BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`published_at IS NOT NULL AND ${createDateRange('date')}`;
       } else {
-        criteria = sql`published_at IS NULL AND created_at BETWEEN ${options.startDate} AND ${options.endDate}`;
+        criteria = sql`published_at IS NULL AND ${createDateRange('created_at')}`;
       }
 
       if (options.centers !== null) {
@@ -170,7 +177,7 @@ export default (bus: Bus<BusContext>) => {
               (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
               MAX(time) AS updated_at
             FROM payment_events e
-            WHERE time < ${options.date} OR type = 'created'
+            WHERE time < ${endOfDay(options.date)} OR type = 'created'
             GROUP BY payment_id
           ),
           payment_statuses AS (
@@ -179,7 +186,7 @@ export default (bus: Bus<BusContext>) => {
               (
                 SELECT time
                 FROM payment_events e2
-                WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${options.date}
+                WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${endOfDay(options.date)}
                 ORDER BY e2.time DESC
                 LIMIT 1
               ) AS paid_at, 
@@ -192,7 +199,7 @@ export default (bus: Bus<BusContext>) => {
             FROM payment_agg s
             LEFT JOIN payments p ON p.id = s.payment_id
             LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-            INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${options.date} 
+            INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${endOfDay(options.date)} 
             LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
           )
           SELECT
