@@ -127,7 +127,7 @@ export default (bus: Bus<BusContext>) => {
           A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
         )();
       } else {
-        groups = [{ debts }];
+        groups = [{ debts: debts.map(formatDebt) }];
       }
 
       return { options, groups };
