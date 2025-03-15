@@ -140,9 +140,17 @@ export default createModule({
     ): Promise<Omit<Report, 'history'> | null> {
       const id = uuid.v4();
 
+      const revision = options.parent
+        ? sql`(SELECT revision + 1 FROM reports WHERE id = ${options.parent})`
+        : sql`DEFAULT`;
+
+      const nonce = options.parent
+        ? sql`(SELECT human_id_nonce FROM reports WHERE id = ${options.parent})`
+        : sql`DEFAULT`;
+
       const report = await pg.one<Omit<DbReport, 'history'>>(
         sql`
-        INSERT INTO reports (id, name, generated_at, options, type, generated_by, revision)
+        INSERT INTO reports (id, name, generated_at, options, type, generated_by, revision, human_id_nonce)
         VALUES (
           ${id},
           ${options.name},
@@ -150,14 +158,11 @@ export default createModule({
           ${options.options},
           ${options.type},
           ${options.generatedBy.value},
-        `.append(
-          options.parent
-            ? sql`(SELECT revision + 1 FROM reports WHERE id = ${options.parent})`
-            : sql`1`,
-        ).append(sql`
+          ${revision},
+          ${nonce}
         )
         RETURNING *;
-      `),
+      `,
       );
 
       if (report && options.parent) {
