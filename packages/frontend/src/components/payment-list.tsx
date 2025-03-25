@@ -64,14 +64,14 @@ export const PaymentList = <Q extends PaginatedBaseQuery>(props: Props<Q>) => {
           getValue: row => row.createdAt,
           name: 'Created',
           key: 'created_at',
-          render: value => format(value, 'dd.MM.yyyy HH:ii'),
+          render: value => format(value, 'dd.MM.yyyy HH:mm'),
           compareBy: value => value.valueOf(),
         },
         {
           getValue: row => row.paidAt,
           name: 'Paid at',
           key: 'paid_at',
-          render: value => value && format(value, 'dd.MM.yyyy HH:ii'),
+          render: value => value && format(value, 'dd.MM.yyyy HH:mm'),
           compareBy: value => (value ? value.valueOf() : 0),
         },
         {

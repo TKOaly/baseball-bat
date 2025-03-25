@@ -1,5 +1,5 @@
 <div class="p-10">
-  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %> (</h1>
+  <h1 class="font-bold bg-yellow-400 text-4xl pl-2 py-2">Report: <%= metadata.name %></h1>
 
   <div class="mt-5 mb-5 gap-3 grid grid-cols-2">
     <div class="p-3 bg-gray-100">
@@ -28,29 +28,34 @@
     </div>
     <div class="p-3 bg-gray-100">
       <table>
+        <%
+          const totalDebit = data.groups.flatMap(group => group.events).map(event => event.debit).reduce(utils.sumEuroValues, utils.cents(0));
+          const totalCredit = data.groups.flatMap(group => group.events).map(event => event.credit).reduce(utils.sumEuroValues, utils.cents(0));
+          const totalBalance = utils.subEuroValues(totalDebit, totalCredit);
+        %>
         <tr>
-          <th class="text-left pr-2">Total amount</th>
-          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+          <th class="text-left pr-2">Total debit</th>
+          <td class="text-right"><%= utils.formatEuro(totalDebit) %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total credit</th>
+          <td class="text-right"><%= utils.formatEuro(totalCredit) %></td>
+        </tr>
+        <tr>
+          <th class="text-left pr-2">Total balance</th>
+          <td class="text-right"><%= utils.formatEuro(totalBalance) %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Group count</th>
-          <td><%= data.groups.length %></td>
+          <td class="text-right"><%= data.groups.length %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Debt count</th>
-          <td><%= data.groups.map(({ debts }) => debts.length).reduce((a, b) => a + b, 0) %></td>
+          <td class="text-right"><%= new Set(data.groups.flatMap((group) => group.events).map((event) => event.debt.id)).size %></td>
         </tr>
         <tr>
           <th class="text-left pr-2">Unique payer count</th>
-          <td><%= (new Set(data.groups.flatMap(({ debts }) => debts.filter((debt) => debt.payerId).map((debt) => debt.payerId.value)))).size %></td>
-        </tr>
-        <tr>
-          <th class="text-left pr-2">Total published value</th>
-          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.filter((debt) => !debt.draft).map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
-        </tr>
-        <tr>
-          <th class="text-left pr-2">Total draft value</th>
-          <td><%= utils.formatEuro(data.groups.flatMap(({ debts }) => debts.filter((debt) => debt.draft).map((debt) => debt.total)).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+          <td class="text-right"><%= (new Set(data.groups.flatMap(({ events }) => events.filter(({ debt }) => debt.payerId).map(({ debt }) => debt.payerId.value)))).size %></td>
         </tr>
       </table>
     </div>
@@ -58,31 +63,49 @@
 
   <table id="content">
     <tr>
+      <th class="header-border">Time</th>
+      <th class="header-border">Event</th>
       <th class="header-border">ID</th>
       <th class="header-border">Title</th>
       <th class="header-border">Payer</th>
       <th class="header-border">Date</th>
       <th class="header-border">Published</th>
       <th class="header-border">Due Date</th>
-      <th class="header-border text-right">Amount</th>
+      <th class="header-border !text-right">Debit</th>
+      <th class="header-border !text-right">Credit</th>
     </tr>
-    <% for (const { name, id, debts } of data.groups) { %>
-      <% if (name) { %>
+    <% for (const { name, id, events } of data.groups) { %>
+      <%
+        if (name) {
+          const debit = events.map(event => event.debit).reduce(utils.sumEuroValues, utils.euro(0));
+          const credit = events.map(event => event.credit).reduce(utils.sumEuroValues, utils.euro(0));
+          const balance = utils.subEuroValues(debit, credit);
+      %>
       <tr>
+        <td></td>
+        <td></td>
         <td class="font-bold"><%= id %></td>
-        <td class="font-bold" colspan=5><%= name %></td>
-        <td class="font-bold text-right"><%= utils.formatEuro(debts.map(debt => debt.total).reduce(utils.sumEuroValues, utils.euro(0))) %></td>
+        <td class="font-bold" colspan=3><%= name %></td>
+        <td class="text-right text-gray-600" colspan=2>(<%= utils.formatEuro(balance) %>)</td>
+        <td class="font-bold text-right"><%= utils.formatEuro(debit) %></td>
+        <td class="font-bold text-right"><%= utils.formatEuro(credit) %></td>
       </tr>
       <% } %>
-      <% for (const debt of debts) { %>
+      <%
+        for (const event of events) {
+          const debt = event.debt;
+      %>
         <tr>
-          <td class="!pl-4"><%= debt.humanId %></td>
+          <td><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
+          <td><%= event.type %></td>
+          <td><%= debt.humanId %></td>
           <td><%= debt.name %></td>
           <td><%= debt.payer.name %></td>
           <td><%= debt.date ? utils.formatDate(debt.date, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.publishedAt ? utils.formatDate(debt.publishedAt, 'dd.MM.yyyy') : '' %></td>
           <td><%= debt.dueDate ? utils.formatDate(debt.dueDate, 'dd.MM.yyyy') : '' %></td>
-          <td class="text-right"><%= utils.formatEuro(debt.total) %></td>
+          <td class="text-right"><%= utils.formatEuro(event.debit) %></td>
+          <td class="text-right"><%= utils.formatEuro(event.credit) %></td>
         </tr>
       <% } %>
     <% } %>

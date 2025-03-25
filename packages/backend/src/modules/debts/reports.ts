@@ -17,6 +17,8 @@ import * as paymentService from '@/modules/payments/definitions';
 import { queryDebts, formatDebt } from './query';
 import { startOfDay } from 'date-fns/startOfDay';
 import { endOfDay } from 'date-fns/endOfDay';
+import { cents } from '@bbat/common/currency';
+import { isWithinInterval } from 'date-fns';
 
 const debtLedgerOptions = t.type({
   startDate: tt.DateFromISOString,
@@ -60,28 +62,89 @@ export default (bus: Bus<BusContext>) => {
 
       const options = result.right;
 
-      let criteria;
+      const criteria = [];
 
       const startTime = startOfDay(options.startDate);
       const endTime = endOfDay(options.endDate);
-      const createDateRange = (column: string) =>
-        sql`${sql.raw(column)} BETWEEN ${startTime} AND ${endTime}`;
+
+      const hasEventsCriteria = [
+        sql`published_at IS NOT NULL AND published_at BETWEEN ${startTime} AND ${endTime}`,
+        sql`credited_at IS NOT NULL AND credited_at BETWEEN ${startTime} AND ${endTime}`,
+      ];
 
       if (options.includeDrafts === 'include') {
-        criteria = sql`date IS NULL OR ${createDateRange('date')}`;
-      } else if (options.includeDrafts === 'exclude') {
-        criteria = sql`published_at IS NOT NULL AND ${createDateRange('date')}`;
-      } else {
-        criteria = sql`published_at IS NULL AND ${createDateRange('created_at')}`;
+        hasEventsCriteria.push(
+          sql`created_at BETWEEN ${startTime} AND ${endTime}`,
+        );
+      }
+
+      criteria.push(sql` OR `.join(hasEventsCriteria.map(c => sql`(${c})`)));
+
+      if (options.includeDrafts === 'exclude') {
+        criteria.push(
+          sql`published_at IS NOT NULL AND published_at <= ${endTime}`,
+        );
+      } else if (options.includeDrafts === 'only-drafts') {
+        criteria.push(sql`published_at IS NULL OR published_at > ${endTime}`);
       }
 
       if (options.centers !== null) {
-        criteria = sql`(`
-          .append(criteria)
-          .append(sql`) AND (debt_center_id = ANY (${options.centers}))`);
+        criteria.push(sql`debt_center_id = ANY (${options.centers}))`);
       }
 
-      const { result: debts } = await queryDebts(pg, { where: criteria });
+      const { result: debts } = await queryDebts(pg, {
+        where: sql` AND `.join(criteria.map(c => sql`(${c})`)),
+      });
+
+      type DebtEvent = {
+        type: string;
+        debt: Debt;
+        time: Date;
+      };
+
+      const getDebtEvents = (debt: Debt): DebtEvent[] => {
+        const events = [];
+
+        const isWithin = (date: Date | null | undefined): date is Date =>
+          !!date &&
+          isWithinInterval(date, {
+            start: startTime,
+            end: endTime,
+          });
+
+        if (options.includeDrafts !== 'exclude' && isWithin(debt.createdAt)) {
+          events.push({
+            debt,
+            type: 'Create',
+            time: debt.createdAt,
+            debit: cents(0),
+            credit: cents(0),
+          });
+        }
+
+        if (isWithin(debt.publishedAt)) {
+          events.push({
+            debt,
+            type: 'Publish',
+            time: debt.publishedAt,
+            debit: debt.total,
+            credit: cents(0),
+          });
+        }
+
+        if (isWithin(debt.creditedAt)) {
+          events.push({
+            debt,
+            type: 'Credit',
+            time: debt.creditedAt,
+            debit: cents(0),
+            credit: debt.total,
+          });
+        }
+
+        return events;
+      };
+
       let groups;
 
       if (options.groupBy) {
@@ -89,7 +152,7 @@ export default (bus: Bus<BusContext>) => {
         let getGroupDetails;
 
         if (options.groupBy === 'center') {
-          getGroupKey = (debt: Debt) => debt.debtCenterId;
+          getGroupKey = (event: DebtEvent) => event.debt.debtCenterId;
           getGroupDetails = async (id: string) => {
             const center = await bus.exec(debtCentersService.getDebtCenter, id);
             const name = center?.name ?? 'Unknown debt center';
@@ -97,7 +160,7 @@ export default (bus: Bus<BusContext>) => {
             return { name, id: displayId };
           };
         } else {
-          getGroupKey = (debt: Debt) => debt.payerId.value;
+          getGroupKey = (event: DebtEvent) => event.debt.payerId.value;
           getGroupDetails = async (id: string) => {
             const payer = await bus.exec(
               payerService.getPayerProfileByInternalIdentity,
@@ -113,21 +176,26 @@ export default (bus: Bus<BusContext>) => {
           (
             nameResolver: (id: string) => Promise<{ name: string; id: string }>,
           ) =>
-          ([key, debts]: [string, Debt[]]) =>
+          ([key, events]: [string, DebtEvent[]]) =>
           async () => {
             const { name, id } = await nameResolver(key);
-            return { name, debts, id };
+            return { name, events, id };
           };
 
         groups = await pipe(
           debts,
           A.map(formatDebt),
+          A.flatMap(getDebtEvents),
           groupBy(getGroupKey),
           toArray,
           A.traverse(T.ApplicativePar)(createGroupUsing(getGroupDetails)),
         )();
       } else {
-        groups = [{ debts: debts.map(formatDebt) }];
+        groups = [
+          {
+            events: pipe(debts, A.map(formatDebt), A.flatMap(getDebtEvents)),
+          },
+        ];
       }
 
       return { options, groups };
