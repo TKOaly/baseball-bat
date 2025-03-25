@@ -18,6 +18,7 @@ import {
   cents,
   euro,
   formatEuro,
+  subEuroValues,
   sumEuroValues,
 } from '@bbat/common/build/src/currency';
 import * as datefns from 'date-fns';
@@ -465,6 +466,7 @@ export default createModule({
               formatEuro,
               formatDate: datefns.format,
               sumEuroValues,
+              subEuroValues,
               euro,
               cents,
             },
