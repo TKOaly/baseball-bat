@@ -65,12 +65,14 @@
     <tr>
       <th class="header-border">Time</th>
       <th class="header-border">Type</th>
+      <th class="header-border">Event</th>
       <th class="header-border">Payment</th>
       <th class="header-border">Debt ID</th>
       <th class="header-border">Debt Name</th>
       <th class="header-border">Payer</th>
-      <th class="header-border">Action</th>
-      <th class="header-border text-right">Amount</th>
+      <th class="header-border !text-right">Change</th>
+      <th class="header-border !text-right">Balance</th>
+      <th class="header-border !text-right">Total</th>
     </tr>
     <%
       let even = false;
@@ -92,13 +94,15 @@
       <tr class="<%= even ? 'even' : 'odd' %>">
         <td rowspan=<%= event.debts.length %> <%- name ? 'class="!pl-4"' : '' %>><%= utils.formatDate(event.time, 'dd.MM.yyyy HH:mm') %></td>
         <td rowspan=<%= event.debts.length %>><%= capitalize(event.payment.type) %></td>
+        <td rowspan=<%= event.debts.length %>><%= capitalize(event.type) %></td>
         <td rowspan=<%= event.debts.length %>><%= event.payment.humanId %></td>
         <td><%= event.debts[0].humanId %></td>
         <td class="name"><%= event.debts[0].name %></td>
         <!--<td rowspan=<%= event.debts.length %>><%= event.payment.title %></td>-->
         <td rowspan=<%= event.debts.length %>><%= event.payer.name %></td>
-        <td rowspan=<%= event.debts.length %>><%= event.type %></td>
         <td rowspan=<%= event.debts.length %> class="text-right"><%= utils.formatEuro(event.amount) %></td>
+        <td rowspan=<%= event.debts.length %> class="text-right"><%= utils.formatEuro(event.balance) %></td>
+        <td rowspan=<%= event.debts.length %> class="text-right"><%= utils.formatEuro(event.payment.initialAmount) %></td>
       </tr>
     <%
           for (let i = 1; i < event.debts.length; i++) {
@@ -121,7 +125,7 @@
   }
 
   #content th {
-    @apply bg-gray-100 py-0.5 px-1 text-left whitespace-nowrap;
+    @apply bg-gray-100 py-0.5 px-2 text-left whitespace-nowrap;
   }
 
   .header-border {
