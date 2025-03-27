@@ -512,7 +512,7 @@ export default createModule({
           : sql` TRUE `;
 
         const results = await pg.many<{
-          event: DbPaymentEvent;
+          event: DbPaymentEvent & { balance: number };
           debts: DbDebt[];
           payment: DbPayment;
           payer: DbPayerProfile;
@@ -523,8 +523,40 @@ export default createModule({
             TO_JSONB(payer.*) AS payer,
             debts.*,
             payer.*
-          FROM payment_events event
-          JOIN payments payment ON payment.id = event.payment_id
+          FROM (
+            SELECT
+              *,
+              COALESCE(SUM(event.amount) FILTER (WHERE event.type <> 'created') OVER (PARTITION BY event.payment_id ORDER BY event.time, event.id ASC), 0) balance
+            FROM payment_events event
+          ) event
+          JOIN LATERAL (
+            SELECT
+              p.*,
+              s.balance,
+              s.status,
+              s.payer,
+              s.payer->>'name' AS payer_name,
+              aggs.debts,
+              aggs.debt_count,
+              aggs.payers,
+              (SELECT -amount FROM payment_events WHERE payment_id = p.id AND type = 'created') AS initial_amount,
+              (SELECT s.time FROM (SELECT time, SUM(amount) OVER (ORDER BY TIME) balance FROM payment_events WHERE payment_id = p.id) s WHERE balance >= 0 ORDER BY time LIMIT 1) AS paid_at,
+              (SELECT payer_id FROM payment_debt_mappings pdm JOIN debt d ON pdm.debt_id = d.id WHERE pdm.payment_id = p.id LIMIT 1) AS payer_id,
+              (SELECT ARRAY_AGG(TO_JSON(payment_events.*)) FROM payment_events WHERE payment_id = p.id) AS events,
+              COALESCE(s.updated_at, p.created_at) AS updated_at
+            FROM payments p
+            JOIN payment_statuses s ON s.id = p.id
+            LEFT JOIN LATERAL (
+              SELECT
+                ARRAY_AGG(DISTINCT jsonb_build_object('id', d.id, 'name', d.name)) AS debts,
+                COUNT(d.id) AS debt_count,
+                ARRAY_AGG(DISTINCT jsonb_build_object('id', pp.id, 'name', pp.name)) AS payers
+              FROM payment_debt_mappings pdm
+              INNER JOIN debt d ON pdm.debt_id = d.id
+              INNER JOIN payer_profiles pp ON pp.id = d.payer_id
+              WHERE pdm.payment_id = p.id
+            ) aggs ON true
+          ) payment ON payment.id = event.payment_id
           JOIN LATERAL (
             SELECT
               JSONB_AGG(TO_JSONB(debt.*)) debts
@@ -553,6 +585,7 @@ export default createModule({
             }),
             debts: debts.map(formatDebt),
             payer: formatPayerProfile(payer),
+            balance: cents(event.balance - payment.initial_amount),
             payment: formatPayment({ ...payment, events: [] }),
           })),
           item => item.time,
