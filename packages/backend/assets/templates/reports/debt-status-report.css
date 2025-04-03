@@ -1,0 +1,21 @@
+table#content {
+  width: 100%;
+}
+
+#content th {
+  @apply bg-gray-100 py-0.5 px-1 text-left whitespace-nowrap;
+}
+
+.header-border {
+  @apply border-b-4 border-b-gray-300;
+}
+
+#content td {
+  @apply px-1 py-0.5;
+
+  vertical-align: top;
+}
+
+#content tbody tr:nth-child(even) {
+  @apply bg-gray-100;
+}

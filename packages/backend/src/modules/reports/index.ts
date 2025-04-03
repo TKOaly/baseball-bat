@@ -101,8 +101,6 @@ export default createModule({
         waitUntil: ['domcontentloaded', 'load', 'networkidle0'],
       });
 
-      await new Promise(resolve => setTimeout(resolve, 10000));
-
       await page.addStyleTag({
         content: `
           html {
@@ -118,8 +116,12 @@ export default createModule({
       });
 
       await page.close();
-      await browser.close();
-      _browser = null;
+      const pages = await browser.pages();
+
+      if (pages.length === 0) {
+        await browser.close();
+        _browser = null;
+      }
 
       return pdf;
     }
@@ -131,7 +133,35 @@ export default createModule({
         'reports',
       );
       const templatePath = path.join(templateBasePath, `${name}.ejs`);
-      const content = await fs.promises.readFile(templatePath, 'utf8');
+      let content = await fs.promises.readFile(templatePath, 'utf8');
+
+      const files = await fs.promises.readdir(templateBasePath);
+      const styles = await Promise.all(
+        files
+          .filter(
+            filename =>
+              filename.endsWith('.css') && filename.startsWith(`${name}.`),
+          )
+          .map(async filename => ({
+            filename,
+            content: await fs.promises.readFile(
+              path.join(templateBasePath, filename),
+              'utf8',
+            ),
+          })),
+      );
+
+      for (const { filename, content: style } of styles) {
+        content += `<style>\n/* Source: ${filename} -->\n${style}\n</style>\n`;
+      }
+
+      content += `
+        <script type="text/javascript">
+          ${await fs.promises.readFile(require.resolve('feather-icons'))}
+          feather.replace();
+        </script>
+      `;
+
       return content;
     }
 
