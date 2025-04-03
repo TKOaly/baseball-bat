@@ -1,1 +1,3 @@
 test-results/
+assets/templates/reports/tailwind.config.*.css
+assets/templates/reports/*.tailwind.css
