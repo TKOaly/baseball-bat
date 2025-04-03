@@ -80,6 +80,7 @@ export default createModule({
 
   async setup({ config, bus, minio }) {
     let _browser: Browser | null = null;
+    let pageCounter = 0;
 
     async function getBrowser() {
       if (_browser === null) {
@@ -88,6 +89,7 @@ export default createModule({
           headless: true,
           args: ['--no-sandbox'],
         });
+        pageCounter = 0;
       }
 
       return _browser;
@@ -96,34 +98,37 @@ export default createModule({
     async function render(source: string, scale = 0.8) {
       const browser = await getBrowser();
       const page = await browser.newPage();
+      pageCounter++;
 
-      await page.setContent(source, {
-        waitUntil: ['domcontentloaded', 'load', 'networkidle0'],
-      });
+      try {
+        await page.setContent(source, {
+          waitUntil: ['domcontentloaded', 'load', 'networkidle0'],
+        });
 
-      await page.addStyleTag({
-        content: `
-          html {
-            -webkit-print-color-adjust: exact;
-          }
-        `,
-      });
+        await page.addStyleTag({
+          content: `
+            html {
+              -webkit-print-color-adjust: exact;
+            }
+          `,
+        });
 
-      const pdf = await page.pdf({
-        format: 'A4',
-        scale,
-        landscape: true,
-      });
+        const pdf = await page.pdf({
+          format: 'A4',
+          scale,
+          landscape: true,
+        });
 
-      await page.close();
-      const pages = await browser.pages();
+        return pdf;
+      } finally {
+        await page.close();
+        pageCounter--;
 
-      if (pages.length === 0) {
-        await browser.close();
-        _browser = null;
+        if (pageCounter === 0) {
+          _browser = null;
+          await browser.close();
+        }
       }
-
-      return pdf;
     }
 
     async function loadTemplate(name: string): Promise<string> {
