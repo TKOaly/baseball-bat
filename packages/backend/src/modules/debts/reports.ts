@@ -224,9 +224,18 @@ export default (bus: Bus<BusContext>) => {
       if (options.includeOnly === 'paid') {
         statusFilter = sql` HAVING bool_or(ps.status = 'paid') `;
       } else if (options.includeOnly === 'credited') {
-        statusFilter = sql` HAVING debt.credited `;
+        statusFilter = sql` HAVING debt.credited_at IS NOT NULL AND debt.credited_at <= ${endOfDay(options.date)}`;
       } else if (options.includeOnly === 'open') {
-        statusFilter = sql` HAVING NOT (bool_or(ps.status = 'paid') OR debt.credited) `;
+        statusFilter = sql` HAVING NOT bool_or(ps.status = 'paid') AND (debt.credited_at IS NULL OR debt.credited_at > ${endOfDay(options.date)}) `;
+      }
+
+      const where = [
+        sql`debt.published_at IS NOT NULL`,
+        sql`debt.published_at <= ${endOfDay(options.date)}`,
+      ];
+
+      if (options.centers) {
+        where.push(sql`debt_center.id = ANY (${options.centers})`);
       }
 
       const dbResults = await pg.many<
@@ -235,80 +244,73 @@ export default (bus: Bus<BusContext>) => {
             | { status: 'paid'; paid_at: Date }
             | { status: 'open'; paid_at: null }
           ) & { payment_id: string }
-      >(
-        sql`
-          WITH payment_agg AS (
-            SELECT
-              payment_id,
-              SUM(amount) AS balance,
-              (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
-              (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
-              MAX(time) AS updated_at
-            FROM payment_events e
-            WHERE time < ${endOfDay(options.date)} OR type = 'created'
-            GROUP BY payment_id
-          ),
-          payment_statuses AS (
-            SELECT
-              p.id AS payment_id,
-              (
-                SELECT time
-                FROM payment_events e2
-                WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${endOfDay(options.date)}
-                ORDER BY e2.time DESC
-                LIMIT 1
-              ) AS paid_at, 
-              CASE
-                  WHEN s.has_cancel_event THEN 'canceled'::payment_status
-                  WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
-                  WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
-                  ELSE 'paid'::payment_status
-              END AS status
-            FROM payment_agg s
-            LEFT JOIN payments p ON p.id = s.payment_id
-            LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
-            INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${endOfDay(options.date)} 
-            LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
-          )
+      >(sql`
+        WITH payment_agg AS (
           SELECT
-            debt.*,
-            TO_JSON(payer_profiles.*) AS payer,
-            TO_JSON(debt_center.*) AS debt_center,
-            ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+            payment_id,
+            SUM(amount) AS balance,
+            (COUNT(*) FILTER (WHERE type = 'payment'::text)) > 0 AS has_payment_event,
+            (COUNT(*) FILTER (WHERE type = 'canceled'::text)) > 0 AS has_cancel_event,
+            MAX(time) AS updated_at
+          FROM payment_events e
+          WHERE time < ${endOfDay(options.date)} OR type = 'created'
+          GROUP BY payment_id
+        ),
+        payment_statuses AS (
+          SELECT
+            p.id AS payment_id,
             (
-              SELECT SUM(dc.amount) AS total
-              FROM debt_component_mapping dcm
-              JOIN debt_component dc ON dc.id = dcm.debt_component_id
-              WHERE dcm.debt_id = debt.id
-            ) AS total,
-            (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
-            (CASE
-              WHEN debt.credited THEN 'credited'
-              WHEN bool_or(ps.status = 'paid') THEN 'paid'
-              ELSE 'open'
-            END) status,
-            MIN(ps.paid_at) paid_at,
-            (CASE
-              WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
-            END) payment_id
-          FROM debt
-          LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
-          LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
-          LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
-          LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
-          LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
-          LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
-          WHERE debt.published_at IS NOT NULL
-        `
-          .append(
-            options.centers
-              ? sql` AND debt_center.id = ANY (${options.centers})`
-              : sql``,
-          )
-          .append(sql` GROUP BY debt.id, payer_profiles.*, debt_center.*`)
-          .append(statusFilter)
-          .append(sql` ORDER BY MIN(ps.paid_at)`),
-      );
+              SELECT time
+              FROM payment_events e2
+              WHERE e2.payment_id = p.id AND e2.type = 'payment' AND e2.time < ${endOfDay(options.date)}
+              ORDER BY e2.time DESC
+              LIMIT 1
+            ) AS paid_at, 
+            CASE
+                WHEN s.has_cancel_event THEN 'canceled'::payment_status
+                WHEN (NOT s.has_payment_event) THEN 'unpaid'::payment_status
+                WHEN (s.balance <> 0) THEN 'mispaid'::payment_status
+                ELSE 'paid'::payment_status
+            END AS status
+          FROM payment_agg s
+          LEFT JOIN payments p ON p.id = s.payment_id
+          LEFT JOIN payment_debt_mappings pdm ON pdm.payment_id = p.id
+          INNER JOIN debt d ON d.id = pdm.debt_id AND d.published_at IS NOT NULL AND d.date < ${endOfDay(options.date)} 
+          LEFT JOIN payer_profiles pp ON pp.id = d.payer_id
+        )
+        SELECT
+          debt.*,
+          TO_JSON(payer_profiles.*) AS payer,
+          TO_JSON(debt_center.*) AS debt_center,
+          ARRAY_AGG(TO_JSON(debt_component.*)) AS debt_components,
+          (
+            SELECT SUM(dc.amount) AS total
+            FROM debt_component_mapping dcm
+            JOIN debt_component dc ON dc.id = dcm.debt_component_id
+            WHERE dcm.debt_id = debt.id
+          ) AS total,
+          (SELECT ARRAY_AGG(TO_JSONB(debt_tags.*)) FROM debt_tags WHERE debt_tags.debt_id = debt.id) AS tags,
+          (CASE
+            WHEN debt.credited_at IS NOT NULL AND debt.credited_at <= ${endOfDay(options.date)} THEN 'credited'
+            WHEN bool_or(ps.status = 'paid') THEN 'paid'
+            ELSE 'open'
+          END) status,
+          MIN(ps.paid_at) paid_at,
+          (CASE
+            WHEN bool_or(ps.status = 'paid') THEN (ARRAY_AGG(ps.payment_id ORDER BY ps.paid_at) FILTER (WHERE ps.status = 'paid'))[1]
+          END) payment_id
+        FROM debt
+        LEFT JOIN payment_debt_mappings pdm ON pdm.debt_id = debt.id
+        LEFT JOIN payment_statuses ps ON ps.payment_id = pdm.payment_id
+        LEFT JOIN payer_profiles ON payer_profiles.id = debt.payer_id
+        LEFT JOIN debt_center ON debt_center.id = debt.debt_center_id
+        LEFT JOIN debt_component_mapping ON debt_component_mapping.debt_id = debt.id
+        LEFT JOIN debt_component ON debt_component_mapping.debt_component_id = debt_component.id
+        WHERE ${sql.and(where)}
+        GROUP BY debt.id, payer_profiles.*, debt_center.*
+        ${statusFilter}
+        ORDER BY MIN(ps.paid_at)
+      `);
 
       const results = await Promise.all(
         dbResults.map(
