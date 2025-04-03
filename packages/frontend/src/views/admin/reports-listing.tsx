@@ -87,6 +87,15 @@ export const ReportsListing = () => {
           direction: 'asc',
         }}
         rows={(reports ?? []).map(r => ({ ...r, key: r.id }))}
+        selectable
+        actions={[
+          {
+            key: 'refresh',
+            text: 'Refresh',
+            onSelect: rows =>
+              Promise.all(rows.map(row => handleRefreshReport(row.id))),
+          },
+        ]}
         columns={[
           {
             name: 'Identifier',
