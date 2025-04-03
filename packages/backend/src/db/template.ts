@@ -77,3 +77,9 @@ function raw(raw: string) {
 }
 
 sql.raw = raw;
+
+function and(array: Sql[]) {
+  return sql` AND `.join(array.map(part => sql`(${part})`));
+}
+
+sql.and = and;
