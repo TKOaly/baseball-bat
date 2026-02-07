@@ -2,12 +2,15 @@
 
 cd ./assets/templates/reports
 
+DIR="$(mktemp -d)"
+trap 'rm -r $DIR' EXIT
+
 for FILENAME in *.ejs
 do
   TEMPLATE="${FILENAME%.ejs}"
   echo "Building template $TEMPLATE..."
 
-  CONFIG_FILE="./tailwind.config.${TEMPLATE}.css"
+  CONFIG_FILE="$DIR/tailwind.config.${TEMPLATE}.css"
   INPUT_FILES=("$CONFIG_FILE")
   printf '@import "tailwindcss" source(none);\n@source "%s";\n' "./$FILENAME" > "$CONFIG_FILE"
 
