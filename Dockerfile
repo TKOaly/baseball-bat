@@ -71,6 +71,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV ASSET_PATH /usr/src/app/packages/backend/assets
 
+RUN apk add bash
 RUN corepack enable
 
 WORKDIR /usr/src/app
