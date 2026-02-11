@@ -88,7 +88,7 @@ const setupMinio = async (logger: Logger) => {
   const secretKey = randomString(16);
   const accessKey = randomString(16);
 
-  const container = await new GenericContainer('bitnami/minio')
+  const container = await new GenericContainer('minio/minio')
     .withExposedPorts(9000)
     .withEnvironment({
       MINIO_ROOT_USER: accessKey,
