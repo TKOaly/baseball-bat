@@ -108,7 +108,32 @@
         </mj-table>
         <mj-divider border-color="#fc3" />
         <mj-text font-size="20px">Payment information</mj-text>
+        <mj-text>
+          When you pay an invoice via bank transfer,
+          always use the <b>reference number in the reference number field</b>
+          (not the message field). Use the whole reference number, including the letters.
+          Otherwise, the processing of your payment may be delayed.
+        </mj-text>
+        <mj-text>
+          Kun maksat laskun tilisiirrolla,
+          käytä aina <b>viitenumeroa viitenumerokentässä</b>
+          (ei viestikentässä). Käytä koko viitenumeroa kirjaimineen.
+          Muuten maksusi käsittely voi viivästyä.
+        </mj-text>
         <mj-table>
+          <tr>
+            <th
+              style="
+                text-align: left;
+                width: 0;
+                white-space: nowrap !important;
+                padding-right: 1em;
+              "
+            >
+              Reference number
+            </th>
+            <td><%- formatReferenceNumber(referenceNumber) %></td>
+          </tr>
           <tr>
             <th
               style="
@@ -188,19 +213,6 @@
               Total amount
             </th>
             <td><%- formatEuro(amount) %></td>
-          </tr>
-          <tr>
-            <th
-              style="
-                text-align: left;
-                width: 0;
-                white-space: nowrap !important;
-                padding-right: 1em;
-              "
-            >
-              Reference number
-            </th>
-            <td><%- formatReferenceNumber(referenceNumber) %></td>
           </tr>
           <tr>
             <th
