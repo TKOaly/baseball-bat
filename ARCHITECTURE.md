@@ -91,7 +91,7 @@ This module is reponsible for managing debts (creation, deletion, publishing, cr
 This module renders, queues, and sends emails.
 
  - **events** <br />
-This module consumes the `events-microservice` API.
+This module consumes the `events-service` API.
 
  - **invoices** <br />
 This module manages payments of type `invoice`, which correspond to e-mail invoices sent to the debtors.
