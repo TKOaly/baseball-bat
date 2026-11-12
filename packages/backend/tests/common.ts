@@ -88,19 +88,16 @@ const setupMinio = async (logger: Logger) => {
   const secretKey = randomString(16);
   const accessKey = randomString(16);
 
-  const container = await new GenericContainer('minio/minio')
-    .withExposedPorts(9000)
-    .withEnvironment({
-      MINIO_ROOT_USER: accessKey,
-      MINIO_ROOT_PASSWORD: secretKey,
-    })
-    .withWaitStrategy(
-      Wait.forAll([
-        Wait.forHttp('/minio/health/live', 9000),
-        Wait.forLogMessage(/^API: http/),
-      ]),
-    )
-    .start();
+  const container = await new GenericContainer('rustfs/rustfs')
+  .withExposedPorts(9000)
+  .withEnvironment({
+    RUSTFS_ACCESS_KEY: accessKey,
+    RUSTFS_SECRET_KEY: secretKey,
+    RUSTFS_VOLUMES: '/data',
+    RUSTFS_ADDRESS: '0.0.0.0:9000',
+  })
+  .withWaitStrategy(Wait.forHttp('/health', 9000))
+  .start();
 
   const uri = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
 
