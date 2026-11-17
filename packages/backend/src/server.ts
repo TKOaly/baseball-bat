@@ -1,18 +1,12 @@
 import express from 'express';
 import path from 'path';
-import opentelemetry from '@opentelemetry/api';
-import crypto from 'crypto';
-import {
-  ATTR_HTTP_ROUTE,
-  ATTR_HTTP_REQUEST_METHOD,
-  ATTR_HTTP_RESPONSE_STATUS_CODE,
-} from '@opentelemetry/semantic-conventions';
 import helmet, { HelmetOptions } from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import initServices from '@/modules';
 import apiRoutes, { ApiDeps } from './api';
 import { ModuleDeps } from './module';
+import { errorLogging, requestTracing } from './middleware/request-tracing';
 
 const helmetConfig: HelmetOptions = {
   contentSecurityPolicy: {
@@ -44,61 +38,7 @@ const helmetConfig: HelmetOptions = {
 
 export default async (deps: ApiDeps & ModuleDeps) => {
   const app = express()
-    .use('/api', (req, res, next) => {
-      const { trace: tracing, propagation, context } = opentelemetry;
-
-      const tracer = tracing.getTracer('baseball-bat');
-      const name = `[${req.method}] ${req.originalUrl}`;
-
-      const newContext = propagation.extract(context.active(), {
-        traceparent: req.headers.traceparent,
-        tracestate: req.headers.tracestate,
-      });
-
-      const span = (req.span = tracer.startSpan(
-        name,
-        {
-          root: !req.headers.traceparent,
-          attributes: {
-            [ATTR_HTTP_ROUTE]: req.originalUrl,
-            [ATTR_HTTP_REQUEST_METHOD]: req.method,
-            parent: req.headers.taceparent,
-          },
-        },
-        newContext,
-      ));
-
-      // Set the created span as active in the deserialized context.
-      tracing.setSpan(newContext, span);
-
-      const id = crypto.randomBytes(4).toString('hex');
-      const start = process.hrtime.bigint();
-
-      const idSegment = deps.logger.isDebugEnabled() ? `[${id}] ` : '';
-
-      res.on('finish', () => {
-        const end = process.hrtime.bigint();
-        const duration = Number(end - start);
-
-        deps.logger.info(
-          `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl} [${res.statusCode}] [${(duration / 1_000_0000).toFixed(2)}ms]`,
-          {
-            method: req.method,
-            url: req.originalUrl,
-            status: res.statusCode,
-          },
-        );
-
-        span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
-        span.end();
-      });
-
-      deps.logger.debug(
-        `${idSegment}${`[${req.method}]`.padEnd(6)} ${req.originalUrl}`,
-      );
-
-      next();
-    })
+    .use('/api', requestTracing(deps.logger))
     .use(helmet(helmetConfig))
     .use(
       cors({
@@ -127,6 +67,8 @@ export default async (deps: ApiDeps & ModuleDeps) => {
       res.sendFile(path.join(staticPath, 'index.html')),
     );
   }
+
+  app.use(errorLogging(deps.logger));
 
   return app;
 };

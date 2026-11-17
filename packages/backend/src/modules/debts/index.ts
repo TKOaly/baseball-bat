@@ -1272,8 +1272,6 @@ export default createModule({
         }
 
         if (!isPaymentInvoice(defaultPayment)) {
-          console.log('Not invoice: ', defaultPayment);
-
           throw new Error(
             `The default payment of debt ${debt.id} is not an invoice!`,
           );
@@ -1649,8 +1647,6 @@ export default createModule({
           A.map(t => t.name),
         );
 
-        console.log(newTags, removedTags);
-
         const addTags = A.traverse(TE.ApplicativePar)(
           name => async (): Promise<E.Either<Error, null>> => {
             await pg.one(sql`
@@ -2024,7 +2020,7 @@ export default createModule({
       defs.sendAllReminders,
       async (
         { draft = true, ignoreReminderCooldown = false, debts: pDebts },
-        { pg },
+        { pg, logger },
         bus,
       ) => {
         let debts: string[];
@@ -2063,15 +2059,27 @@ export default createModule({
           ),
         );
 
-        const sendReminder = flow(
-          ({ debt }) => ({ debtId: debt.id, draft: true }),
-          bus.execTE(defs.sendReminder),
-          TE.chainEitherKW(v => v),
-          TE.mapLeft(error => {
-            console.error('Error while sending reminder:', error);
-            return error.toString();
-          }),
-        );
+        const sendReminder = ({ debt }: { debt: Debt }) =>
+          pipe(
+            { debtId: debt.id, draft: true },
+            bus.execTE(defs.sendReminder),
+            TE.chainEitherKW(v => v),
+            TE.mapLeft(error => {
+              if (typeof error === 'string') {
+                // Expected, e.g. the debt is a draft or the payer has no email.
+                logger.warn(
+                  { debtId: debt.id, reason: error },
+                  'Reminder not sent',
+                );
+              } else {
+                logger.error(
+                  { err: error, debtId: debt.id },
+                  'Failed to send reminder',
+                );
+              }
+              return error.toString();
+            }),
+          );
 
         const result = await flow(
           A.traverse(T.ApplicativePar)(

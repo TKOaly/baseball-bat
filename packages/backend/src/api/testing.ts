@@ -31,7 +31,7 @@ const factory: ApiFactory = (_, route) => {
   const createDebt = route
     .use(auth())
     .post('/create-debt')
-    .handler(async ({ bus, session }) => {
+    .handler(async ({ bus, session, logger }) => {
       let center = await bus.exec(getDebtCenterByName, 'Test Center');
       let component;
 
@@ -53,7 +53,7 @@ const factory: ApiFactory = (_, route) => {
         });
 
         if (!center) {
-          console.error('Failed to create debt center!');
+          logger.error('Failed to create test debt center');
           return internalServerError();
         }
 
@@ -68,7 +68,7 @@ const factory: ApiFactory = (_, route) => {
       }
 
       if (!component) {
-        console.error('Failed to create debt component!');
+        logger.error('Failed to create test debt component');
         return internalServerError();
       }
 

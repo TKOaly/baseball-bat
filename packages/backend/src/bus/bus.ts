@@ -18,6 +18,10 @@ import { Middleware } from 'typera-express';
 import { flow, pipe } from 'fp-ts/function';
 import { NatsConnection } from 'nats';
 import { Connection } from '@/db/connection';
+import rootLogger from '@/logger';
+import { describeErrors } from '@/validation-errors';
+
+const logger = rootLogger.child({ component: 'bus' });
 
 type ProcedureImplementations<I extends Interface, C> = {
   [P in keyof I['procedures']]: ProcedureHandler<I['procedures'][P], C>;
@@ -218,9 +222,12 @@ export class LocalBus<
       if (E.isRight(payload)) {
         await handler(payload.right, context, this.createContext(context));
       } else {
-        console.log(event);
+        logger.error(
+          { event: eventType.name, errors: describeErrors(payload.left) },
+          `Failed to decode payload for event ${eventType.name}`,
+        );
         throw new Error(
-          'Failed to decode payload for event ${eventType.name}!',
+          `Failed to decode payload for event ${eventType.name}!`,
         );
       }
     };
@@ -312,7 +319,10 @@ export class LocalBus<
       TE.flatMapTask(execHandler),
       TE.map(value => {
         if (!responseType.is(value)) {
-          console.log(value, responseType.name);
+          logger.warn(
+            { procedure: name, responseType: responseType.name },
+            `Response of procedure call '${name}' does not match its declared type`,
+          );
         }
 
         return value;
@@ -322,7 +332,10 @@ export class LocalBus<
     )();
 
     if (E.isLeft(result)) {
-      console.log(result.left);
+      logger.error(
+        { procedure: name, errors: describeErrors(result.left.validation) },
+        result.left.message,
+      );
       throw new Error(result.left.message);
     }
 

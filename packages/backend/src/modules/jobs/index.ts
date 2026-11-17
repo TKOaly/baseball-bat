@@ -13,7 +13,7 @@ import { addSeconds, subMinutes } from 'date-fns';
 import { Connection } from '@/db/connection';
 import { Session } from '@/middleware/session';
 import { partition } from 'remeda';
-import { Logger } from 'winston';
+import { Logger } from '@/logger';
 
 const formatJob = (db: DbJob): Job => ({
   id: db.id,
@@ -132,7 +132,7 @@ export default createModule({
             },
           );
         } catch (err) {
-          logger.error('Job poll failed: ' + err);
+          logger.error({ err }, 'Job poll failed');
         }
       })();
 
@@ -184,9 +184,10 @@ export default createModule({
         try {
           await ctx.exec(defs.execute, details.id);
         } catch (err) {
-          ctx.context.logger.error(`Job ${details.id} failed: ${err}`, {
-            job_id: details.id,
-          });
+          ctx.context.logger.error(
+            { err, job_id: details.id, job_type: details.type },
+            `Job ${details.id} failed`,
+          );
 
           await pool.withConnection(async conn => {
             await conn.do(
@@ -424,11 +425,15 @@ export default createModule({
 
       if (error) {
         logger.error(
-          `Job ${job.id} (${job.type}) failed after ${formatMicros(after - before)}: ${error}`,
           {
+            err: error,
             job_id: job.id,
             job_type: job.type,
+            duration_ms: Number(after - before) / 1e6,
+            retries: job.retries,
+            max_retries: job.maxRetries,
           },
+          `Job ${job.id} (${job.type}) failed after ${formatMicros(after - before)}`,
         );
 
         const traceId = opentelemetry.trace
@@ -476,11 +481,12 @@ export default createModule({
         await pg.rollback();
       } else {
         logger.info(
-          `Job ${job.id} (${job.type}) finished in ${formatMicros(after - before)}.`,
           {
             job_id: job.id,
             job_type: job.type,
+            duration_ms: Number(after - before) / 1e6,
           },
+          `Job ${job.id} (${job.type}) finished in ${formatMicros(after - before)}`,
         );
       }
     });

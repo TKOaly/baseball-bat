@@ -1,7 +1,7 @@
 import { ApiDeps } from '@/api';
 import opentelemetry from '@opentelemetry/api';
 import { BusContext } from '@/app';
-import winston, { Logger } from 'winston';
+import rootLogger, { Logger } from '@/logger';
 import * as redis from 'redis';
 import { Config } from '@/config';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -89,15 +89,15 @@ const setupMinio = async (logger: Logger) => {
   const accessKey = randomString(16);
 
   const container = await new GenericContainer('rustfs/rustfs')
-  .withExposedPorts(9000)
-  .withEnvironment({
-    RUSTFS_ACCESS_KEY: accessKey,
-    RUSTFS_SECRET_KEY: secretKey,
-    RUSTFS_VOLUMES: '/data',
-    RUSTFS_ADDRESS: '0.0.0.0:9000',
-  })
-  .withWaitStrategy(Wait.forHttp('/health', 9000))
-  .start();
+    .withExposedPorts(9000)
+    .withEnvironment({
+      RUSTFS_ACCESS_KEY: accessKey,
+      RUSTFS_SECRET_KEY: secretKey,
+      RUSTFS_VOLUMES: '/data',
+      RUSTFS_ADDRESS: '0.0.0.0:9000',
+    })
+    .withWaitStrategy(Wait.forHttp('/health', 9000))
+    .start();
 
   const uri = `http://${container.getHost()}:${container.getMappedPort(9000)}`;
 
@@ -302,20 +302,9 @@ export class TestEnvironment {
 }
 
 export const createEnvironment = async (): Promise<Environment> => {
-  const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL ?? 'info',
-    transports: [
-      new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize({ level: true }),
-          winston.format.printf(info => {
-            const module = info.module ? `[${info.module}] ` : '';
-            return `[${info.level}] ${module}${info.message}`;
-          }),
-        ),
-      }),
-    ],
-  });
+  // Same JSON output as the app. Pipe through `pino-pretty` for readable
+  // output, and set LOG_LEVEL to change the verbosity.
+  const logger = rootLogger.child({ component: 'test-environment' });
 
   const [postgres, redis, minio, nats] = await Promise.all([
     setupPostgres(logger),

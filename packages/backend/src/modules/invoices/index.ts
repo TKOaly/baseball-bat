@@ -30,6 +30,7 @@ import {
   onTransaction,
 } from '../banking/definitions';
 import { createModule } from '@/module';
+import { describeErrors } from '@/validation-errors';
 
 function normalizeReferenceNumber(reference: string) {
   return reference
@@ -144,13 +145,16 @@ export default createModule({
     }
 
     bus.provideNamed(paymentTypeIface, 'invoice', {
-      async createPayment(params, _, bus) {
+      async createPayment(params, { logger }, bus) {
         const { paymentId } = params;
 
         const optionsResult = invoiceOptions.decode(params.options);
 
         if (isLeft(optionsResult)) {
-          console.error('Invalid options: ', params.options);
+          logger.error(
+            { paymentId, errors: describeErrors(optionsResult.left) },
+            'Invalid invoice options',
+          );
           throw new Error('Invalid options!');
         }
 

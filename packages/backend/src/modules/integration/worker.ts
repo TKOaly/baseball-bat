@@ -23,7 +23,7 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
   const logger = bus.context.logger.child({ memberId: payload.user });
 
   const handleEmailChange = async (memberId: number, email: string) => {
-    logger.info(`Handling email change...`, { email });
+    logger.info('Handling email change...');
 
     const payerWithMemberId = await bus.exec(
       payerService.getPayerProfileByTkoalyIdentity,
@@ -120,7 +120,7 @@ const handleMessage = async (msg: JsMsg, bus: ExecutionContext<BusContext>) => {
       return;
     }
 
-    logger.info(`Found matching payer profile!`, { payerId: payer.id.value });
+    logger.info({ payerId: payer.id.value }, 'Found matching payer profile!');
 
     await bus.exec(payerService.updatePayerName, {
       payerId: payer.id,

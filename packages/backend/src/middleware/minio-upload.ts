@@ -2,7 +2,7 @@ import busboy from 'busboy';
 import { randomUUID } from 'crypto';
 import * as Minio from 'minio';
 import { Middleware, Response } from 'typera-express';
-import { Logger } from 'winston';
+import { Logger } from '@/logger';
 import { Transform, TransformCallback } from 'stream';
 
 export type Options = {
@@ -76,7 +76,13 @@ export const uploadToMinio =
           await minio.putObject(options.bucket, key, file.pipe(meter));
 
           logger.info(
-            `Uploaded user file ${info.filename} (${formatBytes(meter.size)}) to MinIO as ${options.bucket}/${key}`,
+            {
+              bucket: options.bucket,
+              key,
+              filename: info.filename,
+              size: meter.size,
+            },
+            `Uploaded user file (${formatBytes(meter.size)}) to MinIO`,
           );
 
           resolve({
@@ -85,14 +91,15 @@ export const uploadToMinio =
           });
         } catch (err) {
           logger.error(
-            `Failed to upload user file "${info.filename}" to MinIO: ${err}`,
+            { err, bucket: options.bucket, key, filename: info.filename },
+            'Failed to upload user file to MinIO',
           );
           reject(err);
         }
       });
 
       bb.on('error', err => {
-        logger.error('Failed to parse request body!');
+        logger.error({ err }, 'Failed to parse multipart request body');
         reject(err);
       });
 

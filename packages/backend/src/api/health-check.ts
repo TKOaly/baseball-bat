@@ -4,7 +4,7 @@ import { ApiFactory } from '.';
 import { sql } from '@/db/template';
 
 const factory: ApiFactory = ({ config }, route) => {
-  const check = route.get('/').handler(async ({ pg, redis, minio }) => {
+  const check = route.get('/').handler(async ({ pg, redis, minio, logger }) => {
     const statuses = {
       db: true,
       redis: true,
@@ -14,21 +14,30 @@ const factory: ApiFactory = ({ config }, route) => {
     try {
       await pg.do(sql`SELECT 1`);
     } catch (err) {
-      console.log('PostgreSQL failed during health check:', err);
+      logger.error(
+        { err, component: 'postgres' },
+        'PostgreSQL failed during health check',
+      );
       statuses.db = false;
     }
 
     try {
       await redis.set('healthcheck', 'test');
     } catch (err) {
-      console.log('Redis failed during health check:', err);
+      logger.error(
+        { err, component: 'redis' },
+        'Redis failed during health check',
+      );
       statuses.redis = false;
     }
 
     try {
       await minio.bucketExists(config.minioBucket);
     } catch (err) {
-      console.log('MinIO failed during health check:', err);
+      logger.error(
+        { err, component: 'minio' },
+        'MinIO failed during health check',
+      );
       statuses.minio = false;
     }
 

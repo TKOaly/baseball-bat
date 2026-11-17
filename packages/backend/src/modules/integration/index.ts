@@ -14,7 +14,10 @@ export default createModule({
         try {
           await startWorker(context);
         } catch (err) {
-          context.logger.error(`Worker threw an error: ${err}`);
+          context.logger.error(
+            { err },
+            'NATS worker threw an error, restarting',
+          );
         }
       }
     })();

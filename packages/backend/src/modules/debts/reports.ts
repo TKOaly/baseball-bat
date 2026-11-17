@@ -10,6 +10,7 @@ import * as tt from 'io-ts-types';
 import { DbDebt, Debt, Payment, internalIdentity } from '@bbat/common/types';
 import { groupBy } from 'fp-ts/NonEmptyArray';
 import { pipe } from 'fp-ts/function';
+import { describeErrors } from '@/validation-errors';
 import { toArray } from 'fp-ts/Record';
 import * as debtCentersService from '@/modules/debt-centers/definitions';
 import * as payerService from '@/modules/payers/definitions';
@@ -52,11 +53,14 @@ export default (bus: Bus<BusContext>) => {
       };
     },
 
-    async generate(args, { pg }, bus) {
+    async generate(args, { pg, logger }, bus) {
       const result = debtLedgerOptions.decode(args.options);
 
       if (E.isLeft(result)) {
-        console.log(args.options);
+        logger.error(
+          { report: 'debt-ledger', errors: describeErrors(result.left) },
+          'Invalid report options',
+        );
         throw new Error('Invalid options!');
       }
 

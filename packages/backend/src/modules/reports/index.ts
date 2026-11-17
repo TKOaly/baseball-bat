@@ -516,7 +516,10 @@ export default createModule({
             status: 'finished',
           });
         } catch (err) {
-          console.error('Report generation failed: ', err);
+          ctx.context.logger.error(
+            { err, reportId: report.id, reportType: report.type },
+            'Report generation failed',
+          );
           await updateReportStatus(ctx.context.pg, report.id, 'failed');
           await ctx.emit(defs.onReportStatusChanged, {
             report: id,

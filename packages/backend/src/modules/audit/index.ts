@@ -2,6 +2,8 @@ import { createModule } from '@/module';
 import { sql } from '@/db/template';
 import iface from './definitions';
 import routes from './api';
+import rootLogger from '@/logger';
+import { describeErrors } from '@/validation-errors';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Task';
 import { pipe } from 'fp-ts/function';
@@ -59,7 +61,14 @@ const formatAuditLogEntry = (db: AuditLogDb): AuditEvent => {
   const result = auditEvent.decode(mapped);
 
   if (isLeft(result)) {
-    console.log(mapped);
+    rootLogger.error(
+      {
+        module: 'audit',
+        entryId: db.entry_id,
+        errors: describeErrors(result.left),
+      },
+      'Failed to decode audit log entry',
+    );
     throw new Error('Failed to decode auditLogEntry from DB response!');
   }
 

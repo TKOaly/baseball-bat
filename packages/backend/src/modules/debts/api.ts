@@ -423,8 +423,6 @@ const factory: RouterFactory = route => {
           tags = [...tagNames];
         }
 
-        console.log(tags);
-
         return await bus.exec(debtService.updateDebt, {
           ...values,
           id,

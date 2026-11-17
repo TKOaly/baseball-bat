@@ -37,6 +37,7 @@ const factory: RouterFactory<StripeContext> = route => {
 
       if (payments.length > 1) {
         logger.error(
+          { stripe_payment_intent: query.intent, payments: payments.length },
           `Multiple payments associated with payment intent ${query.intent}`,
         );
         return notFound();
@@ -73,9 +74,7 @@ const factory: RouterFactory<StripeContext> = route => {
           webhookSecret,
         );
       } catch (err) {
-        ctx.logger.warning(`Failed to verify Stripe webhook signature!`, {
-          signature: ctx.headers['stripe-signature'],
-        });
+        ctx.logger.warn({ err }, 'Failed to verify Stripe webhook signature');
         return badRequest({
           error: `Webhook Error: ${err}`,
         });
@@ -174,9 +173,10 @@ const factory: RouterFactory<StripeContext> = route => {
           transaction: null,
         });
 
-        logger.info('Created payment event from Stripe event!', {
-          payment_event_id: created.id,
-        });
+        logger.info(
+          { payment_event_id: created.id, payment_id: paymentEvent.payment },
+          'Created payment event from Stripe event',
+        );
       }
 
       return ok();

@@ -157,12 +157,14 @@ const factory: RouterFactory<Module> = (route, { config }) => {
         unauthenticated: true,
       }),
     )
-    .handler(async ({ body, session, bus, module }) => {
+    .handler(async ({ body, session, bus, module, logger }) => {
       const { auth } = module;
       const authenticated = await auth.getAuthTokenStatus(body.id);
 
       if (!authenticated) {
-        console.log('Not authenticated!');
+        logger.warn(
+          'Session authentication failed: auth token not authenticated',
+        );
         return unauthorized({
           message: 'Not authenticated!',
         });
@@ -171,7 +173,7 @@ const factory: RouterFactory<Module> = (route, { config }) => {
       const payerId = await auth.getAuthTokenPayerId(body.id);
 
       if (!payerId) {
-        console.log('No such user');
+        logger.error('Session authentication failed: auth token has no payer');
 
         return internalServerError();
       }
@@ -182,7 +184,10 @@ const factory: RouterFactory<Module> = (route, { config }) => {
       );
 
       if (!payerProfile) {
-        console.log('Could not fetch user');
+        logger.error(
+          { payerId: payerId.value },
+          'Session authentication failed: payer profile not found',
+        );
         return internalServerError();
       }
 

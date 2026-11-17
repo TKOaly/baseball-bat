@@ -61,7 +61,7 @@ export default createModule({
 
   routes,
 
-  async setup({ config, bus }) {
+  async setup({ config, bus, logger }) {
     const client = axios.create({
       baseURL: config.eventServiceUrl,
       headers: {
@@ -78,7 +78,7 @@ export default createModule({
 
           return res.data.map(parseApiEvent).filter(event => !event.deleted);
         } catch (err) {
-          console.error(err);
+          logger.error({ err }, 'Failed to fetch events');
           throw new Error('Failed to fetch events');
         }
       },
@@ -90,7 +90,11 @@ export default createModule({
           );
 
           return res.data.map(parseApiEvent).filter(event => !event.deleted);
-        } catch {
+        } catch (err) {
+          logger.error(
+            { err, userId: id.value },
+            'Failed to fetch events for user',
+          );
           throw new Error(`Failed to fetch events for user ${id.value}`);
         }
       },
@@ -102,7 +106,10 @@ export default createModule({
           );
           return res.data.map(formatRegistration);
         } catch (err) {
-          console.log(err);
+          logger.error(
+            { err, eventId: id },
+            'Failed to fetch event registrations',
+          );
           throw new Error(`Failed to fetch registrations for event ${id}`);
         }
       },
@@ -114,7 +121,10 @@ export default createModule({
           );
           return res.data;
         } catch (err) {
-          console.log(err);
+          logger.error(
+            { err, eventId: id },
+            'Failed to fetch event custom fields',
+          );
           throw new Error(`Failed to fetch custom fields for event ${id}`);
         }
       },

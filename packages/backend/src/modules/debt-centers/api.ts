@@ -80,7 +80,7 @@ const factory: RouterFactory = route => {
   const createDebtCenter = route
     .post('/')
     .use(auth())
-    .handler(async ({ bus, ...ctx }) => {
+    .handler(async ({ bus, logger, ...ctx }) => {
       try {
         const center = await bus.exec(
           debtCentersService.createDebtCenter,
@@ -88,8 +88,6 @@ const factory: RouterFactory = route => {
         );
         return ok(center);
       } catch (err) {
-        console.log(err);
-
         if ((err as any).constraint === 'name_unique') {
           return badRequest({
             type: 'unique_violation',
@@ -100,6 +98,8 @@ const factory: RouterFactory = route => {
             },
           });
         }
+
+        logger.error({ err }, 'Failed to create debt center');
 
         throw err;
       }

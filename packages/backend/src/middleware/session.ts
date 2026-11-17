@@ -1,5 +1,5 @@
 import { Span } from '@opentelemetry/api';
-import { Logger } from 'winston';
+import { Logger } from '@/logger';
 import {
   InternalIdentity,
   internalIdentity,
@@ -12,6 +12,7 @@ import * as t from 'io-ts';
 import { flow } from 'fp-ts/function';
 import { badRequest, unauthorized } from 'typera-common/response';
 import { Config } from '@/config';
+import { describeErrors } from '@/validation-errors';
 
 type Redis = ReturnType<typeof createClient>;
 
@@ -80,13 +81,17 @@ export const sessionMiddleware =
       if (E.isRight(result)) {
         data = result.right;
       } else {
-        logger.error('Failed to deserialize session!', {
-          data: dataSerialized,
-        });
+        logger.error(
+          { component: 'session', errors: describeErrors(result.left) },
+          'Failed to decode session data',
+        );
         return Middleware.stop(unauthorized());
       }
-    } catch {
-      logger.error('Failed to deserialize session!', { data: dataSerialized });
+    } catch (err) {
+      logger.error(
+        { component: 'session', err },
+        'Failed to parse session data',
+      );
       return Middleware.stop(unauthorized());
     }
 

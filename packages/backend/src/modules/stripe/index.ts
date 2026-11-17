@@ -24,7 +24,7 @@ export default createModule({
 
   routes,
 
-  async setup({ bus, config }) {
+  async setup({ bus, config, logger }) {
     const stripe = new Stripe(config.stripeSecretKey, {
       apiVersion: '2023-10-16',
     });
@@ -67,7 +67,7 @@ export default createModule({
       const payment = await bus.exec(getPayment, paymentId);
 
       if (!payment) {
-        console.error('Payment not found!');
+        logger.error({ paymentId }, 'Payment not found');
         return;
       }
 
@@ -89,7 +89,10 @@ export default createModule({
       const email = await bus.exec(getPayerPrimaryEmail, payerId);
 
       if (!email) {
-        console.error(`Email not found for payer ${payerId}!`);
+        logger.error(
+          { paymentId, payerId: payerId.value },
+          'Primary email not found for payer',
+        );
         return;
       }
 
@@ -105,7 +108,7 @@ export default createModule({
       });
 
       if (!created) {
-        console.error('Failed to create receipt email!');
+        logger.error({ paymentId }, 'Failed to create receipt email');
         return;
       }
 

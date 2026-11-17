@@ -1,4 +1,4 @@
-import { Logger } from 'winston';
+import { Logger } from '@/logger';
 import { Config } from './config';
 import * as Minio from 'minio';
 
@@ -19,11 +19,14 @@ export const setupMinio = async (config: Config, logger: Logger) => {
 
   try {
     if (!(await minio.bucketExists(config.minioBucket))) {
-      logger.info(`Created MinIO bucket: ${config.minioBucket}`);
       await minio.makeBucket(config.minioBucket);
+      logger.info({ bucket: config.minioBucket }, 'Created MinIO bucket');
     }
   } catch (err) {
-    logger.error('Failed to create MinIO bucket: ' + err);
+    logger.error(
+      { err, bucket: config.minioBucket },
+      'Failed to create MinIO bucket',
+    );
 
     throw err;
   }

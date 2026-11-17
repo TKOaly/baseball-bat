@@ -10,7 +10,7 @@ import {
 import { Connection, Pool } from '@/db/connection';
 import { Bus, busMiddleware } from '@/bus';
 import dbMiddleware from '@/db/middleware';
-import { Logger } from 'winston';
+import { Logger } from '@/logger';
 import { BusContext } from './app';
 import * as redis from 'redis';
 import { Config } from './config';

@@ -5,6 +5,9 @@ import {
 } from '@opentelemetry/semantic-conventions/incubating';
 import { Sql } from './template';
 import pg, { Client } from 'pg';
+import rootLogger from '@/logger';
+
+const logger = rootLogger.child({ component: 'postgres' });
 
 pg.types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
@@ -69,8 +72,9 @@ export class Connection {
   }
 
   onError = (err: unknown) => {
-    console.log(
-      `Connection error: ${err}\nCreated at: ${this.constructorStack}`,
+    logger.error(
+      { err, connectionId: this.id, createdAt: this.constructorStack },
+      'PostgreSQL connection error',
     );
   };
 

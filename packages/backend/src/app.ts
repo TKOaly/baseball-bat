@@ -16,8 +16,21 @@ import { Session } from './middleware/session';
 import { setupMinio } from './minio';
 import { setupNats } from './nats';
 import { NatsConnection } from 'nats';
-import logger from './logger';
-import { Logger } from 'winston';
+import logger, { Logger } from './logger';
+
+// Without these, a crash is only visible as a plain text stack trace on
+// stderr. Registered before any setup code runs, so that configuration errors
+// at startup are logged as JSON too. pino flushes its output synchronously on
+// exit, so the line is written before the process exits.
+process.on('uncaughtException', err => {
+  logger.fatal({ err }, 'Uncaught exception');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', reason => {
+  logger.fatal({ err: reason }, 'Unhandled promise rejection');
+  process.exit(1);
+});
 
 const PORT = process.env.PORT ?? '5000';
 const config = Config.get();
@@ -28,8 +41,8 @@ const redisClient = redis.createClient({
   url: config.redisUrl,
 });
 
-redisClient.on('error', error => {
-  console.error('Redis client error:', error);
+redisClient.on('error', err => {
+  logger.error({ err, component: 'redis' }, 'Redis client error');
 });
 
 redisClient.connect();
@@ -82,10 +95,14 @@ async function start() {
   const app = await server(deps);
 
   app.listen(PORT, () =>
-    logger.info(`Backend listening on port ${PORT} 🚀`, {
-      port: parseInt(PORT),
-    }),
+    logger.info(
+      { port: parseInt(PORT, 10) },
+      `Backend listening on port ${PORT}`,
+    ),
   );
 }
 
-start();
+start().catch(err => {
+  logger.fatal({ err }, 'Failed to start the backend');
+  process.exit(1);
+});
