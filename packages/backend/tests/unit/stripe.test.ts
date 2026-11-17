@@ -14,6 +14,8 @@ const startStripe = async (env: UnitTestEnvironment) => {
       [
         'listen',
         '-s',
+        // Stripe CLI requires an explicit event subscription when forwarding.
+        '--all-snapshot',
         '--api-key',
         env.env.config.stripeSecretKey,
         '--forward-to',
@@ -52,7 +54,11 @@ const startStripe = async (env: UnitTestEnvironment) => {
       console.error('Stripe CLI sub-process error:', err);
     });
 
+    let stderr = '';
+
     stripeHandle.stderr.on('data', (data: string) => {
+      stderr += data.toString();
+
       if (data.toString().includes('Ready!')) {
         finished = true;
         console.log('Stripe CLI ready!');
@@ -63,7 +69,7 @@ const startStripe = async (env: UnitTestEnvironment) => {
     stripeHandle.on('exit', code => {
       console.log('Stripe CLI exited: ', code);
       if (!finished) {
-        reject();
+        reject(new Error(`Stripe CLI exited with code ${code}: ${stderr}`));
       }
     });
   });

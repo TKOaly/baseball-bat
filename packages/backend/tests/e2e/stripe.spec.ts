@@ -22,6 +22,8 @@ const startStripe = async (bbat: E2ETestEnvironment) => {
       [
         'listen',
         '-s',
+        // Stripe CLI requires an explicit event subscription when forwarding.
+        '--all-snapshot',
         '--api-key',
         bbat.env.config.stripeSecretKey,
         '--forward-to',

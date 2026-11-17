@@ -17,6 +17,10 @@ import { subDays } from 'date-fns/subDays';
 import { pipe } from 'remeda';
 import { describe } from 'node:test';
 
+// The migrations only open the current year's accounting period, so the tests
+// must use it instead of a hardcoded year.
+const accountingPeriod = new Date().getFullYear();
+
 setup('Debts service', ({ test }) => {
   test('debt creation', async ({ bus }) => {
     const payer = await bus.exec(createPayerProfileFromEmailIdentity, {
@@ -28,7 +32,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2025,
+      accountingPeriod,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -38,7 +42,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2025 as any,
+        accountingPeriod: accountingPeriod as any,
         components: [],
         payer: payer.id,
         tags: [],
@@ -56,7 +60,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2025,
+      accountingPeriod,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -73,7 +77,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2025 as any,
+        accountingPeriod: accountingPeriod as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -112,7 +116,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2025,
+      accountingPeriod,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -129,7 +133,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2025 as any,
+        accountingPeriod: accountingPeriod as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -166,7 +170,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2025,
+      accountingPeriod,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -183,7 +187,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2025 as any,
+        accountingPeriod: accountingPeriod as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,
@@ -266,7 +270,7 @@ setup('Debts service', ({ test }) => {
 
         const center = await bus.exec(createDebtCenter, {
           name: 'Test Center',
-          accountingPeriod: 2025,
+          accountingPeriod,
           description: 'Desc',
           url: 'https://google.com/',
         });
@@ -283,7 +287,7 @@ setup('Debts service', ({ test }) => {
             name: 'Name',
             description: 'Desc',
             centerId: center.id,
-            accountingPeriod: 2025 as any,
+            accountingPeriod: accountingPeriod as any,
             components: [component.id],
             payer: payer.id,
             dueDate: overdue
@@ -342,7 +346,7 @@ setup('Debts service', ({ test }) => {
 
       const center = await bus.exec(createDebtCenter, {
         name: 'Test Center',
-        accountingPeriod: 2025,
+        accountingPeriod,
         description: 'Desc',
         url: 'https://google.com/',
       });
@@ -359,7 +363,7 @@ setup('Debts service', ({ test }) => {
           name: 'Name',
           description: 'Desc',
           centerId: center.id,
-          accountingPeriod: 2025 as any,
+          accountingPeriod: accountingPeriod as any,
           components: [component.id],
           payer: payer.id,
           dueDate: dateToDbDateString(subDays(new Date(), 1)),
@@ -397,7 +401,7 @@ setup('Debts service', ({ test }) => {
 
     const center = await bus.exec(createDebtCenter, {
       name: 'Test Center',
-      accountingPeriod: 2025,
+      accountingPeriod,
       description: 'Desc',
       url: 'https://google.com/',
     });
@@ -414,7 +418,7 @@ setup('Debts service', ({ test }) => {
         name: 'Name',
         description: 'Desc',
         centerId: center.id,
-        accountingPeriod: 2025 as any,
+        accountingPeriod: accountingPeriod as any,
         components: [component.id],
         payer: payer.id,
         paymentCondition: 14,

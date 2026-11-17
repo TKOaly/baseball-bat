@@ -93,9 +93,8 @@ export default createModule({
     bus.register(defs.createDebtCenter, async (center, { pg }, bus) => {
       const accounting = bus.getInterface(accountingIface);
 
-      const isAccountingPeriodOpenResult = accounting.isAccountingPeriodOpen(
-        center.accountingPeriod,
-      );
+      const isAccountingPeriodOpenResult =
+        await accounting.isAccountingPeriodOpen(center.accountingPeriod);
 
       if (!isAccountingPeriodOpenResult) {
         throw new Error(
