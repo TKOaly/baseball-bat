@@ -79,7 +79,7 @@ COPY . /usr/src/app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install
 CMD ["sh", "-c", "pnpm run --recursive build && pnpm run --filter=@bbat/backend... --filter=@bbat/frontend... --recursive --stream --parallel start:dev"]
 
-FROM nginx:alpine AS production-nginx 
+FROM nginx:1.31.9-alpine AS production-nginx 
 
 COPY --from=frontend-builder /usr/src/app/packages/frontend/dist /usr/share/nginx/html
 COPY ./packages/frontend/docker/nginx.conf /etc/nginx/nginx.conf
