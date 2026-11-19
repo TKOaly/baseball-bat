@@ -27,6 +27,7 @@ interface IConfig {
   minioAccessKey: string;
   minioSecretKey: string;
   minioBucket: string;
+  minioRegion: string;
   appUrl: string;
   redisUrl: string;
   emailDispatcher?: {
@@ -71,6 +72,7 @@ export class Config implements IConfig {
   minioAccessKey = '';
   minioSecretKey = '';
   minioBucket = '';
+  minioRegion = 'us-east-1';
   appUrl = '';
   redisUrl: string;
   emailDispatcher?: {
@@ -121,6 +123,7 @@ export class Config implements IConfig {
       MINIO_ACCESS_KEY,
       MINIO_SECRET_KEY,
       MINIO_BUCKET,
+      MINIO_REGION,
       INTEGRATION_SECRET,
       NATS_HOST,
       NATS_PORT,
@@ -180,6 +183,7 @@ export class Config implements IConfig {
       minioAccessKey: MINIO_ACCESS_KEY,
       minioSecretKey: MINIO_SECRET_KEY,
       minioBucket: MINIO_BUCKET ?? 'baseball-bat',
+      minioRegion: MINIO_REGION ?? 'us-east-1',
       integrationSecret: INTEGRATION_SECRET,
       nats: {
         host: NATS_HOST,

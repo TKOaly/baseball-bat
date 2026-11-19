@@ -15,11 +15,12 @@ export const setupMinio = async (config: Config, logger: Logger) => {
     useSSL,
     accessKey: config.minioAccessKey,
     secretKey: config.minioSecretKey,
+    region: config.minioRegion,
   });
 
   try {
     if (!(await minio.bucketExists(config.minioBucket))) {
-      await minio.makeBucket(config.minioBucket);
+      await minio.makeBucket(config.minioBucket, config.minioRegion);
       logger.info({ bucket: config.minioBucket }, 'Created MinIO bucket');
     }
   } catch (err) {

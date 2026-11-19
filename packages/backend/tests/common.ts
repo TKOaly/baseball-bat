@@ -348,6 +348,7 @@ export const createEnvironment = async (): Promise<Environment> => {
     minioSecretKey: minio.secretKey,
     minioPublicUrl: minio.uri,
     minioBucket: 'baseball-bat',
+    minioRegion: 'us-east-1',
     nats: {
       host: nats.config.host,
       port: nats.config.port,
