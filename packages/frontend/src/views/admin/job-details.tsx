@@ -115,19 +115,19 @@ export const JobDetails = (props: Props) => {
           time
           label="Created at"
           value={job.createdAt}
-          format="d.m.y HH:mm:ss"
+          format="d.M.y HH:mm:ss"
         />
         <DateField
           time
           label="Started at"
           value={job?.startedAt ?? ''}
-          format="d.m.y HH:mm:ss"
+          format="d.M.y HH:mm:ss"
         />
         <TextField
           label="Finished at"
           value={
             job.finishedAt
-              ? format(job.finishedAt, 'd.m.y HH:mm:ss')
+              ? format(job.finishedAt, 'd.M.y HH:mm:ss')
               : 'Not finished'
           }
         />
